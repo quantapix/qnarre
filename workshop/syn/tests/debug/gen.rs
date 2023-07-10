@@ -312,9 +312,9 @@ impl Debug for Lite<syn::BoundLifetimes> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::ConstParam> {
+impl Debug for Lite<syn::gen::param::Const> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("ConstParam");
+        let mut formatter = formatter.debug_struct("gen::param::Const");
         if !self.value.attrs.is_empty() {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
@@ -2021,25 +2021,25 @@ impl Debug for Lite<syn::Arg> {
         }
     }
 }
-impl Debug for Lite<syn::GenericParam> {
+impl Debug for Lite<syn::gen::Param> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match &self.value {
-            syn::GenericParam::Lifetime(_val) => {
-                formatter.write_str("GenericParam::Lifetime")?;
+            syn::gen::Param::Life(_val) => {
+                formatter.write_str("gen::Param::Life")?;
                 formatter.write_str("(")?;
                 Debug::fmt(Lite(_val), formatter)?;
                 formatter.write_str(")")?;
                 Ok(())
             },
-            syn::GenericParam::Type(_val) => {
-                formatter.write_str("GenericParam::Type")?;
+            syn::gen::Param::Type(_val) => {
+                formatter.write_str("gen::Param::Type")?;
                 formatter.write_str("(")?;
                 Debug::fmt(Lite(_val), formatter)?;
                 formatter.write_str(")")?;
                 Ok(())
             },
-            syn::GenericParam::Const(_val) => {
-                formatter.write_str("GenericParam::Const")?;
+            syn::gen::Param::Const(_val) => {
+                formatter.write_str("gen::Param::Const")?;
                 formatter.write_str("(")?;
                 Debug::fmt(Lite(_val), formatter)?;
                 formatter.write_str(")")?;
@@ -2841,9 +2841,9 @@ impl Debug for Lite<syn::Lifetime> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::LifetimeParam> {
+impl Debug for Lite<syn::gen::param::Life> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("LifetimeParam");
+        let mut formatter = formatter.debug_struct("gen::param::Life");
         if !self.value.attrs.is_empty() {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
@@ -4286,9 +4286,9 @@ impl Debug for Lite<syn::ty::Never> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::TypeParam> {
+impl Debug for Lite<syn::gen::param::Type> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("TypeParam");
+        let mut formatter = formatter.debug_struct("gen::param::Type");
         if !self.value.attrs.is_empty() {
             formatter.field("attrs", Lite(&self.value.attrs));
         }

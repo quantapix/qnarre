@@ -45,7 +45,7 @@
 
 extern crate proc_macro;
 
-use proc_macro2::{extra::DelimSpan, Delimiter, Group, Ident, Literal, Punct, Spacing, Span, TokenStream, TokenTree};
+use proc_macro2::{extra::DelimSpan, Delimiter, Group, Literal, Punct, Spacing, Span, TokenStream, TokenTree};
 use quote::{spanned, ToTokens};
 use std::{
     cmp::Ordering,
@@ -130,8 +130,8 @@ pub mod meta {
             let y = self.delim.span().close();
             parse::parse_scoped(x, y, self.toks.clone())
         }
-        pub fn parse_nested_meta(&self, x: impl FnMut(ParseNested) -> Result<()>) -> Result<()> {
-            self.parse_args_with(meta_parser(x))
+        pub fn parse_nested(&self, x: impl FnMut(ParseNested) -> Result<()>) -> Result<()> {
+            self.parse_args_with(parser(x))
         }
     }
 
@@ -146,52 +146,52 @@ pub mod meta {
         pub ins: ParseStream<'a>,
     }
     impl<'a> ParseNested<'a> {
-        pub fn value(&self) -> Result<ParseStream<'a>> {
+        pub fn val(&self) -> Result<ParseStream<'a>> {
             self.ins.parse::<Token![=]>()?;
             Ok(self.ins)
         }
-        pub fn parse_nested_meta(&self, cb: impl FnMut(ParseNested) -> Result<()>) -> Result<()> {
-            let gist;
-            parenthesized!(gist in self.ins);
-            parse_nested_meta(&gist, cb)
+        pub fn parse(&self, cb: impl FnMut(ParseNested) -> Result<()>) -> Result<()> {
+            let y;
+            parenthesized!(y in self.ins);
+            parse_nested(&y, cb)
         }
-        pub fn error(&self, x: impl Display) -> Err {
+        pub fn err(&self, x: impl Display) -> Err {
             let beg = self.path.segs[0].ident.span();
             let end = self.ins.cursor().prev_span();
             err::new2(beg, end, x)
         }
     }
 
-    pub fn meta_parser(cb: impl FnMut(ParseNested) -> Result<()>) -> impl Parser<Output = ()> {
+    pub fn parser(cb: impl FnMut(ParseNested) -> Result<()>) -> impl Parser<Output = ()> {
         |x: ParseStream| {
             if x.is_empty() {
                 Ok(())
             } else {
-                parse_nested_meta(x, cb)
+                parse_nested(x, cb)
             }
         }
     }
-    pub fn parse_nested_meta(x: ParseStream, mut cb: impl FnMut(ParseNested) -> Result<()>) -> Result<()> {
+    pub fn parse_nested(ins: ParseStream, mut cb: impl FnMut(ParseNested) -> Result<()>) -> Result<()> {
         loop {
-            let path = x.call(parse_meta_path)?;
-            cb(ParseNested { path, ins: x })?;
-            if x.is_empty() {
+            let path = ins.call(parse_path)?;
+            cb(ParseNested { path, ins })?;
+            if ins.is_empty() {
                 return Ok(());
             }
-            x.parse::<Token![,]>()?;
-            if x.is_empty() {
+            ins.parse::<Token![,]>()?;
+            if ins.is_empty() {
                 return Ok(());
             }
         }
     }
-    fn parse_meta_path(x: ParseStream) -> Result<Path> {
+    fn parse_path(x: ParseStream) -> Result<Path> {
         Ok(Path {
             colon: x.parse()?,
             segs: {
                 let mut ys = Punctuated::new();
                 if x.peek(Ident::peek_any) {
                     let y = Ident::parse_any(x)?;
-                    ys.push_value(Segment::from(y));
+                    ys.push_value(path::Segment::from(y));
                 } else if x.is_empty() {
                     return Err(x.error("expected nested attribute"));
                 } else if x.peek(lit::Lit) {
@@ -203,7 +203,7 @@ pub mod meta {
                     let y = x.parse()?;
                     ys.push_punct(y);
                     let y = Ident::parse_any(x)?;
-                    ys.push_value(Segment::from(y));
+                    ys.push_value(path::Segment::from(y));
                 }
                 ys
             },
@@ -295,67 +295,6 @@ pub mod attr {
             self.iter().filter(is_inner)
         }
     }
-}
-
-pub struct Parens<'a> {
-    pub tok: tok::Paren,
-    pub gist: ParseBuffer<'a>,
-}
-pub fn parse_parens<'a>(x: &ParseBuffer<'a>) -> Result<Parens<'a>> {
-    parse_delimited(x, Delimiter::Parenthesis).map(|(span, gist)| Parens {
-        tok: tok::Paren(span),
-        gist,
-    })
-}
-pub struct Braces<'a> {
-    pub token: tok::Brace,
-    pub gist: ParseBuffer<'a>,
-}
-pub fn parse_braces<'a>(x: &ParseBuffer<'a>) -> Result<Braces<'a>> {
-    parse_delimited(x, Delimiter::Brace).map(|(span, gist)| Braces {
-        token: tok::Brace(span),
-        gist,
-    })
-}
-pub struct Brackets<'a> {
-    pub token: tok::Bracket,
-    pub gist: ParseBuffer<'a>,
-}
-pub fn parse_brackets<'a>(x: &ParseBuffer<'a>) -> Result<Brackets<'a>> {
-    parse_delimited(x, Delimiter::Bracket).map(|(span, gist)| Brackets {
-        token: tok::Bracket(span),
-        gist,
-    })
-}
-pub struct Group<'a> {
-    pub token: tok::Group,
-    pub gist: ParseBuffer<'a>,
-}
-pub fn parse_group<'a>(x: &ParseBuffer<'a>) -> Result<Group<'a>> {
-    parse_delimited(x, Delimiter::None).map(|(span, gist)| Group {
-        token: tok::Group(span.join()),
-        gist,
-    })
-}
-fn parse_delimited<'a>(x: &ParseBuffer<'a>, d: Delimiter) -> Result<(DelimSpan, ParseBuffer<'a>)> {
-    x.step(|c| {
-        if let Some((gist, span, rest)) = c.group(d) {
-            let scope = close_span_of_group(*c);
-            let nested = parse::advance_step_cursor(c, gist);
-            let unexpected = parse::get_unexpected(x);
-            let gist = parse::new_parse_buffer(scope, nested, unexpected);
-            Ok(((span, gist), rest))
-        } else {
-            use Delimiter::*;
-            let y = match d {
-                Parenthesis => "expected parentheses",
-                Brace => "expected braces",
-                Bracket => "expected brackets",
-                None => "expected group",
-            };
-            Err(c.error(y))
-        }
-    })
 }
 
 mod cur {
@@ -605,345 +544,513 @@ mod cur {
             _ => c.span(),
         }
     }
+    pub struct Buffer {
+        entries: Box<[Entry]>,
+    }
+    impl Buffer {
+        fn recursive_new(ys: &mut Vec<Entry>, xs: TokenStream) {
+            for x in xs {
+                use Entry::*;
+                match x {
+                    TokenTree::Ident(x) => ys.push(Ident(x)),
+                    TokenTree::Punct(x) => ys.push(Punct(x)),
+                    TokenTree::Literal(x) => ys.push(Literal(x)),
+                    TokenTree::Group(x) => {
+                        let beg = ys.len();
+                        ys.push(End(0));
+                        Self::recursive_new(ys, x.stream());
+                        let end = ys.len();
+                        ys.push(End(-(end as isize)));
+                        let off = end - beg;
+                        ys[beg] = Group(x, off);
+                    },
+                }
+            }
+        }
+        pub fn new(x: proc_macro::TokenStream) -> Self {
+            Self::new2(x.into())
+        }
+        pub fn new2(x: TokenStream) -> Self {
+            let mut ys = Vec::new();
+            Self::recursive_new(&mut ys, x);
+            ys.push(Entry::End(-(ys.len() as isize)));
+            Self {
+                entries: ys.into_boxed_slice(),
+            }
+        }
+        pub fn begin(&self) -> Cursor {
+            let y = self.entries.as_ptr();
+            unsafe { Cursor::create(y, y.add(self.entries.len() - 1)) }
+        }
+    }
 }
 use cur::Cursor;
+mod ident {
+    pub use proc_macro2::Ident;
 
-pub struct TokBuff {
-    entries: Box<[Entry]>,
-}
-impl TokBuff {
-    fn recursive_new(ys: &mut Vec<Entry>, xs: TokenStream) {
-        for x in xs {
-            match x {
-                TokenTree::Ident(x) => ys.push(Entry::Ident(x)),
-                TokenTree::Punct(x) => ys.push(Entry::Punct(x)),
-                TokenTree::Literal(x) => ys.push(Entry::Literal(x)),
-                TokenTree::Group(x) => {
-                    let beg = ys.len();
-                    ys.push(Entry::End(0));
-                    Self::recursive_new(ys, x.stream());
-                    let end = ys.len();
-                    ys.push(Entry::End(-(end as isize)));
-                    let off = end - beg;
-                    ys[beg] = Entry::Group(x, off);
-                },
+    macro_rules! ident_from_tok {
+        ($x:ident) => {
+            impl From<Token![$x]> for Ident {
+                fn from(x: Token![$x]) -> Ident {
+                    Ident::new(stringify!($x), x.span)
+                }
+            }
+        };
+    }
+    ident_from_tok!(self);
+    ident_from_tok!(Self);
+    ident_from_tok!(super);
+    ident_from_tok!(crate);
+    ident_from_tok!(extern);
+    impl From<Token![_]> for Ident {
+        fn from(x: Token![_]) -> Ident {
+            Ident::new("_", x.span)
+        }
+    }
+    pub fn xid_ok(x: &str) -> bool {
+        let mut ys = x.chars();
+        let first = ys.next().unwrap();
+        if !(first == '_' || unicode_ident::is_xid_start(first)) {
+            return false;
+        }
+        for y in ys {
+            if !unicode_ident::is_xid_continue(y) {
+                return false;
+            }
+        }
+        true
+    }
+
+    pub struct Lifetime {
+        pub apos: Span,
+        pub ident: Ident,
+    }
+    impl Lifetime {
+        pub fn new(x: &str, s: Span) -> Self {
+            if !x.starts_with('\'') {
+                panic!("lifetime name must start with apostrophe as in \"'a\", got {:?}", x);
+            }
+            if x == "'" {
+                panic!("lifetime name must not be empty");
+            }
+            if !ident::xid_ok(&x[1..]) {
+                panic!("{:?} is not a valid lifetime name", x);
+            }
+            Lifetime {
+                apos: s,
+                ident: Ident::new(&x[1..], s),
+            }
+        }
+        pub fn span(&self) -> Span {
+            self.apos.join(self.ident.span()).unwrap_or(self.apos)
+        }
+        pub fn set_span(&mut self, s: Span) {
+            self.apos = s;
+            self.ident.set_span(s);
+        }
+    }
+    impl Display for Lifetime {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            "'".fmt(f)?;
+            self.ident.fmt(f)
+        }
+    }
+    impl Clone for Lifetime {
+        fn clone(&self) -> Self {
+            Lifetime {
+                apos: self.apos,
+                ident: self.ident.clone(),
             }
         }
     }
-    pub fn new(x: proc_macro::TokenStream) -> Self {
-        Self::new2(x.into())
-    }
-    pub fn new2(x: TokenStream) -> Self {
-        let mut ys = Vec::new();
-        Self::recursive_new(&mut ys, x);
-        ys.push(Entry::End(-(ys.len() as isize)));
-        Self {
-            entries: ys.into_boxed_slice(),
+    impl PartialEq for Lifetime {
+        fn eq(&self, x: &Lifetime) -> bool {
+            self.ident.eq(&x.ident)
         }
     }
-    pub fn begin(&self) -> Cursor {
-        let y = self.entries.as_ptr();
-        unsafe { Cursor::create(y, y.add(self.entries.len() - 1)) }
+    impl Eq for Lifetime {}
+    impl PartialOrd for Lifetime {
+        fn partial_cmp(&self, x: &Lifetime) -> Option<Ordering> {
+            Some(self.cmp(x))
+        }
     }
+    impl Ord for Lifetime {
+        fn cmp(&self, x: &Lifetime) -> Ordering {
+            self.ident.cmp(&x.ident)
+        }
+    }
+    impl Hash for Lifetime {
+        fn hash<H: Hasher>(&self, x: &mut H) {
+            self.ident.hash(x);
+        }
+    }
+
+    #[allow(non_snake_case)]
+    pub fn Ident(x: lookahead::TokenMarker) -> Ident {
+        match x {}
+    }
+    #[allow(non_snake_case)]
+    pub fn Lifetime(x: lookahead::TokenMarker) -> Lifetime {
+        match x {}
+    }
+}
+pub use ident::{Ident, Lifetime};
+
+pub struct Parens<'a> {
+    pub tok: tok::Paren,
+    pub gist: ParseBuffer<'a>,
+}
+pub fn parse_parens<'a>(x: &ParseBuffer<'a>) -> Result<Parens<'a>> {
+    parse_delimited(x, Delimiter::Parenthesis).map(|(span, gist)| Parens {
+        tok: tok::Paren(span),
+        gist,
+    })
+}
+pub struct Braces<'a> {
+    pub token: tok::Brace,
+    pub gist: ParseBuffer<'a>,
+}
+pub fn parse_braces<'a>(x: &ParseBuffer<'a>) -> Result<Braces<'a>> {
+    parse_delimited(x, Delimiter::Brace).map(|(span, gist)| Braces {
+        token: tok::Brace(span),
+        gist,
+    })
+}
+pub struct Brackets<'a> {
+    pub token: tok::Bracket,
+    pub gist: ParseBuffer<'a>,
+}
+pub fn parse_brackets<'a>(x: &ParseBuffer<'a>) -> Result<Brackets<'a>> {
+    parse_delimited(x, Delimiter::Bracket).map(|(span, gist)| Brackets {
+        token: tok::Bracket(span),
+        gist,
+    })
+}
+pub struct Group<'a> {
+    pub token: tok::Group,
+    pub gist: ParseBuffer<'a>,
+}
+pub fn parse_group<'a>(x: &ParseBuffer<'a>) -> Result<Group<'a>> {
+    parse_delimited(x, Delimiter::None).map(|(span, gist)| Group {
+        token: tok::Group(span.join()),
+        gist,
+    })
+}
+fn parse_delimited<'a>(x: &ParseBuffer<'a>, d: Delimiter) -> Result<(DelimSpan, ParseBuffer<'a>)> {
+    x.step(|c| {
+        if let Some((gist, span, rest)) = c.group(d) {
+            let scope = close_span_of_group(*c);
+            let nested = parse::advance_step_cursor(c, gist);
+            let unexpected = parse::get_unexpected(x);
+            let gist = parse::new_parse_buffer(scope, nested, unexpected);
+            Ok(((span, gist), rest))
+        } else {
+            use Delimiter::*;
+            let y = match d {
+                Parenthesis => "expected parentheses",
+                Brace => "expected braces",
+                Bracket => "expected brackets",
+                None => "expected group",
+            };
+            Err(c.error(y))
+        }
+    })
 }
 
 mod expr;
 
-pub struct LifetimeParam {
-    pub attrs: Vec<attr::Attr>,
-    pub life: Lifetime,
-    pub colon: Option<Token![:]>,
-    pub bounds: Punctuated<Lifetime, Token![+]>,
-}
-pub struct TypeParam {
-    pub attrs: Vec<attr::Attr>,
-    pub ident: Ident,
-    pub colon: Option<Token![:]>,
-    pub bounds: Punctuated<TypeParamBound, Token![+]>,
-    pub eq: Option<Token![=]>,
-    pub default: Option<ty::Type>,
-}
-pub struct ConstParam {
-    pub attrs: Vec<attr::Attr>,
-    pub const_: Token![const],
-    pub ident: Ident,
-    pub colon: Token![:],
-    pub typ: ty::Type,
-    pub eq: Option<Token![=]>,
-    pub default: Option<Expr>,
-}
-
-ast_enum_of_structs! {
-    pub enum GenericParam {
-        Lifetime(LifetimeParam),
-        Type(TypeParam),
-        Const(ConstParam),
+pub mod gen {
+    pub struct BoundLifetimes {
+        pub for_: Token![for],
+        pub lt: Token![<],
+        pub lifes: Punctuated<Param, Token![,]>,
+        pub gt: Token![>],
     }
-}
-
-pub struct Generics {
-    pub lt: Option<Token![<]>,
-    pub params: Punctuated<GenericParam, Token![,]>,
-    pub gt: Option<Token![>]>,
-    pub where_: Option<WhereClause>,
-}
-
-impl Generics {
-    pub fn lifetimes(&self) -> Lifetimes {
-        Lifetimes(self.params.iter())
-    }
-    pub fn lifetimes_mut(&mut self) -> LifetimesMut {
-        LifetimesMut(self.params.iter_mut())
-    }
-    pub fn type_params(&self) -> TypeParams {
-        TypeParams(self.params.iter())
-    }
-    pub fn type_params_mut(&mut self) -> TypeParamsMut {
-        TypeParamsMut(self.params.iter_mut())
-    }
-    pub fn const_params(&self) -> ConstParams {
-        ConstParams(self.params.iter())
-    }
-    pub fn const_params_mut(&mut self) -> ConstParamsMut {
-        ConstParamsMut(self.params.iter_mut())
-    }
-    pub fn make_where_clause(&mut self) -> &mut WhereClause {
-        self.where_.get_or_insert_with(|| WhereClause {
-            where_: <Token![where]>::default(),
-            preds: Punctuated::new(),
-        })
-    }
-    pub fn split_for_impl(&self) -> (ImplGenerics, TypeGenerics, Option<&WhereClause>) {
-        (ImplGenerics(self), TypeGenerics(self), self.where_.as_ref())
-    }
-}
-impl Default for Generics {
-    fn default() -> Self {
-        Generics {
-            lt: None,
-            params: Punctuated::new(),
-            gt: None,
-            where_: None,
-        }
-    }
-}
-
-pub struct Lifetimes<'a>(Iter<'a, GenericParam>);
-impl<'a> Iterator for Lifetimes<'a> {
-    type Item = &'a LifetimeParam;
-    fn next(&mut self) -> Option<Self::Item> {
-        let y = match self.0.next() {
-            Some(x) => x,
-            None => return None,
-        };
-        if let GenericParam::Lifetime(x) = y {
-            Some(x)
-        } else {
-            self.next()
-        }
-    }
-}
-
-pub struct LifetimesMut<'a>(IterMut<'a, GenericParam>);
-impl<'a> Iterator for LifetimesMut<'a> {
-    type Item = &'a mut LifetimeParam;
-    fn next(&mut self) -> Option<Self::Item> {
-        let y = match self.0.next() {
-            Some(x) => x,
-            None => return None,
-        };
-        if let GenericParam::Lifetime(x) = y {
-            Some(x)
-        } else {
-            self.next()
-        }
-    }
-}
-
-pub struct TypeParams<'a>(Iter<'a, GenericParam>);
-impl<'a> Iterator for TypeParams<'a> {
-    type Item = &'a TypeParam;
-    fn next(&mut self) -> Option<Self::Item> {
-        let y = match self.0.next() {
-            Some(x) => x,
-            None => return None,
-        };
-        if let GenericParam::Type(x) = y {
-            Some(x)
-        } else {
-            self.next()
-        }
-    }
-}
-
-pub struct TypeParamsMut<'a>(IterMut<'a, GenericParam>);
-impl<'a> Iterator for TypeParamsMut<'a> {
-    type Item = &'a mut TypeParam;
-    fn next(&mut self) -> Option<Self::Item> {
-        let y = match self.0.next() {
-            Some(x) => x,
-            None => return None,
-        };
-        if let GenericParam::Type(x) = y {
-            Some(x)
-        } else {
-            self.next()
-        }
-    }
-}
-
-pub struct ConstParams<'a>(Iter<'a, GenericParam>);
-impl<'a> Iterator for ConstParams<'a> {
-    type Item = &'a ConstParam;
-    fn next(&mut self) -> Option<Self::Item> {
-        let y = match self.0.next() {
-            Some(x) => x,
-            None => return None,
-        };
-        if let GenericParam::Const(x) = y {
-            Some(x)
-        } else {
-            self.next()
-        }
-    }
-}
-
-pub struct ConstParamsMut<'a>(IterMut<'a, GenericParam>);
-impl<'a> Iterator for ConstParamsMut<'a> {
-    type Item = &'a mut ConstParam;
-    fn next(&mut self) -> Option<Self::Item> {
-        let y = match self.0.next() {
-            Some(x) => x,
-            None => return None,
-        };
-        if let GenericParam::Const(x) = y {
-            Some(x)
-        } else {
-            self.next()
-        }
-    }
-}
-
-pub struct ImplGenerics<'a>(pub &'a Generics);
-pub struct TypeGenerics<'a>(pub &'a Generics);
-pub struct Turbofish<'a>(pub &'a Generics);
-
-macro_rules! generics_wrapper_impls {
-    ($ty:ident) => {
-        impl<'a> Clone for $ty<'a> {
-            fn clone(&self) -> Self {
-                $ty(self.0)
+    impl Default for BoundLifetimes {
+        fn default() -> Self {
+            BoundLifetimes {
+                for_: Default::default(),
+                lt: Default::default(),
+                lifes: Punctuated::new(),
+                gt: Default::default(),
             }
         }
-        impl<'a> Debug for $ty<'a> {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                f.debug_tuple(stringify!($ty)).field(self.0).finish()
+    }
+
+    pub struct WhereClause {
+        pub where_: Token![where],
+        pub preds: Punctuated<WherePred, Token![,]>,
+    }
+
+    ast_enum_of_structs! {
+        pub enum WherePred {
+            Lifetime(PredLifetime),
+            Type(PredType),
+        }
+    }
+
+    pub struct PredLifetime {
+        pub life: Lifetime,
+        pub colon: Token![:],
+        pub bounds: Punctuated<Lifetime, Token![+]>,
+    }
+    pub struct PredType {
+        pub lifes: Option<BoundLifetimes>,
+        pub bounded: ty::Type,
+        pub colon: Token![:],
+        pub bounds: Punctuated<TypeParamBound, Token![+]>,
+    }
+
+    ast_enum_of_structs! {
+        pub enum TypeParamBound {
+            Trait(TraitBound),
+            Lifetime(Lifetime),
+            Verbatim(TokenStream),
+        }
+    }
+
+    pub struct TraitBound {
+        pub paren: Option<tok::Paren>,
+        pub modifier: TraitBoundModifier,
+        pub lifes: Option<BoundLifetimes>,
+        pub path: path::Path,
+    }
+
+    pub enum TraitBoundModifier {
+        None,
+        Maybe(Token![?]),
+    }
+
+    pub mod param {
+        ast_enum_of_structs! {
+            pub enum Param {
+                Life(Life),
+                Type(Type),
+                Const(Const),
             }
         }
-        impl<'a> Eq for $ty<'a> {}
-        impl<'a> PartialEq for $ty<'a> {
-            fn eq(&self, other: &Self) -> bool {
-                self.0 == other.0
+        pub struct Life {
+            pub attrs: Vec<attr::Attr>,
+            pub life: Lifetime,
+            pub colon: Option<Token![:]>,
+            pub bounds: Punctuated<Lifetime, Token![+]>,
+        }
+        impl Life {
+            pub fn new(life: Lifetime) -> Self {
+                param::Life {
+                    attrs: Vec::new(),
+                    life,
+                    colon: None,
+                    bounds: Punctuated::new(),
+                }
             }
         }
-        impl<'a> Hash for $ty<'a> {
-            fn hash<H: Hasher>(&self, state: &mut H) {
-                self.0.hash(state);
+        pub struct Lifes<'a>(Iter<'a, Param>);
+        impl<'a> Iterator for Lifes<'a> {
+            type Item = &'a Life;
+            fn next(&mut self) -> Option<Self::Item> {
+                let y = match self.0.next() {
+                    Some(x) => x,
+                    None => return None,
+                };
+                if let Param::Life(x) = y {
+                    Some(&x)
+                } else {
+                    self.next()
+                }
             }
         }
-    };
-}
-generics_wrapper_impls!(ImplGenerics);
-generics_wrapper_impls!(TypeGenerics);
-generics_wrapper_impls!(Turbofish);
-
-impl<'a> TypeGenerics<'a> {
-    pub fn as_turbofish(&self) -> Turbofish {
-        Turbofish(self.0)
-    }
-}
-
-pub struct BoundLifetimes {
-    pub for_: Token![for],
-    pub lt: Token![<],
-    pub lifes: Punctuated<GenericParam, Token![,]>,
-    pub gt: Token![>],
-}
-
-impl Default for BoundLifetimes {
-    fn default() -> Self {
-        BoundLifetimes {
-            for_: Default::default(),
-            lt: Default::default(),
-            lifes: Punctuated::new(),
-            gt: Default::default(),
+        pub struct LifesMut<'a>(IterMut<'a, Param>);
+        impl<'a> Iterator for LifesMut<'a> {
+            type Item = &'a mut Life;
+            fn next(&mut self) -> Option<Self::Item> {
+                let y = match self.0.next() {
+                    Some(x) => x,
+                    None => return None,
+                };
+                if let Param::Life(x) = y {
+                    Some(&mut x)
+                } else {
+                    self.next()
+                }
+            }
+        }
+        pub struct Type {
+            pub attrs: Vec<attr::Attr>,
+            pub ident: Ident,
+            pub colon: Option<Token![:]>,
+            pub bounds: Punctuated<TypeParamBound, Token![+]>,
+            pub eq: Option<Token![=]>,
+            pub default: Option<ty::Type>,
+        }
+        impl From<Ident> for param::Type {
+            fn from(ident: Ident) -> Self {
+                param::Type {
+                    attrs: vec![],
+                    ident,
+                    colon: None,
+                    bounds: Punctuated::new(),
+                    eq: None,
+                    default: None,
+                }
+            }
+        }
+        pub struct Types<'a>(Iter<'a, Param>);
+        impl<'a> Iterator for Types<'a> {
+            type Item = &'a Type;
+            fn next(&mut self) -> Option<Self::Item> {
+                let y = match self.0.next() {
+                    Some(x) => x,
+                    None => return None,
+                };
+                if let Param::Type(x) = y {
+                    Some(&x)
+                } else {
+                    self.next()
+                }
+            }
+        }
+        pub struct TypesMut<'a>(IterMut<'a, Param>);
+        impl<'a> Iterator for TypesMut<'a> {
+            type Item = &'a mut Type;
+            fn next(&mut self) -> Option<Self::Item> {
+                let y = match self.0.next() {
+                    Some(x) => x,
+                    None => return None,
+                };
+                if let Param::Type(x) = y {
+                    Some(&mut x)
+                } else {
+                    self.next()
+                }
+            }
+        }
+        pub struct Const {
+            pub attrs: Vec<attr::Attr>,
+            pub const_: Token![const],
+            pub ident: Ident,
+            pub colon: Token![:],
+            pub typ: ty::Type,
+            pub eq: Option<Token![=]>,
+            pub default: Option<Expr>,
+        }
+        pub struct Consts<'a>(Iter<'a, Param>);
+        impl<'a> Iterator for Consts<'a> {
+            type Item = &'a Const;
+            fn next(&mut self) -> Option<Self::Item> {
+                let y = match self.0.next() {
+                    Some(x) => x,
+                    None => return None,
+                };
+                if let Param::Const(x) = y {
+                    Some(&x)
+                } else {
+                    self.next()
+                }
+            }
+        }
+        pub struct ConstsMut<'a>(IterMut<'a, Param>);
+        impl<'a> Iterator for ConstsMut<'a> {
+            type Item = &'a mut Const;
+            fn next(&mut self) -> Option<Self::Item> {
+                let y = match self.0.next() {
+                    Some(x) => x,
+                    None => return None,
+                };
+                if let Param::Const(x) = y {
+                    Some(&mut x)
+                } else {
+                    self.next()
+                }
+            }
         }
     }
-}
-impl LifetimeParam {
-    pub fn new(lifetime: Lifetime) -> Self {
-        LifetimeParam {
-            attrs: Vec::new(),
-            life: lifetime,
-            colon: None,
-            bounds: Punctuated::new(),
+    use param::Param;
+
+    pub struct Generics {
+        pub lt: Option<Token![<]>,
+        pub params: Punctuated<Param, Token![,]>,
+        pub gt: Option<Token![>]>,
+        pub where_: Option<WhereClause>,
+    }
+    impl Generics {
+        pub fn lifetimes(&self) -> param::Lifes {
+            param::Lifes(self.params.iter())
+        }
+        pub fn lifetimes_mut(&mut self) -> param::LifesMut {
+            param::LifesMut(self.params.iter_mut())
+        }
+        pub fn type_params(&self) -> param::Types {
+            param::Types(self.params.iter())
+        }
+        pub fn type_params_mut(&mut self) -> param::TypesMut {
+            param::TypesMut(self.params.iter_mut())
+        }
+        pub fn const_params(&self) -> param::Consts {
+            param::Consts(self.params.iter())
+        }
+        pub fn const_params_mut(&mut self) -> param::ConstsMut {
+            param::ConstsMut(self.params.iter_mut())
+        }
+        pub fn make_where_clause(&mut self) -> &mut WhereClause {
+            self.where_.get_or_insert_with(|| WhereClause {
+                where_: <Token![where]>::default(),
+                preds: Punctuated::new(),
+            })
+        }
+        pub fn split_for_impl(&self) -> (ImplGenerics, TypeGenerics, Option<&WhereClause>) {
+            (ImplGenerics(self), TypeGenerics(self), self.where_.as_ref())
         }
     }
-}
-impl From<Ident> for TypeParam {
-    fn from(ident: Ident) -> Self {
-        TypeParam {
-            attrs: vec![],
-            ident,
-            colon: None,
-            bounds: Punctuated::new(),
-            eq: None,
-            default: None,
+    impl Default for Generics {
+        fn default() -> Self {
+            Generics {
+                lt: None,
+                params: Punctuated::new(),
+                gt: None,
+                where_: None,
+            }
         }
     }
-}
-ast_enum_of_structs! {
-    pub enum TypeParamBound {
-        Trait(TraitBound),
-        Lifetime(Lifetime),
-        Verbatim(TokenStream),
+
+    pub struct ImplGenerics<'a>(pub &'a Generics);
+    pub struct TypeGenerics<'a>(pub &'a Generics);
+    pub struct Turbofish<'a>(pub &'a Generics);
+
+    macro_rules! generics_wrapper_impls {
+        ($ty:ident) => {
+            impl<'a> Clone for $ty<'a> {
+                fn clone(&self) -> Self {
+                    $ty(self.0)
+                }
+            }
+            impl<'a> Debug for $ty<'a> {
+                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                    f.debug_tuple(stringify!($ty)).field(self.0).finish()
+                }
+            }
+            impl<'a> Eq for $ty<'a> {}
+            impl<'a> PartialEq for $ty<'a> {
+                fn eq(&self, other: &Self) -> bool {
+                    self.0 == other.0
+                }
+            }
+            impl<'a> Hash for $ty<'a> {
+                fn hash<H: Hasher>(&self, state: &mut H) {
+                    self.0.hash(state);
+                }
+            }
+        };
     }
-}
+    generics_wrapper_impls!(ImplGenerics);
+    generics_wrapper_impls!(TypeGenerics);
+    generics_wrapper_impls!(Turbofish);
 
-pub struct TraitBound {
-    pub paren: Option<tok::Paren>,
-    pub modifier: TraitBoundModifier,
-    pub lifes: Option<BoundLifetimes>,
-    pub path: path::Path,
-}
-
-pub enum TraitBoundModifier {
-    None,
-    Maybe(Token![?]),
-}
-
-pub struct WhereClause {
-    pub where_: Token![where],
-    pub preds: Punctuated<WherePred, Token![,]>,
-}
-
-ast_enum_of_structs! {
-    pub enum WherePred {
-        Lifetime(PredLifetime),
-        Type(PredType),
+    impl<'a> TypeGenerics<'a> {
+        pub fn as_turbofish(&self) -> Turbofish {
+            Turbofish(self.0)
+        }
     }
-}
-
-pub struct PredLifetime {
-    pub life: Lifetime,
-    pub colon: Token![:],
-    pub bounds: Punctuated<Lifetime, Token![+]>,
-}
-pub struct PredType {
-    pub lifes: Option<BoundLifetimes>,
-    pub bounded: ty::Type,
-    pub colon: Token![:],
-    pub bounds: Punctuated<TypeParamBound, Token![+]>,
 }
 
 pub mod item;
@@ -953,8 +1060,6 @@ pub mod lit;
 pub mod tok;
 
 mod patt {
-    use super::punct::Punctuated;
-
     ast_enum_of_structs! {
         pub enum Patt {
             Const(Const),
@@ -1051,7 +1156,6 @@ mod patt {
     }
 }
 mod path {
-    use super::punct::Punctuated;
     pub struct Path {
         pub colon: Option<Token![::]>,
         pub segs: Punctuated<Segment, Token![::]>,
@@ -1208,9 +1312,6 @@ mod stmt {
     }
 }
 mod ty {
-    use super::punct::Punctuated;
-    use proc_macro2::TokenStream;
-
     ast_enum_of_structs! {
         pub enum Type {
             Array(Array),
@@ -1482,7 +1583,6 @@ pub struct DataUnion {
 }
 
 mod err {
-    use super::{Cursor, ThreadBound};
     use proc_macro2::{Delimiter, Group, Ident, LexError, Literal, Punct, Spacing, Span, TokenStream, TokenTree};
     use quote::ToTokens;
     use std::{
@@ -1716,7 +1816,6 @@ pub mod ext {
         parse::{ParseStream, Peek, Result},
         sealed::lookahead,
         tok::Custom,
-        Cursor,
     };
     use proc_macro2::Ident;
     pub trait IdentExt: Sized + private::Sealed {
@@ -1774,127 +1873,12 @@ pub struct File {
     pub items: Vec<Item>,
 }
 
-mod ident {
-    use super::lookahead;
-    pub use proc_macro2::Ident;
-    #[allow(non_snake_case)]
-    pub fn Ident(x: lookahead::TokenMarker) -> Ident {
-        match x {}
-    }
-    macro_rules! ident_from_token {
-        ($token:ident) => {
-            impl From<Token![$token]> for Ident {
-                fn from(token: Token![$token]) -> Ident {
-                    Ident::new(stringify!($token), token.span)
-                }
-            }
-        };
-    }
-    ident_from_token!(self);
-    ident_from_token!(Self);
-    ident_from_token!(super);
-    ident_from_token!(crate);
-    ident_from_token!(extern);
-    impl From<Token![_]> for Ident {
-        fn from(token: Token![_]) -> Ident {
-            Ident::new("_", token.span)
-        }
-    }
-    pub fn xid_ok(symbol: &str) -> bool {
-        let mut chars = symbol.chars();
-        let first = chars.next().unwrap();
-        if !(first == '_' || unicode_ident::is_xid_start(first)) {
-            return false;
-        }
-        for ch in chars {
-            if !unicode_ident::is_xid_continue(ch) {
-                return false;
-            }
-        }
-        true
-    }
-}
-pub use ident::Ident;
-
-pub struct Lifetime {
-    pub apostrophe: Span,
-    pub ident: Ident,
-}
-impl Lifetime {
-    pub fn new(symbol: &str, span: Span) -> Self {
-        if !symbol.starts_with('\'') {
-            panic!(
-                "lifetime name must start with apostrophe as in \"'a\", got {:?}",
-                symbol
-            );
-        }
-        if symbol == "'" {
-            panic!("lifetime name must not be empty");
-        }
-        if !ident::xid_ok(&symbol[1..]) {
-            panic!("{:?} is not a valid lifetime name", symbol);
-        }
-        Lifetime {
-            apostrophe: span,
-            ident: Ident::new(&symbol[1..], span),
-        }
-    }
-    pub fn span(&self) -> Span {
-        self.apostrophe.join(self.ident.span()).unwrap_or(self.apostrophe)
-    }
-    pub fn set_span(&mut self, span: Span) {
-        self.apostrophe = span;
-        self.ident.set_span(span);
-    }
-}
-impl Display for Lifetime {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        "'".fmt(f)?;
-        self.ident.fmt(f)
-    }
-}
-impl Clone for Lifetime {
-    fn clone(&self) -> Self {
-        Lifetime {
-            apostrophe: self.apostrophe,
-            ident: self.ident.clone(),
-        }
-    }
-}
-impl PartialEq for Lifetime {
-    fn eq(&self, other: &Lifetime) -> bool {
-        self.ident.eq(&other.ident)
-    }
-}
-impl Eq for Lifetime {}
-impl PartialOrd for Lifetime {
-    fn partial_cmp(&self, other: &Lifetime) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-impl Ord for Lifetime {
-    fn cmp(&self, other: &Lifetime) -> Ordering {
-        self.ident.cmp(&other.ident)
-    }
-}
-impl Hash for Lifetime {
-    fn hash<H: Hasher>(&self, h: &mut H) {
-        self.ident.hash(h);
-    }
-}
-#[allow(non_snake_case)]
-pub fn Lifetime(marker: lookahead::TokenMarker) -> Lifetime {
-    match marker {}
-}
-
 mod lookahead {
     use super::{
         err::{self, Err},
         sealed::lookahead::Sealed,
         tok::Tok,
-        Cursor, IntoSpans,
     };
-    use proc_macro2::{Delimiter, Span};
     use std::cell::RefCell;
     pub struct Lookahead1<'a> {
         scope: Span,
@@ -2064,7 +2048,6 @@ pub mod parse {
         proc_macro,
         punct::Punctuated,
         tok::Tok,
-        Cursor, TokBuff,
     };
     use proc_macro2::{self, Delimiter, Group, Literal, Punct, Span, TokenStream, TokenTree};
     use std::{
@@ -2079,7 +2062,6 @@ pub mod parse {
     };
 
     pub mod discouraged {
-        use super::*;
         use proc_macro2::extra::DelimSpan;
         pub trait Speculative {
             fn advance_to(&self, fork: &Self);
@@ -2415,7 +2397,7 @@ pub mod parse {
             self.parse2(tokens)
         }
     }
-    fn tokens_to_parse_buffer(tokens: &TokBuff) -> ParseBuffer {
+    fn tokens_to_parse_buffer(tokens: &cur::Buffer) -> ParseBuffer {
         let scope = Span::call_site();
         let cursor = tokens.begin();
         let unexpected = Rc::new(Cell::new(Unexpected::None));
@@ -2427,7 +2409,7 @@ pub mod parse {
     {
         type Output = T;
         fn parse2(self, tokens: TokenStream) -> Result<T> {
-            let buf = TokBuff::new2(tokens);
+            let buf = cur::Buffer::new2(tokens);
             let state = tokens_to_parse_buffer(&buf);
             let node = self(&state)?;
             state.check_unexpected()?;
@@ -2438,7 +2420,7 @@ pub mod parse {
             }
         }
         fn __parse_scoped(self, scope: Span, tokens: TokenStream) -> Result<Self::Output> {
-            let buf = TokBuff::new2(tokens);
+            let buf = cur::Buffer::new2(tokens);
             let cursor = buf.begin();
             let unexpected = Rc::new(Cell::new(Unexpected::None));
             let state = new_parse_buffer(scope, cursor, unexpected);
@@ -2619,7 +2601,6 @@ impl<T: ?Sized + spanned::Spanned> Spanned for T {
     }
 }
 mod private {
-    use super::*;
     pub trait Sealed {}
     impl<T: ?Sized + spanned::Spanned> Sealed for T {}
 }

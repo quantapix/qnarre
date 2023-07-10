@@ -123,22 +123,22 @@ impl Parse for Generics {
             let attrs = input.call(attr::Attr::parse_outer)?;
             let lookahead = input.lookahead1();
             if lookahead.peek(Lifetime) {
-                params.push_value(GenericParam::Lifetime(LifetimeParam {
+                params.push_value(gen::Param::Life(gen::param::Life {
                     attrs,
                     ..input.parse()?
                 }));
             } else if lookahead.peek(Ident) {
-                params.push_value(GenericParam::Type(TypeParam {
+                params.push_value(gen::Param::Type(gen::param::Type {
                     attrs,
                     ..input.parse()?
                 }));
             } else if lookahead.peek(Token![const]) {
-                params.push_value(GenericParam::Const(ConstParam {
+                params.push_value(gen::Param::Const(gen::param::Const {
                     attrs,
                     ..input.parse()?
                 }));
             } else if input.peek(Token![_]) {
-                params.push_value(GenericParam::Type(TypeParam {
+                params.push_value(gen::Param::Type(gen::param::Type {
                     attrs,
                     ident: input.call(Ident::parse_any)?,
                     colon: None,
@@ -164,22 +164,22 @@ impl Parse for Generics {
         })
     }
 }
-impl Parse for GenericParam {
+impl Parse for gen::Param {
     fn parse(input: ParseStream) -> Result<Self> {
         let attrs = input.call(attr::Attr::parse_outer)?;
         let lookahead = input.lookahead1();
         if lookahead.peek(Ident) {
-            Ok(GenericParam::Type(TypeParam {
+            Ok(gen::Param::Type(gen::param::Type {
                 attrs,
                 ..input.parse()?
             }))
         } else if lookahead.peek(Lifetime) {
-            Ok(GenericParam::Lifetime(LifetimeParam {
+            Ok(gen::Param::Life(gen::param::Life {
                 attrs,
                 ..input.parse()?
             }))
         } else if lookahead.peek(Token![const]) {
-            Ok(GenericParam::Const(ConstParam {
+            Ok(gen::Param::Const(gen::param::Const {
                 attrs,
                 ..input.parse()?
             }))
@@ -188,10 +188,10 @@ impl Parse for GenericParam {
         }
     }
 }
-impl Parse for LifetimeParam {
+impl Parse for gen::param::Life {
     fn parse(input: ParseStream) -> Result<Self> {
         let has_colon;
-        Ok(LifetimeParam {
+        Ok(gen::param::Life {
             attrs: input.call(attr::Attr::parse_outer)?,
             life: input.parse()?,
             colon: {
@@ -234,7 +234,7 @@ impl Parse for BoundLifetimes {
                 while !input.peek(Token![>]) {
                     let attrs = input.call(attr::Attr::parse_outer)?;
                     let lifetime: Lifetime = input.parse()?;
-                    lifetimes.push_value(GenericParam::Lifetime(LifetimeParam {
+                    lifetimes.push_value(gen::Param::Life(gen::param::Life {
                         attrs,
                         life: lifetime,
                         colon: None,
@@ -260,7 +260,7 @@ impl Parse for Option<BoundLifetimes> {
         }
     }
 }
-impl Parse for TypeParam {
+impl Parse for gen::param::Type {
     fn parse(input: ParseStream) -> Result<Self> {
         let attrs = input.call(attr::Attr::parse_outer)?;
         let ident: Ident = input.parse()?;
@@ -286,7 +286,7 @@ impl Parse for TypeParam {
         } else {
             None
         };
-        Ok(TypeParam {
+        Ok(gen::param::Type {
             attrs,
             ident,
             colon,
@@ -376,10 +376,10 @@ impl Parse for TraitBoundModifier {
         }
     }
 }
-impl Parse for ConstParam {
+impl Parse for gen::param::Const {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut default = None;
-        Ok(ConstParam {
+        Ok(gen::param::Const {
             attrs: input.call(attr::Attr::parse_outer)?,
             const_: input.parse()?,
             ident: input.parse()?,

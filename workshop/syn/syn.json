@@ -440,7 +440,7 @@
         "lifetimes": {
           "punctuated": {
             "element": {
-              "syn": "GenericParam"
+              "syn": "gen::Param"
             },
             "punct": "Comma"
           }
@@ -451,7 +451,7 @@
       }
     },
     {
-      "ident": "ConstParam",
+      "ident": "gen::param::Const",
       "features": {
         "any": [
           "derive",
@@ -2326,7 +2326,7 @@
       "exhaustive": false
     },
     {
-      "ident": "GenericParam",
+      "ident": "gen::Param",
       "features": {
         "any": [
           "derive",
@@ -2336,17 +2336,17 @@
       "variants": {
         "Lifetime": [
           {
-            "syn": "LifetimeParam"
+            "syn": "gen::param::Life"
           }
         ],
         "Type": [
           {
-            "syn": "TypeParam"
+            "syn": "gen::param::Type"
           }
         ],
         "Const": [
           {
-            "syn": "ConstParam"
+            "syn": "gen::param::Const"
           }
         ]
       }
@@ -2368,7 +2368,7 @@
         "params": {
           "punctuated": {
             "element": {
-              "syn": "GenericParam"
+              "syn": "gen::Param"
             },
             "punct": "Comma"
           }
@@ -3315,7 +3315,7 @@
       }
     },
     {
-      "ident": "LifetimeParam",
+      "ident": "gen::param::Life",
       "features": {
         "any": [
           "derive",
@@ -4915,7 +4915,7 @@
       }
     },
     {
-      "ident": "TypeParam",
+      "ident": "gen::param::Type",
       "features": {
         "any": [
           "derive",

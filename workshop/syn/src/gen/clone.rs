@@ -109,9 +109,9 @@ impl Clone for BoundLifetimes {
         }
     }
 }
-impl Clone for ConstParam {
+impl Clone for gen::param::Const {
     fn clone(&self) -> Self {
-        ConstParam {
+        gen::param::Const {
             attrs: self.attrs.clone(),
             const_: self.const_.clone(),
             ident: self.ident.clone(),
@@ -755,12 +755,12 @@ impl Clone for Arg {
         }
     }
 }
-impl Clone for GenericParam {
+impl Clone for gen::Param {
     fn clone(&self) -> Self {
         match self {
-            GenericParam::Lifetime(v0) => GenericParam::Lifetime(v0.clone()),
-            GenericParam::Type(v0) => GenericParam::Type(v0.clone()),
-            GenericParam::Const(v0) => GenericParam::Const(v0.clone()),
+            gen::Param::Life(v0) => gen::Param::Life(v0.clone()),
+            gen::Param::Type(v0) => gen::Param::Type(v0.clone()),
+            gen::Param::Const(v0) => gen::Param::Const(v0.clone()),
         }
     }
 }
@@ -1080,9 +1080,9 @@ impl Clone for Label {
         }
     }
 }
-impl Clone for LifetimeParam {
+impl Clone for gen::param::Life {
     fn clone(&self) -> Self {
-        LifetimeParam {
+        gen::param::Life {
             attrs: self.attrs.clone(),
             life: self.life.clone(),
             colon: self.colon.clone(),
@@ -1603,9 +1603,9 @@ impl Clone for ty::Never {
         }
     }
 }
-impl Clone for TypeParam {
+impl Clone for gen::param::Type {
     fn clone(&self) -> Self {
-        TypeParam {
+        gen::param::Type {
             attrs: self.attrs.clone(),
             ident: self.ident.clone(),
             colon: self.colon.clone(),

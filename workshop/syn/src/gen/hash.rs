@@ -203,7 +203,7 @@ impl Hash for BoundLifetimes {
         self.lifes.hash(state);
     }
 }
-impl Hash for ConstParam {
+impl Hash for gen::param::Const {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -1046,21 +1046,21 @@ impl Hash for Arg {
         }
     }
 }
-impl Hash for GenericParam {
+impl Hash for gen::Param {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         match self {
-            GenericParam::Lifetime(v0) => {
+            gen::Param::Life(v0) => {
                 state.write_u8(0u8);
                 v0.hash(state);
             },
-            GenericParam::Type(v0) => {
+            gen::Param::Type(v0) => {
                 state.write_u8(1u8);
                 v0.hash(state);
             },
-            GenericParam::Const(v0) => {
+            gen::Param::Const(v0) => {
                 state.write_u8(2u8);
                 v0.hash(state);
             },
@@ -1431,7 +1431,7 @@ impl Hash for Label {
         self.name.hash(state);
     }
 }
-impl Hash for LifetimeParam {
+impl Hash for gen::param::Life {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -2179,7 +2179,7 @@ impl Hash for ty::Never {
     {
     }
 }
-impl Hash for TypeParam {
+impl Hash for gen::param::Type {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,

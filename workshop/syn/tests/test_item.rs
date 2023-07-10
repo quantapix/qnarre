@@ -254,7 +254,7 @@ fn test_impl_type_parameter_defaults() {
         gens: Generics {
             lt: Some,
             params: [
-                GenericParam::Type(TypeParam {
+                gen::Param::Type(gen::param::Type {
                     ident: "T",
                     eq: Some,
                     default: Some(Type::Tuple),

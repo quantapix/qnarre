@@ -15,12 +15,12 @@ fn test_split_for_impl() {
         gens: Generics {
             lt: Some,
             params: [
-                GenericParam::Lifetime(LifetimeParam {
+                gen::Param::Life(gen::param::Life {
                     lifetime: Lifetime {
                         ident: "a",
                     },
                 }),
-                GenericParam::Lifetime(LifetimeParam {
+                gen::Param::Life(gen::param::Life {
                     lifetime: Lifetime {
                         ident: "b",
                     },
@@ -31,7 +31,7 @@ fn test_split_for_impl() {
                         },
                     ],
                 }),
-                GenericParam::Type(TypeParam {
+                gen::Param::Type(gen::param::Type {
                     attrs: [
                         attr::Attr {
                             style: attr::Style::Outer,
@@ -168,7 +168,7 @@ fn test_fn_precedence_in_where_clause() {
             gens: Generics {
                 lt: Some,
                 params: [
-                    GenericParam::Type(TypeParam {
+                    gen::Param::Type(gen::param::Type {
                         ident: "G",
                     }),
                 ],

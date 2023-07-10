@@ -54,7 +54,7 @@ pub trait Visit<'ast> {
     fn visit_bound_lifetimes(&mut self, i: &'ast BoundLifetimes) {
         visit_bound_lifetimes(self, i);
     }
-    fn visit_const_param(&mut self, i: &'ast ConstParam) {
+    fn visit_const_param(&mut self, i: &'ast gen::param::Const) {
         visit_const_param(self, i);
     }
     fn visit_constraint(&mut self, i: &'ast Constraint) {
@@ -237,7 +237,7 @@ pub trait Visit<'ast> {
     fn visit_generic_argument(&mut self, i: &'ast Arg) {
         visit_generic_argument(self, i);
     }
-    fn visit_generic_param(&mut self, i: &'ast GenericParam) {
+    fn visit_generic_param(&mut self, i: &'ast gen::Param) {
         visit_generic_param(self, i);
     }
     fn visit_generics(&mut self, i: &'ast Generics) {
@@ -321,7 +321,7 @@ pub trait Visit<'ast> {
     fn visit_lifetime(&mut self, i: &'ast Lifetime) {
         visit_lifetime(self, i);
     }
-    fn visit_lifetime_param(&mut self, i: &'ast LifetimeParam) {
+    fn visit_lifetime_param(&mut self, i: &'ast gen::param::Life) {
         visit_lifetime_param(self, i);
     }
     fn visit_lit(&mut self, i: &'ast Lit) {
@@ -498,7 +498,7 @@ pub trait Visit<'ast> {
     fn visit_type_never(&mut self, i: &'ast ty::Never) {
         visit_type_never(self, i);
     }
-    fn visit_type_param(&mut self, i: &'ast TypeParam) {
+    fn visit_type_param(&mut self, i: &'ast gen::param::Type) {
         visit_type_param(self, i);
     }
     fn visit_type_param_bound(&mut self, i: &'ast TypeParamBound) {
@@ -783,7 +783,7 @@ where
     }
     skip!(node.gt);
 }
-pub fn visit_const_param<'ast, V>(v: &mut V, node: &'ast ConstParam)
+pub fn visit_const_param<'ast, V>(v: &mut V, node: &'ast gen::param::Const)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1665,18 +1665,18 @@ where
         },
     }
 }
-pub fn visit_generic_param<'ast, V>(v: &mut V, node: &'ast GenericParam)
+pub fn visit_generic_param<'ast, V>(v: &mut V, node: &'ast gen::Param)
 where
     V: Visit<'ast> + ?Sized,
 {
     match node {
-        GenericParam::Lifetime(_binding_0) => {
+        gen::Param::Life(_binding_0) => {
             v.visit_lifetime_param(_binding_0);
         },
-        GenericParam::Type(_binding_0) => {
+        gen::Param::Type(_binding_0) => {
             v.visit_type_param(_binding_0);
         },
-        GenericParam::Const(_binding_0) => {
+        gen::Param::Const(_binding_0) => {
             v.visit_const_param(_binding_0);
         },
     }
@@ -2104,10 +2104,10 @@ pub fn visit_lifetime<'ast, V>(v: &mut V, node: &'ast Lifetime)
 where
     V: Visit<'ast> + ?Sized,
 {
-    v.visit_span(&node.apostrophe);
+    v.visit_span(&node.apos);
     v.visit_ident(&node.ident);
 }
-pub fn visit_lifetime_param<'ast, V>(v: &mut V, node: &'ast LifetimeParam)
+pub fn visit_lifetime_param<'ast, V>(v: &mut V, node: &'ast gen::param::Life)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -2896,7 +2896,7 @@ where
 {
     skip!(node.bang);
 }
-pub fn visit_type_param<'ast, V>(v: &mut V, node: &'ast TypeParam)
+pub fn visit_type_param<'ast, V>(v: &mut V, node: &'ast gen::param::Type)
 where
     V: Visit<'ast> + ?Sized,
 {

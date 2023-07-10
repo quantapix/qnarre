@@ -133,7 +133,7 @@ fn test_union() {
         gens: Generics {
             lt: Some,
             params: [
-                GenericParam::Type(TypeParam {
+                gen::Param::Type(gen::param::Type {
                     ident: "T",
                 }),
             ],
@@ -213,10 +213,10 @@ fn test_enum() {
         gens: Generics {
             lt: Some,
             params: [
-                GenericParam::Type(TypeParam {
+                gen::Param::Type(gen::param::Type {
                     ident: "T",
                 }),
-                GenericParam::Type(TypeParam {
+                gen::Param::Type(gen::param::Type {
                     ident: "E",
                 }),
             ],

@@ -205,7 +205,7 @@ fn test_trait_object() {
             TypeParamBound::Trait(TraitBound {
                 lifetimes: Some(BoundLifetimes {
                     lifetimes: [
-                        GenericParam::Lifetime(LifetimeParam {
+                        gen::Param::Life(gen::param::Life {
                             lifetime: Lifetime {
                                 ident: "a",
                             },

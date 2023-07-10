@@ -262,9 +262,9 @@ impl Debug for BoundLifetimes {
         formatter.finish()
     }
 }
-impl Debug for ConstParam {
+impl Debug for gen::param::Const {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("ConstParam");
+        let mut formatter = formatter.debug_struct("gen::param::Const");
         formatter.field("attrs", &self.attrs);
         formatter.field("const_", &self.const_);
         formatter.field("ident", &self.ident);
@@ -1190,21 +1190,21 @@ impl Debug for Arg {
         }
     }
 }
-impl Debug for GenericParam {
+impl Debug for gen::Param {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("GenericParam::")?;
+        formatter.write_str("gen::Param::")?;
         match self {
-            GenericParam::Lifetime(v0) => {
+            gen::Param::Life(v0) => {
                 let mut formatter = formatter.debug_tuple("Lifetime");
                 formatter.field(v0);
                 formatter.finish()
             },
-            GenericParam::Type(v0) => {
+            gen::Param::Type(v0) => {
                 let mut formatter = formatter.debug_tuple("Type");
                 formatter.field(v0);
                 formatter.finish()
             },
-            GenericParam::Const(v0) => {
+            gen::Param::Const(v0) => {
                 let mut formatter = formatter.debug_tuple("Const");
                 formatter.field(v0);
                 formatter.finish()
@@ -1638,7 +1638,7 @@ impl Debug for Lifetime {
         impl Lifetime {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
-                formatter.field("apostrophe", &self.apostrophe);
+                formatter.field("apostrophe", &self.apos);
                 formatter.field("ident", &self.ident);
                 formatter.finish()
             }
@@ -1646,9 +1646,9 @@ impl Debug for Lifetime {
         self.debug(formatter, "Lifetime")
     }
 }
-impl Debug for LifetimeParam {
+impl Debug for gen::param::Life {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("LifetimeParam");
+        let mut formatter = formatter.debug_struct("gen::param::Life");
         formatter.field("attrs", &self.attrs);
         formatter.field("lifetime", &self.life);
         formatter.field("colon", &self.colon);
@@ -2386,9 +2386,9 @@ impl Debug for ty::Never {
         self.debug(formatter, "ty::Never")
     }
 }
-impl Debug for TypeParam {
+impl Debug for gen::param::Type {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("TypeParam");
+        let mut formatter = formatter.debug_struct("gen::param::Type");
         formatter.field("attrs", &self.attrs);
         formatter.field("ident", &self.ident);
         formatter.field("colon", &self.colon);

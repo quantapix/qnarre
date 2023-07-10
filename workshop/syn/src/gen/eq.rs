@@ -110,8 +110,8 @@ impl PartialEq for BoundLifetimes {
         self.lifes == other.lifes
     }
 }
-impl Eq for ConstParam {}
-impl PartialEq for ConstParam {
+impl Eq for gen::param::Const {}
+impl PartialEq for gen::param::Const {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
             && self.ident == other.ident
@@ -591,13 +591,13 @@ impl PartialEq for Arg {
         }
     }
 }
-impl Eq for GenericParam {}
-impl PartialEq for GenericParam {
+impl Eq for gen::Param {}
+impl PartialEq for gen::Param {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (GenericParam::Lifetime(self0), GenericParam::Lifetime(other0)) => self0 == other0,
-            (GenericParam::Type(self0), GenericParam::Type(other0)) => self0 == other0,
-            (GenericParam::Const(self0), GenericParam::Const(other0)) => self0 == other0,
+            (gen::Param::Life(self0), gen::Param::Life(other0)) => self0 == other0,
+            (gen::Param::Type(self0), gen::Param::Type(other0)) => self0 == other0,
+            (gen::Param::Const(self0), gen::Param::Const(other0)) => self0 == other0,
             _ => false,
         }
     }
@@ -839,8 +839,8 @@ impl PartialEq for Label {
         self.name == other.name
     }
 }
-impl Eq for LifetimeParam {}
-impl PartialEq for LifetimeParam {
+impl Eq for gen::param::Life {}
+impl PartialEq for gen::param::Life {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.life == other.life && self.colon == other.colon && self.bounds == other.bounds
     }
@@ -1288,8 +1288,8 @@ impl PartialEq for ty::Never {
         true
     }
 }
-impl Eq for TypeParam {}
-impl PartialEq for TypeParam {
+impl Eq for gen::param::Type {}
+impl PartialEq for gen::param::Type {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
             && self.ident == other.ident

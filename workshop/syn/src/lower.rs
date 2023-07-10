@@ -35,21 +35,21 @@ impl ToTokens for Generics {
         TokensOrDefault(&self.lt).to_tokens(tokens);
         let mut trailing_or_empty = true;
         for param in self.params.pairs() {
-            if let GenericParam::Lifetime(_) = **param.value() {
+            if let gen::Param::Life(_) = **param.value() {
                 param.to_tokens(tokens);
                 trailing_or_empty = param.punct().is_some();
             }
         }
         for param in self.params.pairs() {
             match param.value() {
-                GenericParam::Type(_) | GenericParam::Const(_) => {
+                gen::Param::Type(_) | gen::Param::Const(_) => {
                     if !trailing_or_empty {
                         <Token![,]>::default().to_tokens(tokens);
                         trailing_or_empty = true;
                     }
                     param.to_tokens(tokens);
                 },
-                GenericParam::Lifetime(_) => {},
+                gen::Param::Life(_) => {},
             }
         }
         TokensOrDefault(&self.gt).to_tokens(tokens);
@@ -63,13 +63,13 @@ impl<'a> ToTokens for ImplGenerics<'a> {
         TokensOrDefault(&self.0.lt).to_tokens(tokens);
         let mut trailing_or_empty = true;
         for param in self.0.params.pairs() {
-            if let GenericParam::Lifetime(_) = **param.value() {
+            if let gen::Param::Life(_) = **param.value() {
                 param.to_tokens(tokens);
                 trailing_or_empty = param.punct().is_some();
             }
         }
         for param in self.0.params.pairs() {
-            if let GenericParam::Lifetime(_) = **param.value() {
+            if let gen::Param::Life(_) = **param.value() {
                 continue;
             }
             if !trailing_or_empty {
@@ -77,8 +77,8 @@ impl<'a> ToTokens for ImplGenerics<'a> {
                 trailing_or_empty = true;
             }
             match param.value() {
-                GenericParam::Lifetime(_) => unreachable!(),
-                GenericParam::Type(param) => {
+                gen::Param::Life(_) => unreachable!(),
+                gen::Param::Type(param) => {
                     tokens.append_all(param.attrs.outer());
                     param.ident.to_tokens(tokens);
                     if !param.bounds.is_empty() {
@@ -86,7 +86,7 @@ impl<'a> ToTokens for ImplGenerics<'a> {
                         param.bounds.to_tokens(tokens);
                     }
                 },
-                GenericParam::Const(param) => {
+                gen::Param::Const(param) => {
                     tokens.append_all(param.attrs.outer());
                     param.const_.to_tokens(tokens);
                     param.ident.to_tokens(tokens);
@@ -107,14 +107,14 @@ impl<'a> ToTokens for TypeGenerics<'a> {
         TokensOrDefault(&self.0.lt).to_tokens(tokens);
         let mut trailing_or_empty = true;
         for param in self.0.params.pairs() {
-            if let GenericParam::Lifetime(def) = *param.value() {
+            if let gen::Param::Life(def) = *param.value() {
                 def.life.to_tokens(tokens);
                 param.punct().to_tokens(tokens);
                 trailing_or_empty = param.punct().is_some();
             }
         }
         for param in self.0.params.pairs() {
-            if let GenericParam::Lifetime(_) = **param.value() {
+            if let gen::Param::Life(_) = **param.value() {
                 continue;
             }
             if !trailing_or_empty {
@@ -122,11 +122,11 @@ impl<'a> ToTokens for TypeGenerics<'a> {
                 trailing_or_empty = true;
             }
             match param.value() {
-                GenericParam::Lifetime(_) => unreachable!(),
-                GenericParam::Type(param) => {
+                gen::Param::Life(_) => unreachable!(),
+                gen::Param::Type(param) => {
                     param.ident.to_tokens(tokens);
                 },
-                GenericParam::Const(param) => {
+                gen::Param::Const(param) => {
                     param.ident.to_tokens(tokens);
                 },
             }
@@ -151,7 +151,7 @@ impl ToTokens for BoundLifetimes {
         self.gt.to_tokens(tokens);
     }
 }
-impl ToTokens for LifetimeParam {
+impl ToTokens for gen::param::Life {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
         self.life.to_tokens(tokens);
@@ -161,7 +161,7 @@ impl ToTokens for LifetimeParam {
         }
     }
 }
-impl ToTokens for TypeParam {
+impl ToTokens for gen::param::Type {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
         self.ident.to_tokens(tokens);
@@ -196,7 +196,7 @@ impl ToTokens for TraitBoundModifier {
         }
     }
 }
-impl ToTokens for ConstParam {
+impl ToTokens for gen::param::Const {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
         self.const_.to_tokens(tokens);

@@ -52,7 +52,7 @@ pub trait Fold {
     fn fold_bound_lifetimes(&mut self, i: BoundLifetimes) -> BoundLifetimes {
         fold_bound_lifetimes(self, i)
     }
-    fn fold_const_param(&mut self, i: ConstParam) -> ConstParam {
+    fn fold_const_param(&mut self, i: gen::param::Const) -> gen::param::Const {
         fold_const_param(self, i)
     }
     fn fold_constraint(&mut self, i: Constraint) -> Constraint {
@@ -235,7 +235,7 @@ pub trait Fold {
     fn fold_generic_argument(&mut self, i: Arg) -> Arg {
         fold_generic_argument(self, i)
     }
-    fn fold_generic_param(&mut self, i: GenericParam) -> GenericParam {
+    fn fold_generic_param(&mut self, i: gen::Param) -> gen::Param {
         fold_generic_param(self, i)
     }
     fn fold_generics(&mut self, i: Generics) -> Generics {
@@ -319,7 +319,7 @@ pub trait Fold {
     fn fold_lifetime(&mut self, i: Lifetime) -> Lifetime {
         fold_lifetime(self, i)
     }
-    fn fold_lifetime_param(&mut self, i: LifetimeParam) -> LifetimeParam {
+    fn fold_lifetime_param(&mut self, i: gen::param::Life) -> gen::param::Life {
         fold_lifetime_param(self, i)
     }
     fn fold_lit(&mut self, i: Lit) -> Lit {
@@ -496,7 +496,7 @@ pub trait Fold {
     fn fold_type_never(&mut self, i: ty::Never) -> ty::Never {
         fold_type_never(self, i)
     }
-    fn fold_type_param(&mut self, i: TypeParam) -> TypeParam {
+    fn fold_type_param(&mut self, i: gen::param::Type) -> gen::param::Type {
         fold_type_param(self, i)
     }
     fn fold_type_param_bound(&mut self, i: TypeParamBound) -> TypeParamBound {
@@ -714,11 +714,11 @@ where
         gt: node.gt,
     }
 }
-pub fn fold_const_param<F>(f: &mut F, node: ConstParam) -> ConstParam
+pub fn fold_const_param<F>(f: &mut F, node: gen::param::Const) -> gen::param::Const
 where
     F: Fold + ?Sized,
 {
-    ConstParam {
+    gen::param::Const {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         const_: node.const_,
         ident: f.fold_ident(node.ident),
@@ -1419,14 +1419,14 @@ where
         Arg::Constraint(_binding_0) => Arg::Constraint(f.fold_constraint(_binding_0)),
     }
 }
-pub fn fold_generic_param<F>(f: &mut F, node: GenericParam) -> GenericParam
+pub fn fold_generic_param<F>(f: &mut F, node: gen::Param) -> gen::Param
 where
     F: Fold + ?Sized,
 {
     match node {
-        GenericParam::Lifetime(_binding_0) => GenericParam::Lifetime(f.fold_lifetime_param(_binding_0)),
-        GenericParam::Type(_binding_0) => GenericParam::Type(f.fold_type_param(_binding_0)),
-        GenericParam::Const(_binding_0) => GenericParam::Const(f.fold_const_param(_binding_0)),
+        gen::Param::Life(_binding_0) => gen::Param::Life(f.fold_lifetime_param(_binding_0)),
+        gen::Param::Type(_binding_0) => gen::Param::Type(f.fold_type_param(_binding_0)),
+        gen::Param::Const(_binding_0) => gen::Param::Const(f.fold_const_param(_binding_0)),
     }
 }
 pub fn fold_generics<F>(f: &mut F, node: Generics) -> Generics
@@ -1784,15 +1784,15 @@ where
     F: Fold + ?Sized,
 {
     Lifetime {
-        apostrophe: f.fold_span(node.apostrophe),
+        apos: f.fold_span(node.apos),
         ident: f.fold_ident(node.ident),
     }
 }
-pub fn fold_lifetime_param<F>(f: &mut F, node: LifetimeParam) -> LifetimeParam
+pub fn fold_lifetime_param<F>(f: &mut F, node: gen::param::Life) -> gen::param::Life
 where
     F: Fold + ?Sized,
 {
-    LifetimeParam {
+    gen::param::Life {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         life: f.fold_lifetime(node.life),
         colon: node.colon,
@@ -2427,11 +2427,11 @@ where
 {
     ty::Never { bang: node.bang }
 }
-pub fn fold_type_param<F>(f: &mut F, node: TypeParam) -> TypeParam
+pub fn fold_type_param<F>(f: &mut F, node: gen::param::Type) -> gen::param::Type
 where
     F: Fold + ?Sized,
 {
-    TypeParam {
+    gen::param::Type {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         ident: f.fold_ident(node.ident),
         colon: node.colon,
