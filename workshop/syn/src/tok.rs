@@ -70,17 +70,17 @@ impl_low_level!("punctuation token" Punct punct);
 impl_low_level!("literal" Literal literal);
 impl_low_level!("token" TokenTree token_tree);
 
-pub trait CustomTok {
+pub trait Custom {
     fn peek(x: Cursor) -> bool;
     fn display() -> &'static str;
 }
-impl<T: CustomTok> private::Sealed for T {}
-impl<T: CustomTok> Tok for T {
+impl<T: Custom> private::Sealed for T {}
+impl<T: Custom> Tok for T {
     fn peek(x: Cursor) -> bool {
-        <Self as CustomTok>::peek(x)
+        <Self as Custom>::peek(x)
     }
     fn display() -> &'static str {
-        <Self as CustomTok>::display()
+        <Self as Custom>::display()
     }
 }
 

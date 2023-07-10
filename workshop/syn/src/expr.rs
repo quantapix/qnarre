@@ -1,4 +1,4 @@
-use super::{punct::Punctuated, *};
+use super::punct::Punctuated;
 use proc_macro2::{Span, TokenStream};
 use quote::IdentFragment;
 use std::{

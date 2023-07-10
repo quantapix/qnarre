@@ -81,38 +81,41 @@ impl Lit {
         panic!("Unrecognized literal: `{}`", repr);
     }
     pub fn suffix(&self) -> &str {
+        use Lit::*;
         match self {
-            Lit::Str(x) => x.suffix(),
-            Lit::ByteStr(x) => x.suffix(),
-            Lit::Byte(x) => x.suffix(),
-            Lit::Char(x) => x.suffix(),
-            Lit::Int(x) => x.suffix(),
-            Lit::Float(x) => x.suffix(),
-            Lit::Bool(_) | Lit::Verbatim(_) => "",
+            Str(x) => x.suffix(),
+            ByteStr(x) => x.suffix(),
+            Byte(x) => x.suffix(),
+            Char(x) => x.suffix(),
+            Int(x) => x.suffix(),
+            Float(x) => x.suffix(),
+            Bool(_) | Verbatim(_) => "",
         }
     }
     pub fn span(&self) -> Span {
+        use Lit::*;
         match self {
-            Lit::Str(x) => x.span(),
-            Lit::ByteStr(x) => x.span(),
-            Lit::Byte(x) => x.span(),
-            Lit::Char(x) => x.span(),
-            Lit::Int(x) => x.span(),
-            Lit::Float(x) => x.span(),
-            Lit::Bool(x) => x.span,
-            Lit::Verbatim(x) => x.span(),
+            Str(x) => x.span(),
+            ByteStr(x) => x.span(),
+            Byte(x) => x.span(),
+            Char(x) => x.span(),
+            Int(x) => x.span(),
+            Float(x) => x.span(),
+            Bool(x) => x.span,
+            Verbatim(x) => x.span(),
         }
     }
     pub fn set_span(&mut self, s: Span) {
+        use Lit::*;
         match self {
-            Lit::Str(x) => x.set_span(s),
-            Lit::ByteStr(x) => x.set_span(s),
-            Lit::Byte(x) => x.set_span(s),
-            Lit::Char(x) => x.set_span(s),
-            Lit::Int(x) => x.set_span(s),
-            Lit::Float(x) => x.set_span(s),
-            Lit::Bool(x) => x.span = s,
-            Lit::Verbatim(x) => x.set_span(s),
+            Str(x) => x.set_span(s),
+            ByteStr(x) => x.set_span(s),
+            Byte(x) => x.set_span(s),
+            Char(x) => x.set_span(s),
+            Int(x) => x.set_span(s),
+            Float(x) => x.set_span(s),
+            Bool(x) => x.span = s,
+            Verbatim(x) => x.set_span(s),
         }
     }
 }
@@ -134,10 +137,8 @@ impl Clone for Repr {
     }
 }
 
-ast_struct! {
-    pub struct Str {
-        pub repr: Box<Repr>,
-    }
+pub struct Str {
+    pub repr: Box<Repr>,
 }
 impl Str {
     pub fn new(x: &str, s: Span) -> Self {
@@ -233,10 +234,8 @@ macro_rules! extra_traits {
 }
 extra_traits!(Str);
 
-ast_struct! {
-    pub struct ByteStr {
-        pub repr: Box<Repr>,
-    }
+pub struct ByteStr {
+    pub repr: Box<Repr>,
 }
 impl ByteStr {
     pub fn new(x: &[u8], s: Span) -> Self {
@@ -281,10 +280,8 @@ impl Debug for ByteStr {
 }
 extra_traits!(ByteStr);
 
-ast_struct! {
-    pub struct Byte {
-        pub repr: Box<Repr>,
-    }
+pub struct Byte {
+    pub repr: Box<Repr>,
 }
 impl Byte {
     pub fn new(x: u8, s: Span) -> Self {
@@ -329,10 +326,8 @@ impl Debug for Byte {
 }
 extra_traits!(Byte);
 
-ast_struct! {
-    pub struct Char {
-        pub repr: Box<Repr>,
-    }
+pub struct Char {
+    pub repr: Box<Repr>,
 }
 impl Char {
     pub fn new(x: char, s: Span) -> Self {
@@ -392,10 +387,8 @@ impl Clone for IntRepr {
     }
 }
 
-ast_struct! {
-    pub struct Int {
-        pub repr: Box<IntRepr>,
-    }
+pub struct Int {
+    pub repr: Box<IntRepr>,
 }
 impl Int {
     pub fn new(x: &str, s: Span) -> Self {
@@ -478,10 +471,8 @@ impl Clone for FloatRepr {
     }
 }
 
-ast_struct! {
-    pub struct Float {
-        pub repr: Box<FloatRepr>,
-    }
+pub struct Float {
+    pub repr: Box<FloatRepr>,
 }
 impl Float {
     pub fn new(x: &str, s: Span) -> Self {
@@ -549,11 +540,9 @@ impl Debug for Float {
 }
 extra_traits!(Float);
 
-ast_struct! {
-    pub struct Bool {
-        pub val: bool,
-        pub span: Span,
-    }
+pub struct Bool {
+    pub val: bool,
+    pub span: Span,
 }
 impl Bool {
     pub fn new(val: bool, span: Span) -> Self {

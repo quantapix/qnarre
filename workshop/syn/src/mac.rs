@@ -1,3 +1,37 @@
+macro_rules! ast_struct {
+    (
+        [$($attrs_pub:tt)*]
+        struct $name:ident #full $($rest:tt)*
+    ) => {
+        $($attrs_pub)* struct $name $($rest)*
+    };
+    (
+        [$($attrs_pub:tt)*]
+        struct $name:ident $($rest:tt)*
+    ) => {
+        $($attrs_pub)* struct $name $($rest)*
+    };
+    ($($t:tt)*) => {
+        strip_attrs_pub!(ast_struct!($($t)*));
+    };
+}
+macro_rules! ast_enum {
+    (
+        [$($attrs_pub:tt)*]
+        enum $name:ident #no_visit $($rest:tt)*
+    ) => (
+        ast_enum!([$($attrs_pub)*] enum $name $($rest)*);
+    );
+    (
+        [$($attrs_pub:tt)*]
+        enum $name:ident $($rest:tt)*
+    ) => (
+        $($attrs_pub)* enum $name $($rest)*
+    );
+    ($($t:tt)*) => {
+        strip_attrs_pub!(ast_enum!($($t)*));
+    };
+}
 macro_rules! ast_enum_of_structs {
     (
         $(#[$enum_attr:meta])*
@@ -125,7 +159,7 @@ macro_rules! custom_keyword {
 #[macro_export]
 macro_rules! impl_parse_for_custom_keyword {
     ($ident:ident) => {
-        impl $crate::tok::CustomTok for $ident {
+        impl $crate::tok::Custom for $ident {
             fn peek(cursor: $crate::Cursor) -> $crate::__private::bool {
                 if let $crate::__private::Some((ident, _rest)) = cursor.ident() {
                     ident == $crate::__private::stringify!($ident)
@@ -232,7 +266,7 @@ macro_rules! custom_punctuation {
 #[macro_export]
 macro_rules! impl_parse_for_custom_punctuation {
     ($ident:ident, $($tt:tt)+) => {
-        impl $crate::tok::CustomTok for $ident {
+        impl $crate::tok::Custom for $ident {
             fn peek(cursor: $crate::Cursor) -> bool {
                 $crate::__private::peek_punct(cursor, $crate::stringify_punct!($($tt)+))
             }

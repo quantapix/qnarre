@@ -938,7 +938,7 @@ pub mod lit;
 pub mod tok;
 
 mod patt {
-    use super::{punct::Punctuated, *};
+    use super::punct::Punctuated;
 
     ast_enum_of_structs! {
         pub enum Patt {
@@ -1036,7 +1036,7 @@ mod patt {
     }
 }
 mod path {
-    use super::{punct::Punctuated, *};
+    use super::punct::Punctuated;
     pub struct Path {
         pub colon: Option<Token![::]>,
         pub segs: Punctuated<Segment, Token![::]>,
@@ -1700,7 +1700,7 @@ pub mod ext {
     use super::{
         parse::{ParseStream, Peek, Result},
         sealed::lookahead,
-        tok::CustomTok,
+        tok::Custom,
         Cursor,
     };
     use proc_macro2::Ident;
@@ -1729,7 +1729,7 @@ pub mod ext {
     impl Peek for private::PeekFn {
         type Token = private::IdentAny;
     }
-    impl CustomTok for private::IdentAny {
+    impl Custom for private::IdentAny {
         fn peek(cursor: Cursor) -> bool {
             cursor.ident().is_some()
         }
