@@ -2,7 +2,7 @@
 #[macro_use]
 mod macros;
 use quote::quote;
-use syn::{DeriveInput, ItemFn, TypeParamBound, WhereClause, WherePred};
+use syn::{item::Fn, DeriveInput, TypeParamBound, WhereClause, WherePred};
 #[test]
 fn test_split_for_impl() {
     let input = quote! {
@@ -160,10 +160,10 @@ fn test_fn_precedence_in_where_clause() {
         {
         }
     };
-    snapshot!(input as ItemFn, @r###"
-    ItemFn {
+    snapshot!(input as item::Fn, @r###"
+    item::Fn {
         vis: Visibility::Inherited,
-        sig: Signature {
+        sig: item::Sig {
             ident: "f",
             gens: Generics {
                 lt: Some,

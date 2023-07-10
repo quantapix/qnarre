@@ -3,7 +3,7 @@
 mod macros;
 use proc_macro2::{Delimiter, Group, Ident, Span, TokenStream, TokenTree};
 use quote::quote;
-use syn::{Item, ItemTrait};
+use syn::{item::Trait, Item};
 #[test]
 fn test_macro_variable_attr() {
     let tokens = TokenStream::from_iter(vec![
@@ -28,7 +28,7 @@ fn test_macro_variable_attr() {
             },
         ],
         vis: Visibility::Inherited,
-        sig: Signature {
+        sig: item::Sig {
             ident: "f",
             gens: Generics,
             ret: ty::Ret::Default,
@@ -144,8 +144,8 @@ fn test_macro_variable_impl() {
 fn test_supertraits() {
     #[rustfmt::skip]
     let tokens = quote!(trait Trait where {});
-    snapshot!(tokens as ItemTrait, @r###"
-    ItemTrait {
+    snapshot!(tokens as item::Trait, @r###"
+    item::Trait {
         vis: Visibility::Inherited,
         ident: "Trait",
         gens: Generics {
@@ -155,8 +155,8 @@ fn test_supertraits() {
     "###);
     #[rustfmt::skip]
     let tokens = quote!(trait Trait: where {});
-    snapshot!(tokens as ItemTrait, @r###"
-    ItemTrait {
+    snapshot!(tokens as item::Trait, @r###"
+    item::Trait {
         vis: Visibility::Inherited,
         ident: "Trait",
         gens: Generics {
@@ -167,8 +167,8 @@ fn test_supertraits() {
     "###);
     #[rustfmt::skip]
     let tokens = quote!(trait Trait: Sized where {});
-    snapshot!(tokens as ItemTrait, @r###"
-    ItemTrait {
+    snapshot!(tokens as item::Trait, @r###"
+    item::Trait {
         vis: Visibility::Inherited,
         ident: "Trait",
         gens: Generics {
@@ -190,8 +190,8 @@ fn test_supertraits() {
     "###);
     #[rustfmt::skip]
     let tokens = quote!(trait Trait: Sized + where {});
-    snapshot!(tokens as ItemTrait, @r###"
-    ItemTrait {
+    snapshot!(tokens as item::Trait, @r###"
+    item::Trait {
         vis: Visibility::Inherited,
         ident: "Trait",
         gens: Generics {
@@ -220,13 +220,13 @@ fn test_type_empty_bounds() {
             type Bar: ;
         }
     };
-    snapshot!(tokens as ItemTrait, @r###"
-    ItemTrait {
+    snapshot!(tokens as item::Trait, @r###"
+    item::Trait {
         vis: Visibility::Inherited,
         ident: "Foo",
         gens: Generics,
         items: [
-            TraitItem::Type {
+            item::Trait::Item::Type {
                 ident: "Bar",
                 gens: Generics,
                 colon: Some,
@@ -274,7 +274,7 @@ fn test_impl_trait_trailing_plus() {
     snapshot!(tokens as Item, @r###"
     Item::Fn {
         vis: Visibility::Inherited,
-        sig: Signature {
+        sig: item::Sig {
             ident: "f",
             gens: Generics,
             ret: ty::Ret::Type(

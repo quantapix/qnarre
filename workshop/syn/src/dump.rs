@@ -655,7 +655,7 @@ impl ToTokens for RangeLimits {
     }
 }
 
-impl ToTokens for ItemExternCrate {
+impl ToTokens for item::ExternCrate {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
         self.vis.to_tokens(tokens);
@@ -669,17 +669,17 @@ impl ToTokens for ItemExternCrate {
         self.semi.to_tokens(tokens);
     }
 }
-impl ToTokens for ItemUse {
+impl ToTokens for item::Use {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
         self.vis.to_tokens(tokens);
         self.use_.to_tokens(tokens);
-        self.leading_colon.to_tokens(tokens);
+        self.colon.to_tokens(tokens);
         self.tree.to_tokens(tokens);
         self.semi.to_tokens(tokens);
     }
 }
-impl ToTokens for ItemStatic {
+impl ToTokens for item::Static {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
         self.vis.to_tokens(tokens);
@@ -693,7 +693,7 @@ impl ToTokens for ItemStatic {
         self.semi.to_tokens(tokens);
     }
 }
-impl ToTokens for ItemConst {
+impl ToTokens for item::Const {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
         self.vis.to_tokens(tokens);
@@ -706,7 +706,7 @@ impl ToTokens for ItemConst {
         self.semi.to_tokens(tokens);
     }
 }
-impl ToTokens for ItemFn {
+impl ToTokens for item::Fn {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
         self.vis.to_tokens(tokens);
@@ -717,7 +717,7 @@ impl ToTokens for ItemFn {
         });
     }
 }
-impl ToTokens for ItemMod {
+impl ToTokens for item::Mod {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
         self.vis.to_tokens(tokens);
@@ -734,7 +734,7 @@ impl ToTokens for ItemMod {
         }
     }
 }
-impl ToTokens for ItemForeignMod {
+impl ToTokens for item::Foreign {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(self.attrs.outer());
         self.unsafe_.to_tokens(tokens);
@@ -745,7 +745,7 @@ impl ToTokens for ItemForeignMod {
         });
     }
 }
-impl ToTokens for ItemType {
+impl ToTokens for item::Type {
     fn to_tokens(&self, xs: &mut TokenStream) {
         xs.append_all(self.attrs.outer());
         self.vis.to_tokens(xs);
@@ -758,7 +758,7 @@ impl ToTokens for ItemType {
         self.semi.to_tokens(xs);
     }
 }
-impl ToTokens for ItemEnum {
+impl ToTokens for item::Enum {
     fn to_tokens(&self, xs: &mut TokenStream) {
         xs.append_all(self.attrs.outer());
         self.vis.to_tokens(xs);
@@ -767,11 +767,11 @@ impl ToTokens for ItemEnum {
         self.gens.to_tokens(xs);
         self.gens.where_.to_tokens(xs);
         self.brace.surround(xs, |ys| {
-            self.variants.to_tokens(ys);
+            self.elems.to_tokens(ys);
         });
     }
 }
-impl ToTokens for ItemStruct {
+impl ToTokens for item::Struct {
     fn to_tokens(&self, xs: &mut TokenStream) {
         xs.append_all(self.attrs.outer());
         self.vis.to_tokens(xs);
@@ -795,7 +795,7 @@ impl ToTokens for ItemStruct {
         }
     }
 }
-impl ToTokens for ItemUnion {
+impl ToTokens for item::Union {
     fn to_tokens(&self, xs: &mut TokenStream) {
         xs.append_all(self.attrs.outer());
         self.vis.to_tokens(xs);
@@ -806,7 +806,7 @@ impl ToTokens for ItemUnion {
         self.fields.to_tokens(xs);
     }
 }
-impl ToTokens for ItemTrait {
+impl ToTokens for item::Trait {
     fn to_tokens(&self, xs: &mut TokenStream) {
         xs.append_all(self.attrs.outer());
         self.vis.to_tokens(xs);
@@ -815,9 +815,9 @@ impl ToTokens for ItemTrait {
         self.trait_.to_tokens(xs);
         self.ident.to_tokens(xs);
         self.gens.to_tokens(xs);
-        if !self.supertraits.is_empty() {
+        if !self.supers.is_empty() {
             TokensOrDefault(&self.colon).to_tokens(xs);
-            self.supertraits.to_tokens(xs);
+            self.supers.to_tokens(xs);
         }
         self.gens.where_.to_tokens(xs);
         self.brace.surround(xs, |ys| {
@@ -826,7 +826,7 @@ impl ToTokens for ItemTrait {
         });
     }
 }
-impl ToTokens for ItemTraitAlias {
+impl ToTokens for item::TraitAlias {
     fn to_tokens(&self, xs: &mut TokenStream) {
         xs.append_all(self.attrs.outer());
         self.vis.to_tokens(xs);
@@ -839,7 +839,7 @@ impl ToTokens for ItemTraitAlias {
         self.semi.to_tokens(xs);
     }
 }
-impl ToTokens for ItemImpl {
+impl ToTokens for item::Impl {
     fn to_tokens(&self, xs: &mut TokenStream) {
         xs.append_all(self.attrs.outer());
         self.default_.to_tokens(xs);
@@ -859,7 +859,7 @@ impl ToTokens for ItemImpl {
         });
     }
 }
-impl ToTokens for ItemMacro {
+impl ToTokens for item::Mac {
     fn to_tokens(&self, xs: &mut TokenStream) {
         xs.append_all(self.attrs.outer());
         self.mac.path.to_tokens(xs);
@@ -879,38 +879,38 @@ impl ToTokens for ItemMacro {
         self.semi.to_tokens(xs);
     }
 }
-impl ToTokens for UsePath {
+impl ToTokens for item::Use::Path {
     fn to_tokens(&self, xs: &mut TokenStream) {
         self.ident.to_tokens(xs);
         self.colon2.to_tokens(xs);
         self.tree.to_tokens(xs);
     }
 }
-impl ToTokens for UseName {
+impl ToTokens for item::Use::Name {
     fn to_tokens(&self, xs: &mut TokenStream) {
         self.ident.to_tokens(xs);
     }
 }
-impl ToTokens for UseRename {
+impl ToTokens for item::Use::Rename {
     fn to_tokens(&self, xs: &mut TokenStream) {
         self.ident.to_tokens(xs);
         self.as_.to_tokens(xs);
         self.rename.to_tokens(xs);
     }
 }
-impl ToTokens for UseGlob {
+impl ToTokens for item::Use::Glob {
     fn to_tokens(&self, xs: &mut TokenStream) {
         self.star.to_tokens(xs);
     }
 }
-impl ToTokens for UseGroup {
+impl ToTokens for item::Use::Group {
     fn to_tokens(&self, xs: &mut TokenStream) {
         self.brace.surround(xs, |ys| {
-            self.items.to_tokens(ys);
+            self.elems.to_tokens(ys);
         });
     }
 }
-impl ToTokens for TraitItemConst {
+impl ToTokens for item::Trait::Const {
     fn to_tokens(&self, xs: &mut TokenStream) {
         xs.append_all(self.attrs.outer());
         self.const_.to_tokens(xs);
@@ -924,7 +924,7 @@ impl ToTokens for TraitItemConst {
         self.semi.to_tokens(xs);
     }
 }
-impl ToTokens for TraitItemFn {
+impl ToTokens for item::Trait::Fn {
     fn to_tokens(&self, xs: &mut TokenStream) {
         xs.append_all(self.attrs.outer());
         self.sig.to_tokens(xs);
@@ -941,7 +941,7 @@ impl ToTokens for TraitItemFn {
         }
     }
 }
-impl ToTokens for TraitItemType {
+impl ToTokens for item::Trait::Type {
     fn to_tokens(&self, xs: &mut TokenStream) {
         xs.append_all(self.attrs.outer());
         self.type_.to_tokens(xs);
@@ -959,14 +959,14 @@ impl ToTokens for TraitItemType {
         self.semi.to_tokens(xs);
     }
 }
-impl ToTokens for TraitItemMacro {
+impl ToTokens for item::Trait::Mac {
     fn to_tokens(&self, xs: &mut TokenStream) {
         xs.append_all(self.attrs.outer());
         self.mac.to_tokens(xs);
         self.semi.to_tokens(xs);
     }
 }
-impl ToTokens for ImplItemConst {
+impl ToTokens for item::Impl::Const {
     fn to_tokens(&self, xs: &mut TokenStream) {
         xs.append_all(self.attrs.outer());
         self.vis.to_tokens(xs);
@@ -980,7 +980,7 @@ impl ToTokens for ImplItemConst {
         self.semi.to_tokens(xs);
     }
 }
-impl ToTokens for ImplItemFn {
+impl ToTokens for item::Impl::Fn {
     fn to_tokens(&self, xs: &mut TokenStream) {
         xs.append_all(self.attrs.outer());
         self.vis.to_tokens(xs);
@@ -992,7 +992,7 @@ impl ToTokens for ImplItemFn {
         });
     }
 }
-impl ToTokens for ImplItemType {
+impl ToTokens for item::Impl::Type {
     fn to_tokens(&self, xs: &mut TokenStream) {
         xs.append_all(self.attrs.outer());
         self.vis.to_tokens(xs);
@@ -1006,14 +1006,14 @@ impl ToTokens for ImplItemType {
         self.semi.to_tokens(xs);
     }
 }
-impl ToTokens for ImplItemMacro {
+impl ToTokens for item::Impl::Mac {
     fn to_tokens(&self, xs: &mut TokenStream) {
         xs.append_all(self.attrs.outer());
         self.mac.to_tokens(xs);
         self.semi.to_tokens(xs);
     }
 }
-impl ToTokens for ForeignItemFn {
+impl ToTokens for item::Foreign::Fn {
     fn to_tokens(&self, xs: &mut TokenStream) {
         xs.append_all(self.attrs.outer());
         self.vis.to_tokens(xs);
@@ -1021,7 +1021,7 @@ impl ToTokens for ForeignItemFn {
         self.semi.to_tokens(xs);
     }
 }
-impl ToTokens for ForeignItemStatic {
+impl ToTokens for item::Foreign::Static {
     fn to_tokens(&self, xs: &mut TokenStream) {
         xs.append_all(self.attrs.outer());
         self.vis.to_tokens(xs);
@@ -1033,7 +1033,7 @@ impl ToTokens for ForeignItemStatic {
         self.semi.to_tokens(xs);
     }
 }
-impl ToTokens for ForeignItemType {
+impl ToTokens for item::Foreign::Type {
     fn to_tokens(&self, xs: &mut TokenStream) {
         xs.append_all(self.attrs.outer());
         self.vis.to_tokens(xs);
@@ -1044,14 +1044,14 @@ impl ToTokens for ForeignItemType {
         self.semi.to_tokens(xs);
     }
 }
-impl ToTokens for ForeignItemMacro {
+impl ToTokens for item::Foreign::Mac {
     fn to_tokens(&self, xs: &mut TokenStream) {
         xs.append_all(self.attrs.outer());
         self.mac.to_tokens(xs);
         self.semi.to_tokens(xs);
     }
 }
-impl ToTokens for Signature {
+impl ToTokens for item::Sig {
     fn to_tokens(&self, xs: &mut TokenStream) {
         self.constness.to_tokens(xs);
         self.async_.to_tokens(xs);
@@ -1073,7 +1073,7 @@ impl ToTokens for Signature {
         self.gens.where_.to_tokens(xs);
     }
 }
-impl ToTokens for Receiver {
+impl ToTokens for item::Receiver {
     fn to_tokens(&self, xs: &mut TokenStream) {
         xs.append_all(self.attrs.outer());
         if let Some((ampersand, lifetime)) = &self.reference {
@@ -1104,7 +1104,7 @@ impl ToTokens for Receiver {
         }
     }
 }
-impl ToTokens for Variadic {
+impl ToTokens for item::Variadic {
     fn to_tokens(&self, xs: &mut TokenStream) {
         xs.append_all(self.attrs.outer());
         if let Some((pat, colon)) = &self.pat {
@@ -1708,7 +1708,7 @@ mod ty {
             self.elem.to_tokens(xs);
         }
     }
-    impl ToTokens for BareFn {
+    impl ToTokens for Fn {
         fn to_tokens(&self, xs: &mut TokenStream) {
             self.lifes.to_tokens(xs);
             self.unsafe_.to_tokens(xs);
@@ -1794,7 +1794,7 @@ mod ty {
             }
         }
     }
-    impl ToTokens for BareFnArg {
+    impl ToTokens for FnArg {
         fn to_tokens(&self, xs: &mut TokenStream) {
             xs.append_all(self.attrs.outer());
             if let Some((name, colon)) = &self.name {
@@ -1804,7 +1804,7 @@ mod ty {
             self.ty.to_tokens(xs);
         }
     }
-    impl ToTokens for BareVari {
+    impl ToTokens for Variadic {
         fn to_tokens(&self, xs: &mut TokenStream) {
             xs.append_all(self.attrs.outer());
             if let Some((name, colon)) = &self.name {

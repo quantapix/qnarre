@@ -125,9 +125,9 @@ impl Debug for Lite<syn::Attribute> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::ty::BareFnArg> {
+impl Debug for Lite<syn::ty::FnArg> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("ty::BareFnArg");
+        let mut formatter = formatter.debug_struct("ty::FnArg");
         if !self.value.attrs.is_empty() {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
@@ -149,9 +149,9 @@ impl Debug for Lite<syn::ty::BareFnArg> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::ty::BareVari> {
+impl Debug for Lite<syn::ty::Variadic> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("ty::BareVari");
+        let mut formatter = formatter.debug_struct("ty::Variadic");
         if !self.value.attrs.is_empty() {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
@@ -1838,18 +1838,18 @@ impl Debug for Lite<syn::File> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::FnArg> {
+impl Debug for Lite<syn::item::FnArg> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match &self.value {
-            syn::FnArg::Receiver(_val) => {
-                formatter.write_str("FnArg::Receiver")?;
+            syn::item::FnArg::Receiver(_val) => {
+                formatter.write_str("item::FnArg::Receiver")?;
                 formatter.write_str("(")?;
                 Debug::fmt(Lite(_val), formatter)?;
                 formatter.write_str(")")?;
                 Ok(())
             },
-            syn::FnArg::Typed(_val) => {
-                formatter.write_str("FnArg::Typed")?;
+            syn::item::FnArg::Typed(_val) => {
+                formatter.write_str("item::FnArg::Typed")?;
                 formatter.write_str("(")?;
                 Debug::fmt(Lite(_val), formatter)?;
                 formatter.write_str(")")?;
@@ -1858,11 +1858,11 @@ impl Debug for Lite<syn::FnArg> {
         }
     }
 }
-impl Debug for Lite<syn::ForeignItem> {
+impl Debug for Lite<syn::item::Foreign::Item> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match &self.value {
-            syn::ForeignItem::Fn(_val) => {
-                let mut formatter = formatter.debug_struct("ForeignItem::Fn");
+            syn::item::Foreign::Item::Fn(_val) => {
+                let mut formatter = formatter.debug_struct("item::Foreign::Item::Fn");
                 if !_val.attrs.is_empty() {
                     formatter.field("attrs", Lite(&_val.attrs));
                 }
@@ -1870,8 +1870,8 @@ impl Debug for Lite<syn::ForeignItem> {
                 formatter.field("sig", Lite(&_val.sig));
                 formatter.finish()
             },
-            syn::ForeignItem::Static(_val) => {
-                let mut formatter = formatter.debug_struct("ForeignItem::Static");
+            syn::item::Foreign::Item::Static(_val) => {
+                let mut formatter = formatter.debug_struct("item::Foreign::Item::Static");
                 if !_val.attrs.is_empty() {
                     formatter.field("attrs", Lite(&_val.attrs));
                 }
@@ -1886,8 +1886,8 @@ impl Debug for Lite<syn::ForeignItem> {
                 formatter.field("ty", Lite(&_val.typ));
                 formatter.finish()
             },
-            syn::ForeignItem::Type(_val) => {
-                let mut formatter = formatter.debug_struct("ForeignItem::Type");
+            syn::item::Foreign::Item::Type(_val) => {
+                let mut formatter = formatter.debug_struct("item::Foreign::Item::Type");
                 if !_val.attrs.is_empty() {
                     formatter.field("attrs", Lite(&_val.attrs));
                 }
@@ -1896,8 +1896,8 @@ impl Debug for Lite<syn::ForeignItem> {
                 formatter.field("gens", Lite(&_val.gens));
                 formatter.finish()
             },
-            syn::ForeignItem::Macro(_val) => {
-                let mut formatter = formatter.debug_struct("ForeignItem::Macro");
+            syn::item::Foreign::Item::Macro(_val) => {
+                let mut formatter = formatter.debug_struct("item::Foreign::Item::Macro");
                 if !_val.attrs.is_empty() {
                     formatter.field("attrs", Lite(&_val.attrs));
                 }
@@ -1907,8 +1907,8 @@ impl Debug for Lite<syn::ForeignItem> {
                 }
                 formatter.finish()
             },
-            syn::ForeignItem::Verbatim(_val) => {
-                formatter.write_str("ForeignItem::Verbatim")?;
+            syn::item::Foreign::Item::Verbatim(_val) => {
+                formatter.write_str("item::Foreign::Item::Verbatim")?;
                 formatter.write_str("(`")?;
                 Display::fmt(_val, formatter)?;
                 formatter.write_str("`)")?;
@@ -1918,9 +1918,9 @@ impl Debug for Lite<syn::ForeignItem> {
         }
     }
 }
-impl Debug for Lite<syn::ForeignItemFn> {
+impl Debug for Lite<syn::item::Foreign::Fn> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("ForeignItemFn");
+        let mut formatter = formatter.debug_struct("item::Foreign::Fn");
         if !self.value.attrs.is_empty() {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
@@ -1929,9 +1929,9 @@ impl Debug for Lite<syn::ForeignItemFn> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::ForeignItemMacro> {
+impl Debug for Lite<syn::item::Foreign::Mac> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("ForeignItemMacro");
+        let mut formatter = formatter.debug_struct("item::Foreign::Mac");
         if !self.value.attrs.is_empty() {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
@@ -1942,9 +1942,9 @@ impl Debug for Lite<syn::ForeignItemMacro> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::ForeignItemStatic> {
+impl Debug for Lite<syn::item::Foreign::Static> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("ForeignItemStatic");
+        let mut formatter = formatter.debug_struct("item::Foreign::Static");
         if !self.value.attrs.is_empty() {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
@@ -1960,9 +1960,9 @@ impl Debug for Lite<syn::ForeignItemStatic> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::ForeignItemType> {
+impl Debug for Lite<syn::item::Foreign::Type> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("ForeignItemType");
+        let mut formatter = formatter.debug_struct("item::Foreign::Type");
         if !self.value.attrs.is_empty() {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
@@ -2077,11 +2077,11 @@ impl Debug for Lite<syn::Generics> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::ImplItem> {
+impl Debug for Lite<syn::item::Impl::Item> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match &self.value {
-            syn::ImplItem::Const(_val) => {
-                let mut formatter = formatter.debug_struct("ImplItem::Const");
+            syn::item::Impl::Item::Const(_val) => {
+                let mut formatter = formatter.debug_struct("item::Impl::Item::Const");
                 if !_val.attrs.is_empty() {
                     formatter.field("attrs", Lite(&_val.attrs));
                 }
@@ -2095,8 +2095,8 @@ impl Debug for Lite<syn::ImplItem> {
                 formatter.field("expr", Lite(&_val.expr));
                 formatter.finish()
             },
-            syn::ImplItem::Fn(_val) => {
-                let mut formatter = formatter.debug_struct("ImplItem::Fn");
+            syn::item::Impl::Item::Fn(_val) => {
+                let mut formatter = formatter.debug_struct("item::Impl::Item::Fn");
                 if !_val.attrs.is_empty() {
                     formatter.field("attrs", Lite(&_val.attrs));
                 }
@@ -2108,8 +2108,8 @@ impl Debug for Lite<syn::ImplItem> {
                 formatter.field("block", Lite(&_val.block));
                 formatter.finish()
             },
-            syn::ImplItem::Type(_val) => {
-                let mut formatter = formatter.debug_struct("ImplItem::Type");
+            syn::item::Impl::Item::Type(_val) => {
+                let mut formatter = formatter.debug_struct("item::Impl::Item::Type");
                 if !_val.attrs.is_empty() {
                     formatter.field("attrs", Lite(&_val.attrs));
                 }
@@ -2122,8 +2122,8 @@ impl Debug for Lite<syn::ImplItem> {
                 formatter.field("ty", Lite(&_val.typ));
                 formatter.finish()
             },
-            syn::ImplItem::Macro(_val) => {
-                let mut formatter = formatter.debug_struct("ImplItem::Macro");
+            syn::item::Impl::Item::Macro(_val) => {
+                let mut formatter = formatter.debug_struct("item::Impl::Item::Macro");
                 if !_val.attrs.is_empty() {
                     formatter.field("attrs", Lite(&_val.attrs));
                 }
@@ -2133,8 +2133,8 @@ impl Debug for Lite<syn::ImplItem> {
                 }
                 formatter.finish()
             },
-            syn::ImplItem::Verbatim(_val) => {
-                formatter.write_str("ImplItem::Verbatim")?;
+            syn::item::Impl::Item::Verbatim(_val) => {
+                formatter.write_str("item::Impl::Item::Verbatim")?;
                 formatter.write_str("(`")?;
                 Display::fmt(_val, formatter)?;
                 formatter.write_str("`)")?;
@@ -2144,9 +2144,9 @@ impl Debug for Lite<syn::ImplItem> {
         }
     }
 }
-impl Debug for Lite<syn::ImplItemConst> {
+impl Debug for Lite<syn::item::Impl::Const> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("ImplItemConst");
+        let mut formatter = formatter.debug_struct("item::Impl::Const");
         if !self.value.attrs.is_empty() {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
@@ -2161,9 +2161,9 @@ impl Debug for Lite<syn::ImplItemConst> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::ImplItemFn> {
+impl Debug for Lite<syn::item::Impl::Fn> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("ImplItemFn");
+        let mut formatter = formatter.debug_struct("item::Impl::Fn");
         if !self.value.attrs.is_empty() {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
@@ -2176,9 +2176,9 @@ impl Debug for Lite<syn::ImplItemFn> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::ImplItemMacro> {
+impl Debug for Lite<syn::item::Impl::Mac> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("ImplItemMacro");
+        let mut formatter = formatter.debug_struct("item::Impl::Mac");
         if !self.value.attrs.is_empty() {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
@@ -2189,9 +2189,9 @@ impl Debug for Lite<syn::ImplItemMacro> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::ImplItemType> {
+impl Debug for Lite<syn::item::Impl::Type> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("ImplItemType");
+        let mut formatter = formatter.debug_struct("item::Impl::Type");
         if !self.value.attrs.is_empty() {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
@@ -2205,7 +2205,7 @@ impl Debug for Lite<syn::ImplItemType> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::ImplRestriction> {
+impl Debug for Lite<syn::item::Impl::Restriction> {
     fn fmt(&self, _formatter: &mut fmt::Formatter) -> fmt::Result {
         unreachable!()
     }
@@ -2278,8 +2278,8 @@ impl Debug for Lite<syn::Item> {
                 formatter.field("block", Lite(&_val.block));
                 formatter.finish()
             },
-            syn::Item::ForeignMod(_val) => {
-                let mut formatter = formatter.debug_struct("Item::ForeignMod");
+            syn::Item::Foreign(_val) => {
+                let mut formatter = formatter.debug_struct("Item::Foreign");
                 if !_val.attrs.is_empty() {
                     formatter.field("attrs", Lite(&_val.attrs));
                 }
@@ -2432,7 +2432,7 @@ impl Debug for Lite<syn::Item> {
                 if let Some(val) = &_val.restriction {
                     #[derive(RefCast)]
                     #[repr(transparent)]
-                    struct Print(syn::ImplRestriction);
+                    struct Print(syn::item::Impl::Restriction);
                     impl Debug for Print {
                         fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                             formatter.write_str("Some(")?;
@@ -2514,9 +2514,9 @@ impl Debug for Lite<syn::Item> {
         }
     }
 }
-impl Debug for Lite<syn::ItemConst> {
+impl Debug for Lite<syn::item::Const> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("ItemConst");
+        let mut formatter = formatter.debug_struct("item::Const");
         if !self.value.attrs.is_empty() {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
@@ -2528,24 +2528,24 @@ impl Debug for Lite<syn::ItemConst> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::ItemEnum> {
+impl Debug for Lite<syn::item::Enum> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("ItemEnum");
+        let mut formatter = formatter.debug_struct("item::Enum");
         if !self.value.attrs.is_empty() {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
         formatter.field("vis", Lite(&self.value.vis));
         formatter.field("ident", Lite(&self.value.ident));
         formatter.field("gens", Lite(&self.value.gens));
-        if !self.value.variants.is_empty() {
-            formatter.field("variants", Lite(&self.value.variants));
+        if !self.value.elems.is_empty() {
+            formatter.field("variants", Lite(&self.value.elems));
         }
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::ItemExternCrate> {
+impl Debug for Lite<syn::item::ExternCrate> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("ItemExternCrate");
+        let mut formatter = formatter.debug_struct("item::ExternCrate");
         if !self.value.attrs.is_empty() {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
@@ -2568,9 +2568,9 @@ impl Debug for Lite<syn::ItemExternCrate> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::ItemFn> {
+impl Debug for Lite<syn::item::Fn> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("ItemFn");
+        let mut formatter = formatter.debug_struct("item::Fn");
         if !self.value.attrs.is_empty() {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
@@ -2580,9 +2580,9 @@ impl Debug for Lite<syn::ItemFn> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::ItemForeignMod> {
+impl Debug for Lite<syn::item::Foreign> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("ItemForeignMod");
+        let mut formatter = formatter.debug_struct("item::Foreign");
         if !self.value.attrs.is_empty() {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
@@ -2596,9 +2596,9 @@ impl Debug for Lite<syn::ItemForeignMod> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::ItemImpl> {
+impl Debug for Lite<syn::item::Impl> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("ItemImpl");
+        let mut formatter = formatter.debug_struct("item::Impl");
         if !self.value.attrs.is_empty() {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
@@ -2638,9 +2638,9 @@ impl Debug for Lite<syn::ItemImpl> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::ItemMacro> {
+impl Debug for Lite<syn::item::Mac> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("ItemMacro");
+        let mut formatter = formatter.debug_struct("item::Mac");
         if !self.value.attrs.is_empty() {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
@@ -2665,9 +2665,9 @@ impl Debug for Lite<syn::ItemMacro> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::ItemMod> {
+impl Debug for Lite<syn::item::Mod> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("ItemMod");
+        let mut formatter = formatter.debug_struct("item::Mod");
         if !self.value.attrs.is_empty() {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
@@ -2696,9 +2696,9 @@ impl Debug for Lite<syn::ItemMod> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::ItemStatic> {
+impl Debug for Lite<syn::item::Static> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("ItemStatic");
+        let mut formatter = formatter.debug_struct("item::Static");
         if !self.value.attrs.is_empty() {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
@@ -2715,9 +2715,9 @@ impl Debug for Lite<syn::ItemStatic> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::ItemStruct> {
+impl Debug for Lite<syn::item::Struct> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("ItemStruct");
+        let mut formatter = formatter.debug_struct("item::Struct");
         if !self.value.attrs.is_empty() {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
@@ -2731,9 +2731,9 @@ impl Debug for Lite<syn::ItemStruct> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::ItemTrait> {
+impl Debug for Lite<syn::item::Trait> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("ItemTrait");
+        let mut formatter = formatter.debug_struct("item::Trait");
         if !self.value.attrs.is_empty() {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
@@ -2747,7 +2747,7 @@ impl Debug for Lite<syn::ItemTrait> {
         if let Some(val) = &self.value.restriction {
             #[derive(RefCast)]
             #[repr(transparent)]
-            struct Print(syn::ImplRestriction);
+            struct Print(syn::item::Impl::Restriction);
             impl Debug for Print {
                 fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                     formatter.write_str("Some(")?;
@@ -2763,8 +2763,8 @@ impl Debug for Lite<syn::ItemTrait> {
         if self.value.colon.is_some() {
             formatter.field("colon", &Present);
         }
-        if !self.value.supertraits.is_empty() {
-            formatter.field("supertraits", Lite(&self.value.supertraits));
+        if !self.value.supers.is_empty() {
+            formatter.field("supertraits", Lite(&self.value.supers));
         }
         if !self.value.items.is_empty() {
             formatter.field("items", Lite(&self.value.items));
@@ -2772,9 +2772,9 @@ impl Debug for Lite<syn::ItemTrait> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::ItemTraitAlias> {
+impl Debug for Lite<syn::item::TraitAlias> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("ItemTraitAlias");
+        let mut formatter = formatter.debug_struct("item::TraitAlias");
         if !self.value.attrs.is_empty() {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
@@ -2787,9 +2787,9 @@ impl Debug for Lite<syn::ItemTraitAlias> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::ItemType> {
+impl Debug for Lite<syn::item::Type> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("ItemType");
+        let mut formatter = formatter.debug_struct("item::Type");
         if !self.value.attrs.is_empty() {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
@@ -2800,9 +2800,9 @@ impl Debug for Lite<syn::ItemType> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::ItemUnion> {
+impl Debug for Lite<syn::item::Union> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("ItemUnion");
+        let mut formatter = formatter.debug_struct("item::Union");
         if !self.value.attrs.is_empty() {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
@@ -2813,14 +2813,14 @@ impl Debug for Lite<syn::ItemUnion> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::ItemUse> {
+impl Debug for Lite<syn::item::Use> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("ItemUse");
+        let mut formatter = formatter.debug_struct("item::Use");
         if !self.value.attrs.is_empty() {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
         formatter.field("vis", Lite(&self.value.vis));
-        if self.value.leading_colon.is_some() {
+        if self.value.colon.is_some() {
             formatter.field("leading_colon", &Present);
         }
         formatter.field("tree", Lite(&self.value.tree));
@@ -3581,9 +3581,9 @@ impl Debug for Lite<syn::RangeLimits> {
         }
     }
 }
-impl Debug for Lite<syn::Receiver> {
+impl Debug for Lite<syn::item::Receiver> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("Receiver");
+        let mut formatter = formatter.debug_struct("item::Receiver");
         if !self.value.attrs.is_empty() {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
@@ -3644,9 +3644,9 @@ impl Debug for Lite<syn::ty::Ret> {
         }
     }
 }
-impl Debug for Lite<syn::Signature> {
+impl Debug for Lite<syn::item::Sig> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("Signature");
+        let mut formatter = formatter.debug_struct("item::Sig");
         if self.value.constness.is_some() {
             formatter.field("constness", &Present);
         }
@@ -3678,7 +3678,7 @@ impl Debug for Lite<syn::Signature> {
         if let Some(val) = &self.value.vari {
             #[derive(RefCast)]
             #[repr(transparent)]
-            struct Print(syn::Variadic);
+            struct Print(syn::item::Variadic);
             impl Debug for Print {
                 fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                     formatter.write_str("Some(")?;
@@ -3811,11 +3811,11 @@ impl Debug for Lite<syn::TraitBoundModifier> {
         }
     }
 }
-impl Debug for Lite<syn::TraitItem> {
+impl Debug for Lite<syn::item::Trait::Item> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match &self.value {
-            syn::TraitItem::Const(_val) => {
-                let mut formatter = formatter.debug_struct("TraitItem::Const");
+            syn::item::Trait::Item::Const(_val) => {
+                let mut formatter = formatter.debug_struct("item::Trait::Item::Const");
                 if !_val.attrs.is_empty() {
                     formatter.field("attrs", Lite(&_val.attrs));
                 }
@@ -3838,8 +3838,8 @@ impl Debug for Lite<syn::TraitItem> {
                 }
                 formatter.finish()
             },
-            syn::TraitItem::Fn(_val) => {
-                let mut formatter = formatter.debug_struct("TraitItem::Fn");
+            syn::item::Trait::Item::Fn(_val) => {
+                let mut formatter = formatter.debug_struct("item::Trait::Item::Fn");
                 if !_val.attrs.is_empty() {
                     formatter.field("attrs", Lite(&_val.attrs));
                 }
@@ -3863,8 +3863,8 @@ impl Debug for Lite<syn::TraitItem> {
                 }
                 formatter.finish()
             },
-            syn::TraitItem::Type(_val) => {
-                let mut formatter = formatter.debug_struct("TraitItem::Type");
+            syn::item::Trait::Item::Type(_val) => {
+                let mut formatter = formatter.debug_struct("item::Trait::Item::Type");
                 if !_val.attrs.is_empty() {
                     formatter.field("attrs", Lite(&_val.attrs));
                 }
@@ -3892,8 +3892,8 @@ impl Debug for Lite<syn::TraitItem> {
                 }
                 formatter.finish()
             },
-            syn::TraitItem::Macro(_val) => {
-                let mut formatter = formatter.debug_struct("TraitItem::Macro");
+            syn::item::Trait::Item::Macro(_val) => {
+                let mut formatter = formatter.debug_struct("item::Trait::Item::Macro");
                 if !_val.attrs.is_empty() {
                     formatter.field("attrs", Lite(&_val.attrs));
                 }
@@ -3903,8 +3903,8 @@ impl Debug for Lite<syn::TraitItem> {
                 }
                 formatter.finish()
             },
-            syn::TraitItem::Verbatim(_val) => {
-                formatter.write_str("TraitItem::Verbatim")?;
+            syn::item::Trait::Item::Verbatim(_val) => {
+                formatter.write_str("item::Trait::Item::Verbatim")?;
                 formatter.write_str("(`")?;
                 Display::fmt(_val, formatter)?;
                 formatter.write_str("`)")?;
@@ -3914,9 +3914,9 @@ impl Debug for Lite<syn::TraitItem> {
         }
     }
 }
-impl Debug for Lite<syn::TraitItemConst> {
+impl Debug for Lite<syn::item::Trait::Const> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("TraitItemConst");
+        let mut formatter = formatter.debug_struct("item::Trait::Const");
         if !self.value.attrs.is_empty() {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
@@ -3940,9 +3940,9 @@ impl Debug for Lite<syn::TraitItemConst> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::TraitItemFn> {
+impl Debug for Lite<syn::item::Trait::Fn> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("TraitItemFn");
+        let mut formatter = formatter.debug_struct("item::Trait::Fn");
         if !self.value.attrs.is_empty() {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
@@ -3967,9 +3967,9 @@ impl Debug for Lite<syn::TraitItemFn> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::TraitItemMacro> {
+impl Debug for Lite<syn::item::Trait::Mac> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("TraitItemMacro");
+        let mut formatter = formatter.debug_struct("item::Trait::Mac");
         if !self.value.attrs.is_empty() {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
@@ -3980,9 +3980,9 @@ impl Debug for Lite<syn::TraitItemMacro> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::TraitItemType> {
+impl Debug for Lite<syn::item::Trait::Type> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("TraitItemType");
+        let mut formatter = formatter.debug_struct("item::Trait::Type");
         if !self.value.attrs.is_empty() {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
@@ -4020,8 +4020,8 @@ impl Debug for Lite<syn::ty::Type> {
                 formatter.field("len", Lite(&_val.len));
                 formatter.finish()
             },
-            syn::ty::Type::BareFn(_val) => {
-                let mut formatter = formatter.debug_struct("Type::BareFn");
+            syn::ty::Type::Fn(_val) => {
+                let mut formatter = formatter.debug_struct("Type::Fn");
                 if let Some(val) = &_val.lifes {
                     #[derive(RefCast)]
                     #[repr(transparent)]
@@ -4059,7 +4059,7 @@ impl Debug for Lite<syn::ty::Type> {
                 if let Some(val) = &_val.vari {
                     #[derive(RefCast)]
                     #[repr(transparent)]
-                    struct Print(syn::ty::BareVari);
+                    struct Print(syn::ty::Variadic);
                     impl Debug for Print {
                         fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                             formatter.write_str("Some(")?;
@@ -4196,9 +4196,9 @@ impl Debug for Lite<syn::ty::Array> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::ty::BareFn> {
+impl Debug for Lite<syn::ty::Fn> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("ty::BareFn");
+        let mut formatter = formatter.debug_struct("ty::Fn");
         if let Some(val) = &self.value.lifes {
             #[derive(RefCast)]
             #[repr(transparent)]
@@ -4236,7 +4236,7 @@ impl Debug for Lite<syn::ty::BareFn> {
         if let Some(val) = &self.value.vari {
             #[derive(RefCast)]
             #[repr(transparent)]
-            struct Print(syn::ty::BareVari);
+            struct Print(syn::ty::Variadic);
             impl Debug for Print {
                 fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                     formatter.write_str("Some(")?;
@@ -4457,77 +4457,77 @@ impl Debug for Lite<syn::UnOp> {
         }
     }
 }
-impl Debug for Lite<syn::UseGlob> {
+impl Debug for Lite<syn::item::Use::Glob> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("UseGlob");
+        let mut formatter = formatter.debug_struct("item::Use::Glob");
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::UseGroup> {
+impl Debug for Lite<syn::item::Use::Group> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("UseGroup");
-        if !self.value.items.is_empty() {
-            formatter.field("items", Lite(&self.value.items));
+        let mut formatter = formatter.debug_struct("item::Use::Group");
+        if !self.value.elems.is_empty() {
+            formatter.field("items", Lite(&self.value.elems));
         }
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::UseName> {
+impl Debug for Lite<syn::item::Use::Name> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("UseName");
+        let mut formatter = formatter.debug_struct("item::Use::Name");
         formatter.field("ident", Lite(&self.value.ident));
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::UsePath> {
+impl Debug for Lite<syn::item::Use::Path> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("UsePath");
+        let mut formatter = formatter.debug_struct("item::Use::Path");
         formatter.field("ident", Lite(&self.value.ident));
         formatter.field("tree", Lite(&self.value.tree));
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::UseRename> {
+impl Debug for Lite<syn::item::Use::Rename> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("UseRename");
+        let mut formatter = formatter.debug_struct("item::Use::Rename");
         formatter.field("ident", Lite(&self.value.ident));
         formatter.field("rename", Lite(&self.value.rename));
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::UseTree> {
+impl Debug for Lite<syn::item::Use::Tree> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match &self.value {
-            syn::UseTree::Path(_val) => {
-                formatter.write_str("UseTree::Path")?;
+            syn::item::Use::Tree::Path(_val) => {
+                formatter.write_str("item::Use::Tree::Path")?;
                 formatter.write_str("(")?;
                 Debug::fmt(Lite(_val), formatter)?;
                 formatter.write_str(")")?;
                 Ok(())
             },
-            syn::UseTree::Name(_val) => {
-                formatter.write_str("UseTree::Name")?;
+            syn::item::Use::Tree::Name(_val) => {
+                formatter.write_str("item::Use::Tree::Name")?;
                 formatter.write_str("(")?;
                 Debug::fmt(Lite(_val), formatter)?;
                 formatter.write_str(")")?;
                 Ok(())
             },
-            syn::UseTree::Rename(_val) => {
-                formatter.write_str("UseTree::Rename")?;
+            syn::item::Use::Tree::Rename(_val) => {
+                formatter.write_str("item::Use::Tree::Rename")?;
                 formatter.write_str("(")?;
                 Debug::fmt(Lite(_val), formatter)?;
                 formatter.write_str(")")?;
                 Ok(())
             },
-            syn::UseTree::Glob(_val) => {
-                formatter.write_str("UseTree::Glob")?;
+            syn::item::Use::Tree::Glob(_val) => {
+                formatter.write_str("item::Use::Tree::Glob")?;
                 formatter.write_str("(")?;
                 Debug::fmt(Lite(_val), formatter)?;
                 formatter.write_str(")")?;
                 Ok(())
             },
-            syn::UseTree::Group(_val) => {
-                formatter.write_str("UseTree::Group")?;
+            syn::item::Use::Tree::Group(_val) => {
+                formatter.write_str("item::Use::Tree::Group")?;
                 formatter.write_str("(")?;
                 Debug::fmt(Lite(_val), formatter)?;
                 formatter.write_str(")")?;
@@ -4536,9 +4536,9 @@ impl Debug for Lite<syn::UseTree> {
         }
     }
 }
-impl Debug for Lite<syn::Variadic> {
+impl Debug for Lite<syn::item::Variadic> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("Variadic");
+        let mut formatter = formatter.debug_struct("item::Variadic");
         if !self.value.attrs.is_empty() {
             formatter.field("attrs", Lite(&self.value.attrs));
         }

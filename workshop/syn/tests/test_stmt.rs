@@ -61,7 +61,7 @@ fn test_none_group() {
     snapshot!(tokens as stmt::Stmt, @r###"
     stmt::Stmt::Item(Item::Fn {
         vis: Visibility::Inherited,
-        sig: Signature {
+        sig: item::Sig {
             asyncness: Some,
             ident: "f",
             gens: Generics,
@@ -149,7 +149,7 @@ fn test_macros() {
     snapshot!(tokens as stmt::Stmt, @r###"
     stmt::Stmt::Item(Item::Fn {
         vis: Visibility::Inherited,
-        sig: Signature {
+        sig: item::Sig {
             ident: "main",
             gens: Generics,
             ret: ty::Ret::Default,

@@ -5,6 +5,7 @@ extern crate rustc_driver;
 extern crate rustc_span;
 extern crate thin_vec;
 use rustc_ast::ast::expr::Field;
+use rustc_ast::ast::item::Use::Tree;
 use rustc_ast::ast::lit::FloatType;
 use rustc_ast::ast::lit::IntType;
 use rustc_ast::ast::patt::Patt;
@@ -53,8 +54,8 @@ use rustc_ast::ast::FnDecl;
 use rustc_ast::ast::FnHeader;
 use rustc_ast::ast::FnRetTy;
 use rustc_ast::ast::FnSig;
+use rustc_ast::ast::Foreign;
 use rustc_ast::ast::ForeignItemKind;
-use rustc_ast::ast::ForeignMod;
 use rustc_ast::ast::FormatAlignment;
 use rustc_ast::ast::FormatArgPosition;
 use rustc_ast::ast::FormatArgPositionKind;
@@ -135,7 +136,6 @@ use rustc_ast::ast::UintTy;
 use rustc_ast::ast::UnOp;
 use rustc_ast::ast::Unsafe;
 use rustc_ast::ast::UnsafeSource;
-use rustc_ast::ast::UseTree;
 use rustc_ast::ast::UseTreeKind;
 use rustc_ast::ast::Variant;
 use rustc_ast::ast::VariantData;
@@ -438,7 +438,7 @@ spanless_eq_struct!(Fn; defaultness gens sig body);
 spanless_eq_struct!(FnDecl; inputs output);
 spanless_eq_struct!(FnHeader; constness asyncness unsafety ext);
 spanless_eq_struct!(FnSig; header decl span);
-spanless_eq_struct!(ForeignMod; unsafety abi items);
+spanless_eq_struct!(Foreign; unsafety abi items);
 spanless_eq_struct!(FormatArgPosition; index kind span);
 spanless_eq_struct!(FormatArgs; span template arguments);
 spanless_eq_struct!(FormatArgument; kind expr);
@@ -479,7 +479,7 @@ spanless_eq_struct!(TraitRef; path ref_id);
 spanless_eq_struct!(ty::Type; id kind span tokens);
 spanless_eq_struct!(TyAlias; defaultness gens where_clauses !where_predicates_split bounds ty);
 spanless_eq_struct!(TyAliasWhereClause; !0 1);
-spanless_eq_struct!(UseTree; prefix kind span);
+spanless_eq_struct!(item::Use::Tree; prefix kind span);
 spanless_eq_struct!(Variant; attrs id span !vis ident data disr_expr is_placeholder);
 spanless_eq_struct!(Visibility; kind span tokens);
 spanless_eq_struct!(WhereBoundPredicate; span bound_generic_params bounded_ty bounds);
@@ -562,14 +562,14 @@ spanless_eq_enum!(InlineAsmOperand; In(reg expr) Out(reg late expr)
     InOut(reg late expr) SplitInOut(reg late in_expr out_expr) Const(anon_const)
     Sym(sym));
 spanless_eq_enum!(ItemKind; ExternCrate(0) Use(0) Static(0) Const(0) Fn(0)
-    Mod(0 1) ForeignMod(0) GlobalAsm(0) TyAlias(0) Enum(0 1) Struct(0 1)
+    Mod(0 1) Foreign(0) GlobalAsm(0) TyAlias(0) Enum(0 1) Struct(0 1)
     Union(0 1) Trait(0) TraitAlias(0 1) Impl(0) MacCall(0) MacroDef(0));
 spanless_eq_enum!(LitKind; Str(0 1) ByteStr(0 1) CStr(0 1) Byte(0) Char(0)
     Int(0 1) Float(0 1) Bool(0) Err);
 spanless_eq_enum!(PatKind; Wild Ident(0 1 2) Struct(0 1 2 3) TupleStruct(0 1 2)
     Or(0) Path(0 1) Tuple(0) Box(0) Ref(0 1) Lit(0) Range(0 1 2) Slice(0) Rest
     Paren(0) MacCall(0));
-spanless_eq_enum!(TyKind; Slice(0) Array(0 1) Ptr(0) Ref(0 1) BareFn(0) Never
+spanless_eq_enum!(TyKind; Slice(0) Array(0 1) Ptr(0) Ref(0 1) Fn(0) Never
     Tup(0) Path(0 1) TraitObject(0 1) ImplTrait(0 1) Paren(0) Typeof(0) Infer
     ImplicitSelf MacCall(0) Err CVarArgs);
 impl SpanlessEq for Ident {

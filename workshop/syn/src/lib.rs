@@ -931,7 +931,7 @@ pub struct PredType {
     pub bounds: Punctuated<TypeParamBound, Token![+]>,
 }
 
-mod item;
+pub mod item;
 pub mod punct;
 use punct::Punctuated;
 pub mod lit;
@@ -1193,13 +1193,13 @@ mod stmt {
     }
 }
 mod ty {
-    use super::{punct::Punctuated, *};
+    use super::punct::Punctuated;
     use proc_macro2::TokenStream;
 
     ast_enum_of_structs! {
         pub enum Type {
             Array(Array),
-            BareFn(BareFn),
+            Fn(Fn),
             Group(Group),
             Impl(Impl),
             Infer(Infer),
@@ -1221,14 +1221,14 @@ mod ty {
         pub semi: Token![;],
         pub len: Expr,
     }
-    pub struct BareFn {
+    pub struct Fn {
         pub lifes: Option<BoundLifetimes>,
         pub unsafe_: Option<Token![unsafe]>,
         pub abi: Option<Abi>,
         pub fn_: Token![fn],
         pub paren: tok::Paren,
-        pub args: Punctuated<BareFnArg, Token![,]>,
-        pub vari: Option<BareVari>,
+        pub args: Punctuated<FnArg, Token![,]>,
+        pub vari: Option<Variadic>,
         pub ret: Ret,
     }
     pub struct Group {
@@ -1284,12 +1284,12 @@ mod ty {
         pub extern_: Token![extern],
         pub name: Option<lit::Str>,
     }
-    pub struct BareFnArg {
+    pub struct FnArg {
         pub attrs: Vec<Attribute>,
         pub name: Option<(Ident, Token![:])>,
         pub ty: Type,
     }
-    pub struct BareVari {
+    pub struct Variadic {
         pub attrs: Vec<Attribute>,
         pub name: Option<(Ident, Token![:])>,
         pub dots: Token![...],

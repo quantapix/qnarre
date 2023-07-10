@@ -11,7 +11,7 @@ fn test_basic() {
         items: [
             Item::Fn {
                 vis: Visibility::Inherited,
-                sig: Signature {
+                sig: item::Sig {
                     ident: "main",
                     gens: Generics,
                     ret: ty::Ret::Default,
@@ -47,7 +47,7 @@ fn test_comment() {
         items: [
             Item::Fn {
                 vis: Visibility::Inherited,
-                sig: Signature {
+                sig: item::Sig {
                     ident: "main",
                     gens: Generics,
                     ret: ty::Ret::Default,

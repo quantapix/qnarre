@@ -78,18 +78,18 @@ impl Debug for Attribute {
         formatter.finish()
     }
 }
-impl Debug for ty::BareFnArg {
+impl Debug for ty::FnArg {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("ty::BareFnArg");
+        let mut formatter = formatter.debug_struct("ty::FnArg");
         formatter.field("attrs", &self.attrs);
         formatter.field("name", &self.name);
         formatter.field("ty", &self.ty);
         formatter.finish()
     }
 }
-impl Debug for ty::BareVari {
+impl Debug for ty::Variadic {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("ty::BareVari");
+        let mut formatter = formatter.debug_struct("ty::Variadic");
         formatter.field("attrs", &self.attrs);
         formatter.field("name", &self.name);
         formatter.field("dots", &self.dots);
@@ -1055,16 +1055,16 @@ impl Debug for File {
         formatter.finish()
     }
 }
-impl Debug for FnArg {
+impl Debug for item::FnArg {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("FnArg::")?;
+        formatter.write_str("item::FnArg::")?;
         match self {
-            FnArg::Receiver(v0) => {
-                let mut formatter = formatter.debug_tuple("Receiver");
+            item::FnArg::Receiver(v0) => {
+                let mut formatter = formatter.debug_tuple("item::Receiver");
                 formatter.field(v0);
                 formatter.finish()
             },
-            FnArg::Typed(v0) => {
+            item::FnArg::Typed(v0) => {
                 let mut formatter = formatter.debug_tuple("Typed");
                 formatter.field(v0);
                 formatter.finish()
@@ -1072,15 +1072,15 @@ impl Debug for FnArg {
         }
     }
 }
-impl Debug for ForeignItem {
+impl Debug for item::Foreign::Item {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("ForeignItem::")?;
+        formatter.write_str("item::Foreign::Item::")?;
         match self {
-            ForeignItem::Fn(v0) => v0.debug(formatter, "Fn"),
-            ForeignItem::Static(v0) => v0.debug(formatter, "Static"),
-            ForeignItem::Type(v0) => v0.debug(formatter, "Type"),
-            ForeignItem::Macro(v0) => v0.debug(formatter, "Macro"),
-            ForeignItem::Verbatim(v0) => {
+            item::Foreign::Item::Fn(v0) => v0.debug(formatter, "Fn"),
+            item::Foreign::Item::Static(v0) => v0.debug(formatter, "Static"),
+            item::Foreign::Item::Type(v0) => v0.debug(formatter, "Type"),
+            item::Foreign::Item::Macro(v0) => v0.debug(formatter, "Macro"),
+            item::Foreign::Item::Verbatim(v0) => {
                 let mut formatter = formatter.debug_tuple("Verbatim");
                 formatter.field(v0);
                 formatter.finish()
@@ -1088,9 +1088,9 @@ impl Debug for ForeignItem {
         }
     }
 }
-impl Debug for ForeignItemFn {
+impl Debug for item::Foreign::Fn {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ForeignItemFn {
+        impl item::Foreign::Fn {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -1100,12 +1100,12 @@ impl Debug for ForeignItemFn {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ForeignItemFn")
+        self.debug(formatter, "item::Foreign::Fn")
     }
 }
-impl Debug for ForeignItemMacro {
+impl Debug for item::Foreign::Mac {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ForeignItemMacro {
+        impl item::Foreign::Mac {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -1114,12 +1114,12 @@ impl Debug for ForeignItemMacro {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ForeignItemMacro")
+        self.debug(formatter, "item::Foreign::Mac")
     }
 }
-impl Debug for ForeignItemStatic {
+impl Debug for item::Foreign::Static {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ForeignItemStatic {
+        impl item::Foreign::Static {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -1133,12 +1133,12 @@ impl Debug for ForeignItemStatic {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ForeignItemStatic")
+        self.debug(formatter, "item::Foreign::Static")
     }
 }
-impl Debug for ForeignItemType {
+impl Debug for item::Foreign::Type {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ForeignItemType {
+        impl item::Foreign::Type {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -1150,7 +1150,7 @@ impl Debug for ForeignItemType {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ForeignItemType")
+        self.debug(formatter, "item::Foreign::Type")
     }
 }
 impl Debug for Arg {
@@ -1222,15 +1222,15 @@ impl Debug for Generics {
         formatter.finish()
     }
 }
-impl Debug for ImplItem {
+impl Debug for item::Impl::Item {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("ImplItem::")?;
+        formatter.write_str("item::Impl::Item::")?;
         match self {
-            ImplItem::Const(v0) => v0.debug(formatter, "Const"),
-            ImplItem::Fn(v0) => v0.debug(formatter, "Fn"),
-            ImplItem::Type(v0) => v0.debug(formatter, "Type"),
-            ImplItem::Macro(v0) => v0.debug(formatter, "Macro"),
-            ImplItem::Verbatim(v0) => {
+            item::Impl::Item::Const(v0) => v0.debug(formatter, "Const"),
+            item::Impl::Item::Fn(v0) => v0.debug(formatter, "Fn"),
+            item::Impl::Item::Type(v0) => v0.debug(formatter, "Type"),
+            item::Impl::Item::Macro(v0) => v0.debug(formatter, "Macro"),
+            item::Impl::Item::Verbatim(v0) => {
                 let mut formatter = formatter.debug_tuple("Verbatim");
                 formatter.field(v0);
                 formatter.finish()
@@ -1238,9 +1238,9 @@ impl Debug for ImplItem {
         }
     }
 }
-impl Debug for ImplItemConst {
+impl Debug for item::Impl::Const {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ImplItemConst {
+        impl item::Impl::Const {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -1257,12 +1257,12 @@ impl Debug for ImplItemConst {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ImplItemConst")
+        self.debug(formatter, "item::Impl::Const")
     }
 }
-impl Debug for ImplItemFn {
+impl Debug for item::Impl::Fn {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ImplItemFn {
+        impl item::Impl::Fn {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -1273,12 +1273,12 @@ impl Debug for ImplItemFn {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ImplItemFn")
+        self.debug(formatter, "item::Impl::Fn")
     }
 }
-impl Debug for ImplItemMacro {
+impl Debug for item::Impl::Mac {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ImplItemMacro {
+        impl item::Impl::Mac {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -1287,12 +1287,12 @@ impl Debug for ImplItemMacro {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ImplItemMacro")
+        self.debug(formatter, "item::Impl::Mac")
     }
 }
-impl Debug for ImplItemType {
+impl Debug for item::Impl::Type {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ImplItemType {
+        impl item::Impl::Type {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -1307,10 +1307,10 @@ impl Debug for ImplItemType {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ImplItemType")
+        self.debug(formatter, "item::Impl::Type")
     }
 }
-impl Debug for ImplRestriction {
+impl Debug for item::Impl::Restriction {
     fn fmt(&self, _formatter: &mut fmt::Formatter) -> fmt::Result {
         match *self {}
     }
@@ -1331,7 +1331,7 @@ impl Debug for Item {
             Item::Enum(v0) => v0.debug(formatter, "Enum"),
             Item::ExternCrate(v0) => v0.debug(formatter, "ExternCrate"),
             Item::Fn(v0) => v0.debug(formatter, "Fn"),
-            Item::ForeignMod(v0) => v0.debug(formatter, "ForeignMod"),
+            Item::Foreign(v0) => v0.debug(formatter, "Foreign"),
             Item::Impl(v0) => v0.debug(formatter, "Impl"),
             Item::Macro(v0) => v0.debug(formatter, "Macro"),
             Item::Mod(v0) => v0.debug(formatter, "Mod"),
@@ -1350,9 +1350,9 @@ impl Debug for Item {
         }
     }
 }
-impl Debug for ItemConst {
+impl Debug for item::Const {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ItemConst {
+        impl item::Const {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -1368,12 +1368,12 @@ impl Debug for ItemConst {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ItemConst")
+        self.debug(formatter, "item::Const")
     }
 }
-impl Debug for ItemEnum {
+impl Debug for item::Enum {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ItemEnum {
+        impl item::Enum {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -1382,16 +1382,16 @@ impl Debug for ItemEnum {
                 formatter.field("ident", &self.ident);
                 formatter.field("gens", &self.gens);
                 formatter.field("brace", &self.brace);
-                formatter.field("variants", &self.variants);
+                formatter.field("variants", &self.elems);
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ItemEnum")
+        self.debug(formatter, "item::Enum")
     }
 }
-impl Debug for ItemExternCrate {
+impl Debug for item::ExternCrate {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ItemExternCrate {
+        impl item::ExternCrate {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -1404,12 +1404,12 @@ impl Debug for ItemExternCrate {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ItemExternCrate")
+        self.debug(formatter, "item::ExternCrate")
     }
 }
-impl Debug for ItemFn {
+impl Debug for item::Fn {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ItemFn {
+        impl item::Fn {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -1419,12 +1419,12 @@ impl Debug for ItemFn {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ItemFn")
+        self.debug(formatter, "item::Fn")
     }
 }
-impl Debug for ItemForeignMod {
+impl Debug for item::Foreign {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ItemForeignMod {
+        impl item::Foreign {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -1435,12 +1435,12 @@ impl Debug for ItemForeignMod {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ItemForeignMod")
+        self.debug(formatter, "item::Foreign")
     }
 }
-impl Debug for ItemImpl {
+impl Debug for item::Impl {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ItemImpl {
+        impl item::Impl {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -1455,12 +1455,12 @@ impl Debug for ItemImpl {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ItemImpl")
+        self.debug(formatter, "item::Impl")
     }
 }
-impl Debug for ItemMacro {
+impl Debug for item::Mac {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ItemMacro {
+        impl item::Mac {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -1470,12 +1470,12 @@ impl Debug for ItemMacro {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ItemMacro")
+        self.debug(formatter, "item::Mac")
     }
 }
-impl Debug for ItemMod {
+impl Debug for item::Mod {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ItemMod {
+        impl item::Mod {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -1488,12 +1488,12 @@ impl Debug for ItemMod {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ItemMod")
+        self.debug(formatter, "item::Mod")
     }
 }
-impl Debug for ItemStatic {
+impl Debug for item::Static {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ItemStatic {
+        impl item::Static {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -1509,12 +1509,12 @@ impl Debug for ItemStatic {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ItemStatic")
+        self.debug(formatter, "item::Static")
     }
 }
-impl Debug for ItemStruct {
+impl Debug for item::Struct {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ItemStruct {
+        impl item::Struct {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -1527,12 +1527,12 @@ impl Debug for ItemStruct {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ItemStruct")
+        self.debug(formatter, "item::Struct")
     }
 }
-impl Debug for ItemTrait {
+impl Debug for item::Trait {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ItemTrait {
+        impl item::Trait {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -1544,18 +1544,18 @@ impl Debug for ItemTrait {
                 formatter.field("ident", &self.ident);
                 formatter.field("gens", &self.gens);
                 formatter.field("colon", &self.colon);
-                formatter.field("supertraits", &self.supertraits);
+                formatter.field("supertraits", &self.supers);
                 formatter.field("brace", &self.brace);
                 formatter.field("items", &self.items);
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ItemTrait")
+        self.debug(formatter, "item::Trait")
     }
 }
-impl Debug for ItemTraitAlias {
+impl Debug for item::TraitAlias {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ItemTraitAlias {
+        impl item::TraitAlias {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -1569,12 +1569,12 @@ impl Debug for ItemTraitAlias {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ItemTraitAlias")
+        self.debug(formatter, "item::TraitAlias")
     }
 }
-impl Debug for ItemType {
+impl Debug for item::Type {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ItemType {
+        impl item::Type {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -1588,12 +1588,12 @@ impl Debug for ItemType {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ItemType")
+        self.debug(formatter, "item::Type")
     }
 }
-impl Debug for ItemUnion {
+impl Debug for item::Union {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ItemUnion {
+        impl item::Union {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -1605,24 +1605,24 @@ impl Debug for ItemUnion {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ItemUnion")
+        self.debug(formatter, "item::Union")
     }
 }
-impl Debug for ItemUse {
+impl Debug for item::Use {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ItemUse {
+        impl item::Use {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
                 formatter.field("vis", &self.vis);
                 formatter.field("use_", &self.use_);
-                formatter.field("leading_colon", &self.leading_colon);
+                formatter.field("leading_colon", &self.colon);
                 formatter.field("tree", &self.tree);
                 formatter.field("semi", &self.semi);
                 formatter.finish()
             }
         }
-        self.debug(formatter, "ItemUse")
+        self.debug(formatter, "item::Use")
     }
 }
 impl Debug for Label {
@@ -2068,9 +2068,9 @@ impl Debug for RangeLimits {
         }
     }
 }
-impl Debug for Receiver {
+impl Debug for item::Receiver {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("Receiver");
+        let mut formatter = formatter.debug_struct("item::Receiver");
         formatter.field("attrs", &self.attrs);
         formatter.field("reference", &self.reference);
         formatter.field("mutability", &self.mut_);
@@ -2094,9 +2094,9 @@ impl Debug for ty::Ret {
         }
     }
 }
-impl Debug for Signature {
+impl Debug for item::Sig {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("Signature");
+        let mut formatter = formatter.debug_struct("item::Sig");
         formatter.field("constness", &self.constness);
         formatter.field("asyncness", &self.async_);
         formatter.field("unsafety", &self.unsafe_);
@@ -2181,15 +2181,15 @@ impl Debug for TraitBoundModifier {
         }
     }
 }
-impl Debug for TraitItem {
+impl Debug for item::Trait::Item {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("TraitItem::")?;
+        formatter.write_str("item::Trait::Item::")?;
         match self {
-            TraitItem::Const(v0) => v0.debug(formatter, "Const"),
-            TraitItem::Fn(v0) => v0.debug(formatter, "Fn"),
-            TraitItem::Type(v0) => v0.debug(formatter, "Type"),
-            TraitItem::Macro(v0) => v0.debug(formatter, "Macro"),
-            TraitItem::Verbatim(v0) => {
+            item::Trait::Item::Const(v0) => v0.debug(formatter, "Const"),
+            item::Trait::Item::Fn(v0) => v0.debug(formatter, "Fn"),
+            item::Trait::Item::Type(v0) => v0.debug(formatter, "Type"),
+            item::Trait::Item::Macro(v0) => v0.debug(formatter, "Macro"),
+            item::Trait::Item::Verbatim(v0) => {
                 let mut formatter = formatter.debug_tuple("Verbatim");
                 formatter.field(v0);
                 formatter.finish()
@@ -2197,9 +2197,9 @@ impl Debug for TraitItem {
         }
     }
 }
-impl Debug for TraitItemConst {
+impl Debug for item::Trait::Const {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl TraitItemConst {
+        impl item::Trait::Const {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -2213,12 +2213,12 @@ impl Debug for TraitItemConst {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "TraitItemConst")
+        self.debug(formatter, "item::Trait::Const")
     }
 }
-impl Debug for TraitItemFn {
+impl Debug for item::Trait::Fn {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl TraitItemFn {
+        impl item::Trait::Fn {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -2228,12 +2228,12 @@ impl Debug for TraitItemFn {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "TraitItemFn")
+        self.debug(formatter, "item::Trait::Fn")
     }
 }
-impl Debug for TraitItemMacro {
+impl Debug for item::Trait::Mac {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl TraitItemMacro {
+        impl item::Trait::Mac {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
@@ -2242,112 +2242,112 @@ impl Debug for TraitItemMacro {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "TraitItemMacro")
+        self.debug(formatter, "item::Trait::Mac")
     }
 }
-impl Debug for TraitItemType {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl TraitItemType {
-            fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut formatter = formatter.debug_struct(name);
-                formatter.field("attrs", &self.attrs);
-                formatter.field("type", &self.type);
-                formatter.field("ident", &self.ident);
-                formatter.field("gens", &self.gens);
-                formatter.field("colon", &self.colon);
-                formatter.field("bounds", &self.bounds);
-                formatter.field("default", &self.default);
-                formatter.field("semi", &self.semi);
-                formatter.finish()
+impl Debug for item::Trait::Type {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl item::Trait::Type {
+            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+                let mut y = f.debug_struct(name);
+                y.field("attrs", &self.attrs);
+                y.field("type", &self.type);
+                y.field("ident", &self.ident);
+                y.field("gens", &self.gens);
+                y.field("colon", &self.colon);
+                y.field("bounds", &self.bounds);
+                y.field("default", &self.default);
+                y.field("semi", &self.semi);
+                y.finish()
             }
         }
-        self.debug(formatter, "TraitItemType")
+        self.debug(f, "item::Trait::Type")
     }
 }
 impl Debug for ty::Type {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("Type::")?;
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("Type::")?;
         match self {
-            ty::Type::Array(v0) => v0.debug(formatter, "Array"),
-            ty::Type::BareFn(v0) => v0.debug(formatter, "BareFn"),
-            ty::Type::Group(v0) => v0.debug(formatter, "Group"),
-            ty::Type::Impl(v0) => v0.debug(formatter, "ImplTrait"),
-            ty::Type::Infer(v0) => v0.debug(formatter, "Infer"),
-            ty::Type::Mac(v0) => v0.debug(formatter, "Macro"),
-            ty::Type::Never(v0) => v0.debug(formatter, "Never"),
-            ty::Type::Paren(v0) => v0.debug(formatter, "Paren"),
-            ty::Type::Path(v0) => v0.debug(formatter, "Path"),
-            ty::Type::Ptr(v0) => v0.debug(formatter, "Ptr"),
-            ty::Type::Ref(v0) => v0.debug(formatter, "Reference"),
-            ty::Type::Slice(v0) => v0.debug(formatter, "Slice"),
-            ty::Type::TraitObj(v0) => v0.debug(formatter, "TraitObject"),
-            ty::Type::Tuple(v0) => v0.debug(formatter, "Tuple"),
+            ty::Type::Array(v0) => v0.debug(f, "Array"),
+            ty::Type::Fn(v0) => v0.debug(f, "Fn"),
+            ty::Type::Group(v0) => v0.debug(f, "Group"),
+            ty::Type::Impl(v0) => v0.debug(f, "ImplTrait"),
+            ty::Type::Infer(v0) => v0.debug(f, "Infer"),
+            ty::Type::Mac(v0) => v0.debug(f, "Macro"),
+            ty::Type::Never(v0) => v0.debug(f, "Never"),
+            ty::Type::Paren(v0) => v0.debug(f, "Paren"),
+            ty::Type::Path(v0) => v0.debug(f, "Path"),
+            ty::Type::Ptr(v0) => v0.debug(f, "Ptr"),
+            ty::Type::Ref(v0) => v0.debug(f, "Reference"),
+            ty::Type::Slice(v0) => v0.debug(f, "Slice"),
+            ty::Type::TraitObj(v0) => v0.debug(f, "TraitObject"),
+            ty::Type::Tuple(v0) => v0.debug(f, "Tuple"),
             ty::Type::Verbatim(v0) => {
-                let mut formatter = formatter.debug_tuple("Verbatim");
-                formatter.field(v0);
-                formatter.finish()
+                let mut y = f.debug_tuple("Verbatim");
+                y.field(v0);
+                y.finish()
             },
         }
     }
 }
 impl Debug for ty::Array {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         impl ty::Array {
-            fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut formatter = formatter.debug_struct(name);
-                formatter.field("bracket", &self.bracket);
-                formatter.field("elem", &self.elem);
-                formatter.field("semi", &self.semi);
-                formatter.field("len", &self.len);
-                formatter.finish()
+            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+                let mut y = f.debug_struct(name);
+                y.field("bracket", &self.bracket);
+                y.field("elem", &self.elem);
+                y.field("semi", &self.semi);
+                y.field("len", &self.len);
+                y.finish()
             }
         }
-        self.debug(formatter, "ty::Array")
+        self.debug(f, "ty::Array")
     }
 }
-impl Debug for ty::BareFn {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl ty::BareFn {
-            fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut formatter = formatter.debug_struct(name);
-                formatter.field("lifetimes", &self.lifes);
-                formatter.field("unsafety", &self.unsafe_);
-                formatter.field("abi", &self.abi);
-                formatter.field("fn_", &self.fn_);
-                formatter.field("paren", &self.paren);
-                formatter.field("inputs", &self.args);
-                formatter.field("vari", &self.vari);
-                formatter.field("output", &self.ret);
-                formatter.finish()
+impl Debug for ty::Fn {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl ty::Fn {
+            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+                let mut y = f.debug_struct(name);
+                y.field("lifetimes", &self.lifes);
+                y.field("unsafety", &self.unsafe_);
+                y.field("abi", &self.abi);
+                y.field("fn_", &self.fn_);
+                y.field("paren", &self.paren);
+                y.field("inputs", &self.args);
+                y.field("vari", &self.vari);
+                y.field("output", &self.ret);
+                y.finish()
             }
         }
-        self.debug(formatter, "ty::BareFn")
+        self.debug(f, "ty::Fn")
     }
 }
 impl Debug for ty::Group {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         impl ty::Group {
-            fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut formatter = formatter.debug_struct(name);
-                formatter.field("group", &self.group);
-                formatter.field("elem", &self.elem);
-                formatter.finish()
+            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+                let mut y = f.debug_struct(name);
+                y.field("group", &self.group);
+                y.field("elem", &self.elem);
+                y.finish()
             }
         }
-        self.debug(formatter, "ty::Group")
+        self.debug(f, "ty::Group")
     }
 }
 impl Debug for ty::Impl {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         impl ty::Impl {
-            fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut formatter = formatter.debug_struct(name);
-                formatter.field("impl_", &self.impl_);
-                formatter.field("bounds", &self.bounds);
-                formatter.finish()
+            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+                let mut y = f.debug_struct(name);
+                y.field("impl_", &self.impl_);
+                y.field("bounds", &self.bounds);
+                y.finish()
             }
         }
-        self.debug(formatter, "ty::Impl")
+        self.debug(f, "ty::Impl")
     }
 }
 impl Debug for ty::Infer {
@@ -2533,71 +2533,71 @@ impl Debug for UnOp {
         }
     }
 }
-impl Debug for UseGlob {
+impl Debug for item::Use::Glob {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("UseGlob");
+        let mut formatter = formatter.debug_struct("item::Use::Glob");
         formatter.field("star", &self.star);
         formatter.finish()
     }
 }
-impl Debug for UseGroup {
+impl Debug for item::Use::Group {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("UseGroup");
+        let mut formatter = formatter.debug_struct("item::Use::Group");
         formatter.field("brace", &self.brace);
-        formatter.field("items", &self.items);
+        formatter.field("items", &self.elems);
         formatter.finish()
     }
 }
-impl Debug for UseName {
+impl Debug for item::Use::Name {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("UseName");
+        let mut formatter = formatter.debug_struct("item::Use::Name");
         formatter.field("ident", &self.ident);
         formatter.finish()
     }
 }
-impl Debug for UsePath {
+impl Debug for item::Use::Path {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("UsePath");
+        let mut formatter = formatter.debug_struct("item::Use::Path");
         formatter.field("ident", &self.ident);
         formatter.field("colon2", &self.colon2);
         formatter.field("tree", &self.tree);
         formatter.finish()
     }
 }
-impl Debug for UseRename {
+impl Debug for item::Use::Rename {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("UseRename");
+        let mut formatter = formatter.debug_struct("item::Use::Rename");
         formatter.field("ident", &self.ident);
         formatter.field("as_", &self.as_);
         formatter.field("rename", &self.rename);
         formatter.finish()
     }
 }
-impl Debug for UseTree {
+impl Debug for item::Use::Tree {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("UseTree::")?;
+        formatter.write_str("item::Use::Tree::")?;
         match self {
-            UseTree::Path(v0) => {
+            item::Use::Tree::Path(v0) => {
                 let mut formatter = formatter.debug_tuple("Path");
                 formatter.field(v0);
                 formatter.finish()
             },
-            UseTree::Name(v0) => {
+            item::Use::Tree::Name(v0) => {
                 let mut formatter = formatter.debug_tuple("Name");
                 formatter.field(v0);
                 formatter.finish()
             },
-            UseTree::Rename(v0) => {
+            item::Use::Tree::Rename(v0) => {
                 let mut formatter = formatter.debug_tuple("Rename");
                 formatter.field(v0);
                 formatter.finish()
             },
-            UseTree::Glob(v0) => {
+            item::Use::Tree::Glob(v0) => {
                 let mut formatter = formatter.debug_tuple("Glob");
                 formatter.field(v0);
                 formatter.finish()
             },
-            UseTree::Group(v0) => {
+            item::Use::Tree::Group(v0) => {
                 let mut formatter = formatter.debug_tuple("Group");
                 formatter.field(v0);
                 formatter.finish()
@@ -2605,9 +2605,9 @@ impl Debug for UseTree {
         }
     }
 }
-impl Debug for Variadic {
+impl Debug for item::Variadic {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("Variadic");
+        let mut formatter = formatter.debug_struct("item::Variadic");
         formatter.field("attrs", &self.attrs);
         formatter.field("pat", &self.pat);
         formatter.field("dots", &self.dots);

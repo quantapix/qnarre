@@ -186,7 +186,7 @@
       }
     },
     {
-      "ident": "ty::BareFnArg",
+      "ident": "ty::FnArg",
       "features": {
         "any": [
           "derive",
@@ -217,7 +217,7 @@
       }
     },
     {
-      "ident": "ty::BareVari",
+      "ident": "ty::Variadic",
       "features": {
         "any": [
           "derive",
@@ -2113,16 +2113,16 @@
       }
     },
     {
-      "ident": "FnArg",
+      "ident": "item::FnArg",
       "features": {
         "any": [
           "full"
         ]
       },
       "variants": {
-        "Receiver": [
+        "item::Receiver": [
           {
-            "syn": "Receiver"
+            "syn": "item::Receiver"
           }
         ],
         "Typed": [
@@ -2133,7 +2133,7 @@
       }
     },
     {
-      "ident": "ForeignItem",
+      "ident": "item::Foreign::Item",
       "features": {
         "any": [
           "full"
@@ -2142,22 +2142,22 @@
       "variants": {
         "Fn": [
           {
-            "syn": "ForeignItemFn"
+            "syn": "item::Foreign::Fn"
           }
         ],
         "Static": [
           {
-            "syn": "ForeignItemStatic"
+            "syn": "item::Foreign::Static"
           }
         ],
         "Type": [
           {
-            "syn": "ForeignItemType"
+            "syn": "item::Foreign::Type"
           }
         ],
         "Macro": [
           {
-            "syn": "ForeignItemMacro"
+            "syn": "item::Foreign::Mac"
           }
         ],
         "Verbatim": [
@@ -2169,7 +2169,7 @@
       "exhaustive": false
     },
     {
-      "ident": "ForeignItemFn",
+      "ident": "item::Foreign::Fn",
       "features": {
         "any": [
           "full"
@@ -2185,7 +2185,7 @@
           "syn": "Visibility"
         },
         "sig": {
-          "syn": "Signature"
+          "syn": "item::Sig"
         },
         "semi": {
           "token": "Semi"
@@ -2193,7 +2193,7 @@
       }
     },
     {
-      "ident": "ForeignItemMacro",
+      "ident": "item::Foreign::Mac",
       "features": {
         "any": [
           "full"
@@ -2216,7 +2216,7 @@
       }
     },
     {
-      "ident": "ForeignItemStatic",
+      "ident": "item::Foreign::Static",
       "features": {
         "any": [
           "full"
@@ -2254,7 +2254,7 @@
       }
     },
     {
-      "ident": "ForeignItemType",
+      "ident": "item::Foreign::Type",
       "features": {
         "any": [
           "full"
@@ -2386,7 +2386,7 @@
       }
     },
     {
-      "ident": "ImplItem",
+      "ident": "item::Impl::Item",
       "features": {
         "any": [
           "full"
@@ -2395,22 +2395,22 @@
       "variants": {
         "Const": [
           {
-            "syn": "ImplItemConst"
+            "syn": "item::Impl::Const"
           }
         ],
         "Fn": [
           {
-            "syn": "ImplItemFn"
+            "syn": "item::Impl::Fn"
           }
         ],
         "Type": [
           {
-            "syn": "ImplItemType"
+            "syn": "item::Impl::Type"
           }
         ],
         "Macro": [
           {
-            "syn": "ImplItemMacro"
+            "syn": "item::Impl::Mac"
           }
         ],
         "Verbatim": [
@@ -2422,7 +2422,7 @@
       "exhaustive": false
     },
     {
-      "ident": "ImplItemConst",
+      "ident": "item::Impl::Const",
       "features": {
         "any": [
           "full"
@@ -2469,7 +2469,7 @@
       }
     },
     {
-      "ident": "ImplItemFn",
+      "ident": "item::Impl::Fn",
       "features": {
         "any": [
           "full"
@@ -2490,7 +2490,7 @@
           }
         },
         "sig": {
-          "syn": "Signature"
+          "syn": "item::Sig"
         },
         "block": {
           "syn": "Block"
@@ -2498,7 +2498,7 @@
       }
     },
     {
-      "ident": "ImplItemMacro",
+      "ident": "item::Impl::Mac",
       "features": {
         "any": [
           "full"
@@ -2521,7 +2521,7 @@
       }
     },
     {
-      "ident": "ImplItemType",
+      "ident": "item::Impl::Type",
       "features": {
         "any": [
           "full"
@@ -2562,7 +2562,7 @@
       }
     },
     {
-      "ident": "ImplRestriction",
+      "ident": "item::Impl::Restriction",
       "features": {
         "any": [
           "full"
@@ -2598,77 +2598,77 @@
       "variants": {
         "Const": [
           {
-            "syn": "ItemConst"
+            "syn": "item::Const"
           }
         ],
         "Enum": [
           {
-            "syn": "ItemEnum"
+            "syn": "item::Enum"
           }
         ],
         "ExternCrate": [
           {
-            "syn": "ItemExternCrate"
+            "syn": "item::ExternCrate"
           }
         ],
         "Fn": [
           {
-            "syn": "ItemFn"
+            "syn": "item::Fn"
           }
         ],
-        "ForeignMod": [
+        "Foreign": [
           {
-            "syn": "ItemForeignMod"
+            "syn": "item::Foreign"
           }
         ],
         "Impl": [
           {
-            "syn": "ItemImpl"
+            "syn": "item::Impl"
           }
         ],
         "Macro": [
           {
-            "syn": "ItemMacro"
+            "syn": "item::Mac"
           }
         ],
         "Mod": [
           {
-            "syn": "ItemMod"
+            "syn": "item::Mod"
           }
         ],
         "Static": [
           {
-            "syn": "ItemStatic"
+            "syn": "item::Static"
           }
         ],
         "Struct": [
           {
-            "syn": "ItemStruct"
+            "syn": "item::Struct"
           }
         ],
         "Trait": [
           {
-            "syn": "ItemTrait"
+            "syn": "item::Trait"
           }
         ],
         "TraitAlias": [
           {
-            "syn": "ItemTraitAlias"
+            "syn": "item::TraitAlias"
           }
         ],
         "Type": [
           {
-            "syn": "ItemType"
+            "syn": "item::Type"
           }
         ],
         "Union": [
           {
-            "syn": "ItemUnion"
+            "syn": "item::Union"
           }
         ],
         "Use": [
           {
-            "syn": "ItemUse"
+            "syn": "item::Use"
           }
         ],
         "Verbatim": [
@@ -2680,7 +2680,7 @@
       "exhaustive": false
     },
     {
-      "ident": "ItemConst",
+      "ident": "item::Const",
       "features": {
         "any": [
           "full"
@@ -2726,7 +2726,7 @@
       }
     },
     {
-      "ident": "ItemEnum",
+      "ident": "item::Enum",
       "features": {
         "any": [
           "full"
@@ -2764,7 +2764,7 @@
       }
     },
     {
-      "ident": "ItemExternCrate",
+      "ident": "item::ExternCrate",
       "features": {
         "any": [
           "full"
@@ -2806,7 +2806,7 @@
       }
     },
     {
-      "ident": "ItemFn",
+      "ident": "item::Fn",
       "features": {
         "any": [
           "full"
@@ -2822,7 +2822,7 @@
           "syn": "Visibility"
         },
         "sig": {
-          "syn": "Signature"
+          "syn": "item::Sig"
         },
         "block": {
           "box": {
@@ -2832,7 +2832,7 @@
       }
     },
     {
-      "ident": "ItemForeignMod",
+      "ident": "item::Foreign",
       "features": {
         "any": [
           "full"
@@ -2857,13 +2857,13 @@
         },
         "items": {
           "vec": {
-            "syn": "ForeignItem"
+            "syn": "item::Foreign::Item"
           }
         }
       }
     },
     {
-      "ident": "ItemImpl",
+      "ident": "item::Impl",
       "features": {
         "any": [
           "full"
@@ -2918,13 +2918,13 @@
         },
         "items": {
           "vec": {
-            "syn": "ImplItem"
+            "syn": "item::Impl::Item"
           }
         }
       }
     },
     {
-      "ident": "ItemMacro",
+      "ident": "item::Mac",
       "features": {
         "any": [
           "full"
@@ -2952,7 +2952,7 @@
       }
     },
     {
-      "ident": "ItemMod",
+      "ident": "item::Mod",
       "features": {
         "any": [
           "full"
@@ -3000,7 +3000,7 @@
       }
     },
     {
-      "ident": "ItemStatic",
+      "ident": "item::Static",
       "features": {
         "any": [
           "full"
@@ -3046,7 +3046,7 @@
       }
     },
     {
-      "ident": "ItemStruct",
+      "ident": "item::Struct",
       "features": {
         "any": [
           "full"
@@ -3081,7 +3081,7 @@
       }
     },
     {
-      "ident": "ItemTrait",
+      "ident": "item::Trait",
       "features": {
         "any": [
           "full"
@@ -3108,7 +3108,7 @@
         },
         "restriction": {
           "option": {
-            "syn": "ImplRestriction"
+            "syn": "item::Impl::Restriction"
           }
         },
         "trait_": {
@@ -3138,13 +3138,13 @@
         },
         "items": {
           "vec": {
-            "syn": "TraitItem"
+            "syn": "item::Trait::Item"
           }
         }
       }
     },
     {
-      "ident": "ItemTraitAlias",
+      "ident": "item::TraitAlias",
       "features": {
         "any": [
           "full"
@@ -3185,7 +3185,7 @@
       }
     },
     {
-      "ident": "ItemType",
+      "ident": "item::Type",
       "features": {
         "any": [
           "full"
@@ -3223,7 +3223,7 @@
       }
     },
     {
-      "ident": "ItemUnion",
+      "ident": "item::Union",
       "features": {
         "any": [
           "full"
@@ -3253,7 +3253,7 @@
       }
     },
     {
-      "ident": "ItemUse",
+      "ident": "item::Use",
       "features": {
         "any": [
           "full"
@@ -3277,7 +3277,7 @@
           }
         },
         "tree": {
-          "syn": "UseTree"
+          "syn": "item::Use::Tree"
         },
         "semi": {
           "token": "Semi"
@@ -4242,7 +4242,7 @@
       }
     },
     {
-      "ident": "Receiver",
+      "ident": "item::Receiver",
       "features": {
         "any": [
           "full"
@@ -4311,7 +4311,7 @@
       }
     },
     {
-      "ident": "Signature",
+      "ident": "item::Sig",
       "features": {
         "any": [
           "full"
@@ -4353,14 +4353,14 @@
         "inputs": {
           "punctuated": {
             "element": {
-              "syn": "FnArg"
+              "syn": "item::FnArg"
             },
             "punct": "Comma"
           }
         },
         "vari": {
           "option": {
-            "syn": "Variadic"
+            "syn": "item::Variadic"
           }
         },
         "output": {
@@ -4488,7 +4488,7 @@
       }
     },
     {
-      "ident": "TraitItem",
+      "ident": "item::Trait::Item",
       "features": {
         "any": [
           "full"
@@ -4497,22 +4497,22 @@
       "variants": {
         "Const": [
           {
-            "syn": "TraitItemConst"
+            "syn": "item::Trait::Const"
           }
         ],
         "Fn": [
           {
-            "syn": "TraitItemFn"
+            "syn": "item::Trait::Fn"
           }
         ],
         "Type": [
           {
-            "syn": "TraitItemType"
+            "syn": "item::Trait::Type"
           }
         ],
         "Macro": [
           {
-            "syn": "TraitItemMacro"
+            "syn": "item::Trait::Mac"
           }
         ],
         "Verbatim": [
@@ -4524,7 +4524,7 @@
       "exhaustive": false
     },
     {
-      "ident": "TraitItemConst",
+      "ident": "item::Trait::Const",
       "features": {
         "any": [
           "full"
@@ -4569,7 +4569,7 @@
       }
     },
     {
-      "ident": "TraitItemFn",
+      "ident": "item::Trait::Fn",
       "features": {
         "any": [
           "full"
@@ -4582,7 +4582,7 @@
           }
         },
         "sig": {
-          "syn": "Signature"
+          "syn": "item::Sig"
         },
         "default": {
           "option": {
@@ -4597,7 +4597,7 @@
       }
     },
     {
-      "ident": "TraitItemMacro",
+      "ident": "item::Trait::Mac",
       "features": {
         "any": [
           "full"
@@ -4620,7 +4620,7 @@
       }
     },
     {
-      "ident": "TraitItemType",
+      "ident": "item::Trait::Type",
       "features": {
         "any": [
           "full"
@@ -4685,9 +4685,9 @@
             "syn": "ty::Array"
           }
         ],
-        "BareFn": [
+        "Fn": [
           {
-            "syn": "ty::BareFn"
+            "syn": "ty::Fn"
           }
         ],
         "Group": [
@@ -4784,7 +4784,7 @@
       }
     },
     {
-      "ident": "ty::BareFn",
+      "ident": "ty::Fn",
       "features": {
         "any": [
           "derive",
@@ -4816,14 +4816,14 @@
         "inputs": {
           "punctuated": {
             "element": {
-              "syn": "ty::BareFnArg"
+              "syn": "ty::FnArg"
             },
             "punct": "Comma"
           }
         },
         "vari": {
           "option": {
-            "syn": "ty::BareVari"
+            "syn": "ty::Variadic"
           }
         },
         "output": {
@@ -5172,7 +5172,7 @@
       "exhaustive": false
     },
     {
-      "ident": "UseGlob",
+      "ident": "item::Use::Glob",
       "features": {
         "any": [
           "full"
@@ -5185,7 +5185,7 @@
       }
     },
     {
-      "ident": "UseGroup",
+      "ident": "item::Use::Group",
       "features": {
         "any": [
           "full"
@@ -5198,7 +5198,7 @@
         "items": {
           "punctuated": {
             "element": {
-              "syn": "UseTree"
+              "syn": "item::Use::Tree"
             },
             "punct": "Comma"
           }
@@ -5206,7 +5206,7 @@
       }
     },
     {
-      "ident": "UseName",
+      "ident": "item::Use::Name",
       "features": {
         "any": [
           "full"
@@ -5219,7 +5219,7 @@
       }
     },
     {
-      "ident": "UsePath",
+      "ident": "item::Use::Path",
       "features": {
         "any": [
           "full"
@@ -5234,13 +5234,13 @@
         },
         "tree": {
           "box": {
-            "syn": "UseTree"
+            "syn": "item::Use::Tree"
           }
         }
       }
     },
     {
-      "ident": "UseRename",
+      "ident": "item::Use::Rename",
       "features": {
         "any": [
           "full"
@@ -5259,7 +5259,7 @@
       }
     },
     {
-      "ident": "UseTree",
+      "ident": "item::Use::Tree",
       "features": {
         "any": [
           "full"
@@ -5268,33 +5268,33 @@
       "variants": {
         "Path": [
           {
-            "syn": "UsePath"
+            "syn": "item::Use::Path"
           }
         ],
         "Name": [
           {
-            "syn": "UseName"
+            "syn": "item::Use::Name"
           }
         ],
         "Rename": [
           {
-            "syn": "UseRename"
+            "syn": "item::Use::Rename"
           }
         ],
         "Glob": [
           {
-            "syn": "UseGlob"
+            "syn": "item::Use::Glob"
           }
         ],
         "Group": [
           {
-            "syn": "UseGroup"
+            "syn": "item::Use::Group"
           }
         ]
       }
     },
     {
-      "ident": "Variadic",
+      "ident": "item::Variadic",
       "features": {
         "any": [
           "full"

@@ -8,7 +8,7 @@ fn test_async_fn() {
     snapshot!(input as Item, @r###"
     Item::Fn {
         vis: Visibility::Inherited,
-        sig: Signature {
+        sig: item::Sig {
             async_: Some,
             ident: "process",
             gens: Generics,
