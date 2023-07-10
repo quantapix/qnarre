@@ -4,6 +4,8 @@ extern crate rustc_data_structures;
 extern crate rustc_driver;
 extern crate rustc_span;
 extern crate thin_vec;
+use rustc_ast::ast::attr::Attr;
+use rustc_ast::ast::attr::Style;
 use rustc_ast::ast::expr::Field;
 use rustc_ast::ast::item::Use::Tree;
 use rustc_ast::ast::lit::FloatType;
@@ -25,8 +27,6 @@ use rustc_ast::ast::AttrArgsEq;
 use rustc_ast::ast::AttrId;
 use rustc_ast::ast::AttrItem;
 use rustc_ast::ast::AttrKind;
-use rustc_ast::ast::AttrStyle;
-use rustc_ast::ast::Attribute;
 use rustc_ast::ast::BareFnTy;
 use rustc_ast::ast::BinOpKind;
 use rustc_ast::ast::BindingAnnotation;
@@ -421,7 +421,7 @@ spanless_eq_struct!(Arm; attrs pat guard body span id is_placeholder);
 spanless_eq_struct!(AssocConstraint; id ident gen_args kind span);
 spanless_eq_struct!(AttrItem; path args tokens);
 spanless_eq_struct!(AttrTokenStream; 0);
-spanless_eq_struct!(Attribute; kind id style span);
+spanless_eq_struct!(attr::Attr; kind id style span);
 spanless_eq_struct!(AttributesData; attrs tokens);
 spanless_eq_struct!(BareFnTy; unsafety ext generic_params decl decl_span);
 spanless_eq_struct!(BindingAnnotation; 0 1);
@@ -492,7 +492,7 @@ spanless_eq_enum!(AssocItemKind; Const(0) Fn(0) Type(0) MacCall(0));
 spanless_eq_enum!(Async; Yes(span closure_id return_impl_trait_id) No);
 spanless_eq_enum!(AttrArgs; Empty Delimited(0) Eq(0 1));
 spanless_eq_enum!(AttrArgsEq; Ast(0) Hir(0));
-spanless_eq_enum!(AttrStyle; Outer Inner);
+spanless_eq_enum!(attr::Style; Outer Inner);
 spanless_eq_enum!(AttrTokenTree; Token(0 1) Delimited(0 1 2) Attributes(0));
 spanless_eq_enum!(BinOpKind; Add Sub Mul Div Rem And Or BitXor BitAnd BitOr Shl Shr Eq Lt Le Ne Ge Gt);
 spanless_eq_enum!(BlockCheckMode; Default Unsafe(0));
@@ -659,10 +659,10 @@ impl SpanlessEq for TokenStream {
         }
     }
 }
-fn doc_comment<'a>(style: AttrStyle, unescaped: Symbol, trees: &mut impl Iterator<Item = &'a TokenTree>) -> bool {
+fn doc_comment<'a>(style: attr::Style, unescaped: Symbol, trees: &mut impl Iterator<Item = &'a TokenTree>) -> bool {
     if match style {
-        AttrStyle::Outer => false,
-        AttrStyle::Inner => true,
+        attr::Style::Outer => false,
+        attr::Style::Inner => true,
     } {
         match trees.next() {
             Some(TokenTree::Token(

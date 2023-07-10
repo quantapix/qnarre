@@ -159,8 +159,8 @@ fn translate_message(diagnostic: &Diagnostic) -> Cow<'static, str> {
             .get_message(identifier)
             .expect("missing diagnostic in fluent bundle");
         let value = match attr {
-            Some(attr) => message
-                .get_attribute(attr)
+            Some(x) => message
+                .get_attribute(x)
                 .expect("missing attribute in fluent message")
                 .value(),
             None => message.value().expect("missing value in fluent message"),

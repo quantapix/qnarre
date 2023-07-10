@@ -10,68 +10,68 @@ use std::{
     fmt::{self, Display},
 };
 
-pub fn parse_inner(x: ParseStream, ys: &mut Vec<Attribute>) -> Result<()> {
+pub fn parse_inner(x: ParseStream, ys: &mut Vec<attr::Attr>) -> Result<()> {
     while x.peek(Token![#]) && x.peek2(Token![!]) {
         ys.push(x.call(single_parse_inner)?);
     }
     Ok(())
 }
-pub fn single_parse_inner(x: ParseStream) -> Result<Attribute> {
+pub fn single_parse_inner(x: ParseStream) -> Result<attr::Attr> {
     let content;
-    Ok(Attribute {
+    Ok(attr::Attr {
         pound: x.parse()?,
-        style: AttrStyle::Inner(x.parse()?),
+        style: attr::Style::Inner(x.parse()?),
         bracket: bracketed!(content in x),
         meta: content.parse()?,
     })
 }
-pub fn single_parse_outer(x: ParseStream) -> Result<Attribute> {
+pub fn single_parse_outer(x: ParseStream) -> Result<attr::Attr> {
     let content;
-    Ok(Attribute {
+    Ok(attr::Attr {
         pound: x.parse()?,
-        style: AttrStyle::Outer,
+        style: attr::Style::Outer,
         bracket: bracketed!(content in x),
         meta: content.parse()?,
     })
 }
 
-impl Parse for Meta {
+impl Parse for meta::Meta {
     fn parse(x: ParseStream) -> Result<Self> {
         let path = x.call(Path::parse_mod_style)?;
         parse_meta_after_path(path, x)
     }
 }
-impl Parse for MetaList {
+impl Parse for meta::List {
     fn parse(x: ParseStream) -> Result<Self> {
         let path = x.call(Path::parse_mod_style)?;
         parse_meta_list_after_path(path, x)
     }
 }
-impl Parse for MetaNameValue {
+impl Parse for meta::NameValue {
     fn parse(x: ParseStream) -> Result<Self> {
         let path = x.call(Path::parse_mod_style)?;
         parse_meta_name_value_after_path(path, x)
     }
 }
 
-pub fn parse_meta_after_path(path: Path, x: ParseStream) -> Result<Meta> {
+pub fn parse_meta_after_path(path: Path, x: ParseStream) -> Result<meta::Meta> {
     if x.peek(tok::Paren) || x.peek(tok::Bracket) || x.peek(tok::Brace) {
-        parse_meta_list_after_path(path, x).map(Meta::List)
+        parse_meta_list_after_path(path, x).map(meta::Meta::List)
     } else if x.peek(Token![=]) {
-        parse_meta_name_value_after_path(path, x).map(Meta::NameValue)
+        parse_meta_name_value_after_path(path, x).map(meta::Meta::NameValue)
     } else {
-        Ok(Meta::Path(path))
+        Ok(meta::Meta::Path(path))
     }
 }
-fn parse_meta_list_after_path(path: Path, x: ParseStream) -> Result<MetaList> {
+fn parse_meta_list_after_path(path: Path, x: ParseStream) -> Result<meta::List> {
     let (delimiter, tokens) = mac_parse_delimiter(x)?;
-    Ok(MetaList {
+    Ok(meta::List {
         path,
         delim: delimiter,
         toks: tokens,
     })
 }
-fn parse_meta_name_value_after_path(path: Path, x: ParseStream) -> Result<MetaNameValue> {
+fn parse_meta_name_value_after_path(path: Path, x: ParseStream) -> Result<meta::NameValue> {
     let eq: Token![=] = x.parse()?;
     let ahead = x.fork();
     let lit: Option<Lit> = ahead.parse()?;
@@ -83,15 +83,15 @@ fn parse_meta_name_value_after_path(path: Path, x: ParseStream) -> Result<MetaNa
     } else {
         x.parse()?
     };
-    Ok(MetaNameValue { path, eq, expr: value })
+    Ok(meta::NameValue { path, eq, expr: value })
 }
 
-pub(super) struct DisplayAttrStyle<'a>(pub &'a AttrStyle);
+pub(super) struct DisplayAttrStyle<'a>(pub &'a attr::Style);
 impl<'a> Display for DisplayAttrStyle<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(match self.0 {
-            AttrStyle::Outer => "#",
-            AttrStyle::Inner(_) => "#!",
+            attr::Style::Outer => "#",
+            attr::Style::Inner(_) => "#!",
         })
     }
 }
@@ -120,7 +120,7 @@ impl Parse for Generics {
             if input.peek(Token![>]) {
                 break;
             }
-            let attrs = input.call(Attribute::parse_outer)?;
+            let attrs = input.call(attr::Attr::parse_outer)?;
             let lookahead = input.lookahead1();
             if lookahead.peek(Lifetime) {
                 params.push_value(GenericParam::Lifetime(LifetimeParam {
@@ -166,7 +166,7 @@ impl Parse for Generics {
 }
 impl Parse for GenericParam {
     fn parse(input: ParseStream) -> Result<Self> {
-        let attrs = input.call(Attribute::parse_outer)?;
+        let attrs = input.call(attr::Attr::parse_outer)?;
         let lookahead = input.lookahead1();
         if lookahead.peek(Ident) {
             Ok(GenericParam::Type(TypeParam {
@@ -192,7 +192,7 @@ impl Parse for LifetimeParam {
     fn parse(input: ParseStream) -> Result<Self> {
         let has_colon;
         Ok(LifetimeParam {
-            attrs: input.call(Attribute::parse_outer)?,
+            attrs: input.call(attr::Attr::parse_outer)?,
             life: input.parse()?,
             colon: {
                 if input.peek(Token![:]) {
@@ -232,7 +232,7 @@ impl Parse for BoundLifetimes {
             lifes: {
                 let mut lifetimes = Punctuated::new();
                 while !input.peek(Token![>]) {
-                    let attrs = input.call(Attribute::parse_outer)?;
+                    let attrs = input.call(attr::Attr::parse_outer)?;
                     let lifetime: Lifetime = input.parse()?;
                     lifetimes.push_value(GenericParam::Lifetime(LifetimeParam {
                         attrs,
@@ -262,7 +262,7 @@ impl Parse for Option<BoundLifetimes> {
 }
 impl Parse for TypeParam {
     fn parse(input: ParseStream) -> Result<Self> {
-        let attrs = input.call(Attribute::parse_outer)?;
+        let attrs = input.call(attr::Attr::parse_outer)?;
         let ident: Ident = input.parse()?;
         let colon: Option<Token![:]> = input.parse()?;
         let mut bounds = Punctuated::new();
@@ -380,7 +380,7 @@ impl Parse for ConstParam {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut default = None;
         Ok(ConstParam {
-            attrs: input.call(Attribute::parse_outer)?,
+            attrs: input.call(attr::Attr::parse_outer)?,
             const_: input.parse()?,
             ident: input.parse()?,
             colon: input.parse()?,
@@ -689,27 +689,27 @@ fn ambiguous_expr(input: ParseStream, #[cfg(feature = "full")] allow_struct: All
     let lhs = unary_expr(input, allow_struct)?;
     parse_expr(input, lhs, allow_struct, Precedence::Any)
 }
-fn expr_attrs(input: ParseStream) -> Result<Vec<Attribute>> {
-    let mut attrs = Vec::new();
+fn expr_attrs(x: ParseStream) -> Result<Vec<attr::Attr>> {
+    let mut ys = Vec::new();
     loop {
-        if input.peek(tok::Group) {
-            let ahead = input.fork();
+        if x.peek(tok::Group) {
+            let ahead = x.fork();
             let group = super::parse_group(&ahead)?;
             if !group.gist.peek(Token![#]) || group.gist.peek2(Token![!]) {
                 break;
             }
-            let attr = group.gist.call(single_parse_outer)?;
+            let y = group.gist.call(single_parse_outer)?;
             if !group.gist.is_empty() {
                 break;
             }
-            attrs.push(attr);
-        } else if input.peek(Token![#]) {
-            attrs.push(input.call(single_parse_outer)?);
+            ys.push(y);
+        } else if x.peek(Token![#]) {
+            ys.push(x.call(single_parse_outer)?);
         } else {
             break;
         }
     }
-    Ok(attrs)
+    Ok(ys)
 }
 fn unary_expr(input: ParseStream, allow_struct: AllowStruct) -> Result<Expr> {
     let begin = input.fork();
@@ -744,7 +744,7 @@ fn unary_expr(input: ParseStream, allow_struct: AllowStruct) -> Result<Expr> {
 }
 fn trailer_expr(
     begin: ParseBuffer,
-    mut attrs: Vec<Attribute>,
+    mut attrs: Vec<attr::Attr>,
     input: ParseStream,
     allow_struct: AllowStruct,
 ) -> Result<Expr> {
@@ -1167,7 +1167,7 @@ impl Parse for expr::Let {
 }
 impl Parse for expr::If {
     fn parse(input: ParseStream) -> Result<Self> {
-        let attrs = input.call(Attribute::parse_outer)?;
+        let attrs = input.call(attr::Attr::parse_outer)?;
         Ok(expr::If {
             attrs,
             if_: input.parse()?,
@@ -1202,14 +1202,14 @@ fn else_block(input: ParseStream) -> Result<(Token![else], Box<Expr>)> {
 impl Parse for expr::Infer {
     fn parse(input: ParseStream) -> Result<Self> {
         Ok(expr::Infer {
-            attrs: input.call(Attribute::parse_outer)?,
+            attrs: input.call(attr::Attr::parse_outer)?,
             underscore: input.parse()?,
         })
     }
 }
 impl Parse for expr::ForLoop {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mut attrs = input.call(Attribute::parse_outer)?;
+        let mut attrs = input.call(attr::Attr::parse_outer)?;
         let label: Option<Label> = input.parse()?;
         let for_: Token![for] = input.parse()?;
         let pat = patt::Patt::parse_multi(input)?;
@@ -1232,7 +1232,7 @@ impl Parse for expr::ForLoop {
 }
 impl Parse for expr::Loop {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mut attrs = input.call(Attribute::parse_outer)?;
+        let mut attrs = input.call(attr::Attr::parse_outer)?;
         let label: Option<Label> = input.parse()?;
         let loop_: Token![loop] = input.parse()?;
         let content;
@@ -1249,7 +1249,7 @@ impl Parse for expr::Loop {
 }
 impl Parse for expr::Match {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mut attrs = input.call(Attribute::parse_outer)?;
+        let mut attrs = input.call(attr::Attr::parse_outer)?;
         let match_: Token![match] = input.parse()?;
         let expr = Expr::parse_without_eager_brace(input)?;
         let content;
@@ -1310,7 +1310,7 @@ impl Parse for expr::Unary {
         expr_unary(input, attrs, allow_struct)
     }
 }
-fn expr_unary(input: ParseStream, attrs: Vec<Attribute>, allow_struct: AllowStruct) -> Result<expr::Unary> {
+fn expr_unary(input: ParseStream, attrs: Vec<attr::Attr>, allow_struct: AllowStruct) -> Result<expr::Unary> {
     Ok(expr::Unary {
         attrs,
         op: input.parse()?,
@@ -1431,7 +1431,7 @@ impl Parse for expr::Async {
     }
 }
 fn closure_arg(input: ParseStream) -> Result<patt::Patt> {
-    let attrs = input.call(Attribute::parse_outer)?;
+    let attrs = input.call(attr::Attr::parse_outer)?;
     let mut pat = patt::Patt::parse_single(input)?;
     if input.peek(Token![:]) {
         Ok(patt::Patt::Type(patt::Type {
@@ -1465,7 +1465,7 @@ fn closure_arg(input: ParseStream) -> Result<patt::Patt> {
 }
 impl Parse for expr::While {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mut attrs = input.call(Attribute::parse_outer)?;
+        let mut attrs = input.call(attr::Attr::parse_outer)?;
         let label: Option<Label> = input.parse()?;
         let while_: Token![while] = input.parse()?;
         let cond = Expr::parse_without_eager_brace(input)?;
@@ -1487,7 +1487,7 @@ impl Parse for expr::Const {
         let const_: Token![const] = input.parse()?;
         let content;
         let brace = braced!(content in input);
-        let inner_attrs = content.call(Attribute::parse_inner)?;
+        let inner_attrs = content.call(attr::Attr::parse_inner)?;
         let stmts = content.call(Block::parse_within)?;
         Ok(expr::Const {
             attrs: inner_attrs,
@@ -1557,7 +1557,7 @@ fn expr_ret(input: ParseStream, allow_struct: AllowStruct) -> Result<expr::Retur
 }
 impl Parse for FieldValue {
     fn parse(input: ParseStream) -> Result<Self> {
-        let attrs = input.call(Attribute::parse_outer)?;
+        let attrs = input.call(attr::Attr::parse_outer)?;
         let member: Member = input.parse()?;
         let (colon, value) = if input.peek(Token![:]) || !member.is_named() {
             let colon: Token![:] = input.parse()?;
@@ -1629,7 +1629,7 @@ impl Parse for expr::Unsafe {
         let unsafe_: Token![unsafe] = input.parse()?;
         let content;
         let brace = braced!(content in input);
-        let inner_attrs = content.call(Attribute::parse_inner)?;
+        let inner_attrs = content.call(attr::Attr::parse_inner)?;
         let stmts = content.call(Block::parse_within)?;
         Ok(expr::Unsafe {
             attrs: inner_attrs,
@@ -1640,7 +1640,7 @@ impl Parse for expr::Unsafe {
 }
 impl Parse for expr::Block {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mut attrs = input.call(Attribute::parse_outer)?;
+        let mut attrs = input.call(attr::Attr::parse_outer)?;
         let label: Option<Label> = input.parse()?;
         let content;
         let brace = braced!(content in input);
@@ -1711,7 +1711,7 @@ impl Parse for expr::Path {
     fn parse(input: ParseStream) -> Result<Self> {
         #[cfg(not(feature = "full"))]
         let attrs = Vec::new();
-        let attrs = input.call(Attribute::parse_outer)?;
+        let attrs = input.call(attr::Attr::parse_outer)?;
         let (qself, path) = qpath(input, true)?;
         Ok(expr::Path { attrs, qself, path })
     }
@@ -1731,7 +1731,7 @@ impl Parse for Arm {
     fn parse(input: ParseStream) -> Result<Arm> {
         let requires_comma;
         Ok(Arm {
-            attrs: input.call(Attribute::parse_outer)?,
+            attrs: input.call(attr::Attr::parse_outer)?,
             pat: patt::Patt::parse_multi(input)?,
             guard: {
                 if input.peek(Token![if]) {
@@ -1830,11 +1830,11 @@ fn check_cast(input: ParseStream) -> Result<()> {
 impl Parse for Item {
     fn parse(input: ParseStream) -> Result<Self> {
         let begin = input.fork();
-        let attrs = input.call(Attribute::parse_outer)?;
+        let attrs = input.call(attr::Attr::parse_outer)?;
         parse_rest_of_item(begin, attrs, input)
     }
 }
-pub fn parse_rest_of_item(begin: ParseBuffer, mut attrs: Vec<Attribute>, input: ParseStream) -> Result<Item> {
+pub fn parse_rest_of_item(begin: ParseBuffer, mut attrs: Vec<attr::Attr>, input: ParseStream) -> Result<Item> {
     let ahead = input.fork();
     let vis: Visibility = ahead.parse()?;
     let lookahead = ahead.lookahead1();
@@ -2078,7 +2078,7 @@ impl FlexibleItemType {
 }
 impl Parse for item::Mac {
     fn parse(input: ParseStream) -> Result<Self> {
-        let attrs = input.call(Attribute::parse_outer)?;
+        let attrs = input.call(attr::Attr::parse_outer)?;
         let path = input.call(Path::parse_mod_style)?;
         let bang: Token![!] = input.parse()?;
         let ident: Option<Ident> = if input.peek(Token![try]) {
@@ -2127,7 +2127,7 @@ fn parse_macro2(begin: ParseBuffer, _vis: Visibility, input: ParseStream) -> Res
 impl Parse for item::ExternCrate {
     fn parse(input: ParseStream) -> Result<Self> {
         Ok(item::ExternCrate {
-            attrs: input.call(Attribute::parse_outer)?,
+            attrs: input.call(attr::Attr::parse_outer)?,
             vis: input.parse()?,
             extern_: input.parse()?,
             crate_: input.parse()?,
@@ -2162,7 +2162,7 @@ impl Parse for item::Use {
     }
 }
 fn parse_item_use(input: ParseStream, allow_crate_root_in_path: bool) -> Result<Option<item::Use>> {
-    let attrs = input.call(Attribute::parse_outer)?;
+    let attrs = input.call(attr::Attr::parse_outer)?;
     let vis: Visibility = input.parse()?;
     let use_: Token![use] = input.parse()?;
     let leading_colon: Option<Token![::]> = input.parse()?;
@@ -2255,7 +2255,7 @@ fn parse_use_tree(input: ParseStream, allow_crate_root_in_path: bool) -> Result<
 impl Parse for item::Static {
     fn parse(input: ParseStream) -> Result<Self> {
         Ok(item::Static {
-            attrs: input.call(Attribute::parse_outer)?,
+            attrs: input.call(attr::Attr::parse_outer)?,
             vis: input.parse()?,
             static_: input.parse()?,
             mut_: input.parse()?,
@@ -2271,7 +2271,7 @@ impl Parse for item::Static {
 impl Parse for item::Const {
     fn parse(input: ParseStream) -> Result<Self> {
         Ok(item::Const {
-            attrs: input.call(Attribute::parse_outer)?,
+            attrs: input.call(attr::Attr::parse_outer)?,
             vis: input.parse()?,
             const_: input.parse()?,
             ident: {
@@ -2330,7 +2330,7 @@ impl Parse for item::Sig {
 }
 impl Parse for item::Fn {
     fn parse(input: ParseStream) -> Result<Self> {
-        let outer_attrs = input.call(Attribute::parse_outer)?;
+        let outer_attrs = input.call(attr::Attr::parse_outer)?;
         let vis: Visibility = input.parse()?;
         let sig: item::Sig = input.parse()?;
         parse_rest_of_fn(input, outer_attrs, vis, sig)
@@ -2338,7 +2338,7 @@ impl Parse for item::Fn {
 }
 fn parse_rest_of_fn(
     input: ParseStream,
-    mut attrs: Vec<Attribute>,
+    mut attrs: Vec<attr::Attr>,
     vis: Visibility,
     sig: item::Sig,
 ) -> Result<item::Fn> {
@@ -2356,7 +2356,7 @@ fn parse_rest_of_fn(
 impl Parse for item::FnArg {
     fn parse(input: ParseStream) -> Result<Self> {
         let allow_variadic = false;
-        let attrs = input.call(Attribute::parse_outer)?;
+        let attrs = input.call(attr::Attr::parse_outer)?;
         match parse_fn_arg_or_variadic(input, attrs, allow_variadic)? {
             FnArgOrVariadic::FnArg(arg) => Ok(arg),
             FnArgOrVariadic::Variadic(_) => unreachable!(),
@@ -2369,7 +2369,7 @@ enum FnArgOrVariadic {
 }
 fn parse_fn_arg_or_variadic(
     input: ParseStream,
-    attrs: Vec<Attribute>,
+    attrs: Vec<attr::Attr>,
     allow_variadic: bool,
 ) -> Result<FnArgOrVariadic> {
     let ahead = input.fork();
@@ -2453,7 +2453,7 @@ fn parse_fn_args(input: ParseStream) -> Result<(Punctuated<item::FnArg, Token![,
     let mut vari = None;
     let mut has_receiver = false;
     while !input.is_empty() {
-        let attrs = input.call(Attribute::parse_outer)?;
+        let attrs = input.call(attr::Attr::parse_outer)?;
         if let Some(dots) = input.parse::<Option<Token![...]>>()? {
             vari = Some(item::Variadic {
                 attrs,
@@ -2495,7 +2495,7 @@ fn parse_fn_args(input: ParseStream) -> Result<(Punctuated<item::FnArg, Token![,
 }
 impl Parse for item::Mod {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mut attrs = input.call(Attribute::parse_outer)?;
+        let mut attrs = input.call(attr::Attr::parse_outer)?;
         let vis: Visibility = input.parse()?;
         let unsafety: Option<Token![unsafe]> = input.parse()?;
         let mod_: Token![mod] = input.parse()?;
@@ -2539,7 +2539,7 @@ impl Parse for item::Mod {
 }
 impl Parse for item::Foreign {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mut attrs = input.call(Attribute::parse_outer)?;
+        let mut attrs = input.call(attr::Attr::parse_outer)?;
         let unsafety: Option<Token![unsafe]> = input.parse()?;
         let abi: Abi = input.parse()?;
         let content;
@@ -2561,7 +2561,7 @@ impl Parse for item::Foreign {
 impl Parse for item::Foreign::Item {
     fn parse(input: ParseStream) -> Result<Self> {
         let begin = input.fork();
-        let mut attrs = input.call(Attribute::parse_outer)?;
+        let mut attrs = input.call(attr::Attr::parse_outer)?;
         let ahead = input.fork();
         let vis: Visibility = ahead.parse()?;
         let lookahead = ahead.lookahead1();
@@ -2571,7 +2571,7 @@ impl Parse for item::Foreign::Item {
             if input.peek(tok::Brace) {
                 let content;
                 braced!(content in input);
-                content.call(Attribute::parse_inner)?;
+                content.call(attr::Attr::parse_inner)?;
                 content.call(Block::parse_within)?;
                 Ok(item::Foreign::Item::Verbatim(verbatim_between(&begin, input)))
             } else {
@@ -2633,7 +2633,7 @@ impl Parse for item::Foreign::Item {
 }
 impl Parse for item::Foreign::Fn {
     fn parse(input: ParseStream) -> Result<Self> {
-        let attrs = input.call(Attribute::parse_outer)?;
+        let attrs = input.call(attr::Attr::parse_outer)?;
         let vis: Visibility = input.parse()?;
         let sig: item::Sig = input.parse()?;
         let semi: Token![;] = input.parse()?;
@@ -2643,7 +2643,7 @@ impl Parse for item::Foreign::Fn {
 impl Parse for item::Foreign::Static {
     fn parse(input: ParseStream) -> Result<Self> {
         Ok(item::Foreign::Static {
-            attrs: input.call(Attribute::parse_outer)?,
+            attrs: input.call(attr::Attr::parse_outer)?,
             vis: input.parse()?,
             static_: input.parse()?,
             mut_: input.parse()?,
@@ -2657,7 +2657,7 @@ impl Parse for item::Foreign::Static {
 impl Parse for item::Foreign::Type {
     fn parse(input: ParseStream) -> Result<Self> {
         Ok(item::Foreign::Type {
-            attrs: input.call(Attribute::parse_outer)?,
+            attrs: input.call(attr::Attr::parse_outer)?,
             vis: input.parse()?,
             type_: input.parse()?,
             ident: input.parse()?,
@@ -2697,7 +2697,7 @@ fn parse_foreign_item_type(begin: ParseBuffer, input: ParseStream) -> Result<ite
 }
 impl Parse for item::Foreign::Mac {
     fn parse(input: ParseStream) -> Result<Self> {
-        let attrs = input.call(Attribute::parse_outer)?;
+        let attrs = input.call(attr::Attr::parse_outer)?;
         let mac: Macro = input.parse()?;
         let semi: Option<Token![;]> = if mac.delim.is_brace() {
             None
@@ -2710,7 +2710,7 @@ impl Parse for item::Foreign::Mac {
 impl Parse for item::Type {
     fn parse(input: ParseStream) -> Result<Self> {
         Ok(item::Type {
-            attrs: input.call(Attribute::parse_outer)?,
+            attrs: input.call(attr::Attr::parse_outer)?,
             vis: input.parse()?,
             type_: input.parse()?,
             ident: input.parse()?,
@@ -2754,7 +2754,7 @@ fn parse_item_type(begin: ParseBuffer, input: ParseStream) -> Result<Item> {
 }
 impl Parse for item::Struct {
     fn parse(input: ParseStream) -> Result<Self> {
-        let attrs = input.call(Attribute::parse_outer)?;
+        let attrs = input.call(attr::Attr::parse_outer)?;
         let vis = input.parse::<Visibility>()?;
         let struct_ = input.parse::<Token![struct]>()?;
         let ident = input.parse::<Ident>()?;
@@ -2776,7 +2776,7 @@ impl Parse for item::Struct {
 }
 impl Parse for item::Enum {
     fn parse(input: ParseStream) -> Result<Self> {
-        let attrs = input.call(Attribute::parse_outer)?;
+        let attrs = input.call(attr::Attr::parse_outer)?;
         let vis = input.parse::<Visibility>()?;
         let enum_ = input.parse::<Token![enum]>()?;
         let ident = input.parse::<Ident>()?;
@@ -2798,7 +2798,7 @@ impl Parse for item::Enum {
 }
 impl Parse for item::Union {
     fn parse(input: ParseStream) -> Result<Self> {
-        let attrs = input.call(Attribute::parse_outer)?;
+        let attrs = input.call(attr::Attr::parse_outer)?;
         let vis = input.parse::<Visibility>()?;
         let union_ = input.parse::<Token![union]>()?;
         let ident = input.parse::<Ident>()?;
@@ -2832,7 +2832,7 @@ fn parse_trait_or_trait_alias(input: ParseStream) -> Result<Item> {
 }
 impl Parse for item::Trait {
     fn parse(input: ParseStream) -> Result<Self> {
-        let outer_attrs = input.call(Attribute::parse_outer)?;
+        let outer_attrs = input.call(attr::Attr::parse_outer)?;
         let vis: Visibility = input.parse()?;
         let unsafety: Option<Token![unsafe]> = input.parse()?;
         let auto_: Option<Token![auto]> = input.parse()?;
@@ -2844,7 +2844,7 @@ impl Parse for item::Trait {
 }
 fn parse_rest_of_trait(
     input: ParseStream,
-    mut attrs: Vec<Attribute>,
+    mut attrs: Vec<attr::Attr>,
     vis: Visibility,
     unsafety: Option<Token![unsafe]>,
     auto_: Option<Token![auto]>,
@@ -2897,8 +2897,8 @@ impl Parse for item::TraitAlias {
 }
 fn parse_start_of_trait_alias(
     input: ParseStream,
-) -> Result<(Vec<Attribute>, Visibility, Token![trait], Ident, Generics)> {
-    let attrs = input.call(Attribute::parse_outer)?;
+) -> Result<(Vec<attr::Attr>, Visibility, Token![trait], Ident, Generics)> {
+    let attrs = input.call(attr::Attr::parse_outer)?;
     let vis: Visibility = input.parse()?;
     let trait_: Token![trait] = input.parse()?;
     let ident: Ident = input.parse()?;
@@ -2907,7 +2907,7 @@ fn parse_start_of_trait_alias(
 }
 fn parse_rest_of_trait_alias(
     input: ParseStream,
-    attrs: Vec<Attribute>,
+    attrs: Vec<attr::Attr>,
     vis: Visibility,
     trait_: Token![trait],
     ident: Ident,
@@ -2941,7 +2941,7 @@ fn parse_rest_of_trait_alias(
 impl Parse for item::Trait::Item {
     fn parse(input: ParseStream) -> Result<Self> {
         let begin = input.fork();
-        let mut attrs = input.call(Attribute::parse_outer)?;
+        let mut attrs = input.call(attr::Attr::parse_outer)?;
         let vis: Visibility = input.parse()?;
         let default_: Option<Token![default]> = input.parse()?;
         let ahead = input.fork();
@@ -2995,7 +2995,7 @@ impl Parse for item::Trait::Item {
 impl Parse for item::Trait::Const {
     fn parse(input: ParseStream) -> Result<Self> {
         Ok(item::Trait::Const {
-            attrs: input.call(Attribute::parse_outer)?,
+            attrs: input.call(attr::Attr::parse_outer)?,
             const_: input.parse()?,
             ident: {
                 let lookahead = input.lookahead1();
@@ -3023,7 +3023,7 @@ impl Parse for item::Trait::Const {
 }
 impl Parse for item::Trait::Fn {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mut attrs = input.call(Attribute::parse_outer)?;
+        let mut attrs = input.call(attr::Attr::parse_outer)?;
         let sig: item::Sig = input.parse()?;
         let lookahead = input.lookahead1();
         let (brace, stmts, semi) = if lookahead.peek(tok::Brace) {
@@ -3048,7 +3048,7 @@ impl Parse for item::Trait::Fn {
 }
 impl Parse for item::Trait::Type {
     fn parse(input: ParseStream) -> Result<Self> {
-        let attrs = input.call(Attribute::parse_outer)?;
+        let attrs = input.call(attr::Attr::parse_outer)?;
         let type_: Token![type] = input.parse()?;
         let ident: Ident = input.parse()?;
         let mut gens: Generics = input.parse()?;
@@ -3097,7 +3097,7 @@ fn parse_trait_item_type(begin: ParseBuffer, input: ParseStream) -> Result<item:
 }
 impl Parse for item::Trait::Mac {
     fn parse(input: ParseStream) -> Result<Self> {
-        let attrs = input.call(Attribute::parse_outer)?;
+        let attrs = input.call(attr::Attr::parse_outer)?;
         let mac: Macro = input.parse()?;
         let semi: Option<Token![;]> = if mac.delim.is_brace() {
             None
@@ -3114,7 +3114,7 @@ impl Parse for item::Impl {
     }
 }
 fn parse_impl(input: ParseStream, allow_verbatim_impl: bool) -> Result<Option<item::Impl>> {
-    let mut attrs = input.call(Attribute::parse_outer)?;
+    let mut attrs = input.call(attr::Attr::parse_outer)?;
     let has_visibility = allow_verbatim_impl && input.parse::<Visibility>()?.is_some();
     let default_: Option<Token![default]> = input.parse()?;
     let unsafety: Option<Token![unsafe]> = input.parse()?;
@@ -3205,7 +3205,7 @@ fn parse_impl(input: ParseStream, allow_verbatim_impl: bool) -> Result<Option<it
 impl Parse for item::Impl::Item {
     fn parse(x: ParseStream) -> Result<Self> {
         let begin = x.fork();
-        let mut attrs = x.call(Attribute::parse_outer)?;
+        let mut attrs = x.call(attr::Attr::parse_outer)?;
         let ahead = x.fork();
         let vis: Visibility = ahead.parse()?;
         let mut look = ahead.lookahead1();
@@ -3283,7 +3283,7 @@ impl Parse for item::Impl::Item {
 impl Parse for item::Impl::Const {
     fn parse(input: ParseStream) -> Result<Self> {
         Ok(item::Impl::Const {
-            attrs: input.call(Attribute::parse_outer)?,
+            attrs: input.call(attr::Attr::parse_outer)?,
             vis: input.parse()?,
             default_: input.parse()?,
             const_: input.parse()?,
@@ -3311,7 +3311,7 @@ impl Parse for item::Impl::Fn {
     }
 }
 fn parse_impl_item_fn(input: ParseStream, allow_omitted_body: bool) -> Result<Option<item::Impl::Fn>> {
-    let mut attrs = input.call(Attribute::parse_outer)?;
+    let mut attrs = input.call(attr::Attr::parse_outer)?;
     let vis: Visibility = input.parse()?;
     let default_: Option<Token![default]> = input.parse()?;
     let sig: item::Sig = input.parse()?;
@@ -3320,7 +3320,7 @@ fn parse_impl_item_fn(input: ParseStream, allow_omitted_body: bool) -> Result<Op
     }
     let content;
     let brace = braced!(content in input);
-    attrs.extend(content.call(Attribute::parse_inner)?);
+    attrs.extend(content.call(attr::Attr::parse_inner)?);
     let block = Block {
         brace,
         stmts: content.call(Block::parse_within)?,
@@ -3335,7 +3335,7 @@ fn parse_impl_item_fn(input: ParseStream, allow_omitted_body: bool) -> Result<Op
 }
 impl Parse for item::Impl::Type {
     fn parse(x: ParseStream) -> Result<Self> {
-        let attrs = x.call(Attribute::parse_outer)?;
+        let attrs = x.call(attr::Attr::parse_outer)?;
         let vis: Visibility = x.parse()?;
         let default_: Option<Token![default]> = x.parse()?;
         let type_: Token![type] = x.parse()?;
@@ -3388,7 +3388,7 @@ fn parse_impl_item_type(begin: ParseBuffer, input: ParseStream) -> Result<item::
 }
 impl Parse for item::Impl::Mac {
     fn parse(input: ParseStream) -> Result<Self> {
-        let attrs = input.call(Attribute::parse_outer)?;
+        let attrs = input.call(attr::Attr::parse_outer)?;
         let mac: Macro = input.parse()?;
         let semi: Option<Token![;]> = if mac.delim.is_brace() {
             None
@@ -3466,7 +3466,7 @@ mod parsing {
     }
     fn parse_stmt(x: ParseStream, allow_nosemi: AllowNoSemi) -> Result<stmt::Stmt> {
         let begin = x.fork();
-        let attrs = x.call(Attribute::parse_outer)?;
+        let attrs = x.call(attr::Attr::parse_outer)?;
         let ahead = x.fork();
         let mut is_item_macro = false;
         if let Ok(path) = ahead.call(Path::parse_mod_style) {
@@ -3516,7 +3516,7 @@ mod parsing {
             stmt_expr(x, allow_nosemi, attrs)
         }
     }
-    fn stmt_mac(x: ParseStream, attrs: Vec<Attribute>, path: Path) -> Result<stmt::Mac> {
+    fn stmt_mac(x: ParseStream, attrs: Vec<attr::Attr>, path: Path) -> Result<stmt::Mac> {
         let bang: Token![!] = x.parse()?;
         let (delimiter, tokens) = mac_parse_delimiter(x)?;
         let semi: Option<Token![;]> = x.parse()?;
@@ -3531,7 +3531,7 @@ mod parsing {
             semi,
         })
     }
-    fn stmt_local(x: ParseStream, attrs: Vec<Attribute>) -> Result<stmt::Local> {
+    fn stmt_local(x: ParseStream, attrs: Vec<attr::Attr>) -> Result<stmt::Local> {
         let let_: Token![let] = x.parse()?;
         let mut pat = patt::Patt::parse_single(x)?;
         if x.peek(Token![:]) {
@@ -3575,7 +3575,7 @@ mod parsing {
             semi,
         })
     }
-    fn stmt_expr(x: ParseStream, allow_nosemi: AllowNoSemi, mut attrs: Vec<Attribute>) -> Result<stmt::Stmt> {
+    fn stmt_expr(x: ParseStream, allow_nosemi: AllowNoSemi, mut attrs: Vec<attr::Attr>) -> Result<stmt::Stmt> {
         let mut e = expr_early(x)?;
         let mut attr_target = &mut e;
         loop {
@@ -3643,7 +3643,7 @@ mod parsing {
 mod parsing {
     impl Parse for Variant {
         fn parse(input: ParseStream) -> Result<Self> {
-            let attrs = input.call(Attribute::parse_outer)?;
+            let attrs = input.call(attr::Attr::parse_outer)?;
             let _visibility: Visibility = input.parse()?;
             let ident: Ident = input.parse()?;
             let fields = if input.peek(tok::Brace) {
@@ -3689,7 +3689,7 @@ mod parsing {
     impl Field {
         pub fn parse_named(input: ParseStream) -> Result<Self> {
             Ok(Field {
-                attrs: input.call(Attribute::parse_outer)?,
+                attrs: input.call(attr::Attr::parse_outer)?,
                 vis: input.parse()?,
                 mutability: FieldMutability::None,
                 ident: Some(if input.peek(Token![_]) {
@@ -3703,7 +3703,7 @@ mod parsing {
         }
         pub fn parse_unnamed(input: ParseStream) -> Result<Self> {
             Ok(Field {
-                attrs: input.call(Attribute::parse_outer)?,
+                attrs: input.call(attr::Attr::parse_outer)?,
                 vis: input.parse()?,
                 mutability: FieldMutability::None,
                 ident: None,
@@ -3717,7 +3717,7 @@ mod parsing {
 mod parsing {
     impl Parse for DeriveInput {
         fn parse(input: ParseStream) -> Result<Self> {
-            let attrs = input.call(Attribute::parse_outer)?;
+            let attrs = input.call(attr::Attr::parse_outer)?;
             let vis = input.parse::<Visibility>()?;
             let lookahead = input.lookahead1();
             if lookahead.peek(Token![struct]) {
@@ -3810,7 +3810,7 @@ mod parsing {
         fn parse(input: ParseStream) -> Result<Self> {
             Ok(File {
                 shebang: None,
-                attrs: input.call(Attribute::parse_inner)?,
+                attrs: input.call(attr::Attr::parse_inner)?,
                 items: {
                     let mut items = Vec::new();
                     while !input.is_empty() {
@@ -4310,7 +4310,7 @@ pub mod patt {
         let mut fields = Punctuated::new();
         let mut rest = None;
         while !gist.is_empty() {
-            let attrs = gist.call(Attribute::parse_outer)?;
+            let attrs = gist.call(attr::Attr::parse_outer)?;
             if gist.peek(Token![..]) {
                 rest = Some(Rest {
                     attrs,
@@ -4560,7 +4560,7 @@ pub mod patt {
         x.parse::<Token![const]>()?;
         let gist;
         braced!(gist in x);
-        gist.call(Attribute::parse_inner)?;
+        gist.call(attr::Attr::parse_inner)?;
         gist.call(Block::parse_within)?;
         Ok(verbatim_between(&beg, x))
     }
@@ -5245,7 +5245,7 @@ pub mod ty {
                 args: {
                     let mut ys = Punctuated::new();
                     while !args.is_empty() {
-                        let attrs = args.call(Attribute::parse_outer)?;
+                        let attrs = args.call(attr::Attr::parse_outer)?;
                         if ys.empty_or_trailing()
                             && (args.peek(Token![...])
                                 || args.peek(Ident) && args.peek2(Token![:]) && args.peek3(Token![...]))
@@ -5452,7 +5452,7 @@ pub mod ty {
         }
     }
     fn parse_bare_fn_arg(x: ParseStream, self_: bool) -> Result<FnArg> {
-        let attrs = x.call(Attribute::parse_outer)?;
+        let attrs = x.call(attr::Attr::parse_outer)?;
         let beg = x.fork();
         let has_mut_self = self_ && x.peek(Token![mut]) && x.peek2(Token![self]);
         if has_mut_self {
@@ -5491,7 +5491,7 @@ pub mod ty {
         };
         Ok(FnArg { attrs, name, ty })
     }
-    fn parse_bare_variadic(x: ParseStream, attrs: Vec<Attribute>) -> Result<Variadic> {
+    fn parse_bare_variadic(x: ParseStream, attrs: Vec<attr::Attr>) -> Result<Variadic> {
         Ok(Variadic {
             attrs,
             name: if x.peek(Ident) || x.peek(Token![_]) {

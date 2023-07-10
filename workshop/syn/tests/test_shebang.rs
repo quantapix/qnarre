@@ -29,9 +29,9 @@ fn test_comment() {
     snapshot!(file, @r###"
     File {
         attrs: [
-            Attribute {
-                style: AttrStyle::Inner,
-                meta: Meta::List {
+            attr::Attr {
+                style: attr::Style::Inner,
+                meta: meta::Meta::List {
                     path: Path {
                         segments: [
                             path::Segment {

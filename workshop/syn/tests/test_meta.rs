@@ -1,12 +1,12 @@
 #![allow(clippy::shadow_unrelated, clippy::too_many_lines, clippy::uninlined_format_args)]
 #[macro_use]
 mod macros;
-use syn::{Meta, MetaList, MetaNameValue};
+use syn::{meta::List, meta::Meta, meta::NameValue};
 #[test]
 fn test_parse_meta_item_word() {
     let input = "hello";
-    snapshot!(input as Meta, @r###"
-    Meta::Path {
+    snapshot!(input as meta::Meta, @r###"
+    meta::Meta::Path {
         segments: [
             path::Segment {
                 ident: "hello",
@@ -19,8 +19,8 @@ fn test_parse_meta_item_word() {
 fn test_parse_meta_name_value() {
     let input = "foo = 5";
     let (inner, meta) = (input, input);
-    snapshot!(inner as MetaNameValue, @r###"
-    MetaNameValue {
+    snapshot!(inner as meta::NameValue, @r###"
+    meta::NameValue {
         path: Path {
             segments: [
                 path::Segment {
@@ -33,8 +33,8 @@ fn test_parse_meta_name_value() {
         },
     }
     "###);
-    snapshot!(meta as Meta, @r###"
-    Meta::NameValue {
+    snapshot!(meta as meta::Meta, @r###"
+    meta::Meta::NameValue {
         path: Path {
             segments: [
                 path::Segment {
@@ -53,8 +53,8 @@ fn test_parse_meta_name_value() {
 fn test_parse_meta_item_list_lit() {
     let input = "foo(5)";
     let (inner, meta) = (input, input);
-    snapshot!(inner as MetaList, @r###"
-    MetaList {
+    snapshot!(inner as meta::List, @r###"
+    meta::List {
         path: Path {
             segments: [
                 path::Segment {
@@ -66,8 +66,8 @@ fn test_parse_meta_item_list_lit() {
         tokens: TokenStream(`5`),
     }
     "###);
-    snapshot!(meta as Meta, @r###"
-    Meta::List {
+    snapshot!(meta as meta::Meta, @r###"
+    meta::Meta::List {
         path: Path {
             segments: [
                 path::Segment {
@@ -85,8 +85,8 @@ fn test_parse_meta_item_list_lit() {
 fn test_parse_meta_item_multiple() {
     let input = "foo(word, name = 5, list(name2 = 6), word2)";
     let (inner, meta) = (input, input);
-    snapshot!(inner as MetaList, @r###"
-    MetaList {
+    snapshot!(inner as meta::List, @r###"
+    meta::List {
         path: Path {
             segments: [
                 path::Segment {
@@ -98,8 +98,8 @@ fn test_parse_meta_item_multiple() {
         tokens: TokenStream(`word , name = 5 , list (name2 = 6) , word2`),
     }
     "###);
-    snapshot!(meta as Meta, @r###"
-    Meta::List {
+    snapshot!(meta as meta::Meta, @r###"
+    meta::Meta::List {
         path: Path {
             segments: [
                 path::Segment {
@@ -116,8 +116,8 @@ fn test_parse_meta_item_multiple() {
 #[test]
 fn test_parse_path() {
     let input = "::serde::Serialize";
-    snapshot!(input as Meta, @r###"
-    Meta::Path {
+    snapshot!(input as meta::Meta, @r###"
+    meta::Meta::Path {
         leading_colon: Some,
         segments: [
             path::Segment {

@@ -31,10 +31,10 @@ pub trait Fold {
     fn fold_assoc_type(&mut self, i: AssocType) -> AssocType {
         fold_assoc_type(self, i)
     }
-    fn fold_attr_style(&mut self, i: AttrStyle) -> AttrStyle {
+    fn fold_attr_style(&mut self, i: attr::Style) -> attr::Style {
         fold_attr_style(self, i)
     }
-    fn fold_attribute(&mut self, i: Attribute) -> Attribute {
+    fn fold_attribute(&mut self, i: attr::Attr) -> attr::Attr {
         fold_attribute(self, i)
     }
     fn fold_bare_fn_arg(&mut self, i: ty::FnArg) -> ty::FnArg {
@@ -361,13 +361,13 @@ pub trait Fold {
     fn fold_member(&mut self, i: Member) -> Member {
         fold_member(self, i)
     }
-    fn fold_meta(&mut self, i: Meta) -> Meta {
+    fn fold_meta(&mut self, i: meta::Meta) -> meta::Meta {
         fold_meta(self, i)
     }
-    fn fold_meta_list(&mut self, i: MetaList) -> MetaList {
+    fn fold_meta_list(&mut self, i: meta::List) -> meta::List {
         fold_meta_list(self, i)
     }
-    fn fold_meta_name_value(&mut self, i: MetaNameValue) -> MetaNameValue {
+    fn fold_meta_name_value(&mut self, i: meta::NameValue) -> meta::NameValue {
         fold_meta_name_value(self, i)
     }
     fn fold_parenthesized_generic_arguments(&mut self, i: ParenthesizedArgs) -> ParenthesizedArgs {
@@ -618,20 +618,20 @@ where
         ty: f.fold_type(node.ty),
     }
 }
-pub fn fold_attr_style<F>(f: &mut F, node: AttrStyle) -> AttrStyle
+pub fn fold_attr_style<F>(f: &mut F, node: attr::Style) -> attr::Style
 where
     F: Fold + ?Sized,
 {
     match node {
-        AttrStyle::Outer => AttrStyle::Outer,
-        AttrStyle::Inner(_binding_0) => AttrStyle::Inner(_binding_0),
+        attr::Style::Outer => attr::Style::Outer,
+        attr::Style::Inner(_binding_0) => attr::Style::Inner(_binding_0),
     }
 }
-pub fn fold_attribute<F>(f: &mut F, node: Attribute) -> Attribute
+pub fn fold_attribute<F>(f: &mut F, node: attr::Attr) -> attr::Attr
 where
     F: Fold + ?Sized,
 {
-    Attribute {
+    attr::Attr {
         pound: node.pound,
         style: f.fold_attr_style(node.style),
         bracket: node.bracket,
@@ -1929,31 +1929,31 @@ where
         Member::Unnamed(_binding_0) => Member::Unnamed(f.fold_index(_binding_0)),
     }
 }
-pub fn fold_meta<F>(f: &mut F, node: Meta) -> Meta
+pub fn fold_meta<F>(f: &mut F, node: meta::Meta) -> meta::Meta
 where
     F: Fold + ?Sized,
 {
     match node {
-        Meta::Path(_binding_0) => Meta::Path(f.fold_path(_binding_0)),
-        Meta::List(_binding_0) => Meta::List(f.fold_meta_list(_binding_0)),
-        Meta::NameValue(_binding_0) => Meta::NameValue(f.fold_meta_name_value(_binding_0)),
+        meta::Meta::Path(_binding_0) => meta::Meta::Path(f.fold_path(_binding_0)),
+        meta::Meta::List(_binding_0) => meta::Meta::List(f.fold_meta_list(_binding_0)),
+        meta::Meta::NameValue(_binding_0) => meta::Meta::NameValue(f.fold_meta_name_value(_binding_0)),
     }
 }
-pub fn fold_meta_list<F>(f: &mut F, node: MetaList) -> MetaList
+pub fn fold_meta_list<F>(f: &mut F, node: meta::List) -> meta::List
 where
     F: Fold + ?Sized,
 {
-    MetaList {
+    meta::List {
         path: f.fold_path(node.path),
         delim: f.fold_macro_delimiter(node.delim),
         toks: node.toks,
     }
 }
-pub fn fold_meta_name_value<F>(f: &mut F, node: MetaNameValue) -> MetaNameValue
+pub fn fold_meta_name_value<F>(f: &mut F, node: meta::NameValue) -> meta::NameValue
 where
     F: Fold + ?Sized,
 {
-    MetaNameValue {
+    meta::NameValue {
         path: f.fold_path(node.path),
         eq: node.eq,
         expr: f.fold_expr(node.expr),

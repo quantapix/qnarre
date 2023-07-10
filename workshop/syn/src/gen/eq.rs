@@ -34,18 +34,18 @@ impl PartialEq for AssocType {
         self.ident == other.ident && self.gnrs == other.gnrs && self.ty == other.ty
     }
 }
-impl Eq for AttrStyle {}
-impl PartialEq for AttrStyle {
+impl Eq for attr::Style {}
+impl PartialEq for attr::Style {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (AttrStyle::Outer, AttrStyle::Outer) => true,
-            (AttrStyle::Inner(_), AttrStyle::Inner(_)) => true,
+            (attr::Style::Outer, attr::Style::Outer) => true,
+            (attr::Style::Inner(_), attr::Style::Inner(_)) => true,
             _ => false,
         }
     }
 }
-impl Eq for Attribute {}
-impl PartialEq for Attribute {
+impl Eq for attr::Attr {}
+impl PartialEq for attr::Attr {
     fn eq(&self, other: &Self) -> bool {
         self.style == other.style && self.meta == other.meta
     }
@@ -904,27 +904,27 @@ impl PartialEq for MacroDelim {
         }
     }
 }
-impl Eq for Meta {}
-impl PartialEq for Meta {
+impl Eq for meta::Meta {}
+impl PartialEq for meta::Meta {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Meta::Path(self0), Meta::Path(other0)) => self0 == other0,
-            (Meta::List(self0), Meta::List(other0)) => self0 == other0,
-            (Meta::NameValue(self0), Meta::NameValue(other0)) => self0 == other0,
+            (meta::Meta::Path(self0), meta::Meta::Path(other0)) => self0 == other0,
+            (meta::Meta::List(self0), meta::Meta::List(other0)) => self0 == other0,
+            (meta::Meta::NameValue(self0), meta::Meta::NameValue(other0)) => self0 == other0,
             _ => false,
         }
     }
 }
-impl Eq for MetaList {}
-impl PartialEq for MetaList {
+impl Eq for meta::List {}
+impl PartialEq for meta::List {
     fn eq(&self, other: &Self) -> bool {
         self.path == other.path
             && self.delim == other.delim
             && TokenStreamHelper(&self.toks) == TokenStreamHelper(&other.toks)
     }
 }
-impl Eq for MetaNameValue {}
-impl PartialEq for MetaNameValue {
+impl Eq for meta::NameValue {}
+impl PartialEq for meta::NameValue {
     fn eq(&self, other: &Self) -> bool {
         self.path == other.path && self.expr == other.expr
     }

@@ -33,9 +33,9 @@ fn test_split_for_impl() {
                 }),
                 GenericParam::Type(TypeParam {
                     attrs: [
-                        Attribute {
-                            style: AttrStyle::Outer,
-                            meta: Meta::Path {
+                        attr::Attr {
+                            style: attr::Style::Outer,
+                            meta: meta::Meta::Path {
                                 segments: [
                                     path::Segment {
                                         ident: "may_dangle",

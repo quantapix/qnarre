@@ -33,10 +33,10 @@ pub trait VisitMut {
     fn visit_assoc_type_mut(&mut self, i: &mut AssocType) {
         visit_assoc_type_mut(self, i);
     }
-    fn visit_attr_style_mut(&mut self, i: &mut AttrStyle) {
+    fn visit_attr_style_mut(&mut self, i: &mut attr::Style) {
         visit_attr_style_mut(self, i);
     }
-    fn visit_attribute_mut(&mut self, i: &mut Attribute) {
+    fn visit_attribute_mut(&mut self, i: &mut attr::Attr) {
         visit_attribute_mut(self, i);
     }
     fn visit_bare_fn_arg_mut(&mut self, i: &mut ty::FnArg) {
@@ -363,13 +363,13 @@ pub trait VisitMut {
     fn visit_member_mut(&mut self, i: &mut Member) {
         visit_member_mut(self, i);
     }
-    fn visit_meta_mut(&mut self, i: &mut Meta) {
+    fn visit_meta_mut(&mut self, i: &mut meta::Meta) {
         visit_meta_mut(self, i);
     }
-    fn visit_meta_list_mut(&mut self, i: &mut MetaList) {
+    fn visit_meta_list_mut(&mut self, i: &mut meta::List) {
         visit_meta_list_mut(self, i);
     }
-    fn visit_meta_name_value_mut(&mut self, i: &mut MetaNameValue) {
+    fn visit_meta_name_value_mut(&mut self, i: &mut meta::NameValue) {
         visit_meta_name_value_mut(self, i);
     }
     fn visit_parenthesized_generic_arguments_mut(&mut self, i: &mut ParenthesizedArgs) {
@@ -624,18 +624,18 @@ where
     skip!(node.eq);
     v.visit_type_mut(&mut node.ty);
 }
-pub fn visit_attr_style_mut<V>(v: &mut V, node: &mut AttrStyle)
+pub fn visit_attr_style_mut<V>(v: &mut V, node: &mut attr::Style)
 where
     V: VisitMut + ?Sized,
 {
     match node {
-        AttrStyle::Outer => {},
-        AttrStyle::Inner(_binding_0) => {
+        attr::Style::Outer => {},
+        attr::Style::Inner(_binding_0) => {
             skip!(_binding_0);
         },
     }
 }
-pub fn visit_attribute_mut<V>(v: &mut V, node: &mut Attribute)
+pub fn visit_attribute_mut<V>(v: &mut V, node: &mut attr::Attr)
 where
     V: VisitMut + ?Sized,
 {
@@ -2254,23 +2254,23 @@ where
         },
     }
 }
-pub fn visit_meta_mut<V>(v: &mut V, node: &mut Meta)
+pub fn visit_meta_mut<V>(v: &mut V, node: &mut meta::Meta)
 where
     V: VisitMut + ?Sized,
 {
     match node {
-        Meta::Path(_binding_0) => {
+        meta::Meta::Path(_binding_0) => {
             v.visit_path_mut(_binding_0);
         },
-        Meta::List(_binding_0) => {
+        meta::Meta::List(_binding_0) => {
             v.visit_meta_list_mut(_binding_0);
         },
-        Meta::NameValue(_binding_0) => {
+        meta::Meta::NameValue(_binding_0) => {
             v.visit_meta_name_value_mut(_binding_0);
         },
     }
 }
-pub fn visit_meta_list_mut<V>(v: &mut V, node: &mut MetaList)
+pub fn visit_meta_list_mut<V>(v: &mut V, node: &mut meta::List)
 where
     V: VisitMut + ?Sized,
 {
@@ -2278,7 +2278,7 @@ where
     v.visit_macro_delimiter_mut(&mut node.delim);
     skip!(node.tokens);
 }
-pub fn visit_meta_name_value_mut<V>(v: &mut V, node: &mut MetaNameValue)
+pub fn visit_meta_name_value_mut<V>(v: &mut V, node: &mut meta::NameValue)
 where
     V: VisitMut + ?Sized,
 {

@@ -119,7 +119,7 @@ fn librustc_parse_and_rewrite(input: &str) -> Option<P<ast::Expr>> {
 }
 fn librustc_brackets(mut librustc_expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
     use rustc_ast::ast::{
-        expr::Field, patt::Patt, stmt::Local, stmt::Stmt, ty::Type, Attribute, BinOpKind, Block, BorrowKind, Expr,
+        attr::Attr, expr::Field, patt::Patt, stmt::Local, stmt::Stmt, ty::Type, BinOpKind, Block, BorrowKind, Expr,
         ExprKind, GenericArg, GenericBound, LocalKind, StmtKind, StructExpr, StructRest, TraitBoundModifier,
     };
     use rustc_ast::mut_visit::{noop_visit_generic_arg, noop_visit_local, noop_visit_param_bound, MutVisitor};
@@ -235,8 +235,8 @@ fn librustc_brackets(mut librustc_expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
         fn visit_ty(&mut self, ty: &mut P<ty::Type>) {
             let _ = ty;
         }
-        fn visit_attribute(&mut self, attr: &mut Attribute) {
-            let _ = attr;
+        fn visit_attribute(&mut self, x: &mut attr::Attr) {
+            let _ = x;
         }
     }
     let mut folder = BracketsVisitor { failed: false };
@@ -249,7 +249,7 @@ fn librustc_brackets(mut librustc_expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
 }
 fn syn_brackets(syn_expr: syn::Expr) -> syn::Expr {
     use syn::fold::{fold_expr, fold_generic_argument, Fold};
-    use syn::{expr::Paren, patt::Patt, stmt::Stmt, tok, ty::Type, Arg, BinOp, Expr, MetaNameValue};
+    use syn::{expr::Paren, meta::NameValue, patt::Patt, stmt::Stmt, tok, ty::Type, Arg, BinOp, Expr};
     struct ParenthesizeEveryExpr;
     fn needs_paren(expr: &Expr) -> bool {
         match expr {
@@ -290,7 +290,7 @@ fn syn_brackets(syn_expr: syn::Expr) -> syn::Expr {
                 s => s,
             }
         }
-        fn fold_meta_name_value(&mut self, x: MetaNameValue) -> MetaNameValue {
+        fn fold_meta_name_value(&mut self, x: meta::NameValue) -> meta::NameValue {
             x
         }
         fn fold_pat(&mut self, x: patt::Patt) -> patt::Patt {

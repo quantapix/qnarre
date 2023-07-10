@@ -52,60 +52,60 @@ ast_enum_of_structs! {
 }
 
 pub struct Array {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub bracket: tok::Bracket,
     pub elems: Punctuated<Expr, Token![,]>,
 }
 
 pub struct Assign {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub left: Box<Expr>,
     pub eq: Token![=],
     pub right: Box<Expr>,
 }
 pub struct Async {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub async_: Token![async],
     pub move_: Option<Token![move]>,
     pub block: stmt::Block,
 }
 pub struct Await {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub expr: Box<Expr>,
     pub dot: Token![.],
     pub await_: Token![await],
 }
 pub struct Binary {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub left: Box<Expr>,
     pub op: BinOp,
     pub right: Box<Expr>,
 }
 pub struct Block {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub label: Option<Label>,
     pub block: stmt::Block,
 }
 pub struct Break {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub break_: Token![break],
     pub label: Option<Lifetime>,
     pub expr: Option<Box<Expr>>,
 }
 pub struct Call {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub func: Box<Expr>,
     pub paren: tok::Paren,
     pub args: Punctuated<Expr, Token![,]>,
 }
 pub struct Cast {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub expr: Box<Expr>,
     pub as_: Token![as],
     pub typ: Box<ty::Type>,
 }
 pub struct Closure {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub lifes: Option<BoundLifetimes>,
     pub const_: Option<Token![const]>,
     pub static_: Option<Token![static]>,
@@ -118,23 +118,23 @@ pub struct Closure {
     pub body: Box<Expr>,
 }
 pub struct Const {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub const_: Token![const],
     pub block: stmt::Block,
 }
 pub struct Continue {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub continue_: Token![continue],
     pub label: Option<Lifetime>,
 }
 pub struct Field {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub expr: Box<Expr>,
     pub dot: Token![.],
     pub memb: Member,
 }
 pub struct ForLoop {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub label: Option<Label>,
     pub for_: Token![for],
     pub patt: Box<patt::Patt>,
@@ -143,57 +143,57 @@ pub struct ForLoop {
     pub body: stmt::Block,
 }
 pub struct Group {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub group: tok::Group,
     pub expr: Box<Expr>,
 }
 pub struct If {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub if_: Token![if],
     pub cond: Box<Expr>,
     pub then_: stmt::Block,
     pub else_: Option<(Token![else], Box<Expr>)>,
 }
 pub struct Index {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub expr: Box<Expr>,
     pub bracket: tok::Bracket,
     pub idx: Box<Expr>,
 }
 pub struct Infer {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub underscore: Token![_],
 }
 pub struct Let {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub let_: Token![let],
     pub patt: Box<patt::Patt>,
     pub eq: Token![=],
     pub expr: Box<Expr>,
 }
 pub struct Lit {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub lit: lit::Lit,
 }
 pub struct Loop {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub label: Option<Label>,
     pub loop_: Token![loop],
     pub body: stmt::Block,
 }
 pub struct Mac {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub mac: Macro,
 }
 pub struct Match {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub match_: Token![match],
     pub expr: Box<Expr>,
     pub brace: tok::Brace,
     pub arms: Vec<Arm>,
 }
 pub struct MethodCall {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub expr: Box<Expr>,
     pub dot: Token![.],
     pub method: Ident,
@@ -202,41 +202,41 @@ pub struct MethodCall {
     pub args: Punctuated<Expr, Token![,]>,
 }
 pub struct Paren {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub paren: tok::Paren,
     pub expr: Box<Expr>,
 }
 pub struct Path {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub qself: Option<QSelf>,
     pub path: path::Path,
 }
 pub struct Range {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub beg: Option<Box<Expr>>,
     pub limits: RangeLimits,
     pub end: Option<Box<Expr>>,
 }
 pub struct Ref {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub and: Token![&],
     pub mut_: Option<Token![mut]>,
     pub expr: Box<Expr>,
 }
 pub struct Repeat {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub bracket: tok::Bracket,
     pub expr: Box<Expr>,
     pub semi: Token![;],
     pub len: Box<Expr>,
 }
 pub struct Return {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub return_: Token![return],
     pub expr: Option<Box<Expr>>,
 }
 pub struct Struct {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub qself: Option<QSelf>,
     pub path: path::Path,
     pub brace: tok::Brace,
@@ -245,39 +245,39 @@ pub struct Struct {
     pub rest: Option<Box<Expr>>,
 }
 pub struct Try {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub expr: Box<Expr>,
     pub question: Token![?],
 }
 pub struct TryBlock {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub try_: Token![try],
     pub block: stmt::Block,
 }
 pub struct Tuple {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub paren: tok::Paren,
     pub elems: Punctuated<Expr, Token![,]>,
 }
 pub struct Unary {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub op: UnOp,
     pub expr: Box<Expr>,
 }
 pub struct Unsafe {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub unsafe_: Token![unsafe],
     pub block: stmt::Block,
 }
 pub struct While {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub label: Option<Label>,
     pub while_: Token![while],
     pub cond: Box<Expr>,
     pub block: stmt::Block,
 }
 pub struct Yield {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub yield_: Token![yield],
     pub expr: Option<Box<Expr>>,
 }
@@ -291,7 +291,7 @@ impl Expr {
             segs: Punctuated::new(),
         },
     });
-    pub fn replace_attrs(&mut self, y: Vec<Attribute>) -> Vec<Attribute> {
+    pub fn replace_attrs(&mut self, y: Vec<attr::Attr>) -> Vec<attr::Attr> {
         use Expr::*;
         match self {
             Array(Array { attrs, .. })
@@ -427,7 +427,7 @@ impl IdentFragment for Idx {
 }
 
 pub struct FieldValue {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub memb: Member,
     pub colon: Option<Token![:]>,
     pub expr: Expr,
@@ -437,7 +437,7 @@ pub struct Label {
     pub colon: Token![:],
 }
 pub struct Arm {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub patt: patt::Patt,
     pub guard: Option<(Token![if], Box<Expr>)>,
     pub fat_arrow: Token![=>],

@@ -50,15 +50,15 @@ impl Clone for AssocType {
         }
     }
 }
-impl Copy for AttrStyle {}
-impl Clone for AttrStyle {
+impl Copy for attr::Style {}
+impl Clone for attr::Style {
     fn clone(&self) -> Self {
         *self
     }
 }
-impl Clone for Attribute {
+impl Clone for attr::Attr {
     fn clone(&self) -> Self {
-        Attribute {
+        attr::Attr {
             pound: self.pound.clone(),
             style: self.style.clone(),
             bracket: self.bracket.clone(),
@@ -1159,27 +1159,27 @@ impl Clone for Member {
         }
     }
 }
-impl Clone for Meta {
+impl Clone for meta::Meta {
     fn clone(&self) -> Self {
         match self {
-            Meta::Path(v0) => Meta::Path(v0.clone()),
-            Meta::List(v0) => Meta::List(v0.clone()),
-            Meta::NameValue(v0) => Meta::NameValue(v0.clone()),
+            meta::Meta::Path(v0) => meta::Meta::Path(v0.clone()),
+            meta::Meta::List(v0) => meta::Meta::List(v0.clone()),
+            meta::Meta::NameValue(v0) => meta::Meta::NameValue(v0.clone()),
         }
     }
 }
-impl Clone for MetaList {
+impl Clone for meta::List {
     fn clone(&self) -> Self {
-        MetaList {
+        meta::List {
             path: self.path.clone(),
             delim: self.delim.clone(),
             toks: self.toks.clone(),
         }
     }
 }
-impl Clone for MetaNameValue {
+impl Clone for meta::NameValue {
     fn clone(&self) -> Self {
-        MetaNameValue {
+        meta::NameValue {
             path: self.path.clone(),
             eq: self.eq.clone(),
             expr: self.expr.clone(),

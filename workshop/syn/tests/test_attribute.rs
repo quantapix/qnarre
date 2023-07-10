@@ -2,12 +2,12 @@
 #[macro_use]
 mod macros;
 use syn::parse::Parser;
-use syn::{Attribute, Meta};
+use syn::{attr::Attr, meta::Meta};
 #[test]
 fn test_meta_item_word() {
     let meta = test("#[foo]");
     snapshot!(meta, @r###"
-    Meta::Path {
+    meta::Meta::Path {
         segments: [
             path::Segment {
                 ident: "foo",
@@ -20,7 +20,7 @@ fn test_meta_item_word() {
 fn test_meta_item_name_value() {
     let meta = test("#[foo = 5]");
     snapshot!(meta, @r###"
-    Meta::NameValue {
+    meta::Meta::NameValue {
         path: Path {
             segments: [
                 path::Segment {
@@ -38,7 +38,7 @@ fn test_meta_item_name_value() {
 fn test_meta_item_bool_value() {
     let meta = test("#[foo = true]");
     snapshot!(meta, @r###"
-    Meta::NameValue {
+    meta::Meta::NameValue {
         path: Path {
             segments: [
                 path::Segment {
@@ -55,7 +55,7 @@ fn test_meta_item_bool_value() {
     "###);
     let meta = test("#[foo = false]");
     snapshot!(meta, @r###"
-    Meta::NameValue {
+    meta::Meta::NameValue {
         path: Path {
             segments: [
                 path::Segment {
@@ -75,7 +75,7 @@ fn test_meta_item_bool_value() {
 fn test_meta_item_list_lit() {
     let meta = test("#[foo(5)]");
     snapshot!(meta, @r###"
-    Meta::List {
+    meta::Meta::List {
         path: Path {
             segments: [
                 path::Segment {
@@ -92,7 +92,7 @@ fn test_meta_item_list_lit() {
 fn test_meta_item_list_word() {
     let meta = test("#[foo(bar)]");
     snapshot!(meta, @r###"
-    Meta::List {
+    meta::Meta::List {
         path: Path {
             segments: [
                 path::Segment {
@@ -109,7 +109,7 @@ fn test_meta_item_list_word() {
 fn test_meta_item_list_name_value() {
     let meta = test("#[foo(bar = 5)]");
     snapshot!(meta, @r###"
-    Meta::List {
+    meta::Meta::List {
         path: Path {
             segments: [
                 path::Segment {
@@ -126,7 +126,7 @@ fn test_meta_item_list_name_value() {
 fn test_meta_item_list_bool_value() {
     let meta = test("#[foo(bar = true)]");
     snapshot!(meta, @r###"
-    Meta::List {
+    meta::Meta::List {
         path: Path {
             segments: [
                 path::Segment {
@@ -143,7 +143,7 @@ fn test_meta_item_list_bool_value() {
 fn test_meta_item_multiple() {
     let meta = test("#[foo(word, name = 5, list(name2 = 6), word2)]");
     snapshot!(meta, @r###"
-    Meta::List {
+    meta::Meta::List {
         path: Path {
             segments: [
                 path::Segment {
@@ -160,7 +160,7 @@ fn test_meta_item_multiple() {
 fn test_bool_lit() {
     let meta = test("#[foo(true)]");
     snapshot!(meta, @r###"
-    Meta::List {
+    meta::Meta::List {
         path: Path {
             segments: [
                 path::Segment {
@@ -177,7 +177,7 @@ fn test_bool_lit() {
 fn test_negative_lit() {
     let meta = test("#[form(min = -1, max = 200)]");
     snapshot!(meta, @r###"
-    Meta::List {
+    meta::Meta::List {
         path: Path {
             segments: [
                 path::Segment {
@@ -190,9 +190,9 @@ fn test_negative_lit() {
     }
     "###);
 }
-fn test(input: &str) -> Meta {
-    let attrs = Attribute::parse_outer.parse_str(input).unwrap();
-    assert_eq!(attrs.len(), 1);
-    let attr = attrs.into_iter().next().unwrap();
-    attr.meta
+fn test(x: &str) -> meta::Meta {
+    let ys = attr::Attr::parse_outer.parse_str(x).unwrap();
+    assert_eq!(ys.len(), 1);
+    let y = ys.into_iter().next().unwrap();
+    y.meta
 }

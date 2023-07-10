@@ -31,15 +31,15 @@ fn test_struct() {
         #[derive(Debug, Clone)]
         pub struct Item {
             pub ident: Ident,
-            pub attrs: Vec<Attribute>
+            pub attrs: Vec<attr::Attr>
         }
     };
     snapshot!(input as DeriveInput, @r###"
     DeriveInput {
         attrs: [
-            Attribute {
-                style: AttrStyle::Outer,
-                meta: Meta::List {
+            attr::Attr {
+                style: attr::Style::Outer,
+                meta: meta::Meta::List {
                     path: Path {
                         segments: [
                             path::Segment {
@@ -87,7 +87,7 @@ fn test_struct() {
                                                     path: Path {
                                                         segments: [
                                                             path::Segment {
-                                                                ident: "Attribute",
+                                                                ident: "attr::Attr",
                                                             },
                                                         ],
                                                     },
@@ -105,7 +105,7 @@ fn test_struct() {
     }
     "###);
     snapshot!(&input.attrs[0].meta, @r###"
-    Meta::List {
+    meta::Meta::List {
         path: Path {
             segments: [
                 path::Segment {
@@ -182,9 +182,9 @@ fn test_enum() {
     snapshot!(input as DeriveInput, @r###"
     DeriveInput {
         attrs: [
-            Attribute {
-                style: AttrStyle::Outer,
-                meta: Meta::NameValue {
+            attr::Attr {
+                style: attr::Style::Outer,
+                meta: meta::Meta::NameValue {
                     path: Path {
                         segments: [
                             path::Segment {
@@ -197,9 +197,9 @@ fn test_enum() {
                     },
                 },
             },
-            Attribute {
-                style: AttrStyle::Outer,
-                meta: Meta::Path {
+            attr::Attr {
+                style: attr::Style::Outer,
+                meta: meta::Meta::Path {
                     segments: [
                         path::Segment {
                             ident: "must_use",
@@ -295,7 +295,7 @@ fn test_enum() {
     let meta_items: Vec<_> = input.attrs.into_iter().map(|attr| attr.meta).collect();
     snapshot!(meta_items, @r###"
     [
-        Meta::NameValue {
+        meta::Meta::NameValue {
             path: Path {
                 segments: [
                     path::Segment {
@@ -307,7 +307,7 @@ fn test_enum() {
                 lit: " See the std::result module documentation for details.",
             },
         },
-        Meta::Path {
+        meta::Meta::Path {
             segments: [
                 path::Segment {
                     ident: "must_use",
@@ -334,9 +334,9 @@ fn test_attr_with_mod_style_path_with_self() {
     snapshot!(input as DeriveInput, @r###"
     DeriveInput {
         attrs: [
-            Attribute {
-                style: AttrStyle::Outer,
-                meta: Meta::Path {
+            attr::Attr {
+                style: attr::Style::Outer,
+                meta: meta::Meta::Path {
                     segments: [
                         path::Segment {
                             ident: "foo",
@@ -358,7 +358,7 @@ fn test_attr_with_mod_style_path_with_self() {
     }
     "###);
     snapshot!(&input.attrs[0].meta, @r###"
-    Meta::Path {
+    meta::Meta::Path {
         segments: [
             path::Segment {
                 ident: "foo",

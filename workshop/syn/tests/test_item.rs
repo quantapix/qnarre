@@ -16,9 +16,9 @@ fn test_macro_variable_attr() {
     snapshot!(tokens as Item, @r###"
     Item::Fn {
         attrs: [
-            Attribute {
-                style: AttrStyle::Outer,
-                meta: Meta::Path {
+            attr::Attr {
+                style: attr::Style::Outer,
+                meta: meta::Meta::Path {
                     segments: [
                         path::Segment {
                             ident: "test",

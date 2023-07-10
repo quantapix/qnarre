@@ -55,12 +55,12 @@ impl Debug for AssocType {
         formatter.finish()
     }
 }
-impl Debug for AttrStyle {
+impl Debug for attr::Style {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("AttrStyle::")?;
+        formatter.write_str("attr::Style::")?;
         match self {
-            AttrStyle::Outer => formatter.write_str("Outer"),
-            AttrStyle::Inner(v0) => {
+            attr::Style::Outer => formatter.write_str("Outer"),
+            attr::Style::Inner(v0) => {
                 let mut formatter = formatter.debug_tuple("Inner");
                 formatter.field(v0);
                 formatter.finish()
@@ -68,9 +68,9 @@ impl Debug for AttrStyle {
         }
     }
 }
-impl Debug for Attribute {
+impl Debug for attr::Attr {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("Attribute");
+        let mut formatter = formatter.debug_struct("attr::Attr");
         formatter.field("pound", &self.pound);
         formatter.field("style", &self.style);
         formatter.field("bracket", &self.bracket);
@@ -1749,19 +1749,19 @@ impl Debug for Member {
         }
     }
 }
-impl Debug for Meta {
+impl Debug for meta::Meta {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("Meta::")?;
+        formatter.write_str("meta::Meta::")?;
         match self {
-            Meta::Path(v0) => v0.debug(formatter, "Path"),
-            Meta::List(v0) => v0.debug(formatter, "List"),
-            Meta::NameValue(v0) => v0.debug(formatter, "NameValue"),
+            meta::Meta::Path(v0) => v0.debug(formatter, "Path"),
+            meta::Meta::List(v0) => v0.debug(formatter, "List"),
+            meta::Meta::NameValue(v0) => v0.debug(formatter, "NameValue"),
         }
     }
 }
-impl Debug for MetaList {
+impl Debug for meta::List {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl MetaList {
+        impl meta::List {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("path", &self.path);
@@ -1770,12 +1770,12 @@ impl Debug for MetaList {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "MetaList")
+        self.debug(formatter, "meta::List")
     }
 }
-impl Debug for MetaNameValue {
+impl Debug for meta::NameValue {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl MetaNameValue {
+        impl meta::NameValue {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("path", &self.path);
@@ -1784,7 +1784,7 @@ impl Debug for MetaNameValue {
                 formatter.finish()
             }
         }
-        self.debug(formatter, "MetaNameValue")
+        self.debug(formatter, "meta::NameValue")
     }
 }
 impl Debug for ParenthesizedArgs {

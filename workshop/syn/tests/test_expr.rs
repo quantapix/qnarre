@@ -116,9 +116,9 @@ fn test_macro_variable_func() {
     snapshot!(tokens as Expr, @r###"
     Expr::Call {
         attrs: [
-            Attribute {
-                style: AttrStyle::Outer,
-                meta: Meta::Path {
+            attr::Attr {
+                style: attr::Style::Outer,
+                meta: meta::Meta::Path {
                     segments: [
                         path::Segment {
                             ident: "outside",
@@ -130,9 +130,9 @@ fn test_macro_variable_func() {
         func: Expr::Group {
             expr: Expr::Path {
                 attrs: [
-                    Attribute {
-                        style: AttrStyle::Outer,
-                        meta: Meta::Path {
+                    attr::Attr {
+                        style: attr::Style::Outer,
+                        meta: meta::Meta::Path {
                             segments: [
                                 path::Segment {
                                     ident: "inside",
@@ -226,9 +226,9 @@ fn test_macro_variable_match_arm() {
                 body: Expr::Group {
                     expr: Expr::Tuple {
                         attrs: [
-                            Attribute {
-                                style: AttrStyle::Outer,
-                                meta: Meta::Path {
+                            attr::Attr {
+                                style: attr::Style::Outer,
+                                meta: meta::Meta::Path {
                                     segments: [
                                         path::Segment {
                                             ident: "a",

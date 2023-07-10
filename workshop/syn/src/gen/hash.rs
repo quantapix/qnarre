@@ -50,22 +50,22 @@ impl Hash for AssocType {
         self.ty.hash(state);
     }
 }
-impl Hash for AttrStyle {
+impl Hash for attr::Style {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         match self {
-            AttrStyle::Outer => {
+            attr::Style::Outer => {
                 state.write_u8(0u8);
             },
-            AttrStyle::Inner(_) => {
+            attr::Style::Inner(_) => {
                 state.write_u8(1u8);
             },
         }
     }
 }
-impl Hash for Attribute {
+impl Hash for attr::Attr {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -1538,28 +1538,28 @@ impl Hash for MacroDelim {
         }
     }
 }
-impl Hash for Meta {
+impl Hash for meta::Meta {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         match self {
-            Meta::Path(v0) => {
+            meta::Meta::Path(v0) => {
                 state.write_u8(0u8);
                 v0.hash(state);
             },
-            Meta::List(v0) => {
+            meta::Meta::List(v0) => {
                 state.write_u8(1u8);
                 v0.hash(state);
             },
-            Meta::NameValue(v0) => {
+            meta::Meta::NameValue(v0) => {
                 state.write_u8(2u8);
                 v0.hash(state);
             },
         }
     }
 }
-impl Hash for MetaList {
+impl Hash for meta::List {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -1569,7 +1569,7 @@ impl Hash for MetaList {
         TokenStreamHelper(&self.toks).hash(state);
     }
 }
-impl Hash for MetaNameValue {
+impl Hash for meta::NameValue {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,

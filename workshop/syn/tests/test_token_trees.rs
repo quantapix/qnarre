@@ -10,12 +10,12 @@ fn test_struct() {
         #[derive(Debug, Clone)]
         pub struct Item {
             pub ident: Ident,
-            pub attrs: Vec<Attribute>,
+            pub attrs: Vec<attr::Attr>,
         }
     ";
     snapshot!(input as TokenStream, @r###"
     TokenStream(
-        `# [derive (Debug , Clone)] pub struct Item { pub ident : Ident , pub attrs : Vec < Attribute >, }`,
+        `# [derive (Debug , Clone)] pub struct Item { pub ident : Ident , pub attrs : Vec < attr::Attr >, }`,
     )
     "###);
 }

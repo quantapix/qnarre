@@ -106,20 +106,20 @@ impl Debug for Lite<syn::AssocType> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::AttrStyle> {
+impl Debug for Lite<syn::attr::Style> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match &self.value {
-            syn::AttrStyle::Outer => formatter.write_str("AttrStyle::Outer"),
-            syn::AttrStyle::Inner(_val) => {
-                formatter.write_str("AttrStyle::Inner")?;
+            syn::attr::Style::Outer => formatter.write_str("attr::Style::Outer"),
+            syn::attr::Style::Inner(_val) => {
+                formatter.write_str("attr::Style::Inner")?;
                 Ok(())
             },
         }
     }
 }
-impl Debug for Lite<syn::Attribute> {
+impl Debug for Lite<syn::attr::Attr> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("Attribute");
+        let mut formatter = formatter.debug_struct("attr::Attr");
         formatter.field("style", Lite(&self.value.style));
         formatter.field("meta", Lite(&self.value.meta));
         formatter.finish()
@@ -3011,11 +3011,11 @@ impl Debug for Lite<syn::Member> {
         }
     }
 }
-impl Debug for Lite<syn::Meta> {
+impl Debug for Lite<syn::meta::Meta> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match &self.value {
-            syn::Meta::Path(_val) => {
-                let mut formatter = formatter.debug_struct("Meta::Path");
+            syn::meta::Meta::Path(_val) => {
+                let mut formatter = formatter.debug_struct("meta::Meta::Path");
                 if _val.colon.is_some() {
                     formatter.field("leading_colon", &Present);
                 }
@@ -3024,15 +3024,15 @@ impl Debug for Lite<syn::Meta> {
                 }
                 formatter.finish()
             },
-            syn::Meta::List(_val) => {
-                let mut formatter = formatter.debug_struct("Meta::List");
+            syn::meta::Meta::List(_val) => {
+                let mut formatter = formatter.debug_struct("meta::Meta::List");
                 formatter.field("path", Lite(&_val.path));
                 formatter.field("delimiter", Lite(&_val.delim));
                 formatter.field("tokens", Lite(&_val.toks));
                 formatter.finish()
             },
-            syn::Meta::NameValue(_val) => {
-                let mut formatter = formatter.debug_struct("Meta::NameValue");
+            syn::meta::Meta::NameValue(_val) => {
+                let mut formatter = formatter.debug_struct("meta::Meta::NameValue");
                 formatter.field("path", Lite(&_val.path));
                 formatter.field("value", Lite(&_val.expr));
                 formatter.finish()
@@ -3040,18 +3040,18 @@ impl Debug for Lite<syn::Meta> {
         }
     }
 }
-impl Debug for Lite<syn::MetaList> {
+impl Debug for Lite<syn::meta::List> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("MetaList");
+        let mut formatter = formatter.debug_struct("meta::List");
         formatter.field("path", Lite(&self.value.path));
         formatter.field("delimiter", Lite(&self.value.delim));
         formatter.field("tokens", Lite(&self.value.toks));
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::MetaNameValue> {
+impl Debug for Lite<syn::meta::NameValue> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("MetaNameValue");
+        let mut formatter = formatter.debug_struct("meta::NameValue");
         formatter.field("path", Lite(&self.value.path));
         formatter.field("value", Lite(&self.value.expr));
         formatter.finish()

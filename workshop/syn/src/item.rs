@@ -23,7 +23,7 @@ ast_enum_of_structs! {
     }
 }
 impl Item {
-    pub(crate) fn replace_attrs(&mut self, y: Vec<Attribute>) -> Vec<Attribute> {
+    pub(crate) fn replace_attrs(&mut self, y: Vec<attr::Attr>) -> Vec<attr::Attr> {
         match self {
             Const(Const { attrs, .. })
             | Enum(Enum { attrs, .. })
@@ -78,7 +78,7 @@ impl From<DeriveInput> for Item {
 }
 
 pub struct Const {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub vis: Visibility,
     pub const_: Token![const],
     pub ident: Ident,
@@ -91,7 +91,7 @@ pub struct Const {
 }
 
 pub struct Enum {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub vis: Visibility,
     pub enum_: Token![enum],
     pub ident: Ident,
@@ -116,7 +116,7 @@ impl From<Enum> for DeriveInput {
 }
 
 pub struct ExternCrate {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub vis: Visibility,
     pub extern_: Token![extern],
     pub crate_: Token![crate],
@@ -125,20 +125,20 @@ pub struct ExternCrate {
     pub semi: Token![;],
 }
 pub struct Fn {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub vis: Visibility,
     pub sig: Sig,
     pub block: Box<Block>,
 }
 pub struct Foreign {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub unsafe_: Option<Token![unsafe]>,
     pub abi: Abi,
     pub brace: tok::Brace,
     pub items: Vec<Foreign::Item>,
 }
 pub struct Impl {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub default_: Option<Token![default]>,
     pub unsafe_: Option<Token![unsafe]>,
     pub impl_: Token![impl],
@@ -149,13 +149,13 @@ pub struct Impl {
     pub items: Vec<Impl::Item>,
 }
 pub struct Mac {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub ident: Option<Ident>,
     pub mac: Macro,
     pub semi: Option<Token![;]>,
 }
 pub struct Mod {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub vis: Visibility,
     pub unsafe_: Option<Token![unsafe]>,
     pub mod_: Token![mod],
@@ -164,7 +164,7 @@ pub struct Mod {
     pub semi: Option<Token![;]>,
 }
 pub struct Static {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub vis: Visibility,
     pub static_: Token![static],
     pub mut_: StaticMut,
@@ -177,7 +177,7 @@ pub struct Static {
 }
 
 pub struct Struct {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub vis: Visibility,
     pub struct_: Token![struct],
     pub ident: Ident,
@@ -202,7 +202,7 @@ impl From<Struct> for DeriveInput {
 }
 
 pub struct Trait {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub vis: Visibility,
     pub unsafe_: Option<Token![unsafe]>,
     pub auto_: Option<Token![auto]>,
@@ -216,7 +216,7 @@ pub struct Trait {
     pub items: Vec<Trait::Item>,
 }
 pub struct TraitAlias {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub vis: Visibility,
     pub trait_: Token![trait],
     pub ident: Ident,
@@ -226,7 +226,7 @@ pub struct TraitAlias {
     pub semi: Token![;],
 }
 pub struct Type {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub vis: Visibility,
     pub type_: Token![type],
     pub ident: Ident,
@@ -237,7 +237,7 @@ pub struct Type {
 }
 
 pub struct Union {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub vis: Visibility,
     pub union_: Token![union],
     pub ident: Ident,
@@ -260,7 +260,7 @@ impl From<Union> for DeriveInput {
 }
 
 pub struct Use {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub vis: Visibility,
     pub use_: Token![use],
     pub colon: Option<Token![::]>,
@@ -269,7 +269,7 @@ pub struct Use {
 }
 
 pub struct Receiver {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub ref_: Option<(Token![&], Option<Lifetime>)>,
     pub mut_: Option<Token![mut]>,
     pub self_: Token![self],
@@ -313,7 +313,7 @@ impl Sig {
 }
 
 pub struct Variadic {
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<attr::Attr>,
     pub pat: Option<(Box<patt::Patt>, Token![:])>,
     pub dots: Token![...],
     pub comma: Option<Token![,]>,
@@ -334,13 +334,13 @@ pub mod Foreign {
         }
     }
     pub struct Fn {
-        pub attrs: Vec<Attribute>,
+        pub attrs: Vec<attr::Attr>,
         pub vis: Visibility,
         pub sig: Sig,
         pub semi: Token![;],
     }
     pub struct Static {
-        pub attrs: Vec<Attribute>,
+        pub attrs: Vec<attr::Attr>,
         pub vis: Visibility,
         pub static_: Token![static],
         pub mut_: StaticMut,
@@ -350,7 +350,7 @@ pub mod Foreign {
         pub semi: Token![;],
     }
     pub struct Type {
-        pub attrs: Vec<Attribute>,
+        pub attrs: Vec<attr::Attr>,
         pub vis: Visibility,
         pub type_: Token![type],
         pub ident: Ident,
@@ -358,7 +358,7 @@ pub mod Foreign {
         pub semi: Token![;],
     }
     pub struct Mac {
-        pub attrs: Vec<Attribute>,
+        pub attrs: Vec<attr::Attr>,
         pub mac: Macro,
         pub semi: Option<Token![;]>,
     }
@@ -374,7 +374,7 @@ pub mod Impl {
         }
     }
     pub struct Const {
-        pub attrs: Vec<Attribute>,
+        pub attrs: Vec<attr::Attr>,
         pub vis: Visibility,
         pub default_: Option<Token![default]>,
         pub const_: Token![const],
@@ -387,14 +387,14 @@ pub mod Impl {
         pub semi: Token![;],
     }
     pub struct Fn {
-        pub attrs: Vec<Attribute>,
+        pub attrs: Vec<attr::Attr>,
         pub vis: Visibility,
         pub default_: Option<Token![default]>,
         pub sig: Sig,
         pub block: Block,
     }
     pub struct Type {
-        pub attrs: Vec<Attribute>,
+        pub attrs: Vec<attr::Attr>,
         pub vis: Visibility,
         pub default_: Option<Token![default]>,
         pub type_: Token![type],
@@ -405,7 +405,7 @@ pub mod Impl {
         pub semi: Token![;],
     }
     pub struct Mac {
-        pub attrs: Vec<Attribute>,
+        pub attrs: Vec<attr::Attr>,
         pub mac: Macro,
         pub semi: Option<Token![;]>,
     }
@@ -422,7 +422,7 @@ pub mod Trait {
         }
     }
     pub struct Const {
-        pub attrs: Vec<Attribute>,
+        pub attrs: Vec<attr::Attr>,
         pub const_: Token![const],
         pub ident: Ident,
         pub gens: Generics,
@@ -432,13 +432,13 @@ pub mod Trait {
         pub semi: Token![;],
     }
     pub struct Fn {
-        pub attrs: Vec<Attribute>,
+        pub attrs: Vec<attr::Attr>,
         pub sig: Sig,
         pub default: Option<Block>,
         pub semi: Option<Token![;]>,
     }
     pub struct Type {
-        pub attrs: Vec<Attribute>,
+        pub attrs: Vec<attr::Attr>,
         pub type_: Token![type],
         pub ident: Ident,
         pub gens: Generics,
@@ -448,7 +448,7 @@ pub mod Trait {
         pub semi: Token![;],
     }
     pub struct Mac {
-        pub attrs: Vec<Attribute>,
+        pub attrs: Vec<attr::Attr>,
         pub mac: Macro,
         pub semi: Option<Token![;]>,
     }

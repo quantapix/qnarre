@@ -2,10 +2,10 @@ use proc_macro2::{Delimiter, Group, Ident, Literal, Punct, Spacing, Span, TokenS
 use quote::{ToTokens, TokenStreamExt};
 use std::cmp;
 
-impl ToTokens for Attribute {
+impl ToTokens for attr::Attr {
     fn to_tokens(&self, xs: &mut TokenStream) {
         self.pound.to_tokens(xs);
-        if let AttrStyle::Inner(x) = &self.style {
+        if let attr::Style::Inner(x) = &self.style {
             x.to_tokens(xs);
         }
         self.bracket.surround(xs, |x| {
@@ -13,13 +13,13 @@ impl ToTokens for Attribute {
         });
     }
 }
-impl ToTokens for MetaList {
+impl ToTokens for meta::List {
     fn to_tokens(&self, xs: &mut TokenStream) {
         self.path.to_tokens(xs);
         self.delim.surround(xs, self.toks.clone());
     }
 }
-impl ToTokens for MetaNameValue {
+impl ToTokens for meta::NameValue {
     fn to_tokens(&self, xs: &mut TokenStream) {
         self.path.to_tokens(xs);
         self.eq.to_tokens(xs);
@@ -242,14 +242,14 @@ fn wrap_bare_struct(tokens: &mut TokenStream, e: &Expr) {
         e.to_tokens(tokens);
     }
 }
-pub(crate) fn outer_attrs_to_tokens(attrs: &[Attribute], tokens: &mut TokenStream) {
+pub(crate) fn outer_attrs_to_tokens(attrs: &[attr::Attr], tokens: &mut TokenStream) {
     tokens.append_all(attrs.outer());
 }
-fn inner_attrs_to_tokens(attrs: &[Attribute], tokens: &mut TokenStream) {
+fn inner_attrs_to_tokens(attrs: &[attr::Attr], tokens: &mut TokenStream) {
     tokens.append_all(attrs.inner());
 }
 #[cfg(not(feature = "full"))]
-pub(crate) fn outer_attrs_to_tokens(_attrs: &[Attribute], _tokens: &mut TokenStream) {}
+pub(crate) fn outer_attrs_to_tokens(_attrs: &[attr::Attr], _tokens: &mut TokenStream) {}
 impl ToTokens for expr::Array {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
@@ -1206,8 +1206,8 @@ impl ToTokens for Field {
 
 impl ToTokens for DeriveInput {
     fn to_tokens(&self, xs: &mut TokenStream) {
-        for attr in self.attrs.outer() {
-            attr.to_tokens(xs);
+        for x in self.attrs.outer() {
+            x.to_tokens(xs);
         }
         self.vis.to_tokens(xs);
         match &self.data {
