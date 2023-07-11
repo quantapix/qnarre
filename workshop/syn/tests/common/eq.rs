@@ -159,11 +159,9 @@ use std::collections::HashMap;
 use std::hash::{BuildHasher, Hash};
 use thin_vec::ThinVec;
 
-ast_enum! {
-    pub enum StrStyle #no_visit {
-        Cooked,
-        Raw(usize),
-    }
+pub enum StrStyle {
+    Cooked,
+    Raw(usize),
 }
 
 pub trait SpanlessEq {

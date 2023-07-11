@@ -17,9 +17,9 @@ impl Attr {
         self.parse_args_with(T::parse)
     }
     pub fn parse_args_with<T: Parser>(&self, p: T) -> Res<T::Output> {
-        use meta::Meta::*;
+        use super::meta::Meta;
         match &self.meta {
-            Path(x) => Err(err::new2(
+            Meta::Path(x) => Err(err::new2(
                 x.segs.first().unwrap().ident.span(),
                 x.segs.last().unwrap().ident.span(),
                 format!(

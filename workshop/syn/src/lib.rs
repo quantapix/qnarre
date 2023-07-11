@@ -59,9 +59,11 @@ use std::{
 
 mod pm2 {
     pub use proc_macro2::{
-        extra::DelimSpan, Delimiter as Delim, Group, Literal as Lit, Spacing, Span, TokenStream, TokenTree,
+        extra::DelimSpan, Delimiter as Delim, Group, Ident, Literal as Lit, Spacing, Span, TokenStream as Stream,
+        TokenTree as Tree,
     };
 }
+pub use pm2::Ident;
 
 #[macro_use]
 mod mac;
@@ -77,7 +79,6 @@ mod tok;
 
 use cur::Cursor;
 mod ident {
-    pub use proc_macro2::Ident;
     macro_rules! ident_from_tok {
         ($x:ident) => {
             impl From<Token![$x]> for Ident {
@@ -184,7 +185,7 @@ mod ident {
         match x {}
     }
 }
-pub use ident::{Ident, Lifetime};
+use ident::Lifetime;
 pub mod ext {
     use super::{
         parse::{Peek, Stream},
@@ -271,7 +272,7 @@ mod pat {
         pub attrs: Vec<attr::Attr>,
         pub ref_: Option<Token![ref]>,
         pub mut_: Option<Token![mut]>,
-        pub ident: Ident,
+        pub ident: super::Ident,
         pub sub: Option<(Token![@], Box<Pat>)>,
     }
     pub struct Or {
@@ -723,7 +724,7 @@ pub mod data {
 use data::DeriveInput;
 
 mod err {
-    use proc_macro2::{Ident, LexError, Punct};
+    use proc_macro2::{LexError, Punct};
     use quote::ToTokens;
     use std::{
         fmt::{self, Debug, Display},
@@ -794,7 +795,7 @@ mod err {
                 Some(range) => (range.start, range.end),
                 None => (pm2::Span::call_site(), pm2::Span::call_site()),
             };
-            use pm2::Spacing::*;
+            use pm2::{Spacing::*, Tree::*};
             pm2::Stream::from_iter(vec![
                 pm2::Tree::Punct({
                     let y = Punct::new(':', Joint);

@@ -64,7 +64,7 @@
           }
         },
         "pat": {
-          "syn": "patt::Patt"
+          "syn": "pat::Pat"
         },
         "guard": {
           "option": {
@@ -105,7 +105,7 @@
       },
       "fields": {
         "ident": {
-          "proc_macro2": "Ident"
+          "syn": "Ident"
         },
         "gens": {
           "option": {
@@ -130,7 +130,7 @@
       },
       "fields": {
         "ident": {
-          "proc_macro2": "Ident"
+          "syn": "Ident"
         },
         "gens": {
           "option": {
@@ -203,7 +203,7 @@
           "option": {
             "tuple": [
               {
-                "proc_macro2": "Ident"
+                "syn": "Ident"
               },
               {
                 "token": "Colon"
@@ -234,7 +234,7 @@
           "option": {
             "tuple": [
               {
-                "proc_macro2": "Ident"
+                "syn": "Ident"
               },
               {
                 "token": "Colon"
@@ -468,7 +468,7 @@
           "token": "Const"
         },
         "ident": {
-          "proc_macro2": "Ident"
+          "syn": "Ident"
         },
         "colon": {
           "token": "Colon"
@@ -498,7 +498,7 @@
       },
       "fields": {
         "ident": {
-          "proc_macro2": "Ident"
+          "syn": "Ident"
         },
         "gens": {
           "option": {
@@ -621,7 +621,7 @@
           "syn": "Visibility"
         },
         "ident": {
-          "proc_macro2": "Ident"
+          "syn": "Ident"
         },
         "gens": {
           "syn": "gen::Gens"
@@ -822,7 +822,7 @@
         ],
         "Verbatim": [
           {
-            "proc_macro2": "pm2::Stream"
+            "syn": "pm2::Stream"
           }
         ],
         "While": [
@@ -1131,7 +1131,7 @@
         "inputs": {
           "punctuated": {
             "element": {
-              "syn": "patt::Patt"
+              "syn": "pat::Pat"
             },
             "punct": "Comma"
           }
@@ -1243,7 +1243,7 @@
         },
         "pat": {
           "box": {
-            "syn": "patt::Patt"
+            "syn": "pat::Pat"
           }
         },
         "in_": {
@@ -1388,7 +1388,7 @@
         },
         "pat": {
           "box": {
-            "syn": "patt::Patt"
+            "syn": "pat::Pat"
           }
         },
         "eq": {
@@ -1518,7 +1518,7 @@
           "token": "Dot"
         },
         "method": {
-          "proc_macro2": "Ident"
+          "syn": "Ident"
         },
         "turbofish": {
           "option": {
@@ -1941,7 +1941,7 @@
         },
         "ident": {
           "option": {
-            "proc_macro2": "Ident"
+            "syn": "Ident"
           }
         },
         "colon": {
@@ -1968,7 +1968,7 @@
       "exhaustive": false
     },
     {
-      "ident": "patt::Field",
+      "ident": "pat::Field",
       "features": {
         "any": [
           "full"
@@ -1990,7 +1990,7 @@
         },
         "pat": {
           "box": {
-            "syn": "patt::Patt"
+            "syn": "pat::Pat"
           }
         }
       }
@@ -2127,7 +2127,7 @@
         ],
         "Typed": [
           {
-            "syn": "patt::Type"
+            "syn": "pat::Type"
           }
         ]
       }
@@ -2162,7 +2162,7 @@
         ],
         "Verbatim": [
           {
-            "proc_macro2": "pm2::Stream"
+            "syn": "pm2::Stream"
           }
         ]
       },
@@ -2238,7 +2238,7 @@
           "syn": "StaticMutability"
         },
         "ident": {
-          "proc_macro2": "Ident"
+          "syn": "Ident"
         },
         "colon": {
           "token": "Colon"
@@ -2273,7 +2273,7 @@
           "token": "Type"
         },
         "ident": {
-          "proc_macro2": "Ident"
+          "syn": "Ident"
         },
         "gens": {
           "syn": "gen::Gens"
@@ -2415,7 +2415,7 @@
         ],
         "Verbatim": [
           {
-            "proc_macro2": "pm2::Stream"
+            "syn": "pm2::Stream"
           }
         ]
       },
@@ -2446,7 +2446,7 @@
           "token": "Const"
         },
         "ident": {
-          "proc_macro2": "Ident"
+          "syn": "Ident"
         },
         "gens": {
           "syn": "gen::Gens"
@@ -2545,7 +2545,7 @@
           "token": "Type"
         },
         "ident": {
-          "proc_macro2": "Ident"
+          "syn": "Ident"
         },
         "gens": {
           "syn": "gen::Gens"
@@ -2584,7 +2584,7 @@
           "std": "u32"
         },
         "span": {
-          "proc_macro2": "Span"
+          "syn": "pm2::Span"
         }
       }
     },
@@ -2673,7 +2673,7 @@
         ],
         "Verbatim": [
           {
-            "proc_macro2": "pm2::Stream"
+            "syn": "pm2::Stream"
           }
         ]
       },
@@ -2699,7 +2699,7 @@
           "token": "Const"
         },
         "ident": {
-          "proc_macro2": "Ident"
+          "syn": "Ident"
         },
         "gens": {
           "syn": "gen::Gens"
@@ -2745,7 +2745,7 @@
           "token": "Enum"
         },
         "ident": {
-          "proc_macro2": "Ident"
+          "syn": "Ident"
         },
         "gens": {
           "syn": "gen::Gens"
@@ -2786,7 +2786,7 @@
           "token": "Crate"
         },
         "ident": {
-          "proc_macro2": "Ident"
+          "syn": "Ident"
         },
         "rename": {
           "option": {
@@ -2795,7 +2795,7 @@
                 "token": "As"
               },
               {
-                "proc_macro2": "Ident"
+                "syn": "Ident"
               }
             ]
           }
@@ -2938,7 +2938,7 @@
         },
         "ident": {
           "option": {
-            "proc_macro2": "Ident"
+            "syn": "Ident"
           }
         },
         "mac": {
@@ -2976,7 +2976,7 @@
           "token": "Mod"
         },
         "ident": {
-          "proc_macro2": "Ident"
+          "syn": "Ident"
         },
         "content": {
           "option": {
@@ -3022,7 +3022,7 @@
           "syn": "StaticMutability"
         },
         "ident": {
-          "proc_macro2": "Ident"
+          "syn": "Ident"
         },
         "colon": {
           "token": "Colon"
@@ -3065,7 +3065,7 @@
           "token": "Struct"
         },
         "ident": {
-          "proc_macro2": "Ident"
+          "syn": "Ident"
         },
         "gens": {
           "syn": "gen::Gens"
@@ -3115,7 +3115,7 @@
           "token": "Trait"
         },
         "ident": {
-          "proc_macro2": "Ident"
+          "syn": "Ident"
         },
         "gens": {
           "syn": "gen::Gens"
@@ -3163,7 +3163,7 @@
           "token": "Trait"
         },
         "ident": {
-          "proc_macro2": "Ident"
+          "syn": "Ident"
         },
         "gens": {
           "syn": "gen::Gens"
@@ -3204,7 +3204,7 @@
           "token": "Type"
         },
         "ident": {
-          "proc_macro2": "Ident"
+          "syn": "Ident"
         },
         "gens": {
           "syn": "gen::Gens"
@@ -3242,7 +3242,7 @@
           "token": "Union"
         },
         "ident": {
-          "proc_macro2": "Ident"
+          "syn": "Ident"
         },
         "gens": {
           "syn": "gen::Gens"
@@ -3307,10 +3307,10 @@
       },
       "fields": {
         "apostrophe": {
-          "proc_macro2": "Span"
+          "syn": "pm2::Span"
         },
         "ident": {
-          "proc_macro2": "Ident"
+          "syn": "Ident"
         }
       }
     },
@@ -3389,7 +3389,7 @@
         ],
         "Verbatim": [
           {
-            "proc_macro2": "pm2::Lit"
+            "syn": "pm2::Lit"
           }
         ]
       },
@@ -3405,7 +3405,7 @@
           "std": "bool"
         },
         "span": {
-          "proc_macro2": "Span"
+          "syn": "pm2::Span"
         }
       }
     },
@@ -3462,7 +3462,7 @@
           "token": "Let"
         },
         "pat": {
-          "syn": "patt::Patt"
+          "syn": "pat::Pat"
         },
         "init": {
           "option": {
@@ -3525,7 +3525,7 @@
           "syn": "MacroDelimiter"
         },
         "tokens": {
-          "proc_macro2": "pm2::Stream"
+          "syn": "pm2::Stream"
         }
       }
     },
@@ -3566,7 +3566,7 @@
       "variants": {
         "Named": [
           {
-            "proc_macro2": "Ident"
+            "syn": "Ident"
           }
         ],
         "Unnamed": [
@@ -3618,7 +3618,7 @@
           "syn": "MacroDelimiter"
         },
         "tokens": {
-          "proc_macro2": "pm2::Stream"
+          "syn": "pm2::Stream"
         }
       }
     },
@@ -3668,7 +3668,7 @@
       }
     },
     {
-      "ident": "patt::Patt",
+      "ident": "pat::Pat",
       "features": {
         "any": [
           "full"
@@ -3682,7 +3682,7 @@
         ],
         "Ident": [
           {
-            "syn": "patt::Ident"
+            "syn": "pat::Ident"
           }
         ],
         "Lit": [
@@ -3697,12 +3697,12 @@
         ],
         "Or": [
           {
-            "syn": "patt::Or"
+            "syn": "pat::Or"
           }
         ],
         "Paren": [
           {
-            "syn": "patt::Paren"
+            "syn": "pat::Paren"
           }
         ],
         "Path": [
@@ -3717,54 +3717,54 @@
         ],
         "Reference": [
           {
-            "syn": "patt::Ref"
+            "syn": "pat::Ref"
           }
         ],
         "Rest": [
           {
-            "syn": "patt::Rest"
+            "syn": "pat::Rest"
           }
         ],
         "Slice": [
           {
-            "syn": "patt::Slice"
+            "syn": "pat::Slice"
           }
         ],
         "Struct": [
           {
-            "syn": "patt::Struct"
+            "syn": "pat::Struct"
           }
         ],
         "Tuple": [
           {
-            "syn": "patt::Tuple"
+            "syn": "pat::Tuple"
           }
         ],
         "TupleStruct": [
           {
-            "syn": "patt::TupleStruct"
+            "syn": "pat::TupleStruct"
           }
         ],
         "Type": [
           {
-            "syn": "patt::Type"
+            "syn": "pat::Type"
           }
         ],
         "Verbatim": [
           {
-            "proc_macro2": "pm2::Stream"
+            "syn": "pm2::Stream"
           }
         ],
         "Wild": [
           {
-            "syn": "patt::Wild"
+            "syn": "pat::Wild"
           }
         ]
       },
       "exhaustive": false
     },
     {
-      "ident": "patt::Ident",
+      "ident": "pat::Ident",
       "features": {
         "any": [
           "full"
@@ -3787,7 +3787,7 @@
           }
         },
         "ident": {
-          "proc_macro2": "Ident"
+          "syn": "Ident"
         },
         "subpat": {
           "option": {
@@ -3797,7 +3797,7 @@
               },
               {
                 "box": {
-                  "syn": "patt::Patt"
+                  "syn": "pat::Pat"
                 }
               }
             ]
@@ -3806,7 +3806,7 @@
       }
     },
     {
-      "ident": "patt::Or",
+      "ident": "pat::Or",
       "features": {
         "any": [
           "full"
@@ -3826,7 +3826,7 @@
         "cases": {
           "punctuated": {
             "element": {
-              "syn": "patt::Patt"
+              "syn": "pat::Pat"
             },
             "punct": "Or"
           }
@@ -3834,7 +3834,7 @@
       }
     },
     {
-      "ident": "patt::Paren",
+      "ident": "pat::Paren",
       "features": {
         "any": [
           "full"
@@ -3851,13 +3851,13 @@
         },
         "pat": {
           "box": {
-            "syn": "patt::Patt"
+            "syn": "pat::Pat"
           }
         }
       }
     },
     {
-      "ident": "patt::Ref",
+      "ident": "pat::Ref",
       "features": {
         "any": [
           "full"
@@ -3879,13 +3879,13 @@
         },
         "pat": {
           "box": {
-            "syn": "patt::Patt"
+            "syn": "pat::Pat"
           }
         }
       }
     },
     {
-      "ident": "patt::Rest",
+      "ident": "pat::Rest",
       "features": {
         "any": [
           "full"
@@ -3903,7 +3903,7 @@
       }
     },
     {
-      "ident": "patt::Slice",
+      "ident": "pat::Slice",
       "features": {
         "any": [
           "full"
@@ -3921,7 +3921,7 @@
         "elems": {
           "punctuated": {
             "element": {
-              "syn": "patt::Patt"
+              "syn": "pat::Pat"
             },
             "punct": "Comma"
           }
@@ -3929,7 +3929,7 @@
       }
     },
     {
-      "ident": "patt::Struct",
+      "ident": "pat::Struct",
       "features": {
         "any": [
           "full"
@@ -3955,20 +3955,20 @@
         "fields": {
           "punctuated": {
             "element": {
-              "syn": "patt::Field"
+              "syn": "pat::Field"
             },
             "punct": "Comma"
           }
         },
         "rest": {
           "option": {
-            "syn": "patt::Rest"
+            "syn": "pat::Rest"
           }
         }
       }
     },
     {
-      "ident": "patt::Tuple",
+      "ident": "pat::Tuple",
       "features": {
         "any": [
           "full"
@@ -3986,7 +3986,7 @@
         "elems": {
           "punctuated": {
             "element": {
-              "syn": "patt::Patt"
+              "syn": "pat::Pat"
             },
             "punct": "Comma"
           }
@@ -3994,7 +3994,7 @@
       }
     },
     {
-      "ident": "patt::TupleStruct",
+      "ident": "pat::TupleStruct",
       "features": {
         "any": [
           "full"
@@ -4020,7 +4020,7 @@
         "elems": {
           "punctuated": {
             "element": {
-              "syn": "patt::Patt"
+              "syn": "pat::Pat"
             },
             "punct": "Comma"
           }
@@ -4028,7 +4028,7 @@
       }
     },
     {
-      "ident": "patt::Type",
+      "ident": "pat::Type",
       "features": {
         "any": [
           "full"
@@ -4042,7 +4042,7 @@
         },
         "pat": {
           "box": {
-            "syn": "patt::Patt"
+            "syn": "pat::Pat"
           }
         },
         "colon": {
@@ -4056,7 +4056,7 @@
       }
     },
     {
-      "ident": "patt::Wild",
+      "ident": "pat::Wild",
       "features": {
         "any": [
           "full"
@@ -4129,7 +4129,7 @@
       },
       "fields": {
         "ident": {
-          "proc_macro2": "Ident"
+          "syn": "Ident"
         },
         "arguments": {
           "syn": "path::Args"
@@ -4342,7 +4342,7 @@
           "token": "Fn"
         },
         "ident": {
-          "proc_macro2": "Ident"
+          "syn": "Ident"
         },
         "gens": {
           "syn": "gen::Gens"
@@ -4517,7 +4517,7 @@
         ],
         "Verbatim": [
           {
-            "proc_macro2": "pm2::Stream"
+            "syn": "pm2::Stream"
           }
         ]
       },
@@ -4540,7 +4540,7 @@
           "token": "Const"
         },
         "ident": {
-          "proc_macro2": "Ident"
+          "syn": "Ident"
         },
         "gens": {
           "syn": "gen::Gens"
@@ -4636,7 +4636,7 @@
           "token": "Type"
         },
         "ident": {
-          "proc_macro2": "Ident"
+          "syn": "Ident"
         },
         "gens": {
           "syn": "gen::Gens"
@@ -4752,7 +4752,7 @@
         ],
         "Verbatim": [
           {
-            "proc_macro2": "pm2::Stream"
+            "syn": "pm2::Stream"
           }
         ]
       },
@@ -4929,7 +4929,7 @@
           }
         },
         "ident": {
-          "proc_macro2": "Ident"
+          "syn": "Ident"
         },
         "colon": {
           "option": {
@@ -4977,7 +4977,7 @@
         ],
         "Verbatim": [
           {
-            "proc_macro2": "pm2::Stream"
+            "syn": "pm2::Stream"
           }
         ]
       },
@@ -5214,7 +5214,7 @@
       },
       "fields": {
         "ident": {
-          "proc_macro2": "Ident"
+          "syn": "Ident"
         }
       }
     },
@@ -5227,7 +5227,7 @@
       },
       "fields": {
         "ident": {
-          "proc_macro2": "Ident"
+          "syn": "Ident"
         },
         "colon2": {
           "token": "PathSep"
@@ -5248,13 +5248,13 @@
       },
       "fields": {
         "ident": {
-          "proc_macro2": "Ident"
+          "syn": "Ident"
         },
         "as_": {
           "token": "As"
         },
         "rename": {
-          "proc_macro2": "Ident"
+          "syn": "Ident"
         }
       }
     },
@@ -5311,7 +5311,7 @@
             "tuple": [
               {
                 "box": {
-                  "syn": "patt::Patt"
+                  "syn": "pat::Pat"
                 }
               },
               {
@@ -5345,7 +5345,7 @@
           }
         },
         "ident": {
-          "proc_macro2": "Ident"
+          "syn": "Ident"
         },
         "fields": {
           "syn": "Fields"

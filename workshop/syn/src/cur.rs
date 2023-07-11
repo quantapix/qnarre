@@ -2,7 +2,7 @@ enum Entry {
     Group(Group, usize),
     Ident(Ident),
     Punct(Punct),
-    pm2::Lit(pm2::Lit),
+    Lit(pm2::Lit),
     End(isize),
 }
 
@@ -104,7 +104,7 @@ impl<'a> Cursor<'a> {
     pub fn literal(mut self) -> Option<(pm2::Lit, Cursor<'a>)> {
         self.ignore_none();
         match self.entry() {
-            Entry::pm2::Lit(x) => Some((x.clone(), unsafe { self.bump_ignore_group() })),
+            Entry::Lit(x) => Some((x.clone(), unsafe { self.bump_ignore_group() })),
             _ => None,
         }
     }
@@ -136,7 +136,7 @@ impl<'a> Cursor<'a> {
         use Entry::*;
         let (tree, len) = match self.entry() {
             Group(x, end) => (x.clone().into(), *end),
-            pm2::Lit(x) => (x.clone().into(), 1),
+            Lit(x) => (x.clone().into(), 1),
             Ident(x) => (x.clone().into(), 1),
             Punct(x) => (x.clone().into(), 1),
             End(_) => return None,
@@ -148,7 +148,7 @@ impl<'a> Cursor<'a> {
         use Entry::*;
         match self.entry() {
             Group(x, _) => x.span(),
-            pm2::Lit(x) => x.span(),
+            Lit(x) => x.span(),
             Ident(x) => x.span(),
             Punct(x) => x.span(),
             End(_) => pm2::Span::call_site(),
@@ -170,7 +170,7 @@ impl<'a> Cursor<'a> {
                             }
                         },
                         End(_) => depth += 1,
-                        pm2::Lit(_) | Ident(_) | Punct(_) => {},
+                        Lit(_) | Ident(_) | Punct(_) => {},
                     }
                 }
             }
@@ -181,7 +181,8 @@ impl<'a> Cursor<'a> {
         use Entry::*;
         let y = match self.entry() {
             End(_) => return None,
-            Punct(x) if x.as_char() == '\'' && x.spacing() == pm2::Spacing::Joint => match unsafe { &*self.ptr.add(1) } {
+            Punct(x) if x.as_char() == '\'' && x.spacing() == pm2::Spacing::Joint => match unsafe { &*self.ptr.add(1) }
+            {
                 Ident(_) => 2,
                 _ => 1,
             },
@@ -252,7 +253,7 @@ impl Buffer {
             match x {
                 pm2::Tree::Ident(x) => ys.push(Ident(x)),
                 pm2::Tree::Punct(x) => ys.push(Punct(x)),
-                pm2::Tree::Literal(x) => ys.push(pm2::Lit(x)),
+                pm2::Tree::Literal(x) => ys.push(Lit(x)),
                 pm2::Tree::Group(x) => {
                     let beg = ys.len();
                     ys.push(End(0));
