@@ -9,449 +9,372 @@ use std::{
     fmt::{self, Display},
 };
 
-pub fn parse_inner(x: Stream, ys: &mut Vec<attr::Attr>) -> Res<()> {
-    while x.peek(Token![#]) && x.peek2(Token![!]) {
-        ys.push(x.call(single_parse_inner)?);
+pub mod meta {
+    use meta::*;
+    impl Parse for Meta {
+        fn parse(x: Stream) -> Res<Self> {
+            let y = x.call(Path::parse_mod_style)?;
+            after_path(y, x)
+        }
     }
-    Ok(())
-}
-pub fn single_parse_inner(x: Stream) -> Res<attr::Attr> {
-    let content;
-    Ok(attr::Attr {
-        pound: x.parse()?,
-        style: attr::Style::Inner(x.parse()?),
-        bracket: bracketed!(content in x),
-        meta: content.parse()?,
-    })
-}
-pub fn single_parse_outer(x: Stream) -> Res<attr::Attr> {
-    let content;
-    Ok(attr::Attr {
-        pound: x.parse()?,
-        style: attr::Style::Outer,
-        bracket: bracketed!(content in x),
-        meta: content.parse()?,
-    })
-}
-
-impl Parse for meta::Meta {
-    fn parse(x: Stream) -> Res<Self> {
-        let path = x.call(Path::parse_mod_style)?;
-        parse_meta_after_path(path, x)
+    impl Parse for List {
+        fn parse(x: Stream) -> Res<Self> {
+            let y = x.call(Path::parse_mod_style)?;
+            list_after_path(y, x)
+        }
     }
-}
-impl Parse for meta::List {
-    fn parse(x: Stream) -> Res<Self> {
-        let path = x.call(Path::parse_mod_style)?;
-        parse_meta_list_after_path(path, x)
+    impl Parse for NameValue {
+        fn parse(x: Stream) -> Res<Self> {
+            let y = x.call(Path::parse_mod_style)?;
+            name_value_after_path(y, x)
+        }
     }
-}
-impl Parse for meta::NameValue {
-    fn parse(x: Stream) -> Res<Self> {
-        let path = x.call(Path::parse_mod_style)?;
-        parse_meta_name_value_after_path(path, x)
+    fn after_path(p: Path, x: Stream) -> Res<Meta> {
+        if x.peek(tok::Paren) || x.peek(tok::Bracket) || x.peek(tok::Brace) {
+            list_after_path(p, x).map(Meta::List)
+        } else if x.peek(Token![=]) {
+            name_value_after_path(p, x).map(Meta::NameValue)
+        } else {
+            Ok(Meta::Path(p))
+        }
     }
-}
-
-pub fn parse_meta_after_path(path: Path, x: Stream) -> Res<meta::Meta> {
-    if x.peek(tok::Paren) || x.peek(tok::Bracket) || x.peek(tok::Brace) {
-        parse_meta_list_after_path(path, x).map(meta::Meta::List)
-    } else if x.peek(Token![=]) {
-        parse_meta_name_value_after_path(path, x).map(meta::Meta::NameValue)
-    } else {
-        Ok(meta::Meta::Path(path))
+    fn list_after_path(path: Path, x: Stream) -> Res<List> {
+        let (delim, toks) = mac::parse_delim(x)?;
+        Ok(List { path, delim, toks })
+    }
+    fn name_value_after_path(path: Path, x: Stream) -> Res<NameValue> {
+        let eq: Token![=] = x.parse()?;
+        let ahead = x.fork();
+        let lit: Option<Lit> = ahead.parse()?;
+        let expr = if let (Some(lit), true) = (lit, ahead.is_empty()) {
+            x.advance_to(&ahead);
+            Expr::Lit(expr::Lit { attrs: Vec::new(), lit })
+        } else if x.peek(Token![#]) && x.peek2(tok::Bracket) {
+            return Err(x.error("unexpected attribute inside of attribute"));
+        } else {
+            x.parse()?
+        };
+        Ok(NameValue { path, eq, expr })
     }
 }
-fn parse_meta_list_after_path(path: Path, x: Stream) -> Res<meta::List> {
-    let (delimiter, tokens) = mac::parse_delim(x)?;
-    Ok(meta::List {
-        path,
-        delim: delimiter,
-        toks: tokens,
-    })
-}
-fn parse_meta_name_value_after_path(path: Path, x: Stream) -> Res<meta::NameValue> {
-    let eq: Token![=] = x.parse()?;
-    let ahead = x.fork();
-    let lit: Option<Lit> = ahead.parse()?;
-    let value = if let (Some(lit), true) = (lit, ahead.is_empty()) {
-        x.advance_to(&ahead);
-        Expr::Lit(expr::Lit { attrs: Vec::new(), lit })
-    } else if x.peek(Token![#]) && x.peek2(tok::Bracket) {
-        return Err(x.error("unexpected attribute inside of attribute"));
-    } else {
-        x.parse()?
-    };
-    Ok(meta::NameValue { path, eq, expr: value })
-}
-
-pub(super) struct DisplayAttrStyle<'a>(pub &'a attr::Style);
-impl<'a> Display for DisplayAttrStyle<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str(match self.0 {
-            attr::Style::Outer => "#",
-            attr::Style::Inner(_) => "#!",
-        })
-    }
-}
-
-pub(super) struct DisplayPath<'a>(pub &'a Path);
-impl<'a> Display for DisplayPath<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for (i, x) in self.0.segs.iter().enumerate() {
-            if i > 0 || self.0.colon.is_some() {
-                f.write_str("::")?;
-            }
-            write!(f, "{}", x.ident)?;
+pub mod attr {
+    use attr::*;
+    pub fn inner(x: Stream, ys: &mut Vec<Attr>) -> Res<()> {
+        while x.peek(Token![#]) && x.peek2(Token![!]) {
+            ys.push(x.call(single_inner)?);
         }
         Ok(())
     }
-}
-
-impl Parse for gen::Gens {
-    fn parse(x: Stream) -> Res<Self> {
-        if !x.peek(Token![<]) {
-            return Ok(gen::Gens::default());
-        }
-        let lt: Token![<] = x.parse()?;
-        let mut params = Punctuated::new();
-        loop {
-            if x.peek(Token![>]) {
-                break;
-            }
-            let attrs = x.call(attr::Attr::parse_outer)?;
-            let lookahead = x.lookahead1();
-            if lookahead.peek(Lifetime) {
-                params.push_value(gen::Param::Life(gen::param::Life { attrs, ..x.parse()? }));
-            } else if lookahead.peek(Ident) {
-                params.push_value(gen::Param::Type(gen::param::Type { attrs, ..x.parse()? }));
-            } else if lookahead.peek(Token![const]) {
-                params.push_value(gen::Param::Const(gen::param::Const { attrs, ..x.parse()? }));
-            } else if x.peek(Token![_]) {
-                params.push_value(gen::Param::Type(gen::param::Type {
-                    attrs,
-                    ident: x.call(Ident::parse_any)?,
-                    colon: None,
-                    bounds: Punctuated::new(),
-                    eq: None,
-                    default: None,
-                }));
-            } else {
-                return Err(lookahead.error());
-            }
-            if x.peek(Token![>]) {
-                break;
-            }
-            let punct = x.parse()?;
-            params.push_punct(punct);
-        }
-        let gt: Token![>] = x.parse()?;
-        Ok(gen::Gens {
-            lt: Some(lt),
-            params,
-            gt: Some(gt),
-            where_: None,
+    pub fn single_inner(x: Stream) -> Res<Attr> {
+        let y;
+        Ok(Attr {
+            pound: x.parse()?,
+            style: Style::Inner(x.parse()?),
+            bracket: bracketed!(y in x),
+            meta: y.parse()?,
         })
     }
-}
-impl Parse for gen::Param {
-    fn parse(x: Stream) -> Res<Self> {
-        let attrs = x.call(attr::Attr::parse_outer)?;
-        let lookahead = x.lookahead1();
-        if lookahead.peek(Ident) {
-            Ok(gen::Param::Type(gen::param::Type { attrs, ..x.parse()? }))
-        } else if lookahead.peek(Lifetime) {
-            Ok(gen::Param::Life(gen::param::Life { attrs, ..x.parse()? }))
-        } else if lookahead.peek(Token![const]) {
-            Ok(gen::Param::Const(gen::param::Const { attrs, ..x.parse()? }))
-        } else {
-            Err(lookahead.error())
+    pub fn single_outer(x: Stream) -> Res<Attr> {
+        let y;
+        Ok(Attr {
+            pound: x.parse()?,
+            style: Style::Outer,
+            bracket: bracketed!(y in x),
+            meta: y.parse()?,
+        })
+    }
+    pub struct DisplayAttrStyle<'a>(pub &'a Style);
+    impl<'a> Display for DisplayAttrStyle<'a> {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            f.write_str(match self.0 {
+                Style::Outer => "#",
+                Style::Inner(_) => "#!",
+            })
         }
     }
 }
-impl Parse for gen::param::Life {
-    fn parse(x: Stream) -> Res<Self> {
-        let has_colon;
-        Ok(gen::param::Life {
-            attrs: x.call(attr::Attr::parse_outer)?,
-            life: x.parse()?,
-            colon: {
-                if x.peek(Token![:]) {
-                    has_colon = true;
-                    Some(x.parse()?)
-                } else {
-                    has_colon = false;
-                    None
-                }
-            },
-            bounds: {
+pub mod gen {
+    use gen::*;
+    pub mod bound {
+        use bound::*;
+        impl Type {
+            pub fn parse_multiple(x: Stream, plus: bool) -> Res<Punctuated<Self, Token![+]>> {
                 let mut ys = Punctuated::new();
-                if has_colon {
-                    loop {
-                        if x.peek(Token![,]) || x.peek(Token![>]) {
-                            break;
-                        }
-                        let value = x.parse()?;
-                        ys.push_value(value);
-                        if !x.peek(Token![+]) {
-                            break;
-                        }
-                        let punct = x.parse()?;
-                        ys.push_punct(punct);
-                    }
-                }
-                ys
-            },
-        })
-    }
-}
-impl Parse for Bgen::bound::Lifes {
-    fn parse(x: Stream) -> Res<Self> {
-        Ok(Bgen::bound::Lifes {
-            for_: x.parse()?,
-            lt: x.parse()?,
-            lifes: {
-                let mut ys = Punctuated::new();
-                while !x.peek(Token![>]) {
-                    let attrs = x.call(attr::Attr::parse_outer)?;
-                    let lifetime: Lifetime = x.parse()?;
-                    ys.push_value(gen::Param::Life(gen::param::Life {
-                        attrs,
-                        life: lifetime,
-                        colon: None,
-                        bounds: Punctuated::new(),
-                    }));
-                    if x.peek(Token![>]) {
+                loop {
+                    ys.push_value(x.parse()?);
+                    if !(plus && x.peek(Token![+])) {
                         break;
                     }
                     ys.push_punct(x.parse()?);
-                }
-                ys
-            },
-            gt: x.parse()?,
-        })
-    }
-}
-impl Parse for Option<Bgen::bound::Lifes> {
-    fn parse(x: Stream) -> Res<Self> {
-        if x.peek(Token![for]) {
-            x.parse().map(Some)
-        } else {
-            Ok(None)
-        }
-    }
-}
-impl Parse for gen::param::Type {
-    fn parse(x: Stream) -> Res<Self> {
-        let attrs = x.call(attr::Attr::parse_outer)?;
-        let ident: Ident = x.parse()?;
-        let colon: Option<Token![:]> = x.parse()?;
-        let mut bounds = Punctuated::new();
-        if colon.is_some() {
-            loop {
-                if x.peek(Token![,]) || x.peek(Token![>]) || x.peek(Token![=]) {
-                    break;
-                }
-                let value: gen::bound::Type = x.parse()?;
-                bounds.push_value(value);
-                if !x.peek(Token![+]) {
-                    break;
-                }
-                let punct: Token![+] = x.parse()?;
-                bounds.push_punct(punct);
-            }
-        }
-        let eq: Option<Token![=]> = x.parse()?;
-        let default = if eq.is_some() {
-            Some(x.parse::<ty::Type>()?)
-        } else {
-            None
-        };
-        Ok(gen::param::Type {
-            attrs,
-            ident,
-            colon,
-            bounds,
-            eq,
-            default,
-        })
-    }
-}
-impl Parse for gen::bound::Type {
-    fn parse(x: Stream) -> Res<Self> {
-        if x.peek(Lifetime) {
-            return x.parse().map(gen::bound::Type::Lifetime);
-        }
-        let begin = x.fork();
-        let content;
-        let (paren, content) = if x.peek(tok::Paren) {
-            (Some(parenthesized!(content in x)), &content)
-        } else {
-            (None, x)
-        };
-        let is_tilde_const = cfg!(feature = "full") && content.peek(Token![~]) && content.peek2(Token![const]);
-        if is_tilde_const {
-            content.parse::<Token![~]>()?;
-            content.parse::<Token![const]>()?;
-        }
-        let mut bound: gen::bound::Trait = content.parse()?;
-        bound.paren = paren;
-        if is_tilde_const {
-            Ok(gen::bound::Type::Verbatim(verbatim_between(&begin, x)))
-        } else {
-            Ok(gen::bound::Type::Trait(bound))
-        }
-    }
-}
-
-impl gen::bound::Type {
-    pub fn parse_multiple(x: Stream, allow_plus: bool) -> Res<Punctuated<Self, Token![+]>> {
-        let mut bounds = Punctuated::new();
-        loop {
-            bounds.push_value(x.parse()?);
-            if !(allow_plus && x.peek(Token![+])) {
-                break;
-            }
-            bounds.push_punct(x.parse()?);
-            if !(x.peek(Ident::peek_any)
-                || x.peek(Token![::])
-                || x.peek(Token![?])
-                || x.peek(Lifetime)
-                || x.peek(tok::Paren)
-                || x.peek(Token![~]))
-            {
-                break;
-            }
-        }
-        Ok(bounds)
-    }
-}
-
-impl Parse for gen::bound::Trait {
-    fn parse(x: Stream) -> Res<Self> {
-        let modifier: gen::bound::Modifier = x.parse()?;
-        let lifetimes: Option<Bgen::bound::Lifes> = x.parse()?;
-        let mut path: Path = x.parse()?;
-        if path.segs.last().unwrap().args.is_empty()
-            && (x.peek(tok::Paren) || x.peek(Token![::]) && x.peek3(tok::Paren))
-        {
-            x.parse::<Option<Token![::]>>()?;
-            let args: ParenthesizedArgs = x.parse()?;
-            let parenthesized = Args::Parenthesized(args);
-            path.segs.last_mut().unwrap().args = parenthesized;
-        }
-        Ok(gen::bound::Trait {
-            paren: None,
-            modifier,
-            lifes: lifetimes,
-            path,
-        })
-    }
-}
-impl Parse for gen::bound::Modifier {
-    fn parse(x: Stream) -> Res<Self> {
-        if x.peek(Token![?]) {
-            x.parse().map(gen::bound::Modifier::Maybe)
-        } else {
-            Ok(gen::bound::Modifier::None)
-        }
-    }
-}
-impl Parse for gen::param::Const {
-    fn parse(x: Stream) -> Res<Self> {
-        let mut default = None;
-        Ok(gen::param::Const {
-            attrs: x.call(attr::Attr::parse_outer)?,
-            const_: x.parse()?,
-            ident: x.parse()?,
-            colon: x.parse()?,
-            typ: x.parse()?,
-            eq: {
-                if x.peek(Token![=]) {
-                    let eq = x.parse()?;
-                    default = Some(const_argument(x)?);
-                    Some(eq)
-                } else {
-                    None
-                }
-            },
-            default,
-        })
-    }
-}
-impl Parse for gen::Where {
-    fn parse(x: Stream) -> Res<Self> {
-        Ok(gen::Where {
-            where_: x.parse()?,
-            preds: {
-                let mut ys = Punctuated::new();
-                loop {
-                    if x.is_empty()
-                        || x.peek(tok::Brace)
-                        || x.peek(Token![,])
-                        || x.peek(Token![;])
-                        || x.peek(Token![:]) && !x.peek(Token![::])
-                        || x.peek(Token![=])
+                    if !(x.peek(Ident::peek_any)
+                        || x.peek(Token![::])
+                        || x.peek(Token![?])
+                        || x.peek(Lifetime)
+                        || x.peek(tok::Paren)
+                        || x.peek(Token![~]))
                     {
                         break;
                     }
-                    let y = x.parse()?;
-                    ys.push_value(y);
-                    if !x.peek(Token![,]) {
-                        break;
-                    }
-                    let y = x.parse()?;
-                    ys.push_punct(y);
                 }
-                ys
-            },
-        })
-    }
-}
-impl Parse for Option<gen::Where> {
-    fn parse(x: Stream) -> Res<Self> {
-        if x.peek(Token![where]) {
-            x.parse().map(Some)
-        } else {
-            Ok(None)
+                Ok(ys)
+            }
+        }
+        impl Parse for Type {
+            fn parse(x: Stream) -> Res<Self> {
+                if x.peek(Lifetime) {
+                    return x.parse().map(Type::Lifetime);
+                }
+                let beg = x.fork();
+                let y;
+                let (paren, y) = if x.peek(tok::Paren) {
+                    (Some(parenthesized!(y in x)), &y)
+                } else {
+                    (None, x)
+                };
+                let is_tilde_const = y.peek(Token![~]) && y.peek2(Token![const]);
+                if is_tilde_const {
+                    y.parse::<Token![~]>()?;
+                    y.parse::<Token![const]>()?;
+                }
+                let mut bound: Trait = y.parse()?;
+                bound.paren = paren;
+                if is_tilde_const {
+                    Ok(Type::Verbatim(verbatim_between(&beg, x)))
+                } else {
+                    Ok(Type::Trait(bound))
+                }
+            }
+        }
+        impl Parse for Trait {
+            fn parse(x: Stream) -> Res<Self> {
+                let modif: Modifier = x.parse()?;
+                let lifes: Option<Lifes> = x.parse()?;
+                let mut path: Path = x.parse()?;
+                if path.segs.last().unwrap().args.is_empty()
+                    && (x.peek(tok::Paren) || x.peek(Token![::]) && x.peek3(tok::Paren))
+                {
+                    x.parse::<Option<Token![::]>>()?;
+                    let args: ParenthesizedArgs = x.parse()?;
+                    let parenthesized = Args::Parenthesized(args);
+                    path.segs.last_mut().unwrap().args = parenthesized;
+                }
+                Ok(Trait {
+                    paren: None,
+                    modif,
+                    lifes,
+                    path,
+                })
+            }
+        }
+        impl Parse for Modifier {
+            fn parse(x: Stream) -> Res<Self> {
+                if x.peek(Token![?]) {
+                    x.parse().map(Modifier::Maybe)
+                } else {
+                    Ok(Modifier::None)
+                }
+            }
+        }
+        impl Parse for Lifes {
+            fn parse(x: Stream) -> Res<Self> {
+                Ok(Lifes {
+                    for_: x.parse()?,
+                    lt: x.parse()?,
+                    lifes: {
+                        let mut ys = Punctuated::new();
+                        while !x.peek(Token![>]) {
+                            let attrs = x.call(attr::Attr::parse_outer)?;
+                            let life: Lifetime = x.parse()?;
+                            ys.push_value(param::Param::Life(param::Life {
+                                attrs,
+                                life,
+                                colon: None,
+                                bounds: Punctuated::new(),
+                            }));
+                            if x.peek(Token![>]) {
+                                break;
+                            }
+                            ys.push_punct(x.parse()?);
+                        }
+                        ys
+                    },
+                    gt: x.parse()?,
+                })
+            }
+        }
+        impl Parse for Option<Lifes> {
+            fn parse(x: Stream) -> Res<Self> {
+                if x.peek(Token![for]) {
+                    x.parse().map(Some)
+                } else {
+                    Ok(None)
+                }
+            }
         }
     }
-}
-impl Parse for gen::Where::Pred {
-    fn parse(x: Stream) -> Res<Self> {
-        if x.peek(Lifetime) && x.peek2(Token![:]) {
-            Ok(gen::Where::Pred::Life(gen::Where::Life {
-                life: x.parse()?,
-                colon: x.parse()?,
-                bounds: {
-                    let mut ys = Punctuated::new();
+    pub mod param {
+        use param::*;
+        impl Parse for Param {
+            fn parse(x: Stream) -> Res<Self> {
+                let attrs = x.call(attr::Attr::parse_outer)?;
+                let look = x.lookahead1();
+                if look.peek(Ident) {
+                    Ok(Param::Type(Type { attrs, ..x.parse()? }))
+                } else if look.peek(Lifetime) {
+                    Ok(Param::Life(Life { attrs, ..x.parse()? }))
+                } else if look.peek(Token![const]) {
+                    Ok(Param::Const(Const { attrs, ..x.parse()? }))
+                } else {
+                    Err(look.error())
+                }
+            }
+        }
+        impl Parse for Life {
+            fn parse(x: Stream) -> Res<Self> {
+                let colon;
+                Ok(Life {
+                    attrs: x.call(attr::Attr::parse_outer)?,
+                    life: x.parse()?,
+                    colon: {
+                        if x.peek(Token![:]) {
+                            colon = true;
+                            Some(x.parse()?)
+                        } else {
+                            colon = false;
+                            None
+                        }
+                    },
+                    bounds: {
+                        let mut ys = Punctuated::new();
+                        if colon {
+                            loop {
+                                if x.peek(Token![,]) || x.peek(Token![>]) {
+                                    break;
+                                }
+                                let value = x.parse()?;
+                                ys.push_value(value);
+                                if !x.peek(Token![+]) {
+                                    break;
+                                }
+                                let punct = x.parse()?;
+                                ys.push_punct(punct);
+                            }
+                        }
+                        ys
+                    },
+                })
+            }
+        }
+        impl Parse for Type {
+            fn parse(x: Stream) -> Res<Self> {
+                let attrs = x.call(attr::Attr::parse_outer)?;
+                let ident: Ident = x.parse()?;
+                let colon: Option<Token![:]> = x.parse()?;
+                let mut ys = Punctuated::new();
+                if colon.is_some() {
                     loop {
-                        if x.is_empty()
-                            || x.peek(tok::Brace)
-                            || x.peek(Token![,])
-                            || x.peek(Token![;])
-                            || x.peek(Token![:])
-                            || x.peek(Token![=])
-                        {
+                        if x.peek(Token![,]) || x.peek(Token![>]) || x.peek(Token![=]) {
                             break;
                         }
-                        let y = x.parse()?;
+                        let y: bound::Type = x.parse()?;
                         ys.push_value(y);
                         if !x.peek(Token![+]) {
                             break;
                         }
-                        let y = x.parse()?;
+                        let y: Token![+] = x.parse()?;
                         ys.push_punct(y);
                     }
-                    ys
-                },
-            }))
-        } else {
-            Ok(gen::Where::Pred::Type(gen::Where::Type {
-                lifes: x.parse()?,
-                bounded: x.parse()?,
-                colon: x.parse()?,
-                bounds: {
+                }
+                let eq: Option<Token![=]> = x.parse()?;
+                let default = if eq.is_some() {
+                    Some(x.parse::<ty::Type>()?)
+                } else {
+                    None
+                };
+                Ok(Type {
+                    attrs,
+                    ident,
+                    colon,
+                    bounds: ys,
+                    eq,
+                    default,
+                })
+            }
+        }
+        impl Parse for Const {
+            fn parse(x: Stream) -> Res<Self> {
+                let mut default = None;
+                Ok(Const {
+                    attrs: x.call(attr::Attr::parse_outer)?,
+                    const_: x.parse()?,
+                    ident: x.parse()?,
+                    colon: x.parse()?,
+                    typ: x.parse()?,
+                    eq: {
+                        if x.peek(Token![=]) {
+                            let eq = x.parse()?;
+                            default = Some(const_argument(x)?);
+                            Some(eq)
+                        } else {
+                            None
+                        }
+                    },
+                    default,
+                })
+            }
+        }
+    }
+    impl Parse for Gens {
+        fn parse(x: Stream) -> Res<Self> {
+            if !x.peek(Token![<]) {
+                return Ok(Gens::default());
+            }
+            let lt: Token![<] = x.parse()?;
+            let mut ys = Punctuated::new();
+            loop {
+                if x.peek(Token![>]) {
+                    break;
+                }
+                let attrs = x.call(attr::Attr::parse_outer)?;
+                let look = x.lookahead1();
+                if look.peek(Lifetime) {
+                    ys.push_value(Param::Life(param::Life { attrs, ..x.parse()? }));
+                } else if look.peek(Ident) {
+                    ys.push_value(Param::Type(param::Type { attrs, ..x.parse()? }));
+                } else if look.peek(Token![const]) {
+                    ys.push_value(Param::Const(param::Const { attrs, ..x.parse()? }));
+                } else if x.peek(Token![_]) {
+                    ys.push_value(Param::Type(param::Type {
+                        attrs,
+                        ident: x.call(Ident::parse_any)?,
+                        colon: None,
+                        bounds: Punctuated::new(),
+                        eq: None,
+                        default: None,
+                    }));
+                } else {
+                    return Err(look.error());
+                }
+                if x.peek(Token![>]) {
+                    break;
+                }
+                let y = x.parse()?;
+                ys.push_punct(y);
+            }
+            let gt: Token![>] = x.parse()?;
+            Ok(Gens {
+                lt: Some(lt),
+                params: ys,
+                gt: Some(gt),
+                where_: None,
+            })
+        }
+    }
+    impl Parse for Where {
+        fn parse(x: Stream) -> Res<Self> {
+            Ok(Where {
+                where_: x.parse()?,
+                preds: {
                     let mut ys = Punctuated::new();
                     loop {
                         if x.is_empty()
@@ -465,7 +388,7 @@ impl Parse for gen::Where::Pred {
                         }
                         let y = x.parse()?;
                         ys.push_value(y);
-                        if !x.peek(Token![+]) {
+                        if !x.peek(Token![,]) {
                             break;
                         }
                         let y = x.parse()?;
@@ -473,7 +396,76 @@ impl Parse for gen::Where::Pred {
                     }
                     ys
                 },
-            }))
+            })
+        }
+    }
+    impl Parse for Option<Where> {
+        fn parse(x: Stream) -> Res<Self> {
+            if x.peek(Token![where]) {
+                x.parse().map(Some)
+            } else {
+                Ok(None)
+            }
+        }
+    }
+    impl Parse for Where::Pred {
+        fn parse(x: Stream) -> Res<Self> {
+            if x.peek(Lifetime) && x.peek2(Token![:]) {
+                Ok(Where::Pred::Life(Where::Life {
+                    life: x.parse()?,
+                    colon: x.parse()?,
+                    bounds: {
+                        let mut ys = Punctuated::new();
+                        loop {
+                            if x.is_empty()
+                                || x.peek(tok::Brace)
+                                || x.peek(Token![,])
+                                || x.peek(Token![;])
+                                || x.peek(Token![:])
+                                || x.peek(Token![=])
+                            {
+                                break;
+                            }
+                            let y = x.parse()?;
+                            ys.push_value(y);
+                            if !x.peek(Token![+]) {
+                                break;
+                            }
+                            let y = x.parse()?;
+                            ys.push_punct(y);
+                        }
+                        ys
+                    },
+                }))
+            } else {
+                Ok(Where::Pred::Type(Where::Type {
+                    lifes: x.parse()?,
+                    bounded: x.parse()?,
+                    colon: x.parse()?,
+                    bounds: {
+                        let mut ys = Punctuated::new();
+                        loop {
+                            if x.is_empty()
+                                || x.peek(tok::Brace)
+                                || x.peek(Token![,])
+                                || x.peek(Token![;])
+                                || x.peek(Token![:]) && !x.peek(Token![::])
+                                || x.peek(Token![=])
+                            {
+                                break;
+                            }
+                            let y = x.parse()?;
+                            ys.push_value(y);
+                            if !x.peek(Token![+]) {
+                                break;
+                            }
+                            let y = x.parse()?;
+                            ys.push_punct(y);
+                        }
+                        ys
+                    },
+                }))
+            }
         }
     }
 }
@@ -675,13 +667,13 @@ fn expr_attrs(x: Stream) -> Res<Vec<attr::Attr>> {
             if !group.buf.peek(Token![#]) || group.buf.peek2(Token![!]) {
                 break;
             }
-            let y = group.buf.call(single_parse_outer)?;
+            let y = group.buf.call(attr::single_outer)?;
             if !group.buf.is_empty() {
                 break;
             }
             ys.push(y);
         } else if x.peek(Token![#]) {
-            ys.push(x.call(single_parse_outer)?);
+            ys.push(x.call(attr::single_outer)?);
         } else {
             break;
         }
@@ -1186,7 +1178,7 @@ impl Parse for expr::ForLoop {
         let expr: Expr = x.call(Expr::parse_without_eager_brace)?;
         let content;
         let brace = braced!(content in x);
-        parse_inner(&content, &mut attrs)?;
+        attr::inner(&content, &mut attrs)?;
         let stmts = content.call(Block::parse_within)?;
         Ok(expr::ForLoop {
             attrs,
@@ -1206,7 +1198,7 @@ impl Parse for expr::Loop {
         let loop_: Token![loop] = x.parse()?;
         let content;
         let brace = braced!(content in x);
-        parse_inner(&content, &mut attrs)?;
+        attr::inner(&content, &mut attrs)?;
         let stmts = content.call(Block::parse_within)?;
         Ok(expr::Loop {
             attrs,
@@ -1223,7 +1215,7 @@ impl Parse for expr::Match {
         let expr = Expr::parse_without_eager_brace(x)?;
         let content;
         let brace = braced!(content in x);
-        parse_inner(&content, &mut attrs)?;
+        attr::inner(&content, &mut attrs)?;
         let mut arms = Vec::new();
         while !content.is_empty() {
             arms.push(content.call(Arm::parse)?);
@@ -1440,7 +1432,7 @@ impl Parse for expr::While {
         let cond = Expr::parse_without_eager_brace(input)?;
         let content;
         let brace = braced!(content in input);
-        parse_inner(&content, &mut attrs)?;
+        attr::inner(&content, &mut attrs)?;
         let stmts = content.call(Block::parse_within)?;
         Ok(expr::While {
             attrs,
@@ -1613,7 +1605,7 @@ impl Parse for expr::Block {
         let label: Option<Label> = input.parse()?;
         let content;
         let brace = braced!(content in input);
-        parse_inner(&content, &mut attrs)?;
+        attr::inner(&content, &mut attrs)?;
         let stmts = content.call(Block::parse_within)?;
         Ok(expr::Block {
             attrs,
@@ -2308,7 +2300,7 @@ impl Parse for item::Fn {
 fn parse_rest_of_fn(input: Stream, mut attrs: Vec<attr::Attr>, vis: Visibility, sig: item::Sig) -> Res<item::Fn> {
     let content;
     let brace = braced!(content in input);
-    parse_inner(&content, &mut attrs)?;
+    attr::inner(&content, &mut attrs)?;
     let stmts = content.call(Block::parse_within)?;
     Ok(item::Fn {
         attrs,
@@ -2478,7 +2470,7 @@ impl Parse for item::Mod {
         } else if lookahead.peek(tok::Brace) {
             let content;
             let brace = braced!(content in input);
-            parse_inner(&content, &mut attrs)?;
+            attr::inner(&content, &mut attrs)?;
             let mut items = Vec::new();
             while !content.is_empty() {
                 items.push(content.parse()?);
@@ -2504,7 +2496,7 @@ impl Parse for item::Foreign {
         let abi: Abi = input.parse()?;
         let content;
         let brace = braced!(content in input);
-        parse_inner(&content, &mut attrs)?;
+        attr::inner(&content, &mut attrs)?;
         let mut items = Vec::new();
         while !content.is_empty() {
             items.push(content.parse()?);
@@ -2829,7 +2821,7 @@ fn parse_rest_of_trait(
     gens.where_ = input.parse()?;
     let content;
     let brace = braced!(content in input);
-    parse_inner(&content, &mut attrs)?;
+    attr::inner(&content, &mut attrs)?;
     let mut items = Vec::new();
     while !content.is_empty() {
         items.push(content.parse()?);
@@ -2987,7 +2979,7 @@ impl Parse for item::Trait::Fn {
         let (brace, stmts, semi) = if lookahead.peek(tok::Brace) {
             let content;
             let brace = braced!(content in input);
-            parse_inner(&content, &mut attrs)?;
+            attr::inner(&content, &mut attrs)?;
             let stmts = content.call(Block::parse_within)?;
             (Some(brace), stmts, None)
         } else if lookahead.peek(Token![;]) {
@@ -3139,7 +3131,7 @@ fn parse_impl(input: Stream, allow_verbatim_impl: bool) -> Res<Option<item::Impl
     gens.where_ = input.parse()?;
     let content;
     let brace = braced!(content in input);
-    parse_inner(&content, &mut attrs)?;
+    attr::inner(&content, &mut attrs)?;
     let mut items = Vec::new();
     while !content.is_empty() {
         items.push(content.parse()?);
@@ -4809,6 +4801,18 @@ pub mod path {
         } else {
             let y = Path::parse_helper(x, expr_style)?;
             Ok((None, y))
+        }
+    }
+    pub struct DisplayPath<'a>(pub &'a Path);
+    impl<'a> Display for DisplayPath<'a> {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            for (i, x) in self.0.segs.iter().enumerate() {
+                if i > 0 || self.0.colon.is_some() {
+                    f.write_str("::")?;
+                }
+                write!(f, "{}", x.ident)?;
+            }
+            Ok(())
         }
     }
 }

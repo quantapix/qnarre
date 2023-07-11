@@ -3776,10 +3776,10 @@ impl Debug for Lite<syn::gen::bound::Trait> {
         if self.value.paren.is_some() {
             formatter.field("paren", &Present);
         }
-        match self.value.modifier {
+        match self.value.modif {
             syn::gen::bound::Modifier::None => {},
             _ => {
-                formatter.field("modifier", Lite(&self.value.modifier));
+                formatter.field("modifier", Lite(&self.value.modif));
             },
         }
         if let Some(val) = &self.value.lifes {

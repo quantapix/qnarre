@@ -2262,7 +2262,7 @@ where
 {
     gen::bound::Trait {
         paren: node.paren,
-        modifier: f.fold_trait_bound_modifier(node.modifier),
+        modif: f.fold_trait_bound_modifier(node.modif),
         lifes: (node.lifes).map(|it| f.fold_bound_lifetimes(it)),
         path: f.fold_path(node.path),
     }

@@ -1453,7 +1453,7 @@ impl Clone for gen::bound::Trait {
     fn clone(&self) -> Self {
         gen::bound::Trait {
             paren: self.paren.clone(),
-            modifier: self.modifier.clone(),
+            modif: self.modif.clone(),
             lifes: self.lifes.clone(),
             path: self.path.clone(),
         }

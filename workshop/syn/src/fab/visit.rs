@@ -2677,7 +2677,7 @@ where
     V: Visit<'ast> + ?Sized,
 {
     skip!(node.paren);
-    v.visit_trait_bound_modifier(&node.modifier);
+    v.visit_trait_bound_modifier(&node.modif);
     if let Some(it) = &node.lifes {
         v.visit_bound_lifetimes(it);
     }

@@ -1955,7 +1955,7 @@ impl Hash for gen::bound::Trait {
         H: Hasher,
     {
         self.paren.hash(state);
-        self.modifier.hash(state);
+        self.modif.hash(state);
         self.lifes.hash(state);
         self.path.hash(state);
     }

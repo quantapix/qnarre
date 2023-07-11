@@ -1152,10 +1152,7 @@ impl PartialEq for stmt::Mac {
 impl Eq for gen::bound::Trait {}
 impl PartialEq for gen::bound::Trait {
     fn eq(&self, other: &Self) -> bool {
-        self.paren == other.paren
-            && self.modifier == other.modifier
-            && self.lifes == other.lifes
-            && self.path == other.path
+        self.paren == other.paren && self.modif == other.modif && self.lifes == other.lifes && self.path == other.path
     }
 }
 impl Eq for gen::bound::Modifier {}

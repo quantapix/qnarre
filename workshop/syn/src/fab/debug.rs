@@ -2162,7 +2162,7 @@ impl Debug for gen::bound::Trait {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("gen::bound::Trait");
         formatter.field("paren", &self.paren);
-        formatter.field("modifier", &self.modifier);
+        formatter.field("modifier", &self.modif);
         formatter.field("lifetimes", &self.lifes);
         formatter.field("path", &self.path);
         formatter.finish()

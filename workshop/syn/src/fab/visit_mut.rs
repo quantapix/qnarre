@@ -2679,7 +2679,7 @@ where
     V: VisitMut + ?Sized,
 {
     skip!(node.paren);
-    v.visit_trait_bound_modifier_mut(&mut node.modifier);
+    v.visit_trait_bound_modifier_mut(&mut node.modif);
     if let Some(it) = &mut node.lifes {
         v.visit_bound_lifetimes_mut(it);
     }

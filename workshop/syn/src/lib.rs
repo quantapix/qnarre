@@ -249,19 +249,19 @@ pub mod attr {
                 List(x) => x.parse_args_with(parser),
             }
         }
-        pub fn parse_nested_meta(&self, x: impl FnMut(meta::ParseNested) -> Res<()>) -> Res<()> {
-            self.parse_args_with(meta_parser(x))
+        pub fn parse_nested(&self, x: impl FnMut(meta::Nested) -> Res<()>) -> Res<()> {
+            self.parse_args_with(meta::parser(x))
         }
         pub fn parse_outer(x: parse::Stream) -> Res<Vec<Self>> {
             let mut y = Vec::new();
             while x.peek(Token![#]) {
-                y.push(x.call(parsing::single_parse_outer)?);
+                y.push(x.call(parsing::attr::single_outer)?);
             }
             Ok(y)
         }
         pub fn parse_inner(x: parse::Stream) -> Res<Vec<Self>> {
             let mut y = Vec::new();
-            parsing::parse_inner(x, &mut y)?;
+            parsing::attr::inner(x, &mut y)?;
             Ok(y)
         }
     }
@@ -763,7 +763,7 @@ pub mod gen {
         }
         pub struct Trait {
             pub paren: Option<tok::Paren>,
-            pub modifier: Modifier,
+            pub modif: Modifier,
             pub lifes: Option<Lifes>,
             pub path: path::Path,
         }
@@ -804,7 +804,7 @@ pub mod gen {
         }
         impl Life {
             pub fn new(life: Lifetime) -> Self {
-                param::Life {
+                Life {
                     attrs: Vec::new(),
                     life,
                     colon: None,
@@ -850,9 +850,9 @@ pub mod gen {
             pub eq: Option<Token![=]>,
             pub default: Option<ty::Type>,
         }
-        impl From<Ident> for param::Type {
+        impl From<Ident> for Type {
             fn from(ident: Ident) -> Self {
-                param::Type {
+                Type {
                     attrs: vec![],
                     ident,
                     colon: None,
@@ -1002,8 +1002,6 @@ pub mod gen {
         }
     }
     pub struct Impl<'a>(pub &'a Gens);
-    pub struct Type<'a>(pub &'a Gens);
-    pub struct Turbofish<'a>(pub &'a Gens);
     macro_rules! gens_impls {
         ($ty:ident) => {
             impl<'a> Clone for $ty<'a> {
@@ -1030,7 +1028,9 @@ pub mod gen {
         };
     }
     gens_impls!(Impl);
+    pub struct Type<'a>(pub &'a Gens);
     gens_impls!(Type);
+    pub struct Turbofish<'a>(pub &'a Gens);
     gens_impls!(Turbofish);
     impl<'a> Type<'a> {
         pub fn as_turbofish(&self) -> Turbofish {
@@ -2320,9 +2320,9 @@ impl<T: Parse> ParseQuote for T {
 impl ParseQuote for attr::Attr {
     fn parse(x: parse::Stream) -> Res<Self> {
         if x.peek(Token![#]) && x.peek2(Token![!]) {
-            parsing::single_parse_inner(x)
+            parsing::attr::single_inner(x)
         } else {
-            parsing::single_parse_outer(x)
+            parsing::attr::single_outer(x)
         }
     }
 }
