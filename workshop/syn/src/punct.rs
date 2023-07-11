@@ -1,5 +1,5 @@
 use super::{
-    parse::{Parse, Result, Stream},
+    parse::{Parse, Stream},
     tok::Tok,
 };
 use std::{
@@ -136,7 +136,7 @@ impl<T, P> Punctuated<T, P> {
         self.last = None;
     }
 
-    pub fn parse_terminated(x: Stream) -> Result<Self>
+    pub fn parse_terminated(x: Stream) -> Res<Self>
     where
         T: Parse,
         P: Parse,
@@ -144,7 +144,7 @@ impl<T, P> Punctuated<T, P> {
         Self::parse_terminated_with(x, T::parse)
     }
 
-    pub fn parse_terminated_with(x: Stream, f: fn(Stream) -> Result<T>) -> Result<Self>
+    pub fn parse_terminated_with(x: Stream, f: fn(Stream) -> Res<T>) -> Res<Self>
     where
         P: Parse,
     {
@@ -164,7 +164,7 @@ impl<T, P> Punctuated<T, P> {
         Ok(ys)
     }
 
-    pub fn parse_separated_nonempty(x: Stream) -> Result<Self>
+    pub fn parse_separated_nonempty(x: Stream) -> Res<Self>
     where
         T: Parse,
         P: Tok + Parse,
@@ -172,7 +172,7 @@ impl<T, P> Punctuated<T, P> {
         Self::parse_separated_nonempty_with(x, T::parse)
     }
 
-    pub fn parse_separated_nonempty_with(x: Stream, f: fn(Stream) -> Result<T>) -> Result<Self>
+    pub fn parse_separated_nonempty_with(x: Stream, f: fn(Stream) -> Res<T>) -> Res<Self>
     where
         P: Tok + Parse,
     {

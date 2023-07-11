@@ -1,7 +1,4 @@
-use super::{
-    err::Result,
-    parse::{Parse, Stream},
-};
+use super::parse::{Parse, Stream};
 use proc_macro2::{extra::DelimSpan, Delimiter, Ident, Literal, Punct, Span, TokenStream, TokenTree};
 use quote::{ToTokens, TokenStreamExt};
 use std::{
@@ -127,7 +124,7 @@ macro_rules! def_keywords {
                 }
             }
             impl Parse for $n {
-                fn parse(x: parse::Stream) -> Result<Self> {
+                fn parse(x: parse::Stream) -> Res<Self> {
                     Ok($n {
                         span: parsing::keyword(x, $t)?,
                     })
@@ -269,7 +266,7 @@ impl ToTokens for Underscore {
     }
 }
 impl Parse for Underscore {
-    fn parse(x: Stream) -> Result<Self> {
+    fn parse(x: Stream) -> Res<Self> {
         x.step(|x| {
             if let Some((x, rest)) = x.ident() {
                 if x == "_" {
@@ -313,7 +310,7 @@ macro_rules! def_punct {
                 }
             }
             impl Parse for $n {
-                fn parse(x: parse::Stream) -> Result<Self> {
+                fn parse(x: parse::Stream) -> Res<Self> {
                     Ok($n {
                         spans: parsing::punct(x, $t)?,
                     })

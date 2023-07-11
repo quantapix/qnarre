@@ -1,7 +1,7 @@
 #![allow(unused_macros, unused_macro_rules)]
 #[path = "../debug/mod.rs"]
 pub mod debug;
-use syn::parse::{Parse, Result};
+use syn::parse::Parse;
 macro_rules! errorf {
     ($($tt:tt)*) => {{
         use ::std::io::Write;
@@ -64,15 +64,15 @@ macro_rules! snapshot_impl {
     };
 }
 pub trait Tokens {
-    fn parse<T: Parse>(self) -> Result<T>;
+    fn parse<T: Parse>(self) -> Res<T>;
 }
 impl<'a> Tokens for &'a str {
-    fn parse<T: Parse>(self) -> Result<T> {
+    fn parse<T: Parse>(self) -> Res<T> {
         syn::parse_str(self)
     }
 }
 impl Tokens for proc_macro2::TokenStream {
-    fn parse<T: Parse>(self) -> Result<T> {
+    fn parse<T: Parse>(self) -> Res<T> {
         syn::parse2(self)
     }
 }

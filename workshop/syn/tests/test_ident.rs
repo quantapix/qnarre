@@ -1,7 +1,7 @@
 use proc_macro2::{Ident, Span, TokenStream};
 use std::str::FromStr;
-use syn::Result;
-fn parse(s: &str) -> Result<Ident> {
+use syn::Res;
+fn parse(s: &str) -> Res<Ident> {
     syn::parse2(TokenStream::from_str(s).unwrap())
 }
 fn new(s: &str) -> Ident {

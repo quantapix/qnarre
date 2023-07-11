@@ -77,7 +77,7 @@ pub mod meta {
                 NameValue(x) => &x.path,
             }
         }
-        pub fn require_path_only(&self) -> Result<&Path> {
+        pub fn require_path_only(&self) -> Res<&Path> {
             use Meta::*;
             let y = match self {
                 Path(x) => return Ok(x),
@@ -86,7 +86,7 @@ pub mod meta {
             };
             Err(Err::new(y, "unexpected token in attribute"))
         }
-        pub fn require_list(&self) -> Result<&List> {
+        pub fn require_list(&self) -> Res<&List> {
             use Meta::*;
             match self {
                 List(x) => Ok(x),
@@ -101,7 +101,7 @@ pub mod meta {
                 NameValue(x) => Err(Err::new(x.eq.span, "expected `(`")),
             }
         }
-        pub fn require_name_value(&self) -> Result<&NameValue> {
+        pub fn require_name_value(&self) -> Res<&NameValue> {
             use Meta::*;
             match self {
                 NameValue(x) => Ok(x),
@@ -123,34 +123,32 @@ pub mod meta {
         pub toks: TokenStream,
     }
     impl List {
-        pub fn parse_args<T: Parse>(&self) -> Result<T> {
+        pub fn parse_args<T: Parse>(&self) -> Res<T> {
             self.parse_args_with(T::parse)
         }
-        pub fn parse_args_with<T: Parser>(&self, x: T) -> Result<T::Output> {
+        pub fn parse_args_with<T: Parser>(&self, x: T) -> Res<T::Output> {
             let y = self.delim.span().close();
             parse::parse_scoped(x, y, self.toks.clone())
         }
-        pub fn parse_nested(&self, x: impl FnMut(ParseNested) -> Result<()>) -> Result<()> {
+        pub fn parse_nested(&self, x: impl FnMut(Nested) -> Res<()>) -> Res<()> {
             self.parse_args_with(parser(x))
         }
     }
-
     pub struct NameValue {
         pub path: Path,
         pub eq: Token![=],
         pub expr: Expr,
     }
-
-    pub struct ParseNested<'a> {
+    pub struct Nested<'a> {
         pub path: Path,
         pub ins: parse::Stream<'a>,
     }
-    impl<'a> ParseNested<'a> {
-        pub fn val(&self) -> Result<parse::Stream<'a>> {
+    impl<'a> Nested<'a> {
+        pub fn val(&self) -> Res<parse::Stream<'a>> {
             self.ins.parse::<Token![=]>()?;
             Ok(self.ins)
         }
-        pub fn parse(&self, cb: impl FnMut(ParseNested) -> Result<()>) -> Result<()> {
+        pub fn parse(&self, cb: impl FnMut(Nested) -> Res<()>) -> Res<()> {
             let y;
             parenthesized!(y in self.ins);
             parse_nested(&y, cb)
@@ -162,19 +160,19 @@ pub mod meta {
         }
     }
 
-    pub fn parser(cb: impl FnMut(ParseNested) -> Result<()>) -> impl Parser<Output = ()> {
+    pub fn parser(f: impl FnMut(Nested) -> Res<()>) -> impl Parser<Output = ()> {
         |x: parse::Stream| {
             if x.is_empty() {
                 Ok(())
             } else {
-                parse_nested(x, cb)
+                parse_nested(x, f)
             }
         }
     }
-    pub fn parse_nested(ins: parse::Stream, mut cb: impl FnMut(ParseNested) -> Result<()>) -> Result<()> {
+    pub fn parse_nested(ins: parse::Stream, mut f: impl FnMut(Nested) -> Res<()>) -> Res<()> {
         loop {
             let path = ins.call(parse_path)?;
-            cb(ParseNested { path, ins })?;
+            f(Nested { path, ins })?;
             if ins.is_empty() {
                 return Ok(());
             }
@@ -184,7 +182,7 @@ pub mod meta {
             }
         }
     }
-    fn parse_path(x: parse::Stream) -> Result<Path> {
+    fn parse_path(x: parse::Stream) -> Res<Path> {
         Ok(Path {
             colon: x.parse()?,
             segs: {
@@ -225,10 +223,10 @@ pub mod attr {
         pub fn path(&self) -> &Path {
             self.meta.path()
         }
-        pub fn parse_args<T: Parse>(&self) -> Result<T> {
+        pub fn parse_args<T: Parse>(&self) -> Res<T> {
             self.parse_args_with(T::parse)
         }
-        pub fn parse_args_with<T: Parser>(&self, parser: T) -> Result<T::Output> {
+        pub fn parse_args_with<T: Parser>(&self, parser: T) -> Res<T::Output> {
             use meta::Meta::*;
             match &self.meta {
                 Path(x) => Err(err::new2(
@@ -251,17 +249,17 @@ pub mod attr {
                 List(x) => x.parse_args_with(parser),
             }
         }
-        pub fn parse_nested_meta(&self, x: impl FnMut(meta::ParseNested) -> Result<()>) -> Result<()> {
+        pub fn parse_nested_meta(&self, x: impl FnMut(meta::ParseNested) -> Res<()>) -> Res<()> {
             self.parse_args_with(meta_parser(x))
         }
-        pub fn parse_outer(x: parse::Stream) -> Result<Vec<Self>> {
+        pub fn parse_outer(x: parse::Stream) -> Res<Vec<Self>> {
             let mut y = Vec::new();
             while x.peek(Token![#]) {
                 y.push(x.call(parsing::single_parse_outer)?);
             }
             Ok(y)
         }
-        pub fn parse_inner(x: parse::Stream) -> Result<Vec<Self>> {
+        pub fn parse_inner(x: parse::Stream) -> Res<Vec<Self>> {
             let mut y = Vec::new();
             parsing::parse_inner(x, &mut y)?;
             Ok(y)
@@ -697,7 +695,7 @@ mod ident {
 pub use ident::{Ident, Lifetime};
 pub mod ext {
     use super::{
-        parse::{Peek, Result, Stream},
+        parse::{Peek, Stream},
         sealed::look,
         tok::Custom,
     };
@@ -705,11 +703,11 @@ pub mod ext {
     pub trait IdentExt: Sized + private::Sealed {
         #[allow(non_upper_case_globals)]
         const peek_any: private::PeekFn = private::PeekFn;
-        fn parse_any(x: Stream) -> Result<Self>;
+        fn parse_any(x: Stream) -> Res<Self>;
         fn unraw(&self) -> Ident;
     }
     impl IdentExt for Ident {
-        fn parse_any(x: Stream) -> Result<Self> {
+        fn parse_any(x: Stream) -> Res<Self> {
             x.step(|c| match c.ident() {
                 Some((ident, rest)) => Ok((ident, rest)),
                 None => Err(c.error("expected ident")),
@@ -1532,10 +1530,10 @@ mod err {
         fmt::{self, Debug, Display},
         slice, vec,
     };
-    pub type Result<T> = std::result::Result<T, Err>;
     pub struct Err {
-        messages: Vec<ErrMsg>,
+        msgs: Vec<ErrMsg>,
     }
+    pub type Res<T> = std::result::Result<T, Err>;
     struct ErrMsg {
         span: ThreadBound<SpanRange>,
         message: String,
@@ -1553,7 +1551,7 @@ mod err {
             return new(span, message.to_string());
             fn new(span: Span, message: String) -> Err {
                 Err {
-                    messages: vec![ErrMsg {
+                    msgs: vec![ErrMsg {
                         span: ThreadBound::new(SpanRange { start: span, end: span }),
                         message,
                     }],
@@ -1567,7 +1565,7 @@ mod err {
                 let start = iter.next().map_or_else(Span::call_site, |t| t.span());
                 let end = iter.last().map_or(start, |t| t.span());
                 Err {
-                    messages: vec![ErrMsg {
+                    msgs: vec![ErrMsg {
                         span: ThreadBound::new(SpanRange { start, end }),
                         message,
                     }],
@@ -1575,20 +1573,20 @@ mod err {
             }
         }
         pub fn span(&self) -> Span {
-            let SpanRange { start, end } = match self.messages[0].span.get() {
+            let SpanRange { start, end } = match self.msgs[0].span.get() {
                 Some(span) => *span,
                 None => return Span::call_site(),
             };
             start.join(end).unwrap_or(start)
         }
         pub fn to_compile_error(&self) -> TokenStream {
-            self.messages.iter().map(ErrMsg::to_compile_error).collect()
+            self.msgs.iter().map(ErrMsg::to_compile_error).collect()
         }
         pub fn into_compile_error(self) -> TokenStream {
             self.to_compile_error()
         }
         pub fn combine(&mut self, another: Err) {
-            self.messages.extend(another.messages);
+            self.msgs.extend(another.msgs);
         }
     }
     impl ErrMsg {
@@ -1651,7 +1649,7 @@ mod err {
         return new2(start, end, message.to_string());
         fn new2(start: Span, end: Span, message: String) -> Err {
             Err {
-                messages: vec![ErrMsg {
+                msgs: vec![ErrMsg {
                     span: ThreadBound::new(SpanRange { start, end }),
                     message,
                 }],
@@ -1660,10 +1658,10 @@ mod err {
     }
     impl Debug for Err {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            if self.messages.len() == 1 {
-                f.debug_tuple("Error").field(&self.messages[0]).finish()
+            if self.msgs.len() == 1 {
+                f.debug_tuple("Error").field(&self.msgs[0]).finish()
             } else {
-                f.debug_tuple("Error").field(&self.messages).finish()
+                f.debug_tuple("Error").field(&self.msgs).finish()
             }
         }
     }
@@ -1674,13 +1672,13 @@ mod err {
     }
     impl Display for Err {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            f.write_str(&self.messages[0].message)
+            f.write_str(&self.msgs[0].message)
         }
     }
     impl Clone for Err {
         fn clone(&self) -> Self {
             Err {
-                messages: self.messages.clone(),
+                msgs: self.msgs.clone(),
             }
         }
     }
@@ -1709,7 +1707,7 @@ mod err {
         type IntoIter = IntoIter;
         fn into_iter(self) -> Self::IntoIter {
             IntoIter {
-                messages: self.messages.into_iter(),
+                messages: self.msgs.into_iter(),
             }
         }
     }
@@ -1720,7 +1718,7 @@ mod err {
         type Item = Err;
         fn next(&mut self) -> Option<Self::Item> {
             Some(Err {
-                messages: vec![self.messages.next()?],
+                msgs: vec![self.messages.next()?],
             })
         }
     }
@@ -1729,7 +1727,7 @@ mod err {
         type IntoIter = Iter<'a>;
         fn into_iter(self) -> Self::IntoIter {
             Iter {
-                messages: self.messages.iter(),
+                messages: self.msgs.iter(),
             }
         }
     }
@@ -1740,7 +1738,7 @@ mod err {
         type Item = Err;
         fn next(&mut self) -> Option<Self::Item> {
             Some(Err {
-                messages: vec![self.messages.next()?.clone()],
+                msgs: vec![self.messages.next()?.clone()],
             })
         }
     }
@@ -1752,7 +1750,7 @@ mod err {
         }
     }
 }
-pub use err::{Err, Result};
+pub use err::{Err, Res};
 
 mod look {
     use super::{
@@ -1836,7 +1834,6 @@ mod look {
 
 pub mod parse {
     use super::{
-        err::{self, Err, Result},
         look::{self, Lookahead1, Peek},
         punct::Punctuated,
         tok::Tok,
@@ -1860,10 +1857,10 @@ pub mod parse {
         unexpected: Cell<Option<Rc<Cell<Unexpected>>>>,
     }
     impl<'a> Buffer<'a> {
-        pub fn parse<T: Parse>(&self) -> Result<T> {
+        pub fn parse<T: Parse>(&self) -> Res<T> {
             T::parse(self)
         }
-        pub fn call<T>(&self, x: fn(Stream) -> Result<T>) -> Result<T> {
+        pub fn call<T>(&self, x: fn(Stream) -> Res<T>) -> Res<T> {
             x(self)
         }
         pub fn peek<T: Peek>(&self, x: T) -> bool {
@@ -1894,7 +1891,7 @@ pub mod parse {
             let _ = x;
             peek3(self, T::Token::peek)
         }
-        pub fn parse_terminated<T, P>(&self, f: fn(Stream) -> Result<T>, sep: P) -> Result<Punctuated<T, P::Token>>
+        pub fn parse_terminated<T, P>(&self, f: fn(Stream) -> Res<T>, sep: P) -> Res<Punctuated<T, P::Token>>
         where
             P: Peek,
             P::Token: Parse,
@@ -1919,9 +1916,9 @@ pub mod parse {
         pub fn error<T: Display>(&self, x: T) -> Err {
             err::new_at(self.scope, self.cursor(), x)
         }
-        pub fn step<F, R>(&self, f: F) -> Result<R>
+        pub fn step<F, R>(&self, f: F) -> Res<R>
         where
-            F: for<'c> FnOnce(Step<'c, 'a>) -> Result<(R, Cursor<'c>)>,
+            F: for<'c> FnOnce(Step<'c, 'a>) -> Res<(R, Cursor<'c>)>,
         {
             let (y, rest) = f(Step {
                 scope: self.scope,
@@ -1942,7 +1939,7 @@ pub mod parse {
         pub fn cursor(&self) -> Cursor<'a> {
             self.cell.get()
         }
-        fn check_unexpected(&self) -> Result<()> {
+        fn check_unexpected(&self) -> Res<()> {
             match inner_unexpected(self).1 {
                 Some(x) => Err(Err::new(x, "unexpected token")),
                 None => Ok(()),
@@ -2017,15 +2014,15 @@ pub mod parse {
     pub type Stream<'a> = &'a Buffer<'a>;
 
     pub trait Parse: Sized {
-        fn parse(x: Stream) -> Result<Self>;
+        fn parse(x: Stream) -> Res<Self>;
     }
     impl<T: Parse> Parse for Box<T> {
-        fn parse(x: Stream) -> Result<Self> {
+        fn parse(x: Stream) -> Res<Self> {
             x.parse().map(Box::new)
         }
     }
     impl<T: Parse + Tok> Parse for Option<T> {
-        fn parse(x: Stream) -> Result<Self> {
+        fn parse(x: Stream) -> Res<Self> {
             if T::peek(x.cursor()) {
                 Ok(Some(x.parse()?))
             } else {
@@ -2034,12 +2031,12 @@ pub mod parse {
         }
     }
     impl Parse for TokenStream {
-        fn parse(x: Stream) -> Result<Self> {
+        fn parse(x: Stream) -> Res<Self> {
             x.step(|x| Ok((x.token_stream(), Cursor::empty())))
         }
     }
     impl Parse for TokenTree {
-        fn parse(x: Stream) -> Result<Self> {
+        fn parse(x: Stream) -> Res<Self> {
             x.step(|x| match x.token_tree() {
                 Some((tt, rest)) => Ok((tt, rest)),
                 None => Err(x.error("expected token tree")),
@@ -2047,7 +2044,7 @@ pub mod parse {
         }
     }
     impl Parse for Group {
-        fn parse(x: Stream) -> Result<Self> {
+        fn parse(x: Stream) -> Res<Self> {
             x.step(|x| {
                 if let Some((y, rest)) = x.any_group_token() {
                     if y.delimiter() != Delimiter::None {
@@ -2059,7 +2056,7 @@ pub mod parse {
         }
     }
     impl Parse for Punct {
-        fn parse(x: Stream) -> Result<Self> {
+        fn parse(x: Stream) -> Res<Self> {
             x.step(|x| match x.punct() {
                 Some((y, rest)) => Ok((y, rest)),
                 None => Err(x.error("expected punctuation token")),
@@ -2067,7 +2064,7 @@ pub mod parse {
         }
     }
     impl Parse for Literal {
-        fn parse(x: Stream) -> Result<Self> {
+        fn parse(x: Stream) -> Res<Self> {
             x.step(|x| match x.literal() {
                 Some((y, rest)) => Ok((y, rest)),
                 None => Err(x.error("expected literal token")),
@@ -2077,24 +2074,24 @@ pub mod parse {
 
     pub trait Parser: Sized {
         type Output;
-        fn parse2(self, tokens: TokenStream) -> Result<Self::Output>;
-        fn parse(self, tokens: proc_macro::TokenStream) -> Result<Self::Output> {
+        fn parse2(self, tokens: TokenStream) -> Res<Self::Output>;
+        fn parse(self, tokens: proc_macro::TokenStream) -> Res<Self::Output> {
             self.parse2(proc_macro2::TokenStream::from(tokens))
         }
-        fn parse_str(self, s: &str) -> Result<Self::Output> {
+        fn parse_str(self, s: &str) -> Res<Self::Output> {
             self.parse2(proc_macro2::TokenStream::from_str(s)?)
         }
-        fn __parse_scoped(self, scope: Span, tokens: TokenStream) -> Result<Self::Output> {
+        fn __parse_scoped(self, scope: Span, tokens: TokenStream) -> Res<Self::Output> {
             let _ = scope;
             self.parse2(tokens)
         }
     }
     impl<F, T> Parser for F
     where
-        F: FnOnce(Stream) -> Result<T>,
+        F: FnOnce(Stream) -> Res<T>,
     {
         type Output = T;
-        fn parse2(self, tokens: TokenStream) -> Result<T> {
+        fn parse2(self, tokens: TokenStream) -> Res<T> {
             let buf = cur::Buffer::new2(tokens);
             let state = tokens_to_parse_buffer(&buf);
             let node = self(&state)?;
@@ -2105,7 +2102,7 @@ pub mod parse {
                 Ok(node)
             }
         }
-        fn __parse_scoped(self, scope: Span, tokens: TokenStream) -> Result<Self::Output> {
+        fn __parse_scoped(self, scope: Span, tokens: TokenStream) -> Res<Self::Output> {
             let buf = cur::Buffer::new2(tokens);
             let cursor = buf.begin();
             let unexpected = Rc::new(Cell::new(Unexpected::None));
@@ -2177,13 +2174,13 @@ pub mod parse {
         new_parse_buffer(scope, cursor, unexpected)
     }
 
-    pub fn parse_scoped<F: Parser>(f: F, s: Span, xs: TokenStream) -> Result<F::Output> {
+    pub fn parse_scoped<F: Parser>(f: F, s: Span, xs: TokenStream) -> Res<F::Output> {
         f.__parse_scoped(s, xs)
     }
 
     pub struct Nothing;
     impl Parse for Nothing {
-        fn parse(_: Stream) -> Result<Self> {
+        fn parse(_: Stream) -> Res<Self> {
             Ok(Nothing)
         }
     }
@@ -2231,10 +2228,10 @@ pub mod parse {
             }
         }
         pub trait AnyDelim {
-            fn parse_any_delim(&self) -> Result<(Delimiter, DelimSpan, Buffer)>;
+            fn parse_any_delim(&self) -> Res<(Delimiter, DelimSpan, Buffer)>;
         }
         impl<'a> AnyDelim for Buffer<'a> {
-            fn parse_any_delim(&self) -> Result<(Delimiter, DelimSpan, Buffer)> {
+            fn parse_any_delim(&self) -> Res<(Delimiter, DelimSpan, Buffer)> {
                 self.step(|cursor| {
                     if let Some((content, delimiter, span, rest)) = cursor.any_group() {
                         let scope = crate::close_span_of_group(*cursor);
@@ -2255,7 +2252,7 @@ pub struct Parens<'a> {
     pub tok: tok::Paren,
     pub buf: parse::Buffer<'a>,
 }
-pub fn parse_parens<'a>(x: &parse::Buffer<'a>) -> Result<Parens<'a>> {
+pub fn parse_parens<'a>(x: &parse::Buffer<'a>) -> Res<Parens<'a>> {
     parse_delimited(x, Delimiter::Parenthesis).map(|(span, buf)| Parens {
         tok: tok::Paren(span),
         buf,
@@ -2265,7 +2262,7 @@ pub struct Braces<'a> {
     pub token: tok::Brace,
     pub buf: parse::Buffer<'a>,
 }
-pub fn parse_braces<'a>(x: &parse::Buffer<'a>) -> Result<Braces<'a>> {
+pub fn parse_braces<'a>(x: &parse::Buffer<'a>) -> Res<Braces<'a>> {
     parse_delimited(x, Delimiter::Brace).map(|(span, buf)| Braces {
         token: tok::Brace(span),
         buf,
@@ -2275,7 +2272,7 @@ pub struct Brackets<'a> {
     pub token: tok::Bracket,
     pub buf: parse::Buffer<'a>,
 }
-pub fn parse_brackets<'a>(x: &parse::Buffer<'a>) -> Result<Brackets<'a>> {
+pub fn parse_brackets<'a>(x: &parse::Buffer<'a>) -> Res<Brackets<'a>> {
     parse_delimited(x, Delimiter::Bracket).map(|(span, buf)| Brackets {
         token: tok::Bracket(span),
         buf,
@@ -2285,13 +2282,13 @@ pub struct Group<'a> {
     pub token: tok::Group,
     pub buf: parse::Buffer<'a>,
 }
-pub fn parse_group<'a>(x: &parse::Buffer<'a>) -> Result<Group<'a>> {
+pub fn parse_group<'a>(x: &parse::Buffer<'a>) -> Res<Group<'a>> {
     parse_delimited(x, Delimiter::None).map(|(span, buf)| Group {
         token: tok::Group(span.join()),
         buf,
     })
 }
-fn parse_delimited<'a>(x: &parse::Buffer<'a>, d: Delimiter) -> Result<(DelimSpan, parse::Buffer<'a>)> {
+fn parse_delimited<'a>(x: &parse::Buffer<'a>, d: Delimiter) -> Res<(DelimSpan, parse::Buffer<'a>)> {
     x.step(|c| {
         if let Some((gist, span, rest)) = c.group(d) {
             let scope = close_span_of_group(*c);
@@ -2313,15 +2310,15 @@ fn parse_delimited<'a>(x: &parse::Buffer<'a>, d: Delimiter) -> Result<(DelimSpan
 }
 
 pub trait ParseQuote: Sized {
-    fn parse(x: parse::Stream) -> Result<Self>;
+    fn parse(x: parse::Stream) -> Res<Self>;
 }
 impl<T: Parse> ParseQuote for T {
-    fn parse(x: parse::Stream) -> Result<Self> {
+    fn parse(x: parse::Stream) -> Res<Self> {
         <T as Parse>::parse(x)
     }
 }
 impl ParseQuote for attr::Attr {
-    fn parse(x: parse::Stream) -> Result<Self> {
+    fn parse(x: parse::Stream) -> Res<Self> {
         if x.peek(Token![#]) && x.peek2(Token![!]) {
             parsing::single_parse_inner(x)
         } else {
@@ -2330,22 +2327,22 @@ impl ParseQuote for attr::Attr {
     }
 }
 impl ParseQuote for pat::Pat {
-    fn parse(x: parse::Stream) -> Result<Self> {
+    fn parse(x: parse::Stream) -> Res<Self> {
         pat::Pat::parse_multi_with_leading_vert(x)
     }
 }
 impl ParseQuote for Box<pat::Pat> {
-    fn parse(x: parse::Stream) -> Result<Self> {
+    fn parse(x: parse::Stream) -> Res<Self> {
         <pat::Pat as ParseQuote>::parse(x).map(Box::new)
     }
 }
 impl<T: Parse, P: Parse> ParseQuote for Punctuated<T, P> {
-    fn parse(x: parse::Stream) -> Result<Self> {
+    fn parse(x: parse::Stream) -> Res<Self> {
         Self::parse_terminated(x)
     }
 }
 impl ParseQuote for Vec<Stmt> {
-    fn parse(x: parse::Stream) -> Result<Self> {
+    fn parse(x: parse::Stream) -> Res<Self> {
         Block::parse_within(x)
     }
 }
@@ -2744,10 +2741,10 @@ pub mod __private {
     }
     pub struct private(pub ());
 }
-pub fn parse<T: parse::Parse>(tokens: proc_macro::TokenStream) -> Result<T> {
+pub fn parse<T: parse::Parse>(tokens: proc_macro::TokenStream) -> Res<T> {
     parse::Parser::parse(T::parse, tokens)
 }
-pub fn parse2<T: parse::Parse>(tokens: proc_macro2::TokenStream) -> Result<T> {
+pub fn parse2<T: parse::Parse>(tokens: proc_macro2::TokenStream) -> Res<T> {
     parse::Parser::parse2(T::parse, tokens)
 }
 
@@ -2756,7 +2753,7 @@ pub struct File {
     pub attrs: Vec<attr::Attr>,
     pub items: Vec<Item>,
 }
-pub fn parse_file(mut x: &str) -> Result<File> {
+pub fn parse_file(mut x: &str) -> Res<File> {
     const BOM: &str = "\u{feff}";
     if x.starts_with(BOM) {
         x = &x[BOM.len()..];
@@ -2778,7 +2775,7 @@ pub fn parse_file(mut x: &str) -> Result<File> {
     y.shebang = shebang;
     Ok(y)
 }
-pub fn parse_str<T: parse::Parse>(s: &str) -> Result<T> {
+pub fn parse_str<T: parse::Parse>(s: &str) -> Res<T> {
     parse::Parser::parse_str(T::parse, s)
 }
 

@@ -3,14 +3,14 @@
 mod macros;
 use proc_macro2::{Delimiter, Group, Ident, Punct, Spacing, Span, TokenStream, TokenTree};
 use syn::parse::{Parse, Stream};
-use syn::{DeriveInput, Result, Visibility};
+use syn::{DeriveInput, Res, Visibility};
 #[derive(Debug)]
 struct VisRest {
     vis: Visibility,
     rest: TokenStream,
 }
 impl Parse for VisRest {
-    fn parse(input: Stream) -> Result<Self> {
+    fn parse(input: Stream) -> Res<Self> {
         Ok(VisRest {
             vis: input.parse()?,
             rest: input.parse()?,

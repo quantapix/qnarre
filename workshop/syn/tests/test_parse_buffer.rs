@@ -1,13 +1,13 @@
 #![allow(clippy::non_ascii_literal)]
 use proc_macro2::{Delimiter, Group, Punct, Spacing, TokenStream, TokenTree};
-use syn::parse::{discouraged::Speculative, Parse, Parser, Result, Stream};
-use syn::{parenthesized, Token};
+use syn::parse::{discouraged::Speculative, Parse, Parser, Stream};
+use syn::{parenthesized, Res, Token};
 #[test]
 #[should_panic(expected = "Fork was not derived from the advancing parse stream")]
 fn smuggled_speculative_cursor_between_sources() {
     struct BreakRules;
     impl Parse for BreakRules {
-        fn parse(input1: Stream) -> Result<Self> {
+        fn parse(input1: Stream) -> Res<Self> {
             let nested = |input2: Stream| {
                 input1.advance_to(input2);
                 Ok(Self)
@@ -22,7 +22,7 @@ fn smuggled_speculative_cursor_between_sources() {
 fn smuggled_speculative_cursor_between_brackets() {
     struct BreakRules;
     impl Parse for BreakRules {
-        fn parse(input: Stream) -> Result<Self> {
+        fn parse(input: Stream) -> Res<Self> {
             let a;
             let b;
             parenthesized!(a in input);
@@ -38,7 +38,7 @@ fn smuggled_speculative_cursor_between_brackets() {
 fn smuggled_speculative_cursor_into_brackets() {
     struct BreakRules;
     impl Parse for BreakRules {
-        fn parse(input: Stream) -> Result<Self> {
+        fn parse(input: Stream) -> Res<Self> {
             let a;
             parenthesized!(a in input);
             input.advance_to(&a);
@@ -49,7 +49,7 @@ fn smuggled_speculative_cursor_into_brackets() {
 }
 #[test]
 fn trailing_empty_none_group() {
-    fn parse(input: Stream) -> Result<()> {
+    fn parse(input: Stream) -> Res<()> {
         input.parse::<Token![+]>()?;
         let content;
         parenthesized!(content in input);
