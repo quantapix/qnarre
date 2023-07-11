@@ -1,12 +1,4 @@
-use super::parse::{Parse, Stream};
-use proc_macro2::{extra::DelimSpan, Delimiter, Ident, Literal, Punct, Span, TokenStream, TokenTree};
-use quote::{ToTokens, TokenStreamExt};
-use std::{
-    cmp,
-    fmt::{self, Debug},
-    hash::{Hash, Hasher},
-    ops::{Deref, DerefMut},
-};
+use proc_macro2::Ident;
 
 pub trait Tok: private::Sealed {
     fn peek(x: Cursor) -> bool;
@@ -16,7 +8,7 @@ pub trait Tok: private::Sealed {
 fn peek_impl(x: Cursor, f: fn(Stream) -> bool) -> bool {
     use crate::parse::Unexpected;
     use std::{cell::Cell, rc::Rc};
-    let scope = Span::call_site();
+    let scope = pm2::Span::call_site();
     let unexpected = Rc::new(Cell::new(Unexpected::None));
     let y = crate::parse::new_parse_buffer(scope, x, unexpected);
     f(&y)
@@ -62,8 +54,8 @@ macro_rules! impl_low_level {
     };
 }
 impl_low_level!("punctuation token" Punct punct);
-impl_low_level!("literal" Literal literal);
-impl_low_level!("token" TokenTree token_tree);
+impl_low_level!("literal" pm2::Lit literal);
+impl_low_level!("token" pm2::Tree token_tree);
 
 pub trait Custom {
     fn peek(x: Cursor) -> bool;
@@ -83,10 +75,10 @@ macro_rules! def_keywords {
     ($($t:literal pub struct $n:ident)*) => {
         $(
             pub struct $n {
-                pub span: Span,
+                pub span: pm2::Span,
             }
             #[allow(non_snake_case)]
-            pub fn $n<S: IntoSpans<Span>>(s: S) -> $n {
+            pub fn $n<S: IntoSpans<pm2::Span>>(s: S) -> $n {
                 $n {
                     span: s.into_spans(),
                 }
@@ -94,7 +86,7 @@ macro_rules! def_keywords {
             impl std::default::Default for $n {
                 fn default() -> Self {
                     $n {
-                        span: Span::call_site(),
+                        span: pm2::Span::call_site(),
                     }
                 }
             }
@@ -119,7 +111,7 @@ macro_rules! def_keywords {
                 fn hash<H: Hasher>(&self, _: &mut H) {}
             }
             impl ToTokens for $n {
-                fn to_tokens(&self, toks: &mut TokenStream) {
+                fn to_tokens(&self, toks: &mut pm2::Stream) {
                     crate::lower::keyword($t, self.span, toks);
                 }
             }
@@ -218,10 +210,10 @@ macro_rules! def_punct_structs {
     ($($t:literal pub struct $n:ident/$len:tt)*) => {
         $(
             pub struct $n {
-                pub spans: [Span; $len],
+                pub spans: [pm2::Span; $len],
             }
             #[allow(non_snake_case)]
-            pub fn $n<S: IntoSpans<[Span; $len]>>(ss: S) -> $n {
+            pub fn $n<S: IntoSpans<[pm2::Span; $len]>>(ss: S) -> $n {
                 $n {
                     spans: ss.into_spans(),
                 }
@@ -229,7 +221,7 @@ macro_rules! def_punct_structs {
             impl std::default::Default for $n {
                 fn default() -> Self {
                     $n {
-                        spans: [Span::call_site(); $len],
+                        spans: [pm2::Span::call_site(); $len],
                     }
                 }
             }
@@ -261,7 +253,7 @@ def_punct_structs! {
     "_" pub struct Underscore/1
 }
 impl ToTokens for Underscore {
-    fn to_tokens(&self, ts: &mut TokenStream) {
+    fn to_tokens(&self, ts: &mut pm2::Stream) {
         ts.append(Ident::new("_", self.span));
     }
 }
@@ -305,7 +297,7 @@ macro_rules! def_punct {
                 $t pub struct $n/$len
             }
             impl ToTokens for $n {
-                fn to_tokens(&self, ts: &mut TokenStream) {
+                fn to_tokens(&self, ts: &mut pm2::Stream) {
                     crate::lower::punct($t, &self.spans, ts);
                 }
             }
@@ -381,17 +373,17 @@ macro_rules! def_delims {
     ($($d:ident pub struct $n:ident)*) => {
         $(
             pub struct $n {
-                pub span: DelimSpan,
+                pub span: pm2::DelimSpan,
             }
             #[allow(non_snake_case)]
-            pub fn $n<S: IntoSpans<DelimSpan>>(s: S) -> $n {
+            pub fn $n<S: IntoSpans<pm2::DelimSpan>>(s: S) -> $n {
                 $n {
                     span: s.into_spans(),
                 }
             }
             impl std::default::Default for $n {
                 fn default() -> Self {
-                    $n(Span::call_site())
+                    $n(pm2::Span::call_site())
                 }
             }
             impl Copy for $n {}
@@ -415,13 +407,13 @@ macro_rules! def_delims {
                 fn hash<H: Hasher>(&self, _: &mut H) {}
             }
             impl $n {
-                pub fn surround<F>(&self, ts: &mut TokenStream, f: F)
+                pub fn surround<F>(&self, ts: &mut pm2::Stream, f: F)
                 where
-                    F: FnOnce(&mut TokenStream),
+                    F: FnOnce(&mut pm2::Stream),
                 {
-                    let mut inner = TokenStream::new();
+                    let mut inner = pm2::Stream::new();
                     f(&mut inner);
-                    crate::lower::delim(Delimiter::$d, self.span.join(), ts, inner);
+                    crate::lower::delim(pm2::Delim::$d, self.span.join(), ts, inner);
                 }
             }
             impl private::Sealed for $n {}
@@ -435,7 +427,7 @@ def_delims! {
 }
 impl Tok for Paren {
     fn peek(x: Cursor) -> bool {
-        look::is_delimiter(x, Delimiter::Parenthesis)
+        look::is_delimiter(x, pm2::Delim::Parenthesis)
     }
     fn display() -> &'static str {
         "parentheses"
@@ -443,7 +435,7 @@ impl Tok for Paren {
 }
 impl Tok for Brace {
     fn peek(x: Cursor) -> bool {
-        look::is_delimiter(x, Delimiter::Brace)
+        look::is_delimiter(x, pm2::Delim::Brace)
     }
     fn display() -> &'static str {
         "curly braces"
@@ -451,7 +443,7 @@ impl Tok for Brace {
 }
 impl Tok for Bracket {
     fn peek(x: Cursor) -> bool {
-        look::is_delimiter(x, Delimiter::Bracket)
+        look::is_delimiter(x, pm2::Delim::Bracket)
     }
     fn display() -> &'static str {
         "square brackets"
@@ -464,7 +456,7 @@ pub enum Delim {
     Bracket(Bracket),
 }
 impl Delim {
-    pub fn span(&self) -> &DelimSpan {
+    pub fn span(&self) -> &pm2::DelimSpan {
         use MacroDelim::*;
         match self {
             Paren(x) => &x.span,
@@ -475,22 +467,22 @@ impl Delim {
 }
 
 pub struct Group {
-    pub span: Span,
+    pub span: pm2::Span,
 }
 impl Group {
-    pub fn surround<F>(&self, ts: &mut TokenStream, f: F)
+    pub fn surround<F>(&self, ts: &mut pm2::Stream, f: F)
     where
-        F: FnOnce(&mut TokenStream),
+        F: FnOnce(&mut pm2::Stream),
     {
-        let mut inner = TokenStream::new();
+        let mut inner = pm2::Stream::new();
         f(&mut inner);
-        lower::delim(Delimiter::None, self.span, ts, inner);
+        lower::delim(pm2::Delim::None, self.span, ts, inner);
     }
 }
 impl std::default::Default for Group {
     fn default() -> Self {
         Group {
-            span: Span::call_site(),
+            span: pm2::Span::call_site(),
         }
     }
 }
@@ -517,7 +509,7 @@ impl Hash for Group {
 impl private::Sealed for Group {}
 impl Tok for Group {
     fn peek(x: Cursor) -> bool {
-        look::is_delimiter(x, Delimiter::None)
+        look::is_delimiter(x, pm2::Delim::None)
     }
     fn display() -> &'static str {
         "invisible group"
@@ -525,16 +517,15 @@ impl Tok for Group {
 }
 
 #[allow(non_snake_case)]
-pub fn Group<S: IntoSpans<Span>>(s: S) -> Group {
+pub fn Group<S: IntoSpans<pm2::Span>>(s: S) -> Group {
     Group { span: s.into_spans() }
 }
 
 mod private {
-    use proc_macro2::Span;
     pub trait Sealed {}
     #[repr(transparent)]
     pub struct WithSpan {
-        pub span: Span,
+        pub span: pm2::Span,
     }
 }
 impl private::Sealed for Ident {}

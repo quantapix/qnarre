@@ -147,9 +147,9 @@ use rustc_ast::ast::WhereEqPredicate;
 use rustc_ast::ast::WherePredicate;
 use rustc_ast::ast::WhereRegionPredicate;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, CommentKind, Delimiter, Lit, Nonterminal, Token, TokenKind};
+use rustc_ast::token::{self, pm2::Delim, CommentKind, Lit, Nonterminal, Token, TokenKind};
 use rustc_ast::tokenstream::{
-    AttrTokenStream, AttrTokenTree, AttributesData, DelimSpan, LazyAttrTokenStream, Spacing, TokenStream, TokenTree,
+    pm2::Stream, pm2::Tree, AttrTokenStream, AttrTokenTree, AttributesData, DelimSpan, LazyAttrTokenStream, Spacing,
 };
 use rustc_data_structures::sync::Lrc;
 use rustc_span::source_map::Spanned;
@@ -250,7 +250,7 @@ macro_rules! spanless_eq_true {
     };
 }
 spanless_eq_true!(Span);
-spanless_eq_true!(DelimSpan);
+spanless_eq_true!(pm2::DelimSpan);
 spanless_eq_true!(AttrId);
 spanless_eq_true!(NodeId);
 spanless_eq_true!(SyntaxContext);
@@ -274,7 +274,7 @@ spanless_eq_partial_eq!(char);
 spanless_eq_partial_eq!(String);
 spanless_eq_partial_eq!(Symbol);
 spanless_eq_partial_eq!(CommentKind);
-spanless_eq_partial_eq!(Delimiter);
+spanless_eq_partial_eq!(pm2::Delim);
 spanless_eq_partial_eq!(InlineAsmOptions);
 spanless_eq_partial_eq!(token::LitKind);
 macro_rules! spanless_eq_struct {
@@ -509,9 +509,9 @@ spanless_eq_enum!(FnRetTy; Default(0) ty::Type(0));
 spanless_eq_enum!(ForeignItemKind; Static(0 1 2) Fn(0) TyAlias(0) MacCall(0));
 spanless_eq_enum!(FormatAlignment; Left Right Center);
 spanless_eq_enum!(FormatArgPositionKind; Implicit Number Named);
-spanless_eq_enum!(FormatArgsPiece; Literal(0) Placeholder(0));
+spanless_eq_enum!(FormatArgsPiece; pm2::Lit(0) Placeholder(0));
 spanless_eq_enum!(FormatArgumentKind; Normal Named(0) Captured(0));
-spanless_eq_enum!(FormatCount; Literal(0) Argument(0));
+spanless_eq_enum!(FormatCount; pm2::Lit(0) Argument(0));
 spanless_eq_enum!(FormatDebugHex; Lower Upper);
 spanless_eq_enum!(FormatSign; Plus Minus);
 spanless_eq_enum!(FormatTrait; Display Debug LowerExp UpperExp Octal Pointer Binary LowerHex UpperHex);
@@ -539,7 +539,7 @@ spanless_eq_enum!(StmtKind; stmt::Local(0) Item(0) Expr(0) Semi(0) Empty MacCall
 spanless_eq_enum!(StrStyle; Cooked Raw(0));
 spanless_eq_enum!(StructRest; Base(0) Rest(0) None);
 spanless_eq_enum!(Term; ty::Type(0) Const(0));
-spanless_eq_enum!(TokenTree; Token(0 1) Delimited(0 1 2));
+spanless_eq_enum!(pm2::Tree; Token(0 1) Delimited(0 1 2));
 spanless_eq_enum!(gen::bound::Modifier; None Negative Maybe MaybeConst MaybeConstNegative MaybeConstMaybe);
 spanless_eq_enum!(TraitObjectSyntax; Dyn DynStar None);
 spanless_eq_enum!(UintTy; Usize U8 U16 U32 U64 U128);
@@ -625,7 +625,7 @@ impl SpanlessEq for TokenKind {
         }
     }
 }
-impl SpanlessEq for TokenStream {
+impl SpanlessEq for pm2::Stream {
     fn eq(&self, other: &Self) -> bool {
         let mut this_trees = self.trees();
         let mut other_trees = other.trees();
@@ -641,7 +641,7 @@ impl SpanlessEq for TokenStream {
             if SpanlessEq::eq(this, other) {
                 continue;
             }
-            if let (TokenTree::Token(this, _), TokenTree::Token(other, _)) = (this, other) {
+            if let (pm2::Tree::Token(this, _), pm2::Tree::Token(other, _)) = (this, other) {
                 if match (&this.kind, &other.kind) {
                     (TokenKind::Literal(this), TokenKind::Literal(other)) => SpanlessEq::eq(this, other),
                     (TokenKind::DocComment(_kind, style, symbol), TokenKind::Pound) => {
@@ -659,13 +659,13 @@ impl SpanlessEq for TokenStream {
         }
     }
 }
-fn doc_comment<'a>(style: attr::Style, unescaped: Symbol, trees: &mut impl Iterator<Item = &'a TokenTree>) -> bool {
+fn doc_comment<'a>(style: attr::Style, unescaped: Symbol, trees: &mut impl Iterator<Item = &'a pm2::Tree>) -> bool {
     if match style {
         attr::Style::Outer => false,
         attr::Style::Inner => true,
     } {
         match trees.next() {
-            Some(TokenTree::Token(
+            Some(pm2::Tree::Token(
                 Token {
                     kind: TokenKind::Not,
                     span: _,
@@ -676,12 +676,12 @@ fn doc_comment<'a>(style: attr::Style, unescaped: Symbol, trees: &mut impl Itera
         }
     }
     let stream = match trees.next() {
-        Some(TokenTree::Delimited(_span, Delimiter::Bracket, stream)) => stream,
+        Some(pm2::Tree::Delimited(_span, pm2::Delim::Bracket, stream)) => stream,
         _ => return false,
     };
     let mut trees = stream.trees();
     match trees.next() {
-        Some(TokenTree::Token(
+        Some(pm2::Tree::Token(
             Token {
                 kind: TokenKind::Ident(symbol, false),
                 span: _,
@@ -691,7 +691,7 @@ fn doc_comment<'a>(style: attr::Style, unescaped: Symbol, trees: &mut impl Itera
         _ => return false,
     }
     match trees.next() {
-        Some(TokenTree::Token(
+        Some(pm2::Tree::Token(
             Token {
                 kind: TokenKind::Eq,
                 span: _,
@@ -701,7 +701,7 @@ fn doc_comment<'a>(style: attr::Style, unescaped: Symbol, trees: &mut impl Itera
         _ => return false,
     }
     match trees.next() {
-        Some(TokenTree::Token(token, _spacing)) => is_escaped_literal_token(token, unescaped) && trees.next().is_none(),
+        Some(pm2::Tree::Token(token, _spacing)) => is_escaped_literal_token(token, unescaped) && trees.next().is_none(),
         _ => false,
     }
 }

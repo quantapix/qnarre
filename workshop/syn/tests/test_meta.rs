@@ -63,7 +63,7 @@ fn test_parse_meta_item_list_lit() {
             ],
         },
         delimiter: MacroDelimiter::Paren,
-        tokens: TokenStream(`5`),
+        tokens: pm2::Stream(`5`),
     }
     "###);
     snapshot!(meta as meta::Meta, @r###"
@@ -76,7 +76,7 @@ fn test_parse_meta_item_list_lit() {
             ],
         },
         delimiter: MacroDelimiter::Paren,
-        tokens: TokenStream(`5`),
+        tokens: pm2::Stream(`5`),
     }
     "###);
     assert_eq!(meta, inner.into());
@@ -95,7 +95,7 @@ fn test_parse_meta_item_multiple() {
             ],
         },
         delimiter: MacroDelimiter::Paren,
-        tokens: TokenStream(`word , name = 5 , list (name2 = 6) , word2`),
+        tokens: pm2::Stream(`word , name = 5 , list (name2 = 6) , word2`),
     }
     "###);
     snapshot!(meta as meta::Meta, @r###"
@@ -108,7 +108,7 @@ fn test_parse_meta_item_multiple() {
             ],
         },
         delimiter: MacroDelimiter::Paren,
-        tokens: TokenStream(`word , name = 5 , list (name2 = 6) , word2`),
+        tokens: pm2::Stream(`word , name = 5 , list (name2 = 6) , word2`),
     }
     "###);
     assert_eq!(meta, inner.into());

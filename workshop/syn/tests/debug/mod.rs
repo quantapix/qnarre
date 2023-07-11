@@ -5,7 +5,7 @@
 )]
 #[rustfmt::skip]
 mod gen;
-use proc_macro2::{Ident, Literal, TokenStream};
+use proc_macro2::Ident;
 use ref_cast::RefCast;
 use std::fmt::{self, Debug};
 use std::ops::Deref;
@@ -50,19 +50,19 @@ impl Debug for Lite<Ident> {
         write!(formatter, "{:?}", self.value.to_string())
     }
 }
-impl Debug for Lite<Literal> {
+impl Debug for Lite<pm2::Lit> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(formatter, "{}", self.value)
     }
 }
-impl Debug for Lite<TokenStream> {
+impl Debug for Lite<pm2::Stream> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let string = self.value.to_string();
         if string.len() <= 80 {
-            write!(formatter, "TokenStream(`{}`)", self.value)
+            write!(formatter, "pm2::Stream(`{}`)", self.value)
         } else {
             formatter
-                .debug_tuple("TokenStream")
+                .debug_tuple("pm2::Stream")
                 .field(&format_args!("`{}`", string))
                 .finish()
         }

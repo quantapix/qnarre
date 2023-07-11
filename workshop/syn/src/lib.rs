@@ -45,16 +45,23 @@
 
 extern crate proc_macro;
 
-use proc_macro2::{extra::DelimSpan, Delimiter, Group, Literal, Punct, Spacing, Span, TokenStream, TokenTree};
-use quote::{spanned, ToTokens};
+use proc_macro2::Punct;
+use quote::{quote, spanned, ToTokens, TokenStreamExt};
 use std::{
-    cmp::Ordering,
+    cmp::{self, Ordering},
     fmt::{self, Debug, Display},
     hash::{Hash, Hasher},
     marker::PhantomData,
-    ops,
+    mem,
+    ops::{self, Deref, DerefMut},
     thread::{self, ThreadId},
 };
+
+mod pm2 {
+    pub use proc_macro2::{
+        extra::DelimSpan, Delimiter as Delim, Group, Literal as Lit, Spacing, Span, TokenStream, TokenTree,
+    };
+}
 
 #[macro_use]
 mod mac;
@@ -71,7 +78,6 @@ mod tok;
 use cur::Cursor;
 mod ident {
     pub use proc_macro2::Ident;
-
     macro_rules! ident_from_tok {
         ($x:ident) => {
             impl From<Token![$x]> for Ident {
@@ -106,11 +112,11 @@ mod ident {
     }
 
     pub struct Lifetime {
-        pub apos: Span,
+        pub apos: pm2::Span,
         pub ident: Ident,
     }
     impl Lifetime {
-        pub fn new(x: &str, s: Span) -> Self {
+        pub fn new(x: &str, s: pm2::Span) -> Self {
             if !x.starts_with('\'') {
                 panic!("lifetime name must start with apostrophe as in \"'a\", got {:?}", x);
             }
@@ -125,10 +131,10 @@ mod ident {
                 ident: Ident::new(&x[1..], s),
             }
         }
-        pub fn span(&self) -> Span {
+        pub fn span(&self) -> pm2::Span {
             self.apos.join(self.ident.span()).unwrap_or(self.apos)
         }
-        pub fn set_span(&mut self, s: Span) {
+        pub fn set_span(&mut self, s: pm2::Span) {
             self.apos = s;
             self.ident.set_span(s);
         }
@@ -185,7 +191,6 @@ pub mod ext {
         sealed::look,
         tok::Custom,
     };
-    use proc_macro2::Ident;
     pub trait IdentExt: Sized + private::Sealed {
         #[allow(non_upper_case_globals)]
         const peek_any: private::PeekFn = private::PeekFn;
@@ -221,7 +226,6 @@ pub mod ext {
     }
     impl look::Sealed for private::PeekFn {}
     mod private {
-        use proc_macro2::Ident;
         pub trait Sealed {}
         impl Sealed for Ident {}
         pub struct PeekFn;
@@ -239,6 +243,9 @@ pub mod punct;
 use punct::Punctuated;
 
 mod pat {
+    pub use expr::{Const, Lit, Macro as Mac, Path, Range};
+    pub use pm2::Stream;
+
     ast_enum_of_structs! {
         pub enum Pat {
             Const(Const),
@@ -256,11 +263,10 @@ mod pat {
             Tuple(Tuple),
             TupleStruct(TupleStruct),
             Type(Type),
-            Verbatim(TokenStream),
+            Verbatim(Stream),
             Wild(Wild),
         }
     }
-    use expr::Const;
     pub struct Ident {
         pub attrs: Vec<attr::Attr>,
         pub ref_: Option<Token![ref]>,
@@ -268,8 +274,6 @@ mod pat {
         pub ident: Ident,
         pub sub: Option<(Token![@], Box<Pat>)>,
     }
-    use expr::Lit;
-    use expr::Macro as Mac;
     pub struct Or {
         pub attrs: Vec<attr::Attr>,
         pub vert: Option<Token![|]>,
@@ -280,8 +284,6 @@ mod pat {
         pub paren: tok::Paren,
         pub pat: Box<Pat>,
     }
-    use expr::Path;
-    use expr::Range;
     pub struct Ref {
         pub attrs: Vec<attr::Attr>,
         pub and: Token![&],
@@ -492,6 +494,7 @@ mod stmt {
     }
 }
 mod ty {
+    pub use pm2::Stream;
     ast_enum_of_structs! {
         pub enum Type {
             Array(Array),
@@ -508,7 +511,7 @@ mod ty {
             Slice(Slice),
             TraitObj(TraitObj),
             Tuple(Tuple),
-            Verbatim(TokenStream),
+            Verbatim(Stream),
         }
     }
     pub struct Array {
@@ -720,7 +723,7 @@ pub mod data {
 use data::DeriveInput;
 
 mod err {
-    use proc_macro2::{Delimiter, Group, Ident, LexError, Literal, Punct, Spacing, Span, TokenStream, TokenTree};
+    use proc_macro2::{Ident, LexError, Punct};
     use quote::ToTokens;
     use std::{
         fmt::{self, Debug, Display},
@@ -735,17 +738,17 @@ mod err {
         message: String,
     }
     struct SpanRange {
-        start: Span,
-        end: Span,
+        start: pm2::Span,
+        end: pm2::Span,
     }
     #[cfg(test)]
     struct _Test
     where
         Err: Send + Sync;
     impl Err {
-        pub fn new<T: Display>(span: Span, message: T) -> Self {
+        pub fn new<T: Display>(span: pm2::Span, message: T) -> Self {
             return new(span, message.to_string());
-            fn new(span: Span, message: String) -> Err {
+            fn new(span: pm2::Span, message: String) -> Err {
                 Err {
                     msgs: vec![ErrMsg {
                         span: ThreadBound::new(SpanRange { start: span, end: span }),
@@ -756,9 +759,9 @@ mod err {
         }
         pub fn new_spanned<T: ToTokens, U: Display>(tokens: T, message: U) -> Self {
             return new_spanned(tokens.into_token_stream(), message.to_string());
-            fn new_spanned(tokens: TokenStream, message: String) -> Err {
+            fn new_spanned(tokens: pm2::Stream, message: String) -> Err {
                 let mut iter = tokens.into_iter();
-                let start = iter.next().map_or_else(Span::call_site, |t| t.span());
+                let start = iter.next().map_or_else(pm2::Span::call_site, |t| t.span());
                 let end = iter.last().map_or(start, |t| t.span());
                 Err {
                     msgs: vec![ErrMsg {
@@ -768,17 +771,17 @@ mod err {
                 }
             }
         }
-        pub fn span(&self) -> Span {
+        pub fn span(&self) -> pm2::Span {
             let SpanRange { start, end } = match self.msgs[0].span.get() {
                 Some(span) => *span,
-                None => return Span::call_site(),
+                None => return pm2::Span::call_site(),
             };
             start.join(end).unwrap_or(start)
         }
-        pub fn to_compile_error(&self) -> TokenStream {
+        pub fn to_compile_error(&self) -> pm2::Stream {
             self.msgs.iter().map(ErrMsg::to_compile_error).collect()
         }
-        pub fn into_compile_error(self) -> TokenStream {
+        pub fn into_compile_error(self) -> pm2::Stream {
             self.to_compile_error()
         }
         pub fn combine(&mut self, another: Err) {
@@ -786,54 +789,55 @@ mod err {
         }
     }
     impl ErrMsg {
-        fn to_compile_error(&self) -> TokenStream {
+        fn to_compile_error(&self) -> pm2::Stream {
             let (start, end) = match self.span.get() {
                 Some(range) => (range.start, range.end),
-                None => (Span::call_site(), Span::call_site()),
+                None => (pm2::Span::call_site(), pm2::Span::call_site()),
             };
-            TokenStream::from_iter(vec![
-                TokenTree::Punct({
-                    let mut punct = Punct::new(':', Spacing::Joint);
-                    punct.set_span(start);
-                    punct
+            use pm2::Spacing::*;
+            pm2::Stream::from_iter(vec![
+                pm2::Tree::Punct({
+                    let y = Punct::new(':', Joint);
+                    y.set_span(start);
+                    y
                 }),
-                TokenTree::Punct({
-                    let mut punct = Punct::new(':', Spacing::Alone);
-                    punct.set_span(start);
-                    punct
+                pm2::Tree::Punct({
+                    let y = Punct::new(':', Alone);
+                    y.set_span(start);
+                    y
                 }),
-                TokenTree::Ident(Ident::new("core", start)),
-                TokenTree::Punct({
-                    let mut punct = Punct::new(':', Spacing::Joint);
-                    punct.set_span(start);
-                    punct
+                pm2::Tree::Ident(Ident::new("core", start)),
+                pm2::Tree::Punct({
+                    let y = Punct::new(':', Joint);
+                    y.set_span(start);
+                    y
                 }),
-                TokenTree::Punct({
-                    let mut punct = Punct::new(':', Spacing::Alone);
-                    punct.set_span(start);
-                    punct
+                pm2::Tree::Punct({
+                    let y = Punct::new(':', Alone);
+                    y.set_span(start);
+                    y
                 }),
-                TokenTree::Ident(Ident::new("compile_error", start)),
-                TokenTree::Punct({
-                    let mut punct = Punct::new('!', Spacing::Alone);
-                    punct.set_span(start);
-                    punct
+                pm2::Tree::Ident(Ident::new("compile_error", start)),
+                pm2::Tree::Punct({
+                    let y = Punct::new('!', Alone);
+                    y.set_span(start);
+                    y
                 }),
-                TokenTree::Group({
-                    let mut group = Group::new(Delimiter::Brace, {
-                        TokenStream::from_iter(vec![TokenTree::Literal({
-                            let mut string = Literal::string(&self.message);
-                            string.set_span(end);
-                            string
+                pm2::Tree::Group({
+                    let y = Group::new(pm2::Delim::Brace, {
+                        pm2::Stream::from_iter(vec![pm2::Tree::Literal({
+                            let y = pm2::Lit::string(&self.message);
+                            y.set_span(end);
+                            y
                         })])
                     });
-                    group.set_span(end);
-                    group
+                    y.set_span(end);
+                    y
                 }),
             ])
         }
     }
-    pub fn new_at<T: Display>(scope: Span, cursor: Cursor, message: T) -> Err {
+    pub fn new_at<T: Display>(scope: pm2::Span, cursor: Cursor, message: T) -> Err {
         if cursor.eof() {
             Err::new(scope, format!("unexpected end of input, {}", message))
         } else {
@@ -841,9 +845,9 @@ mod err {
             Err::new(span, message)
         }
     }
-    pub fn new2<T: Display>(start: Span, end: Span, message: T) -> Err {
+    pub fn new2<T: Display>(start: pm2::Span, end: pm2::Span, message: T) -> Err {
         return new2(start, end, message.to_string());
-        fn new2(start: Span, end: Span, message: String) -> Err {
+        fn new2(start: pm2::Span, end: pm2::Span, message: String) -> Err {
             Err {
                 msgs: vec![ErrMsg {
                     span: ThreadBound::new(SpanRange { start, end }),
@@ -956,7 +960,7 @@ mod look {
     };
     use std::cell::RefCell;
     pub struct Lookahead1<'a> {
-        scope: Span,
+        scope: pm2::Span,
         cursor: Cursor<'a>,
         comparisons: RefCell<Vec<&'static str>>,
     }
@@ -992,7 +996,7 @@ mod look {
         }
     }
 
-    pub fn new(scope: Span, cursor: Cursor) -> Lookahead1 {
+    pub fn new(scope: pm2::Span, cursor: Cursor) -> Lookahead1 {
         Lookahead1 {
             scope,
             cursor,
@@ -1021,7 +1025,7 @@ mod look {
         }
     }
 
-    pub fn is_delimiter(x: Cursor, d: Delimiter) -> bool {
+    pub fn is_delimiter(x: Cursor, d: pm2::Delim) -> bool {
         x.group(d).is_some()
     }
 
@@ -1034,7 +1038,6 @@ pub mod parse {
         punct::Punctuated,
         tok::Tok,
     };
-    use proc_macro2::{self, Delimiter, Group, Literal, Punct, Span, TokenStream, TokenTree};
     use std::{
         cell::Cell,
         fmt::{self, Debug, Display},
@@ -1047,7 +1050,7 @@ pub mod parse {
     };
 
     pub struct Buffer<'a> {
-        scope: Span,
+        scope: pm2::Span,
         cell: Cell<Cursor<'static>>,
         marker: PhantomData<Cursor<'a>>,
         unexpected: Cell<Option<Rc<Cell<Unexpected>>>>,
@@ -1065,7 +1068,7 @@ pub mod parse {
         }
         pub fn peek2<T: Peek>(&self, x: T) -> bool {
             fn peek2(x: &Buffer, f: fn(Cursor) -> bool) -> bool {
-                if let Some(x) = x.cursor().group(Delimiter::None) {
+                if let Some(x) = x.cursor().group(pm2::Delim::None) {
                     if x.0.skip().map_or(false, f) {
                         return true;
                     }
@@ -1077,7 +1080,7 @@ pub mod parse {
         }
         pub fn peek3<T: Peek>(&self, x: T) -> bool {
             fn peek3(x: &Buffer, f: fn(Cursor) -> bool) -> bool {
-                if let Some(x) = x.cursor().group(Delimiter::None) {
+                if let Some(x) = x.cursor().group(pm2::Delim::None) {
                     if x.0.skip().and_then(Cursor::skip).map_or(false, f) {
                         return true;
                     }
@@ -1124,7 +1127,7 @@ pub mod parse {
             self.cell.set(rest);
             Ok(y)
         }
-        pub fn span(&self) -> Span {
+        pub fn span(&self) -> pm2::Span {
             let y = self.cursor();
             if y.eof() {
                 self.scope
@@ -1165,7 +1168,7 @@ pub mod parse {
 
     pub enum Unexpected {
         None,
-        Some(Span),
+        Some(pm2::Span),
         Chain(Rc<Cell<Unexpected>>),
     }
     impl Default for Unexpected {
@@ -1185,7 +1188,7 @@ pub mod parse {
     }
 
     pub struct Step<'c, 'a> {
-        scope: Span,
+        scope: pm2::Span,
         cursor: Cursor<'c>,
         marker: PhantomData<fn(Cursor<'c>) -> Cursor<'a>>,
     }
@@ -1226,12 +1229,12 @@ pub mod parse {
             }
         }
     }
-    impl Parse for TokenStream {
+    impl Parse for pm2::Stream {
         fn parse(x: Stream) -> Res<Self> {
             x.step(|x| Ok((x.token_stream(), Cursor::empty())))
         }
     }
-    impl Parse for TokenTree {
+    impl Parse for pm2::Tree {
         fn parse(x: Stream) -> Res<Self> {
             x.step(|x| match x.token_tree() {
                 Some((tt, rest)) => Ok((tt, rest)),
@@ -1243,7 +1246,7 @@ pub mod parse {
         fn parse(x: Stream) -> Res<Self> {
             x.step(|x| {
                 if let Some((y, rest)) = x.any_group_token() {
-                    if y.delimiter() != Delimiter::None {
+                    if y.delimiter() != pm2::Delim::None {
                         return Ok((y, rest));
                     }
                 }
@@ -1259,7 +1262,7 @@ pub mod parse {
             })
         }
     }
-    impl Parse for Literal {
+    impl Parse for pm2::Lit {
         fn parse(x: Stream) -> Res<Self> {
             x.step(|x| match x.literal() {
                 Some((y, rest)) => Ok((y, rest)),
@@ -1270,14 +1273,14 @@ pub mod parse {
 
     pub trait Parser: Sized {
         type Output;
-        fn parse2(self, tokens: TokenStream) -> Res<Self::Output>;
-        fn parse(self, tokens: proc_macro::TokenStream) -> Res<Self::Output> {
-            self.parse2(proc_macro2::TokenStream::from(tokens))
+        fn parse2(self, tokens: pm2::Stream) -> Res<Self::Output>;
+        fn parse(self, tokens: proc_macro::pm2::Stream) -> Res<Self::Output> {
+            self.parse2(proc_macro2::pm2::Stream::from(tokens))
         }
         fn parse_str(self, s: &str) -> Res<Self::Output> {
-            self.parse2(proc_macro2::TokenStream::from_str(s)?)
+            self.parse2(proc_macro2::pm2::Stream::from_str(s)?)
         }
-        fn __parse_scoped(self, scope: Span, tokens: TokenStream) -> Res<Self::Output> {
+        fn __parse_scoped(self, scope: pm2::Span, tokens: pm2::Stream) -> Res<Self::Output> {
             let _ = scope;
             self.parse2(tokens)
         }
@@ -1287,7 +1290,7 @@ pub mod parse {
         F: FnOnce(Stream) -> Res<T>,
     {
         type Output = T;
-        fn parse2(self, tokens: TokenStream) -> Res<T> {
+        fn parse2(self, tokens: pm2::Stream) -> Res<T> {
             let buf = cur::Buffer::new2(tokens);
             let state = tokens_to_parse_buffer(&buf);
             let node = self(&state)?;
@@ -1298,7 +1301,7 @@ pub mod parse {
                 Ok(node)
             }
         }
-        fn __parse_scoped(self, scope: Span, tokens: TokenStream) -> Res<Self::Output> {
+        fn __parse_scoped(self, scope: pm2::Span, tokens: pm2::Stream) -> Res<Self::Output> {
             let buf = cur::Buffer::new2(tokens);
             let cursor = buf.begin();
             let unexpected = Rc::new(Cell::new(Unexpected::None));
@@ -1317,7 +1320,7 @@ pub mod parse {
         let _ = proof;
         unsafe { mem::transmute::<Cursor<'c>, Cursor<'a>>(to) }
     }
-    pub fn new_parse_buffer(scope: Span, cursor: Cursor, unexpected: Rc<Cell<Unexpected>>) -> Buffer {
+    pub fn new_parse_buffer(scope: pm2::Span, cursor: Cursor, unexpected: Rc<Cell<Unexpected>>) -> Buffer {
         Buffer {
             scope,
             cell: Cell::new(unsafe { mem::transmute::<Cursor, Cursor<'static>>(cursor) }),
@@ -1332,7 +1335,7 @@ pub mod parse {
         x.set(prev);
         y
     }
-    fn inner_unexpected(x: &Buffer) -> (Rc<Cell<Unexpected>>, Option<Span>) {
+    fn inner_unexpected(x: &Buffer) -> (Rc<Cell<Unexpected>>, Option<pm2::Span>) {
         let mut y = get_unexpected(x);
         loop {
             use Unexpected::*;
@@ -1346,11 +1349,11 @@ pub mod parse {
     pub fn get_unexpected(x: &Buffer) -> Rc<Cell<Unexpected>> {
         cell_clone(&x.unexpected).unwrap()
     }
-    fn span_of_unexpected_ignoring_nones(mut x: Cursor) -> Option<Span> {
+    fn span_of_unexpected_ignoring_nones(mut x: Cursor) -> Option<pm2::Span> {
         if x.eof() {
             return None;
         }
-        while let Some((inner, _span, rest)) = x.group(Delimiter::None) {
+        while let Some((inner, _span, rest)) = x.group(pm2::Delim::None) {
             if let Some(x) = span_of_unexpected_ignoring_nones(inner) {
                 return Some(x);
             }
@@ -1364,13 +1367,13 @@ pub mod parse {
     }
 
     fn tokens_to_parse_buffer(x: &cur::Buffer) -> Buffer {
-        let scope = Span::call_site();
+        let scope = pm2::Span::call_site();
         let cursor = x.begin();
         let unexpected = Rc::new(Cell::new(Unexpected::None));
         new_parse_buffer(scope, cursor, unexpected)
     }
 
-    pub fn parse_scoped<F: Parser>(f: F, s: Span, xs: TokenStream) -> Res<F::Output> {
+    pub fn parse_scoped<F: Parser>(f: F, s: pm2::Span, xs: pm2::Stream) -> Res<F::Output> {
         f.__parse_scoped(s, xs)
     }
 
@@ -1396,7 +1399,6 @@ pub mod parse {
     }
 
     pub mod discouraged {
-        use proc_macro2::extra::DelimSpan;
         pub trait Speculative {
             fn advance_to(&self, fork: &Self);
         }
@@ -1424,19 +1426,19 @@ pub mod parse {
             }
         }
         pub trait AnyDelim {
-            fn parse_any_delim(&self) -> Res<(Delimiter, DelimSpan, Buffer)>;
+            fn parse_any_delim(&self) -> Res<(pm2::Delim, pm2::DelimSpan, Buffer)>;
         }
         impl<'a> AnyDelim for Buffer<'a> {
-            fn parse_any_delim(&self) -> Res<(Delimiter, DelimSpan, Buffer)> {
-                self.step(|cursor| {
-                    if let Some((content, delimiter, span, rest)) = cursor.any_group() {
-                        let scope = crate::close_span_of_group(*cursor);
-                        let nested = advance_step_cursor(cursor, content);
+            fn parse_any_delim(&self) -> Res<(pm2::Delim, pm2::DelimSpan, Buffer)> {
+                self.step(|c| {
+                    if let Some((content, delim, span, rest)) = c.any_group() {
+                        let scope = crate::close_span_of_group(*c);
+                        let nested = advance_step_cursor(c, content);
                         let unexpected = get_unexpected(self);
                         let content = new_parse_buffer(scope, nested, unexpected);
-                        Ok(((delimiter, span, content), rest))
+                        Ok(((delim, span, content), rest))
                     } else {
-                        Err(cursor.error("expected any delimiter"))
+                        Err(c.error("expected any delimiter"))
                     }
                 })
             }
@@ -1450,7 +1452,7 @@ pub struct Parens<'a> {
     pub buf: parse::Buffer<'a>,
 }
 pub fn parse_parens<'a>(x: &parse::Buffer<'a>) -> Res<Parens<'a>> {
-    parse_delimited(x, Delimiter::Parenthesis).map(|(span, buf)| Parens {
+    parse_delimited(x, pm2::Delim::Parenthesis).map(|(span, buf)| Parens {
         tok: tok::Paren(span),
         buf,
     })
@@ -1460,7 +1462,7 @@ pub struct Braces<'a> {
     pub buf: parse::Buffer<'a>,
 }
 pub fn parse_braces<'a>(x: &parse::Buffer<'a>) -> Res<Braces<'a>> {
-    parse_delimited(x, Delimiter::Brace).map(|(span, buf)| Braces {
+    parse_delimited(x, pm2::Delim::Brace).map(|(span, buf)| Braces {
         token: tok::Brace(span),
         buf,
     })
@@ -1470,7 +1472,7 @@ pub struct Brackets<'a> {
     pub buf: parse::Buffer<'a>,
 }
 pub fn parse_brackets<'a>(x: &parse::Buffer<'a>) -> Res<Brackets<'a>> {
-    parse_delimited(x, Delimiter::Bracket).map(|(span, buf)| Brackets {
+    parse_delimited(x, pm2::Delim::Bracket).map(|(span, buf)| Brackets {
         token: tok::Bracket(span),
         buf,
     })
@@ -1480,12 +1482,12 @@ pub struct Group<'a> {
     pub buf: parse::Buffer<'a>,
 }
 pub fn parse_group<'a>(x: &parse::Buffer<'a>) -> Res<Group<'a>> {
-    parse_delimited(x, Delimiter::None).map(|(span, buf)| Group {
+    parse_delimited(x, pm2::Delim::None).map(|(span, buf)| Group {
         token: tok::Group(span.join()),
         buf,
     })
 }
-fn parse_delimited<'a>(x: &parse::Buffer<'a>, d: Delimiter) -> Res<(DelimSpan, parse::Buffer<'a>)> {
+fn parse_delimited<'a>(x: &parse::Buffer<'a>, d: pm2::Delim) -> Res<(pm2::DelimSpan, parse::Buffer<'a>)> {
     x.step(|c| {
         if let Some((gist, span, rest)) = c.group(d) {
             let scope = close_span_of_group(*c);
@@ -1494,7 +1496,7 @@ fn parse_delimited<'a>(x: &parse::Buffer<'a>, d: Delimiter) -> Res<(DelimSpan, p
             let gist = parse::new_parse_buffer(scope, nested, unexpected);
             Ok(((span, gist), rest))
         } else {
-            use Delimiter::*;
+            use pm2::Delim::*;
             let y = match d {
                 Parenthesis => "expected parentheses",
                 Brace => "expected braces",
@@ -1544,7 +1546,7 @@ impl ParseQuote for Vec<Stmt> {
     }
 }
 
-pub fn parse_quote_fn<T: ParseQuote>(x: TokenStream) -> T {
+pub fn parse_quote_fn<T: ParseQuote>(x: pm2::Stream) -> T {
     let y = T::parse;
     match y.parse2(x) {
         Ok(x) => x,
@@ -1557,7 +1559,7 @@ impl<'a, T> ToTokens for TokensOrDefault<'a, T>
 where
     T: ToTokens + Default,
 {
-    fn to_tokens(&self, ys: &mut TokenStream) {
+    fn to_tokens(&self, ys: &mut pm2::Stream) {
         match self.0 {
             Some(x) => x.to_tokens(ys),
             None => T::default().to_tokens(ys),
@@ -1587,59 +1589,59 @@ mod sealed {
 pub trait IntoSpans<S> {
     fn into_spans(self) -> S;
 }
-impl IntoSpans<Span> for Span {
-    fn into_spans(self) -> Span {
+impl IntoSpans<pm2::Span> for pm2::Span {
+    fn into_spans(self) -> pm2::Span {
         self
     }
 }
-impl IntoSpans<[Span; 1]> for Span {
-    fn into_spans(self) -> [Span; 1] {
+impl IntoSpans<[pm2::Span; 1]> for pm2::Span {
+    fn into_spans(self) -> [pm2::Span; 1] {
         [self]
     }
 }
-impl IntoSpans<[Span; 2]> for Span {
-    fn into_spans(self) -> [Span; 2] {
+impl IntoSpans<[pm2::Span; 2]> for pm2::Span {
+    fn into_spans(self) -> [pm2::Span; 2] {
         [self, self]
     }
 }
-impl IntoSpans<[Span; 3]> for Span {
-    fn into_spans(self) -> [Span; 3] {
+impl IntoSpans<[pm2::Span; 3]> for pm2::Span {
+    fn into_spans(self) -> [pm2::Span; 3] {
         [self, self, self]
     }
 }
-impl IntoSpans<[Span; 1]> for [Span; 1] {
-    fn into_spans(self) -> [Span; 1] {
+impl IntoSpans<[pm2::Span; 1]> for [pm2::Span; 1] {
+    fn into_spans(self) -> [pm2::Span; 1] {
         self
     }
 }
-impl IntoSpans<[Span; 2]> for [Span; 2] {
-    fn into_spans(self) -> [Span; 2] {
+impl IntoSpans<[pm2::Span; 2]> for [pm2::Span; 2] {
+    fn into_spans(self) -> [pm2::Span; 2] {
         self
     }
 }
-impl IntoSpans<[Span; 3]> for [Span; 3] {
-    fn into_spans(self) -> [Span; 3] {
+impl IntoSpans<[pm2::Span; 3]> for [pm2::Span; 3] {
+    fn into_spans(self) -> [pm2::Span; 3] {
         self
     }
 }
-impl IntoSpans<DelimSpan> for Span {
-    fn into_spans(self) -> DelimSpan {
-        let mut y = Group::new(Delimiter::None, TokenStream::new());
+impl IntoSpans<pm2::DelimSpan> for pm2::Span {
+    fn into_spans(self) -> pm2::DelimSpan {
+        let mut y = Group::new(pm2::Delim::None, pm2::Stream::new());
         y.set_span(self);
         y.delim_span()
     }
 }
-impl IntoSpans<DelimSpan> for DelimSpan {
-    fn into_spans(self) -> DelimSpan {
+impl IntoSpans<pm2::DelimSpan> for pm2::DelimSpan {
+    fn into_spans(self) -> pm2::DelimSpan {
         self
     }
 }
 
 pub trait Spanned: private::Sealed {
-    fn span(&self) -> Span;
+    fn span(&self) -> pm2::Span;
 }
 impl<T: ?Sized + spanned::Spanned> Spanned for T {
-    fn span(&self) -> Span {
+    fn span(&self) -> pm2::Span {
         self.__span()
     }
 }
@@ -1684,17 +1686,14 @@ impl<T: Copy> Clone for ThreadBound<T> {
     }
 }
 
-struct TokenTreeHelper<'a>(pub &'a TokenTree);
+struct TokenTreeHelper<'a>(pub &'a pm2::Tree);
 impl<'a> PartialEq for TokenTreeHelper<'a> {
     fn eq(&self, other: &Self) -> bool {
-        use proc_macro2::Spacing;
+        use pm2::{Delim::*, Spacing::*};
         match (self.0, other.0) {
-            (TokenTree::Group(g1), TokenTree::Group(g2)) => {
+            (pm2::Tree::Group(g1), pm2::Tree::Group(g2)) => {
                 match (g1.delimiter(), g2.delimiter()) {
-                    (Delimiter::Parenthesis, Delimiter::Parenthesis)
-                    | (Delimiter::Brace, Delimiter::Brace)
-                    | (Delimiter::Bracket, Delimiter::Bracket)
-                    | (Delimiter::None, Delimiter::None) => {},
+                    (Parenthesis, Parenthesis) | (Brace, Brace) | (Bracket, Bracket) | (None, None) => {},
                     _ => return false,
                 }
                 let s1 = g1.stream().into_iter();
@@ -1710,51 +1709,52 @@ impl<'a> PartialEq for TokenTreeHelper<'a> {
                 }
                 s2.next().is_none()
             },
-            (TokenTree::Punct(o1), TokenTree::Punct(o2)) => {
+            (pm2::Tree::Punct(o1), pm2::Tree::Punct(o2)) => {
                 o1.as_char() == o2.as_char()
                     && match (o1.spacing(), o2.spacing()) {
-                        (Spacing::Alone, Spacing::Alone) | (Spacing::Joint, Spacing::Joint) => true,
+                        (Alone, Alone) | (Joint, Joint) => true,
                         _ => false,
                     }
             },
-            (TokenTree::Literal(l1), TokenTree::Literal(l2)) => l1.to_string() == l2.to_string(),
-            (TokenTree::Ident(s1), TokenTree::Ident(s2)) => s1 == s2,
+            (pm2::Tree::Literal(l1), pm2::Tree::Literal(l2)) => l1.to_string() == l2.to_string(),
+            (pm2::Tree::Ident(s1), pm2::Tree::Ident(s2)) => s1 == s2,
             _ => false,
         }
     }
 }
 impl<'a> Hash for TokenTreeHelper<'a> {
     fn hash<H: Hasher>(&self, h: &mut H) {
-        use proc_macro2::Spacing;
         match self.0 {
-            TokenTree::Group(g) => {
+            pm2::Tree::Group(g) => {
                 0u8.hash(h);
+                use pm2::Delim::*;
                 match g.delimiter() {
-                    Delimiter::Parenthesis => 0u8.hash(h),
-                    Delimiter::Brace => 1u8.hash(h),
-                    Delimiter::Bracket => 2u8.hash(h),
-                    Delimiter::None => 3u8.hash(h),
+                    Parenthesis => 0u8.hash(h),
+                    Brace => 1u8.hash(h),
+                    Bracket => 2u8.hash(h),
+                    None => 3u8.hash(h),
                 }
                 for item in g.stream() {
                     TokenTreeHelper(&item).hash(h);
                 }
                 0xffu8.hash(h); // terminator w/ a variant we don't normally hash
             },
-            TokenTree::Punct(op) => {
+            pm2::Tree::Punct(op) => {
                 1u8.hash(h);
                 op.as_char().hash(h);
+                use pm2::Spacing::*;
                 match op.spacing() {
-                    Spacing::Alone => 0u8.hash(h),
-                    Spacing::Joint => 1u8.hash(h),
+                    Alone => 0u8.hash(h),
+                    Joint => 1u8.hash(h),
                 }
             },
-            TokenTree::Literal(lit) => (2u8, lit.to_string()).hash(h),
-            TokenTree::Ident(word) => (3u8, word).hash(h),
+            pm2::Tree::Literal(x) => (2u8, x.to_string()).hash(h),
+            pm2::Tree::Ident(x) => (3u8, x).hash(h),
         }
     }
 }
 
-struct TokenStreamHelper<'a>(pub &'a TokenStream);
+struct TokenStreamHelper<'a>(pub &'a pm2::Stream);
 impl<'a> PartialEq for TokenStreamHelper<'a> {
     fn eq(&self, other: &Self) -> bool {
         let left = self.0.clone().into_iter().collect::<Vec<_>>();
@@ -1780,15 +1780,15 @@ impl<'a> Hash for TokenStreamHelper<'a> {
     }
 }
 
-pub fn verbatim_between<'a>(begin: parse::Stream<'a>, end: parse::Stream<'a>) -> TokenStream {
+pub fn verbatim_between<'a>(begin: parse::Stream<'a>, end: parse::Stream<'a>) -> pm2::Stream {
     let end = end.cursor();
     let mut cursor = begin.cursor();
     assert!(same_buffer(end, cursor));
-    let mut tokens = TokenStream::new();
+    let mut tokens = pm2::Stream::new();
     while cursor != end {
         let (tt, next) = cursor.token_tree().unwrap();
         if cmp_assuming_same_buffer(end, next) == Ordering::Less {
-            if let Some((inside, _span, after)) = cursor.group(Delimiter::None) {
+            if let Some((inside, _span, after)) = cursor.group(pm2::Delim::None) {
                 assert!(next == after);
                 cursor = inside;
                 continue;
@@ -1915,8 +1915,8 @@ pub mod __private {
         parse_quote_fn,
         parsing::{peek_punct, punct as parse_punct},
     };
-    pub use proc_macro::TokenStream;
-    pub use proc_macro2::{Span, TokenStream as TokenStream2};
+    pub use proc_macro::pm2::Stream;
+    pub use proc_macro2::pm2::Stream as TokenStream2;
     pub use quote::{self, ToTokens, TokenStreamExt};
     pub use std::{
         clone::Clone,
@@ -1938,10 +1938,10 @@ pub mod __private {
     }
     pub struct private(pub ());
 }
-pub fn parse<T: parse::Parse>(tokens: proc_macro::TokenStream) -> Res<T> {
+pub fn parse<T: parse::Parse>(tokens: proc_macro::pm2::Stream) -> Res<T> {
     parse::Parser::parse(T::parse, tokens)
 }
-pub fn parse2<T: parse::Parse>(tokens: proc_macro2::TokenStream) -> Res<T> {
+pub fn parse2<T: parse::Parse>(tokens: proc_macro2::pm2::Stream) -> Res<T> {
     parse::Parser::parse2(T::parse, tokens)
 }
 

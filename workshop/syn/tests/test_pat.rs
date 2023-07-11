@@ -1,10 +1,7 @@
 #![allow(clippy::uninlined_format_args)]
 #[macro_use]
 mod macros;
-use proc_macro2::{Delimiter, Group, TokenStream, TokenTree};
-use quote::quote;
-use syn::parse::Parser;
-use syn::{patt::Patt, stmt::Stmt, Item};
+use syn::*;
 #[test]
 fn test_pat_ident() {
     match patt::Patt::parse_single.parse2(quote!(self)).unwrap() {
@@ -37,8 +34,8 @@ fn test_leading_vert() {
 }
 #[test]
 fn test_group() {
-    let group = Group::new(Delimiter::None, quote!(Some(_)));
-    let tokens = TokenStream::from_iter(vec![TokenTree::Group(group)]);
+    let group = Group::new(pm2::Delim::None, quote!(Some(_)));
+    let tokens = pm2::Stream::from_iter(vec![pm2::Tree::Group(group)]);
     let pat = patt::Patt::parse_single.parse2(tokens).unwrap();
     snapshot!(pat, @r###"
     patt::Patt::TupleStruct {

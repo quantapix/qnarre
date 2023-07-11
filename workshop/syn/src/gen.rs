@@ -1,9 +1,10 @@
 pub mod bound {
+    pub use pm2::Stream;
     ast_enum_of_structs! {
         pub enum Type {
             Trait(Trait),
             Lifetime(Lifetime),
-            Verbatim(TokenStream),
+            Verbatim(Stream),
         }
     }
     impl Type {
@@ -83,8 +84,8 @@ pub mod bound {
         }
     }
     impl ToTokens for Trait {
-        fn to_tokens(&self, ys: &mut TokenStream) {
-            let f = |ys: &mut TokenStream| {
+        fn to_tokens(&self, ys: &mut pm2::Stream) {
+            let f = |ys: &mut pm2::Stream| {
                 self.modif.to_tokens(ys);
                 self.lifes.to_tokens(ys);
                 self.path.to_tokens(ys);
@@ -110,7 +111,7 @@ pub mod bound {
         }
     }
     impl ToTokens for Modifier {
-        fn to_tokens(&self, ys: &mut TokenStream) {
+        fn to_tokens(&self, ys: &mut pm2::Stream) {
             use Modifier::*;
             match self {
                 None => {},
@@ -172,7 +173,7 @@ pub mod bound {
         }
     }
     impl ToTokens for Lifes {
-        fn to_tokens(&self, ys: &mut TokenStream) {
+        fn to_tokens(&self, ys: &mut pm2::Stream) {
             self.for_.to_tokens(ys);
             self.lt.to_tokens(ys);
             self.lifes.to_tokens(ys);
@@ -257,7 +258,7 @@ pub mod param {
         }
     }
     impl ToTokens for Life {
-        fn to_tokens(&self, ys: &mut TokenStream) {
+        fn to_tokens(&self, ys: &mut pm2::Stream) {
             ys.append_all(self.attrs.outer());
             self.life.to_tokens(ys);
             if !self.bounds.is_empty() {
@@ -355,7 +356,7 @@ pub mod param {
         }
     }
     impl ToTokens for Type {
-        fn to_tokens(&self, ys: &mut TokenStream) {
+        fn to_tokens(&self, ys: &mut pm2::Stream) {
             ys.append_all(self.attrs.outer());
             self.ident.to_tokens(ys);
             if !self.bounds.is_empty() {
@@ -431,7 +432,7 @@ pub mod param {
         }
     }
     impl ToTokens for Const {
-        fn to_tokens(&self, ys: &mut TokenStream) {
+        fn to_tokens(&self, ys: &mut pm2::Stream) {
             ys.append_all(self.attrs.outer());
             self.const_.to_tokens(ys);
             self.ident.to_tokens(ys);
@@ -519,7 +520,7 @@ impl Parse for Option<Where> {
     }
 }
 impl ToTokens for Where {
-    fn to_tokens(&self, ys: &mut TokenStream) {
+    fn to_tokens(&self, ys: &mut pm2::Stream) {
         if !self.preds.is_empty() {
             self.where_.to_tokens(ys);
             self.preds.to_tokens(ys);
@@ -601,7 +602,7 @@ pub mod Where {
         pub bounds: Punctuated<Lifetime, Token![+]>,
     }
     impl ToTokens for Life {
-        fn to_tokens(&self, ys: &mut TokenStream) {
+        fn to_tokens(&self, ys: &mut pm2::Stream) {
             self.life.to_tokens(ys);
             self.colon.to_tokens(ys);
             self.bounds.to_tokens(ys);
@@ -615,7 +616,7 @@ pub mod Where {
         pub bounds: Punctuated<bound::Type, Token![+]>,
     }
     impl ToTokens for Type {
-        fn to_tokens(&self, ys: &mut TokenStream) {
+        fn to_tokens(&self, ys: &mut pm2::Stream) {
             self.lifes.to_tokens(ys);
             self.bounded.to_tokens(ys);
             self.colon.to_tokens(ys);
@@ -716,7 +717,7 @@ impl Parse for Gens {
     }
 }
 impl ToTokens for Gens {
-    fn to_tokens(&self, ys: &mut TokenStream) {
+    fn to_tokens(&self, ys: &mut pm2::Stream) {
         if self.ps.is_empty() {
             return;
         }
@@ -772,7 +773,7 @@ macro_rules! gens_impls {
 }
 gens_impls!(Impl);
 impl<'a> ToTokens for Impl<'a> {
-    fn to_tokens(&self, ys: &mut TokenStream) {
+    fn to_tokens(&self, ys: &mut pm2::Stream) {
         if self.0.ps.is_empty() {
             return;
         }
@@ -819,7 +820,7 @@ impl<'a> ToTokens for Impl<'a> {
 pub struct Type<'a>(pub &'a Gens);
 gens_impls!(Type);
 impl<'a> ToTokens for Type<'a> {
-    fn to_tokens(&self, ys: &mut TokenStream) {
+    fn to_tokens(&self, ys: &mut pm2::Stream) {
         if self.0.ps.is_empty() {
             return;
         }
@@ -863,7 +864,7 @@ impl<'a> Type<'a> {
 pub struct Turbofish<'a>(pub &'a Gens);
 gens_impls!(Turbofish);
 impl<'a> ToTokens for Turbofish<'a> {
-    fn to_tokens(&self, ys: &mut TokenStream) {
+    fn to_tokens(&self, ys: &mut pm2::Stream) {
         if !self.0.ps.is_empty() {
             <Token![::]>::default().to_tokens(ys);
             Type(self.0).to_tokens(ys);

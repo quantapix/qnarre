@@ -84,7 +84,7 @@ fn test_meta_item_list_lit() {
             ],
         },
         delimiter: MacroDelimiter::Paren,
-        tokens: TokenStream(`5`),
+        tokens: pm2::Stream(`5`),
     }
     "###);
 }
@@ -101,7 +101,7 @@ fn test_meta_item_list_word() {
             ],
         },
         delimiter: MacroDelimiter::Paren,
-        tokens: TokenStream(`bar`),
+        tokens: pm2::Stream(`bar`),
     }
     "###);
 }
@@ -118,7 +118,7 @@ fn test_meta_item_list_name_value() {
             ],
         },
         delimiter: MacroDelimiter::Paren,
-        tokens: TokenStream(`bar = 5`),
+        tokens: pm2::Stream(`bar = 5`),
     }
     "###);
 }
@@ -135,7 +135,7 @@ fn test_meta_item_list_bool_value() {
             ],
         },
         delimiter: MacroDelimiter::Paren,
-        tokens: TokenStream(`bar = true`),
+        tokens: pm2::Stream(`bar = true`),
     }
     "###);
 }
@@ -152,7 +152,7 @@ fn test_meta_item_multiple() {
             ],
         },
         delimiter: MacroDelimiter::Paren,
-        tokens: TokenStream(`word , name = 5 , list (name2 = 6) , word2`),
+        tokens: pm2::Stream(`word , name = 5 , list (name2 = 6) , word2`),
     }
     "###);
 }
@@ -169,7 +169,7 @@ fn test_bool_lit() {
             ],
         },
         delimiter: MacroDelimiter::Paren,
-        tokens: TokenStream(`true`),
+        tokens: pm2::Stream(`true`),
     }
     "###);
 }
@@ -186,7 +186,7 @@ fn test_negative_lit() {
             ],
         },
         delimiter: MacroDelimiter::Paren,
-        tokens: TokenStream(`min = - 1 , max = 200`),
+        tokens: pm2::Stream(`min = - 1 , max = 200`),
     }
     "###);
 }

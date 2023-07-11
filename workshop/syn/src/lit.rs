@@ -1,8 +1,5 @@
-use proc_macro2::{Ident, Literal, Span, TokenStream, TokenTree};
 use std::{
     char,
-    fmt::{self, Debug, Display},
-    hash::{Hash, Hasher},
     ops::{Index, RangeFrom},
     str::{self, FromStr},
 };
@@ -16,11 +13,11 @@ ast_enum_of_structs! {
         Int(Int),
         Float(Float),
         Bool(Bool),
-        Verbatim(Literal),
+        Verbatim(pm2::Lit),
     }
 }
 impl Lit {
-    pub fn new(tok: Literal) -> Self {
+    pub fn new(tok: pm2::Lit) -> Self {
         let repr = tok.to_string();
         match byte(&repr, 0) {
             b'"' | b'r' => {
@@ -87,7 +84,7 @@ impl Lit {
             Bool(_) | Verbatim(_) => "",
         }
     }
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> pm2::Span {
         use Lit::*;
         match self {
             Str(x) => x.span(),
@@ -100,7 +97,7 @@ impl Lit {
             Verbatim(x) => x.span(),
         }
     }
-    pub fn set_span(&mut self, s: Span) {
+    pub fn set_span(&mut self, s: pm2::Span) {
         use Lit::*;
         match self {
             Str(x) => x.set_span(s),
@@ -120,7 +117,7 @@ pub fn Lit(x: look::TokenMarker) -> Lit {
 }
 
 struct Repr {
-    pub tok: Literal,
+    pub tok: pm2::Lit,
     suff: Box<str>,
 }
 impl Clone for Repr {
@@ -136,8 +133,8 @@ pub struct Str {
     pub repr: Box<Repr>,
 }
 impl Str {
-    pub fn new(x: &str, s: Span) -> Self {
-        let mut tok = Literal::string(x);
+    pub fn new(x: &str, s: pm2::Span) -> Self {
+        let mut tok = pm2::Lit::string(x);
         tok.set_span(s);
         Str {
             repr: Box::new(Repr {
@@ -156,12 +153,12 @@ impl Str {
     }
     pub fn parse_with<F: parse::Parser>(&self, parser: F) -> Res<F::Output> {
         use proc_macro2::Group;
-        fn respan_token_stream(x: TokenStream, s: Span) -> TokenStream {
+        fn respan_token_stream(x: pm2::Stream, s: pm2::Span) -> pm2::Stream {
             x.into_iter().map(|x| respan_token_tree(x, s)).collect()
         }
-        fn respan_token_tree(mut token: TokenTree, s: Span) -> TokenTree {
+        fn respan_token_tree(mut token: pm2::Tree, s: pm2::Span) -> pm2::Tree {
             match &mut token {
-                TokenTree::Group(g) => {
+                pm2::Tree::Group(g) => {
                     let stream = respan_token_stream(g.stream(), s);
                     *g = Group::new(g.delimiter(), stream);
                     g.set_span(s);
@@ -170,20 +167,20 @@ impl Str {
             }
             token
         }
-        let mut tokens = TokenStream::from_str(&self.value())?;
+        let mut tokens = pm2::Stream::from_str(&self.value())?;
         tokens = respan_token_stream(tokens, self.span());
         parser.parse2(tokens)
     }
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> pm2::Span {
         self.repr.tok.span()
     }
-    pub fn set_span(&mut self, s: Span) {
+    pub fn set_span(&mut self, s: pm2::Span) {
         self.repr.tok.set_span(s);
     }
     pub fn suffix(&self) -> &str {
         &self.repr.suff
     }
-    pub fn token(&self) -> Literal {
+    pub fn token(&self) -> pm2::Lit {
         self.repr.tok.clone()
     }
 }
@@ -233,8 +230,8 @@ pub struct ByteStr {
     pub repr: Box<Repr>,
 }
 impl ByteStr {
-    pub fn new(x: &[u8], s: Span) -> Self {
-        let mut tok = Literal::byte_string(x);
+    pub fn new(x: &[u8], s: pm2::Span) -> Self {
+        let mut tok = pm2::Lit::byte_string(x);
         tok.set_span(s);
         ByteStr {
             repr: Box::new(Repr {
@@ -248,16 +245,16 @@ impl ByteStr {
         let (value, _) = parse_byte_str(&repr);
         value
     }
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> pm2::Span {
         self.repr.tok.span()
     }
-    pub fn set_span(&mut self, s: Span) {
+    pub fn set_span(&mut self, s: pm2::Span) {
         self.repr.tok.set_span(s);
     }
     pub fn suffix(&self) -> &str {
         &self.repr.suff
     }
-    pub fn token(&self) -> Literal {
+    pub fn token(&self) -> pm2::Lit {
         self.repr.tok.clone()
     }
 }
@@ -279,8 +276,8 @@ pub struct Byte {
     pub repr: Box<Repr>,
 }
 impl Byte {
-    pub fn new(x: u8, s: Span) -> Self {
-        let mut tok = Literal::u8_suffixed(x);
+    pub fn new(x: u8, s: pm2::Span) -> Self {
+        let mut tok = pm2::Lit::u8_suffixed(x);
         tok.set_span(s);
         Byte {
             repr: Box::new(Repr {
@@ -294,16 +291,16 @@ impl Byte {
         let (value, _) = parse_byte(&repr);
         value
     }
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> pm2::Span {
         self.repr.tok.span()
     }
-    pub fn set_span(&mut self, x: Span) {
+    pub fn set_span(&mut self, x: pm2::Span) {
         self.repr.tok.set_span(x);
     }
     pub fn suffix(&self) -> &str {
         &self.repr.suff
     }
-    pub fn token(&self) -> Literal {
+    pub fn token(&self) -> pm2::Lit {
         self.repr.tok.clone()
     }
 }
@@ -325,8 +322,8 @@ pub struct Char {
     pub repr: Box<Repr>,
 }
 impl Char {
-    pub fn new(x: char, s: Span) -> Self {
-        let mut tok = Literal::character(x);
+    pub fn new(x: char, s: pm2::Span) -> Self {
+        let mut tok = pm2::Lit::character(x);
         tok.set_span(s);
         Char {
             repr: Box::new(Repr {
@@ -340,16 +337,16 @@ impl Char {
         let (value, _) = parse_char(&repr);
         value
     }
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> pm2::Span {
         self.repr.tok.span()
     }
-    pub fn set_span(&mut self, s: Span) {
+    pub fn set_span(&mut self, s: pm2::Span) {
         self.repr.tok.set_span(s);
     }
     pub fn suffix(&self) -> &str {
         &self.repr.suff
     }
-    pub fn token(&self) -> Literal {
+    pub fn token(&self) -> pm2::Lit {
         self.repr.tok.clone()
     }
 }
@@ -368,7 +365,7 @@ impl Debug for Char {
 extra_traits!(Char);
 
 struct IntRepr {
-    pub tok: Literal,
+    pub tok: pm2::Lit,
     digits: Box<str>,
     suff: Box<str>,
 }
@@ -386,12 +383,12 @@ pub struct Int {
     pub repr: Box<IntRepr>,
 }
 impl Int {
-    pub fn new(x: &str, s: Span) -> Self {
+    pub fn new(x: &str, s: pm2::Span) -> Self {
         let (digits, suff) = match parse_int(x) {
             Some(x) => x,
             None => panic!("Not an integer literal: `{}`", x),
         };
-        let mut tok: Literal = x.parse().unwrap();
+        let mut tok: pm2::Lit = x.parse().unwrap();
         tok.set_span(s);
         Int {
             repr: Box::new(IntRepr { tok, digits, suff }),
@@ -410,18 +407,18 @@ impl Int {
     pub fn suffix(&self) -> &str {
         &self.repr.suff
     }
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> pm2::Span {
         self.repr.tok.span()
     }
-    pub fn set_span(&mut self, s: Span) {
+    pub fn set_span(&mut self, s: pm2::Span) {
         self.repr.tok.set_span(s);
     }
-    pub fn token(&self) -> Literal {
+    pub fn token(&self) -> pm2::Lit {
         self.repr.tok.clone()
     }
 }
-impl From<Literal> for Int {
-    fn from(tok: Literal) -> Self {
+impl From<pm2::Lit> for Int {
+    fn from(tok: pm2::Lit) -> Self {
         let repr = tok.to_string();
         if let Some((digits, suff)) = parse_int(&repr) {
             Int {
@@ -452,7 +449,7 @@ impl Debug for Int {
 extra_traits!(Int);
 
 struct FloatRepr {
-    pub tok: Literal,
+    pub tok: pm2::Lit,
     digits: Box<str>,
     suff: Box<str>,
 }
@@ -470,12 +467,12 @@ pub struct Float {
     pub repr: Box<FloatRepr>,
 }
 impl Float {
-    pub fn new(x: &str, s: Span) -> Self {
+    pub fn new(x: &str, s: pm2::Span) -> Self {
         let (digits, suff) = match parse_float(x) {
             Some(x) => x,
             None => panic!("Not a float literal: `{}`", x),
         };
-        let mut tok: Literal = x.parse().unwrap();
+        let mut tok: pm2::Lit = x.parse().unwrap();
         tok.set_span(s);
         Float {
             repr: Box::new(FloatRepr { tok, digits, suff }),
@@ -494,18 +491,18 @@ impl Float {
     pub fn suffix(&self) -> &str {
         &self.repr.suff
     }
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> pm2::Span {
         self.repr.tok.span()
     }
-    pub fn set_span(&mut self, s: Span) {
+    pub fn set_span(&mut self, s: pm2::Span) {
         self.repr.tok.set_span(s);
     }
-    pub fn token(&self) -> Literal {
+    pub fn token(&self) -> pm2::Lit {
         self.repr.tok.clone()
     }
 }
-impl From<Literal> for Float {
-    fn from(tok: Literal) -> Self {
+impl From<pm2::Lit> for Float {
+    fn from(tok: pm2::Lit) -> Self {
         let repr = tok.to_string();
         if let Some((digits, suff)) = parse_float(&repr) {
             Float {
@@ -537,19 +534,19 @@ extra_traits!(Float);
 
 pub struct Bool {
     pub val: bool,
-    pub span: Span,
+    pub span: pm2::Span,
 }
 impl Bool {
-    pub fn new(val: bool, span: Span) -> Self {
+    pub fn new(val: bool, span: pm2::Span) -> Self {
         Bool { val, span }
     }
     pub fn value(&self) -> bool {
         self.val
     }
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> pm2::Span {
         self.span
     }
-    pub fn set_span(&mut self, s: Span) {
+    pub fn set_span(&mut self, s: pm2::Span) {
         self.span = s;
     }
     pub fn token(&self) -> Ident {

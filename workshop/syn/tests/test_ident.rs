@@ -1,11 +1,10 @@
-use proc_macro2::{Ident, Span, TokenStream};
 use std::str::FromStr;
-use syn::Res;
+use syn::*;
 fn parse(s: &str) -> Res<Ident> {
-    syn::parse2(TokenStream::from_str(s).unwrap())
+    syn::parse2(pm2::Stream::from_str(s).unwrap())
 }
 fn new(s: &str) -> Ident {
-    Ident::new(s, Span::call_site())
+    Ident::new(s, pm2::Span::call_site())
 }
 #[test]
 fn ident_parse() {

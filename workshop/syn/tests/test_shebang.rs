@@ -40,7 +40,7 @@ fn test_comment() {
                         ],
                     },
                     delimiter: MacroDelimiter::Paren,
-                    tokens: TokenStream(`dead_code`),
+                    tokens: pm2::Stream(`dead_code`),
                 },
             },
         ],

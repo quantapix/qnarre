@@ -1,23 +1,22 @@
 #![allow(clippy::uninlined_format_args)]
 #[macro_use]
 mod macros;
-use proc_macro2::{Delimiter, Group, Literal, Punct, Spacing, TokenStream, TokenTree};
-use syn::Expr;
+use syn::*;
 #[test]
 fn test_grouping() {
-    let tokens: TokenStream = TokenStream::from_iter(vec![
-        TokenTree::Literal(Literal::i32_suffixed(1)),
-        TokenTree::Punct(Punct::new('+', Spacing::Alone)),
-        TokenTree::Group(Group::new(
-            Delimiter::None,
-            TokenStream::from_iter(vec![
-                TokenTree::Literal(Literal::i32_suffixed(2)),
-                TokenTree::Punct(Punct::new('+', Spacing::Alone)),
-                TokenTree::Literal(Literal::i32_suffixed(3)),
+    let tokens: pm2::Stream = pm2::Stream::from_iter(vec![
+        pm2::Tree::Literal(pm2::Lit::i32_suffixed(1)),
+        pm2::Tree::Punct(Punct::new('+', pm2::Spacing::Alone)),
+        pm2::Tree::Group(Group::new(
+            pm2::Delim::None,
+            pm2::Stream::from_iter(vec![
+                pm2::Tree::Literal(pm2::Lit::i32_suffixed(2)),
+                pm2::Tree::Punct(Punct::new('+', pm2::Spacing::Alone)),
+                pm2::Tree::Literal(pm2::Lit::i32_suffixed(3)),
             ]),
         )),
-        TokenTree::Punct(Punct::new('*', Spacing::Alone)),
-        TokenTree::Literal(Literal::i32_suffixed(4)),
+        pm2::Tree::Punct(Punct::new('*', pm2::Spacing::Alone)),
+        pm2::Tree::Literal(pm2::Lit::i32_suffixed(4)),
     ]);
     assert_eq!(tokens.to_string(), "1i32 + 2i32 + 3i32 * 4i32");
     snapshot!(tokens as Expr, @r###"

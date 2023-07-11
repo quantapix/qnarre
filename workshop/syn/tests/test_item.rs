@@ -1,17 +1,15 @@
 #![allow(clippy::uninlined_format_args)]
 #[macro_use]
 mod macros;
-use proc_macro2::{Delimiter, Group, Ident, Span, TokenStream, TokenTree};
-use quote::quote;
-use syn::{item::Trait, Item};
+use syn::*;
 #[test]
 fn test_macro_variable_attr() {
-    let tokens = TokenStream::from_iter(vec![
-        TokenTree::Group(Group::new(Delimiter::None, quote! { #[test] })),
-        TokenTree::Ident(Ident::new("fn", Span::call_site())),
-        TokenTree::Ident(Ident::new("f", Span::call_site())),
-        TokenTree::Group(Group::new(Delimiter::Parenthesis, TokenStream::new())),
-        TokenTree::Group(Group::new(Delimiter::Brace, TokenStream::new())),
+    let tokens = pm2::Stream::from_iter(vec![
+        pm2::Tree::Group(Group::new(pm2::Delim::None, quote! { #[test] })),
+        pm2::Tree::Ident(Ident::new("fn", pm2::Span::call_site())),
+        pm2::Tree::Ident(Ident::new("f", pm2::Span::call_site())),
+        pm2::Tree::Group(Group::new(pm2::Delim::Parenthesis, pm2::Stream::new())),
+        pm2::Tree::Group(Group::new(pm2::Delim::Brace, pm2::Stream::new())),
     ]);
     snapshot!(tokens as Item, @r###"
     Item::Fn {
@@ -106,12 +104,12 @@ fn test_negative_impl() {
 }
 #[test]
 fn test_macro_variable_impl() {
-    let tokens = TokenStream::from_iter(vec![
-        TokenTree::Ident(Ident::new("impl", Span::call_site())),
-        TokenTree::Group(Group::new(Delimiter::None, quote!(Trait))),
-        TokenTree::Ident(Ident::new("for", Span::call_site())),
-        TokenTree::Group(Group::new(Delimiter::None, quote!(Type))),
-        TokenTree::Group(Group::new(Delimiter::Brace, TokenStream::new())),
+    let tokens = pm2::Stream::from_iter(vec![
+        pm2::Tree::Ident(Ident::new("impl", pm2::Span::call_site())),
+        pm2::Tree::Group(Group::new(pm2::Delim::None, quote!(Trait))),
+        pm2::Tree::Ident(Ident::new("for", pm2::Span::call_site())),
+        pm2::Tree::Group(Group::new(pm2::Delim::None, quote!(Type))),
+        pm2::Tree::Group(Group::new(pm2::Delim::Brace, pm2::Stream::new())),
     ]);
     snapshot!(tokens as Item, @r###"
     Item::Impl {

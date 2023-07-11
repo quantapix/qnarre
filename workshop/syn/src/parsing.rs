@@ -3,7 +3,7 @@ use super::{
     parse::{discouraged::Speculative, Buffer, Parse, Stream},
     tok::Tok,
 };
-use proc_macro2::{Ident, Punct, Spacing, Span, Span, TokenStream};
+use proc_macro2::{Ident, Punct};
 use std::{
     cmp::Ordering,
     fmt::{self, Display},
@@ -438,7 +438,7 @@ fn expr_builtin(x: Stream) -> Res<Expr> {
     x.parse::<Ident>()?;
     let args;
     parenthesized!(args in x);
-    args.parse::<TokenStream>()?;
+    args.parse::<pm2::Stream>()?;
     Ok(Expr::Verbatim(verbatim_between(&begin, x)))
 }
 fn path_or_macro_or_struct(x: Stream, #[cfg(feature = "full")] allow_struct: AllowStruct) -> Res<Expr> {
@@ -1612,13 +1612,13 @@ fn parse_macro2(begin: Buffer, _vis: Visibility, input: Stream) -> Res<Item> {
     if lookahead.peek(tok::Paren) {
         let paren_content;
         parenthesized!(paren_content in input);
-        paren_content.parse::<TokenStream>()?;
+        paren_content.parse::<pm2::Stream>()?;
         lookahead = input.lookahead1();
     }
     if lookahead.peek(tok::Brace) {
         let brace_content;
         braced!(brace_content in input);
-        brace_content.parse::<TokenStream>()?;
+        brace_content.parse::<pm2::Stream>()?;
     } else {
         return Err(lookahead.error());
     }
@@ -2917,7 +2917,7 @@ mod parsing {
             let mut ys = Vec::new();
             loop {
                 while let semi @ Some(_) = x.parse()? {
-                    ys.push(stmt::Stmt::Expr(Expr::Verbatim(TokenStream::new()), semi));
+                    ys.push(stmt::Stmt::Expr(Expr::Verbatim(pm2::Stream::new()), semi));
                 }
                 if x.is_empty() {
                     break;
@@ -3560,7 +3560,7 @@ pub mod lit {
         let mut repr = lit.to_string();
         repr.insert(0, '-');
         if let Some((digits, suffix)) = super::lit::parse_int(&repr) {
-            let mut token: Literal = repr.parse().unwrap();
+            let mut token: pm2::Lit = repr.parse().unwrap();
             token.set_span(span);
             return Some((
                 Lit::Int(lit::Int {
@@ -3570,7 +3570,7 @@ pub mod lit {
             ));
         }
         let (digits, suffix) = super::lit::parse_float(&repr)?;
-        let mut token: Literal = repr.parse().unwrap();
+        let mut token: pm2::Lit = repr.parse().unwrap();
         token.set_span(span);
         Some((
             Lit::Float(lit::Float {
@@ -4042,7 +4042,7 @@ pub mod pat {
             elems,
         })
     }
-    fn const_(x: Stream) -> Res<TokenStream> {
+    fn const_(x: Stream) -> Res<pm2::Stream> {
         let beg = x.fork();
         x.parse::<Token![const]>()?;
         let gist;
@@ -4357,7 +4357,7 @@ pub mod path {
 }
 
 pub mod parsing {
-    pub fn keyword(input: Stream, token: &str) -> Res<Span> {
+    pub fn keyword(input: Stream, token: &str) -> Res<pm2::Span> {
         input.step(|cursor| {
             if let Some((ident, rest)) = cursor.ident() {
                 if ident == token {
@@ -4374,12 +4374,12 @@ pub mod parsing {
             false
         }
     }
-    pub fn punct<const N: usize>(input: Stream, token: &str) -> Res<[Span; N]> {
+    pub fn punct<const N: usize>(input: Stream, token: &str) -> Res<[pm2::Span; N]> {
         let mut spans = [input.span(); N];
         punct_helper(input, token, &mut spans)?;
         Ok(spans)
     }
-    fn punct_helper(input: Stream, token: &str, spans: &mut [Span]) -> Res<()> {
+    fn punct_helper(input: Stream, token: &str, spans: &mut [pm2::Span]) -> Res<()> {
         input.step(|cursor| {
             let mut cursor = *cursor;
             assert_eq!(token.len(), spans.len());
@@ -4391,7 +4391,7 @@ pub mod parsing {
                             break;
                         } else if i == token.len() - 1 {
                             return Ok(((), rest));
-                        } else if punct.spacing() != Spacing::Joint {
+                        } else if punct.spacing() != pm2::Spacing::Joint {
                             break;
                         }
                         cursor = rest;
@@ -4410,7 +4410,7 @@ pub mod parsing {
                         break;
                     } else if i == token.len() - 1 {
                         return true;
-                    } else if punct.spacing() != Spacing::Joint {
+                    } else if punct.spacing() != pm2::Spacing::Joint {
                         break;
                     }
                     cursor = rest;
@@ -4861,7 +4861,7 @@ pub mod ty {
             let bounds = Self::parse_bounds(span, x, plus)?;
             Ok(TraitObj { dyn_, bounds })
         }
-        fn parse_bounds(s: Span, x: Stream, plus: bool) -> Res<Punctuated<gen::bound::Type, Token![+]>> {
+        fn parse_bounds(s: pm2::Span, x: Stream, plus: bool) -> Res<Punctuated<gen::bound::Type, Token![+]>> {
             let ys = gen::bound::Type::parse_multiple(x, plus)?;
             let mut last = None;
             let mut one = false;

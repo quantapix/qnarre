@@ -5,9 +5,7 @@
 )]
 #[macro_use]
 mod macros;
-use proc_macro2::{Delimiter, Group, Ident, Span, TokenStream, TokenTree};
-use quote::quote;
-use syn::stmt::Stmt;
+use syn::*;
 #[test]
 fn test_raw_operator() {
     let stmt = syn::parse_str::<stmt::Stmt>("let _ = &raw const x;").unwrap();
@@ -48,14 +46,14 @@ fn test_raw_invalid() {
 }
 #[test]
 fn test_none_group() {
-    let tokens = TokenStream::from_iter(vec![TokenTree::Group(Group::new(
-        Delimiter::None,
-        TokenStream::from_iter(vec![
-            TokenTree::Ident(Ident::new("async", Span::call_site())),
-            TokenTree::Ident(Ident::new("fn", Span::call_site())),
-            TokenTree::Ident(Ident::new("f", Span::call_site())),
-            TokenTree::Group(Group::new(Delimiter::Parenthesis, TokenStream::new())),
-            TokenTree::Group(Group::new(Delimiter::Brace, TokenStream::new())),
+    let tokens = pm2::Stream::from_iter(vec![pm2::Tree::Group(Group::new(
+        pm2::Delim::None,
+        pm2::Stream::from_iter(vec![
+            pm2::Tree::Ident(Ident::new("async", pm2::Span::call_site())),
+            pm2::Tree::Ident(Ident::new("fn", pm2::Span::call_site())),
+            pm2::Tree::Ident(Ident::new("f", pm2::Span::call_site())),
+            pm2::Tree::Group(Group::new(pm2::Delim::Parenthesis, pm2::Stream::new())),
+            pm2::Tree::Group(Group::new(pm2::Delim::Brace, pm2::Stream::new())),
         ]),
     ))]);
     snapshot!(tokens as stmt::Stmt, @r###"
@@ -167,7 +165,7 @@ fn test_macros() {
                             ],
                         },
                         delimiter: MacroDelimiter::Brace,
-                        tokens: TokenStream(``),
+                        tokens: pm2::Stream(``),
                     },
                 }),
                 stmt::Stmt::Macro {
@@ -180,7 +178,7 @@ fn test_macros() {
                             ],
                         },
                         delimiter: MacroDelimiter::Brace,
-                        tokens: TokenStream(`static FOO`),
+                        tokens: pm2::Stream(`static FOO`),
                     },
                 },
                 stmt::Stmt::Macro {
@@ -193,7 +191,7 @@ fn test_macros() {
                             ],
                         },
                         delimiter: MacroDelimiter::Paren,
-                        tokens: TokenStream(`""`),
+                        tokens: pm2::Stream(`""`),
                     },
                     semi: Some,
                 },
@@ -208,7 +206,7 @@ fn test_macros() {
                                 ],
                             },
                             delimiter: MacroDelimiter::Bracket,
-                            tokens: TokenStream(``),
+                            tokens: pm2::Stream(``),
                         },
                     },
                     None,

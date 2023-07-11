@@ -1,9 +1,7 @@
 #![allow(clippy::uninlined_format_args)]
 #[macro_use]
 mod macros;
-use proc_macro2::{Delimiter, Group, Ident, Punct, Spacing, Span, TokenStream, TokenTree};
-use quote::quote;
-use syn::ty::Type;
+use syn::*;
 #[test]
 fn test_mut_self() {
     syn::parse_str::<ty::Type>("fn(mut self)").unwrap();
@@ -15,11 +13,11 @@ fn test_mut_self() {
 }
 #[test]
 fn test_macro_variable_type() {
-    let tokens = TokenStream::from_iter(vec![
-        TokenTree::Group(Group::new(Delimiter::None, quote! { ty })),
-        TokenTree::Punct(Punct::new('<', Spacing::Alone)),
-        TokenTree::Ident(Ident::new("T", Span::call_site())),
-        TokenTree::Punct(Punct::new('>', Spacing::Alone)),
+    let tokens = pm2::Stream::from_iter(vec![
+        pm2::Tree::Group(Group::new(pm2::Delim::None, quote! { ty })),
+        pm2::Tree::Punct(Punct::new('<', pm2::Spacing::Alone)),
+        pm2::Tree::Ident(Ident::new("T", pm2::Span::call_site())),
+        pm2::Tree::Punct(Punct::new('>', pm2::Spacing::Alone)),
     ]);
     snapshot!(tokens as ty::Type, @r###"
     Type::Path {
@@ -45,13 +43,13 @@ fn test_macro_variable_type() {
         },
     }
     "###);
-    let tokens = TokenStream::from_iter(vec![
-        TokenTree::Group(Group::new(Delimiter::None, quote! { ty })),
-        TokenTree::Punct(Punct::new(':', Spacing::Joint)),
-        TokenTree::Punct(Punct::new(':', Spacing::Alone)),
-        TokenTree::Punct(Punct::new('<', Spacing::Alone)),
-        TokenTree::Ident(Ident::new("T", Span::call_site())),
-        TokenTree::Punct(Punct::new('>', Spacing::Alone)),
+    let tokens = pm2::Stream::from_iter(vec![
+        pm2::Tree::Group(Group::new(pm2::Delim::None, quote! { ty })),
+        pm2::Tree::Punct(Punct::new(':', pm2::Spacing::Joint)),
+        pm2::Tree::Punct(Punct::new(':', pm2::Spacing::Alone)),
+        pm2::Tree::Punct(Punct::new('<', pm2::Spacing::Alone)),
+        pm2::Tree::Ident(Ident::new("T", pm2::Span::call_site())),
+        pm2::Tree::Punct(Punct::new('>', pm2::Spacing::Alone)),
     ]);
     snapshot!(tokens as ty::Type, @r###"
     Type::Path {
@@ -81,11 +79,11 @@ fn test_macro_variable_type() {
 }
 #[test]
 fn test_group_angle_brackets() {
-    let tokens = TokenStream::from_iter(vec![
-        TokenTree::Ident(Ident::new("Option", Span::call_site())),
-        TokenTree::Punct(Punct::new('<', Spacing::Alone)),
-        TokenTree::Group(Group::new(Delimiter::None, quote! { Vec<u8> })),
-        TokenTree::Punct(Punct::new('>', Spacing::Alone)),
+    let tokens = pm2::Stream::from_iter(vec![
+        pm2::Tree::Ident(Ident::new("Option", pm2::Span::call_site())),
+        pm2::Tree::Punct(Punct::new('<', pm2::Spacing::Alone)),
+        pm2::Tree::Group(Group::new(pm2::Delim::None, quote! { Vec<u8> })),
+        pm2::Tree::Punct(Punct::new('>', pm2::Spacing::Alone)),
     ]);
     snapshot!(tokens as ty::Type, @r###"
     Type::Path {
@@ -129,11 +127,11 @@ fn test_group_angle_brackets() {
 }
 #[test]
 fn test_group_colons() {
-    let tokens = TokenStream::from_iter(vec![
-        TokenTree::Group(Group::new(Delimiter::None, quote! { Vec<u8> })),
-        TokenTree::Punct(Punct::new(':', Spacing::Joint)),
-        TokenTree::Punct(Punct::new(':', Spacing::Alone)),
-        TokenTree::Ident(Ident::new("Item", Span::call_site())),
+    let tokens = pm2::Stream::from_iter(vec![
+        pm2::Tree::Group(Group::new(pm2::Delim::None, quote! { Vec<u8> })),
+        pm2::Tree::Punct(Punct::new(':', pm2::Spacing::Joint)),
+        pm2::Tree::Punct(Punct::new(':', pm2::Spacing::Alone)),
+        pm2::Tree::Ident(Ident::new("Item", pm2::Span::call_site())),
     ]);
     snapshot!(tokens as ty::Type, @r###"
     Type::Path {
@@ -162,11 +160,11 @@ fn test_group_colons() {
         },
     }
     "###);
-    let tokens = TokenStream::from_iter(vec![
-        TokenTree::Group(Group::new(Delimiter::None, quote! { [T] })),
-        TokenTree::Punct(Punct::new(':', Spacing::Joint)),
-        TokenTree::Punct(Punct::new(':', Spacing::Alone)),
-        TokenTree::Ident(Ident::new("Element", Span::call_site())),
+    let tokens = pm2::Stream::from_iter(vec![
+        pm2::Tree::Group(Group::new(pm2::Delim::None, quote! { [T] })),
+        pm2::Tree::Punct(Punct::new(':', pm2::Spacing::Joint)),
+        pm2::Tree::Punct(Punct::new(':', pm2::Spacing::Alone)),
+        pm2::Tree::Ident(Ident::new("Element", pm2::Span::call_site())),
     ]);
     snapshot!(tokens as ty::Type, @r###"
     Type::Path {

@@ -1,13 +1,11 @@
 #![allow(clippy::uninlined_format_args)]
 #[macro_use]
 mod macros;
-use proc_macro2::{Delimiter, Group, Ident, Punct, Spacing, Span, TokenStream, TokenTree};
-use syn::parse::{Parse, Stream};
-use syn::{DeriveInput, Res, Visibility};
+use syn::*;
 #[derive(Debug)]
 struct VisRest {
     vis: Visibility,
-    rest: TokenStream,
+    rest: pm2::Stream,
 }
 impl Parse for VisRest {
     fn parse(input: Stream) -> Res<Self> {
@@ -22,7 +20,7 @@ macro_rules! assert_vis_parse {
         assert_vis_parse!($input, Ok($p) + "");
     };
     ($input:expr, Ok($p:pat) + $rest:expr) => {
-        let expected = $rest.parse::<TokenStream>().unwrap();
+        let expected = $rest.parse::<pm2::Stream>().unwrap();
         let parse: VisRest = syn::parse_str($input).unwrap();
         match parse.vis {
             $p => {},
@@ -79,19 +77,19 @@ fn test_junk_after_in() {
 }
 #[test]
 fn test_empty_group_vis() {
-    let tokens = TokenStream::from_iter(vec![
-        TokenTree::Ident(Ident::new("struct", Span::call_site())),
-        TokenTree::Ident(Ident::new("S", Span::call_site())),
-        TokenTree::Group(Group::new(
-            Delimiter::Brace,
-            TokenStream::from_iter(vec![
-                TokenTree::Group(Group::new(Delimiter::None, TokenStream::new())),
-                TokenTree::Group(Group::new(
-                    Delimiter::None,
-                    TokenStream::from_iter(vec![TokenTree::Ident(Ident::new("f", Span::call_site()))]),
+    let tokens = pm2::Stream::from_iter(vec![
+        pm2::Tree::Ident(Ident::new("struct", pm2::Span::call_site())),
+        pm2::Tree::Ident(Ident::new("S", pm2::Span::call_site())),
+        pm2::Tree::Group(Group::new(
+            pm2::Delim::Brace,
+            pm2::Stream::from_iter(vec![
+                pm2::Tree::Group(Group::new(pm2::Delim::None, pm2::Stream::new())),
+                pm2::Tree::Group(Group::new(
+                    pm2::Delim::None,
+                    pm2::Stream::from_iter(vec![pm2::Tree::Ident(Ident::new("f", pm2::Span::call_site()))]),
                 )),
-                TokenTree::Punct(Punct::new(':', Spacing::Alone)),
-                TokenTree::Group(Group::new(Delimiter::Parenthesis, TokenStream::new())),
+                pm2::Tree::Punct(Punct::new(':', pm2::Spacing::Alone)),
+                pm2::Tree::Group(Group::new(pm2::Delim::Parenthesis, pm2::Stream::new())),
             ]),
         )),
     ]);

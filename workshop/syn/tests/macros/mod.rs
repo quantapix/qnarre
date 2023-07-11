@@ -71,7 +71,7 @@ impl<'a> Tokens for &'a str {
         syn::parse_str(self)
     }
 }
-impl Tokens for proc_macro2::TokenStream {
+impl Tokens for proc_macro2::pm2::Stream {
     fn parse<T: Parse>(self) -> Res<T> {
         syn::parse2(self)
     }

@@ -56,7 +56,7 @@ impl Attr {
     }
 }
 impl ToTokens for Attr {
-    fn to_tokens(&self, ys: &mut TokenStream) {
+    fn to_tokens(&self, ys: &mut pm2::Stream) {
         self.pound.to_tokens(ys);
         if let Style::Inner(x) = &self.style {
             x.to_tokens(ys);
@@ -131,9 +131,9 @@ pub fn parse_single_outer(x: Stream) -> Res<Attr> {
     })
 }
 
-pub fn outer_attrs_to_tokens(xs: &[Attr], ys: &mut TokenStream) {
+pub fn outer_attrs_to_tokens(xs: &[Attr], ys: &mut pm2::Stream) {
     ys.append_all(xs.outer());
 }
-fn inner_attrs_to_tokens(xs: &[Attr], ys: &mut TokenStream) {
+fn inner_attrs_to_tokens(xs: &[Attr], ys: &mut pm2::Stream) {
     ys.append_all(xs.inner());
 }

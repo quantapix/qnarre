@@ -1,16 +1,14 @@
 #![allow(clippy::uninlined_format_args)]
 #[macro_use]
 mod macros;
-use proc_macro2::{Delimiter, Group, Ident, Punct, Spacing, Span, TokenStream, TokenTree};
-use quote::{quote, ToTokens};
-use syn::{parse_quote, ty::Path, ty::Type, Expr};
+use syn::*;
 #[test]
 fn parse_interpolated_leading_component() {
-    let tokens = TokenStream::from_iter(vec![
-        TokenTree::Group(Group::new(Delimiter::None, quote! { first })),
-        TokenTree::Punct(Punct::new(':', Spacing::Joint)),
-        TokenTree::Punct(Punct::new(':', Spacing::Alone)),
-        TokenTree::Ident(Ident::new("rest", Span::call_site())),
+    let tokens = pm2::Stream::from_iter(vec![
+        pm2::Tree::Group(Group::new(pm2::Delim::None, quote! { first })),
+        pm2::Tree::Punct(Punct::new(':', pm2::Spacing::Joint)),
+        pm2::Tree::Punct(Punct::new(':', pm2::Spacing::Alone)),
+        pm2::Tree::Ident(Ident::new("rest", pm2::Span::call_site())),
     ]);
     snapshot!(tokens.clone() as Expr, @r###"
     Expr::Path {
@@ -45,45 +43,45 @@ fn parse_interpolated_leading_component() {
 fn print_incomplete_qpath() {
     let mut typ: ty::Path = parse_quote!(<Self as A>::Q);
     snapshot!(typ.to_token_stream(), @r###"
-    TokenStream(`< Self as A > :: Q`)
+    pm2::Stream(`< Self as A > :: Q`)
     "###);
     assert!(typ.path.segs.pop().is_some());
     snapshot!(typ.to_token_stream(), @r###"
-    TokenStream(`< Self as A > ::`)
+    pm2::Stream(`< Self as A > ::`)
     "###);
     assert!(typ.path.segs.pop().is_some());
     snapshot!(typ.to_token_stream(), @r###"
-    TokenStream(`< Self >`)
+    pm2::Stream(`< Self >`)
     "###);
     assert!(typ.path.segs.pop().is_none());
     let mut typ: ty::Path = parse_quote!(<Self>::A::B);
     snapshot!(typ.to_token_stream(), @r###"
-    TokenStream(`< Self > :: A :: B`)
+    pm2::Stream(`< Self > :: A :: B`)
     "###);
     assert!(typ.path.segs.pop().is_some());
     snapshot!(typ.to_token_stream(), @r###"
-    TokenStream(`< Self > :: A ::`)
+    pm2::Stream(`< Self > :: A ::`)
     "###);
     assert!(typ.path.segs.pop().is_some());
     snapshot!(typ.to_token_stream(), @r###"
-    TokenStream(`< Self > ::`)
+    pm2::Stream(`< Self > ::`)
     "###);
     assert!(typ.path.segs.pop().is_none());
     let mut typ: ty::Path = parse_quote!(Self::A::B);
     snapshot!(typ.to_token_stream(), @r###"
-    TokenStream(`Self :: A :: B`)
+    pm2::Stream(`Self :: A :: B`)
     "###);
     assert!(typ.path.segs.pop().is_some());
     snapshot!(typ.to_token_stream(), @r###"
-    TokenStream(`Self :: A ::`)
+    pm2::Stream(`Self :: A ::`)
     "###);
     assert!(typ.path.segs.pop().is_some());
     snapshot!(typ.to_token_stream(), @r###"
-    TokenStream(`Self ::`)
+    pm2::Stream(`Self ::`)
     "###);
     assert!(typ.path.segs.pop().is_some());
     snapshot!(typ.to_token_stream(), @r###"
-    TokenStream(``)
+    pm2::Stream(``)
     "###);
     assert!(typ.path.segs.pop().is_none());
 }

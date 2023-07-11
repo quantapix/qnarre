@@ -1,6 +1,4 @@
-use super::punct::Punctuated;
-use proc_macro2::TokenStream;
-use std::mem;
+pub use pm2::Stream;
 
 ast_enum_of_structs! {
     pub enum Item {
@@ -19,7 +17,7 @@ ast_enum_of_structs! {
         Type(Type),
         Union(Union),
         Use(Use),
-        Verbatim(TokenStream),
+        Verbatim(Stream),
     }
 }
 impl Item {
@@ -330,7 +328,7 @@ pub mod Foreign {
             Static(Static),
             Type(Type),
             Mac(Mac),
-            Verbatim(TokenStream),
+            Verbatim(Stream),
         }
     }
     pub struct Fn {
@@ -370,7 +368,7 @@ pub mod Impl {
             Fn(Fn),
             Type(Type),
             Mac(Mac),
-            Verbatim(TokenStream),
+            Verbatim(Stream),
         }
     }
     pub struct Const {
@@ -418,7 +416,7 @@ pub mod Trait {
             Fn(Fn),
             Type(Type),
             Mac(Mac),
-            Verbatim(TokenStream),
+            Verbatim(Stream),
         }
     }
     pub struct Const {

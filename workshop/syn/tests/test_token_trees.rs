@@ -1,7 +1,7 @@
 #![allow(clippy::uninlined_format_args)]
 #[macro_use]
 mod macros;
-use proc_macro2::TokenStream;
+use proc_macro2::pm2::Stream;
 use quote::quote;
 use syn::Lit;
 #[test]
@@ -13,8 +13,8 @@ fn test_struct() {
             pub attrs: Vec<attr::Attr>,
         }
     ";
-    snapshot!(input as TokenStream, @r###"
-    TokenStream(
+    snapshot!(input as pm2::Stream, @r###"
+    pm2::Stream(
         `# [derive (Debug , Clone)] pub struct Item { pub ident : Ident , pub attrs : Vec < attr::Attr >, }`,
     )
     "###);

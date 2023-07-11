@@ -48,7 +48,7 @@ fn test_struct() {
                         ],
                     },
                     delimiter: MacroDelimiter::Paren,
-                    tokens: TokenStream(`Debug , Clone`),
+                    tokens: pm2::Stream(`Debug , Clone`),
                 },
             },
         ],
@@ -114,7 +114,7 @@ fn test_struct() {
             ],
         },
         delimiter: MacroDelimiter::Paren,
-        tokens: TokenStream(`Debug , Clone`),
+        tokens: pm2::Stream(`Debug , Clone`),
     }
     "###);
 }

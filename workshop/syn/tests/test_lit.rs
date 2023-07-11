@@ -1,13 +1,11 @@
 #![allow(clippy::float_cmp, clippy::non_ascii_literal, clippy::uninlined_format_args)]
 #[macro_use]
 mod macros;
-use proc_macro2::{Delimiter, Group, Literal, Span, TokenStream, TokenTree};
-use quote::ToTokens;
 use std::str::FromStr;
-use syn::{lit::Float, lit::Int, lit::Str, Lit};
+use syn::*;
 fn lit(s: &str) -> Lit {
-    match TokenStream::from_str(s).unwrap().into_iter().next().unwrap() {
-        TokenTree::Literal(lit) => Lit::new(lit),
+    match pm2::Stream::from_str(s).unwrap().into_iter().next().unwrap() {
+        pm2::Tree::Literal(lit) => Lit::new(lit),
         _ => panic!(),
     }
 }
@@ -186,7 +184,7 @@ fn floats() {
 }
 #[test]
 fn negative() {
-    let span = Span::call_site();
+    let span = pm2::Span::call_site();
     assert_eq!("-1", lit::Int::new("-1", span).to_string());
     assert_eq!("-1i8", lit::Int::new("-1i8", span).to_string());
     assert_eq!("-1i16", lit::Int::new("-1i16", span).to_string());
@@ -224,11 +222,11 @@ fn suffix() {
 }
 #[test]
 fn test_deep_group_empty() {
-    let tokens = TokenStream::from_iter(vec![TokenTree::Group(Group::new(
-        Delimiter::None,
-        TokenStream::from_iter(vec![TokenTree::Group(Group::new(
-            Delimiter::None,
-            TokenStream::from_iter(vec![TokenTree::Literal(Literal::string("hi"))]),
+    let tokens = pm2::Stream::from_iter(vec![pm2::Tree::Group(Group::new(
+        pm2::Delim::None,
+        pm2::Stream::from_iter(vec![pm2::Tree::Group(Group::new(
+            pm2::Delim::None,
+            pm2::Stream::from_iter(vec![pm2::Tree::Literal(Literal::string("hi"))]),
         ))]),
     ))]);
     snapshot!(tokens as Lit, @r#""hi""# );

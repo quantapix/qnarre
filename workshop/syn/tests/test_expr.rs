@@ -1,9 +1,7 @@
 #![allow(clippy::uninlined_format_args)]
 #[macro_use]
 mod macros;
-use proc_macro2::{Delimiter, Group, Ident, Punct, Spacing, Span, TokenStream, TokenTree};
-use quote::quote;
-use syn::{expr::Range, Expr};
+use syn::*;
 #[test]
 fn test_expr_parse() {
     let tokens = quote!(..100u32);
@@ -88,9 +86,9 @@ fn test_tuple_multi_index() {
 }
 #[test]
 fn test_macro_variable_func() {
-    let tokens = TokenStream::from_iter(vec![
-        TokenTree::Group(Group::new(Delimiter::None, quote! { f })),
-        TokenTree::Group(Group::new(Delimiter::Parenthesis, TokenStream::new())),
+    let tokens = pm2::Stream::from_iter(vec![
+        pm2::Tree::Group(Group::new(pm2::Delim::None, quote! { f })),
+        pm2::Tree::Group(Group::new(pm2::Delim::Parenthesis, pm2::Stream::new())),
     ]);
     snapshot!(tokens as Expr, @r###"
     Expr::Call {
@@ -107,11 +105,11 @@ fn test_macro_variable_func() {
         },
     }
     "###);
-    let tokens = TokenStream::from_iter(vec![
-        TokenTree::Punct(Punct::new('#', Spacing::Alone)),
-        TokenTree::Group(Group::new(Delimiter::Bracket, quote! { outside })),
-        TokenTree::Group(Group::new(Delimiter::None, quote! { #[inside] f })),
-        TokenTree::Group(Group::new(Delimiter::Parenthesis, TokenStream::new())),
+    let tokens = pm2::Stream::from_iter(vec![
+        pm2::Tree::Punct(Punct::new('#', pm2::Spacing::Alone)),
+        pm2::Tree::Group(Group::new(pm2::Delim::Bracket, quote! { outside })),
+        pm2::Tree::Group(Group::new(pm2::Delim::None, quote! { #[inside] f })),
+        pm2::Tree::Group(Group::new(pm2::Delim::Parenthesis, pm2::Stream::new())),
     ]);
     snapshot!(tokens as Expr, @r###"
     Expr::Call {
@@ -155,10 +153,10 @@ fn test_macro_variable_func() {
 }
 #[test]
 fn test_macro_variable_macro() {
-    let tokens = TokenStream::from_iter(vec![
-        TokenTree::Group(Group::new(Delimiter::None, quote! { m })),
-        TokenTree::Punct(Punct::new('!', Spacing::Alone)),
-        TokenTree::Group(Group::new(Delimiter::Parenthesis, TokenStream::new())),
+    let tokens = pm2::Stream::from_iter(vec![
+        pm2::Tree::Group(Group::new(pm2::Delim::None, quote! { m })),
+        pm2::Tree::Punct(Punct::new('!', pm2::Spacing::Alone)),
+        pm2::Tree::Group(Group::new(pm2::Delim::Parenthesis, pm2::Stream::new())),
     ]);
     snapshot!(tokens as Expr, @r###"
     Expr::Macro {
@@ -171,16 +169,16 @@ fn test_macro_variable_macro() {
                 ],
             },
             delimiter: MacroDelimiter::Paren,
-            tokens: TokenStream(``),
+            tokens: pm2::Stream(``),
         },
     }
     "###);
 }
 #[test]
 fn test_macro_variable_struct() {
-    let tokens = TokenStream::from_iter(vec![
-        TokenTree::Group(Group::new(Delimiter::None, quote! { S })),
-        TokenTree::Group(Group::new(Delimiter::Brace, TokenStream::new())),
+    let tokens = pm2::Stream::from_iter(vec![
+        pm2::Tree::Group(Group::new(pm2::Delim::None, quote! { S })),
+        pm2::Tree::Group(Group::new(pm2::Delim::Brace, pm2::Stream::new())),
     ]);
     snapshot!(tokens as Expr, @r###"
     Expr::Struct {
@@ -196,16 +194,16 @@ fn test_macro_variable_struct() {
 }
 #[test]
 fn test_macro_variable_match_arm() {
-    let tokens = TokenStream::from_iter(vec![
-        TokenTree::Ident(Ident::new("match", Span::call_site())),
-        TokenTree::Ident(Ident::new("v", Span::call_site())),
-        TokenTree::Group(Group::new(
-            Delimiter::Brace,
-            TokenStream::from_iter(vec![
-                TokenTree::Punct(Punct::new('_', Spacing::Alone)),
-                TokenTree::Punct(Punct::new('=', Spacing::Joint)),
-                TokenTree::Punct(Punct::new('>', Spacing::Alone)),
-                TokenTree::Group(Group::new(Delimiter::None, quote! { #[a] () })),
+    let tokens = pm2::Stream::from_iter(vec![
+        pm2::Tree::Ident(Ident::new("match", pm2::Span::call_site())),
+        pm2::Tree::Ident(Ident::new("v", pm2::Span::call_site())),
+        pm2::Tree::Group(Group::new(
+            pm2::Delim::Brace,
+            pm2::Stream::from_iter(vec![
+                pm2::Tree::Punct(Punct::new('_', pm2::Spacing::Alone)),
+                pm2::Tree::Punct(Punct::new('=', pm2::Spacing::Joint)),
+                pm2::Tree::Punct(Punct::new('>', pm2::Spacing::Alone)),
+                pm2::Tree::Group(Group::new(pm2::Delim::None, quote! { #[a] () })),
             ]),
         )),
     ]);

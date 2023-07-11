@@ -822,7 +822,7 @@
         ],
         "Verbatim": [
           {
-            "proc_macro2": "TokenStream"
+            "proc_macro2": "pm2::Stream"
           }
         ],
         "While": [
@@ -2162,7 +2162,7 @@
         ],
         "Verbatim": [
           {
-            "proc_macro2": "TokenStream"
+            "proc_macro2": "pm2::Stream"
           }
         ]
       },
@@ -2415,7 +2415,7 @@
         ],
         "Verbatim": [
           {
-            "proc_macro2": "TokenStream"
+            "proc_macro2": "pm2::Stream"
           }
         ]
       },
@@ -2673,7 +2673,7 @@
         ],
         "Verbatim": [
           {
-            "proc_macro2": "TokenStream"
+            "proc_macro2": "pm2::Stream"
           }
         ]
       },
@@ -3389,7 +3389,7 @@
         ],
         "Verbatim": [
           {
-            "proc_macro2": "Literal"
+            "proc_macro2": "pm2::Lit"
           }
         ]
       },
@@ -3525,7 +3525,7 @@
           "syn": "MacroDelimiter"
         },
         "tokens": {
-          "proc_macro2": "TokenStream"
+          "proc_macro2": "pm2::Stream"
         }
       }
     },
@@ -3618,7 +3618,7 @@
           "syn": "MacroDelimiter"
         },
         "tokens": {
-          "proc_macro2": "TokenStream"
+          "proc_macro2": "pm2::Stream"
         }
       }
     },
@@ -3752,7 +3752,7 @@
         ],
         "Verbatim": [
           {
-            "proc_macro2": "TokenStream"
+            "proc_macro2": "pm2::Stream"
           }
         ],
         "Wild": [
@@ -4517,7 +4517,7 @@
         ],
         "Verbatim": [
           {
-            "proc_macro2": "TokenStream"
+            "proc_macro2": "pm2::Stream"
           }
         ]
       },
@@ -4752,7 +4752,7 @@
         ],
         "Verbatim": [
           {
-            "proc_macro2": "TokenStream"
+            "proc_macro2": "pm2::Stream"
           }
         ]
       },
@@ -4977,7 +4977,7 @@
         ],
         "Verbatim": [
           {
-            "proc_macro2": "TokenStream"
+            "proc_macro2": "pm2::Stream"
           }
         ]
       },

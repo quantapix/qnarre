@@ -1,7 +1,5 @@
 #![allow(clippy::non_ascii_literal)]
-use proc_macro2::{Delimiter, Group, Punct, Spacing, TokenStream, TokenTree};
-use syn::parse::{discouraged::Speculative, Parse, Parser, Stream};
-use syn::{parenthesized, Res, Token};
+use syn::*;
 #[test]
 #[should_panic(expected = "Fork was not derived from the advancing parse stream")]
 fn smuggled_speculative_cursor_between_sources() {
@@ -56,19 +54,19 @@ fn trailing_empty_none_group() {
         content.parse::<Token![+]>()?;
         Ok(())
     }
-    let tokens = TokenStream::from_iter(vec![
-        TokenTree::Punct(Punct::new('+', Spacing::Alone)),
-        TokenTree::Group(Group::new(
-            Delimiter::Parenthesis,
-            TokenStream::from_iter(vec![
-                TokenTree::Punct(Punct::new('+', Spacing::Alone)),
-                TokenTree::Group(Group::new(Delimiter::None, TokenStream::new())),
+    let tokens = pm2::Stream::from_iter(vec![
+        pm2::Tree::Punct(Punct::new('+', pm2::Spacing::Alone)),
+        pm2::Tree::Group(Group::new(
+            pm2::Delim::Parenthesis,
+            pm2::Stream::from_iter(vec![
+                pm2::Tree::Punct(Punct::new('+', pm2::Spacing::Alone)),
+                pm2::Tree::Group(Group::new(pm2::Delim::None, pm2::Stream::new())),
             ]),
         )),
-        TokenTree::Group(Group::new(Delimiter::None, TokenStream::new())),
-        TokenTree::Group(Group::new(
-            Delimiter::None,
-            TokenStream::from_iter(vec![TokenTree::Group(Group::new(Delimiter::None, TokenStream::new()))]),
+        pm2::Tree::Group(Group::new(pm2::Delim::None, pm2::Stream::new())),
+        pm2::Tree::Group(Group::new(
+            pm2::Delim::None,
+            pm2::Stream::from_iter(vec![pm2::Tree::Group(Group::new(pm2::Delim::None, pm2::Stream::new()))]),
         )),
     ]);
     parse.parse2(tokens).unwrap();

@@ -1,9 +1,7 @@
 #![allow(unreachable_code, unused_variables)]
 #![allow(clippy::match_wildcard_for_single_variants, clippy::needless_match)]
 
-use crate::gen::helper::fold::*;
 use crate::*;
-use proc_macro2::Span;
 macro_rules! full {
     ($e:expr) => {
         $e
@@ -439,7 +437,7 @@ pub trait Fold {
     fn fold_signature(&mut self, i: item::Sig) -> item::Sig {
         fold_signature(self, i)
     }
-    fn fold_span(&mut self, i: Span) -> Span {
+    fn fold_span(&mut self, i: pm2::Span) -> pm2::Span {
         fold_span(self, i)
     }
     fn fold_static_mutability(&mut self, i: StaticMut) -> StaticMut {
@@ -2220,7 +2218,7 @@ where
         ret: f.fold_return_type(node.ret),
     }
 }
-pub fn fold_span<F>(f: &mut F, node: Span) -> Span
+pub fn fold_span<F>(f: &mut F, node: pm2::Span) -> pm2::Span
 where
     F: Fold + ?Sized,
 {

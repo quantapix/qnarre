@@ -1,9 +1,8 @@
-
 enum Entry {
     Group(Group, usize),
     Ident(Ident),
     Punct(Punct),
-    Literal(Literal),
+    pm2::Lit(pm2::Lit),
     End(isize),
 }
 
@@ -44,7 +43,7 @@ impl<'a> Cursor<'a> {
     }
     fn ignore_none(&mut self) {
         while let Entry::Group(x, _) = self.entry() {
-            if x.delimiter() == Delimiter::None {
+            if x.delimiter() == pm2::Delim::None {
                 unsafe { *self = self.bump_ignore_group() };
             } else {
                 break;
@@ -54,8 +53,8 @@ impl<'a> Cursor<'a> {
     pub fn eof(self) -> bool {
         self.ptr == self.scope
     }
-    pub fn group(mut self, d: Delimiter) -> Option<(Cursor<'a>, DelimSpan, Cursor<'a>)> {
-        if d != Delimiter::None {
+    pub fn group(mut self, d: pm2::Delim) -> Option<(Cursor<'a>, pm2::DelimSpan, Cursor<'a>)> {
+        if d != pm2::Delim::None {
             self.ignore_none();
         }
         if let Entry::Group(x, end) = self.entry() {
@@ -69,7 +68,7 @@ impl<'a> Cursor<'a> {
         }
         None
     }
-    pub fn any_group(self) -> Option<(Cursor<'a>, Delimiter, DelimSpan, Cursor<'a>)> {
+    pub fn any_group(self) -> Option<(Cursor<'a>, pm2::Delim, pm2::DelimSpan, Cursor<'a>)> {
         if let Entry::Group(x, end) = self.entry() {
             let delimiter = x.delimiter();
             let span = x.delim_span();
@@ -102,17 +101,17 @@ impl<'a> Cursor<'a> {
             _ => None,
         }
     }
-    pub fn literal(mut self) -> Option<(Literal, Cursor<'a>)> {
+    pub fn literal(mut self) -> Option<(pm2::Lit, Cursor<'a>)> {
         self.ignore_none();
         match self.entry() {
-            Entry::Literal(x) => Some((x.clone(), unsafe { self.bump_ignore_group() })),
+            Entry::pm2::Lit(x) => Some((x.clone(), unsafe { self.bump_ignore_group() })),
             _ => None,
         }
     }
     pub fn lifetime(mut self) -> Option<(Lifetime, Cursor<'a>)> {
         self.ignore_none();
         match self.entry() {
-            Entry::Punct(x) if x.as_char() == '\'' && x.spacing() == Spacing::Joint => {
+            Entry::Punct(x) if x.as_char() == '\'' && x.spacing() == pm2::Spacing::Joint => {
                 let next = unsafe { self.bump_ignore_group() };
                 let (ident, rest) = next.ident()?;
                 let lifetime = Lifetime {
@@ -124,7 +123,7 @@ impl<'a> Cursor<'a> {
             _ => None,
         }
     }
-    pub fn token_stream(self) -> TokenStream {
+    pub fn token_stream(self) -> pm2::Stream {
         let mut ys = Vec::new();
         let mut cur = self;
         while let Some((x, rest)) = cur.token_tree() {
@@ -133,11 +132,11 @@ impl<'a> Cursor<'a> {
         }
         ys.into_iter().collect()
     }
-    pub fn token_tree(self) -> Option<(TokenTree, Cursor<'a>)> {
+    pub fn token_tree(self) -> Option<(pm2::Tree, Cursor<'a>)> {
         use Entry::*;
         let (tree, len) = match self.entry() {
             Group(x, end) => (x.clone().into(), *end),
-            Literal(x) => (x.clone().into(), 1),
+            pm2::Lit(x) => (x.clone().into(), 1),
             Ident(x) => (x.clone().into(), 1),
             Punct(x) => (x.clone().into(), 1),
             End(_) => return None,
@@ -145,17 +144,17 @@ impl<'a> Cursor<'a> {
         let rest = unsafe { Cursor::create(self.ptr.add(len), self.scope) };
         Some((tree, rest))
     }
-    pub fn span(self) -> Span {
+    pub fn span(self) -> pm2::Span {
         use Entry::*;
         match self.entry() {
             Group(x, _) => x.span(),
-            Literal(x) => x.span(),
+            pm2::Lit(x) => x.span(),
             Ident(x) => x.span(),
             Punct(x) => x.span(),
-            End(_) => Span::call_site(),
+            End(_) => pm2::Span::call_site(),
         }
     }
-    pub fn prev_span(mut self) -> Span {
+    pub fn prev_span(mut self) -> pm2::Span {
         if buff_start(self) < self.ptr {
             self.ptr = unsafe { self.ptr.offset(-1) };
             if let Entry::End(_) = self.entry() {
@@ -171,7 +170,7 @@ impl<'a> Cursor<'a> {
                             }
                         },
                         End(_) => depth += 1,
-                        Literal(_) | Ident(_) | Punct(_) => {},
+                        pm2::Lit(_) | Ident(_) | Punct(_) => {},
                     }
                 }
             }
@@ -182,7 +181,7 @@ impl<'a> Cursor<'a> {
         use Entry::*;
         let y = match self.entry() {
             End(_) => return None,
-            Punct(x) if x.as_char() == '\'' && x.spacing() == Spacing::Joint => match unsafe { &*self.ptr.add(1) } {
+            Punct(x) if x.as_char() == '\'' && x.spacing() == pm2::Spacing::Joint => match unsafe { &*self.ptr.add(1) } {
                 Ident(_) => 2,
                 _ => 1,
             },
@@ -231,13 +230,13 @@ fn buff_start(c: Cursor) -> *const Entry {
 fn cmp_assuming_same_buffer(a: Cursor, b: Cursor) -> Ordering {
     a.ptr.cmp(&b.ptr)
 }
-fn open_span_of_group(c: Cursor) -> Span {
+fn open_span_of_group(c: Cursor) -> pm2::Span {
     match c.entry() {
         Entry::Group(x, _) => x.span_open(),
         _ => c.span(),
     }
 }
-fn close_span_of_group(c: Cursor) -> Span {
+fn close_span_of_group(c: Cursor) -> pm2::Span {
     match c.entry() {
         Entry::Group(x, _) => x.span_close(),
         _ => c.span(),
@@ -247,14 +246,14 @@ pub struct Buffer {
     entries: Box<[Entry]>,
 }
 impl Buffer {
-    fn recursive_new(ys: &mut Vec<Entry>, xs: TokenStream) {
+    fn recursive_new(ys: &mut Vec<Entry>, xs: pm2::Stream) {
         for x in xs {
             use Entry::*;
             match x {
-                TokenTree::Ident(x) => ys.push(Ident(x)),
-                TokenTree::Punct(x) => ys.push(Punct(x)),
-                TokenTree::Literal(x) => ys.push(Literal(x)),
-                TokenTree::Group(x) => {
+                pm2::Tree::Ident(x) => ys.push(Ident(x)),
+                pm2::Tree::Punct(x) => ys.push(Punct(x)),
+                pm2::Tree::Literal(x) => ys.push(pm2::Lit(x)),
+                pm2::Tree::Group(x) => {
                     let beg = ys.len();
                     ys.push(End(0));
                     Self::recursive_new(ys, x.stream());
@@ -266,10 +265,10 @@ impl Buffer {
             }
         }
     }
-    pub fn new(x: proc_macro::TokenStream) -> Self {
+    pub fn new(x: proc_macro::pm2::Stream) -> Self {
         Self::new2(x.into())
     }
-    pub fn new2(x: TokenStream) -> Self {
+    pub fn new2(x: pm2::Stream) -> Self {
         let mut ys = Vec::new();
         Self::recursive_new(&mut ys, x);
         ys.push(Entry::End(-(ys.len() as isize)));

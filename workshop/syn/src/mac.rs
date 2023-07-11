@@ -2,7 +2,7 @@ pub struct Mac {
     pub path: Path,
     pub bang: Token![!],
     pub delim: tok::Delim,
-    pub toks: TokenStream,
+    pub toks: pm2::Stream,
 }
 impl Mac {
     pub fn parse_body<T: Parse>(&self) -> Res<T> {
@@ -13,15 +13,15 @@ impl Mac {
         parse::parse_scoped(parser, scope, self.toks.clone())
     }
 }
-pub fn parse_delim(x: parse::Stream) -> Res<(tok::Delim, TokenStream)> {
+pub fn parse_delim(x: parse::Stream) -> Res<(tok::Delim, pm2::Stream)> {
     x.step(|c| {
-        if let Some((TokenTree::Group(g), rest)) = c.token_tree() {
+        if let Some((pm2::Tree::Group(g), rest)) = c.token_tree() {
             let s = g.delim_span();
             let delim = match g.delimiter() {
-                Delimiter::Parenthesis => tok::Delim::Paren(Paren(s)),
-                Delimiter::Brace => tok::Delim::Brace(Brace(s)),
-                Delimiter::Bracket => tok::Delim::Bracket(Bracket(s)),
-                Delimiter::None => {
+                pm2::Delim::Parenthesis => tok::Delim::Paren(Paren(s)),
+                pm2::Delim::Brace => tok::Delim::Brace(Brace(s)),
+                pm2::Delim::Bracket => tok::Delim::Bracket(Bracket(s)),
+                pm2::Delim::None => {
                     return Err(c.error("expected delimiter"));
                 },
             };
@@ -143,7 +143,7 @@ macro_rules! generate_to_tokens {
     };
     (($($arms:tt)*) $tokens:ident $name:ident {}) => {
         impl ::quote::ToTokens for $name {
-            fn to_tokens(&self, $tokens: &mut ::proc_macro2::TokenStream) {
+            fn to_tokens(&self, $tokens: &mut ::proc_macro2::pm2::Stream) {
                 match self {
                     $($arms)*
                 }
@@ -445,7 +445,7 @@ macro_rules! parse_macro_input {
         match $crate::parse::<$ty>($tokenstream) {
             $crate::__private::Ok(data) => data,
             $crate::__private::Err(err) => {
-                return $crate::__private::TokenStream::from(err.to_compile_error());
+                return $crate::__private::pm2::Stream::from(err.to_compile_error());
             },
         }
     };
@@ -453,7 +453,7 @@ macro_rules! parse_macro_input {
         match $crate::parse::Parser::parse($parser, $tokenstream) {
             $crate::__private::Ok(data) => data,
             $crate::__private::Err(err) => {
-                return $crate::__private::TokenStream::from(err.to_compile_error());
+                return $crate::__private::pm2::Stream::from(err.to_compile_error());
             },
         }
     };

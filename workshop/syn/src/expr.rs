@@ -1,11 +1,6 @@
-use super::punct::Punctuated;
-use proc_macro2::{Span, TokenStream};
 use quote::IdentFragment;
-use std::{
-    fmt::{self, Display},
-    hash::{Hash, Hasher},
-    mem,
-};
+
+pub use pm2::Stream;
 
 ast_enum_of_structs! {
     pub enum Expr {
@@ -45,7 +40,7 @@ ast_enum_of_structs! {
         Tuple(Tuple),
         Unary(Unary),
         Unsafe(Unsafe),
-        Verbatim(TokenStream),
+        Verbatim(Stream),
         While(While),
         Yield(Yield),
     }
@@ -384,7 +379,7 @@ impl IdentFragment for Member {
             Unnamed(x) => Display::fmt(&x.idx, f),
         }
     }
-    fn span(&self) -> Option<Span> {
+    fn span(&self) -> Option<pm2::Span> {
         use Member::*;
         match self {
             Named(x) => Some(x.span()),
@@ -395,14 +390,14 @@ impl IdentFragment for Member {
 
 pub struct Idx {
     pub idx: u32,
-    pub span: Span,
+    pub span: pm2::Span,
 }
 impl From<usize> for Idx {
     fn from(x: usize) -> Idx {
         assert!(x < u32::max_value() as usize);
         Idx {
             idx: x as u32,
-            span: Span::call_site(),
+            span: pm2::Span::call_site(),
         }
     }
 }
@@ -421,7 +416,7 @@ impl IdentFragment for Idx {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         Display::fmt(&self.idx, f)
     }
-    fn span(&self) -> Option<Span> {
+    fn span(&self) -> Option<pm2::Span> {
         Some(self.span)
     }
 }

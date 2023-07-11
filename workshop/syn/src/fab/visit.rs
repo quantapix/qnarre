@@ -1,8 +1,6 @@
 #![allow(unused_variables)]
 
-use crate::punct::Punctuated;
 use crate::*;
-use proc_macro2::Span;
 macro_rules! full {
     ($e:expr) => {
         $e
@@ -441,7 +439,7 @@ pub trait Visit<'ast> {
     fn visit_signature(&mut self, i: &'ast item::Sig) {
         visit_signature(self, i);
     }
-    fn visit_span(&mut self, i: &Span) {
+    fn visit_span(&mut self, i: &pm2::Span) {
         visit_span(self, i);
     }
     fn visit_static_mutability(&mut self, i: &'ast StaticMut) {
@@ -2626,7 +2624,7 @@ where
     }
     v.visit_return_type(&node.ret);
 }
-pub fn visit_span<'ast, V>(v: &mut V, node: &Span)
+pub fn visit_span<'ast, V>(v: &mut V, node: &pm2::Span)
 where
     V: Visit<'ast> + ?Sized,
 {

@@ -1,8 +1,8 @@
-use proc_macro2::{Delimiter, Group, Ident, Literal, Punct, Spacing, Span, TokenStream};
+use proc_macro2::Ident;
 use quote::{ToTokens, TokenStreamExt};
 use std::cmp;
 
-fn wrap_bare_struct(tokens: &mut TokenStream, e: &Expr) {
+fn wrap_bare_struct(tokens: &mut pm2::Stream, e: &Expr) {
     if let Expr::Struct(_) = *e {
         tok::Paren::default().surround(tokens, |tokens| {
             e.to_tokens(tokens);
@@ -12,7 +12,7 @@ fn wrap_bare_struct(tokens: &mut TokenStream, e: &Expr) {
     }
 }
 impl ToTokens for expr::Array {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.bracket.surround(tokens, |tokens| {
             self.elems.to_tokens(tokens);
@@ -20,7 +20,7 @@ impl ToTokens for expr::Array {
     }
 }
 impl ToTokens for expr::Assign {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.left.to_tokens(tokens);
         self.eq.to_tokens(tokens);
@@ -28,7 +28,7 @@ impl ToTokens for expr::Assign {
     }
 }
 impl ToTokens for expr::Async {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.async_.to_tokens(tokens);
         self.move_.to_tokens(tokens);
@@ -36,7 +36,7 @@ impl ToTokens for expr::Async {
     }
 }
 impl ToTokens for expr::Await {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.expr.to_tokens(tokens);
         self.dot.to_tokens(tokens);
@@ -44,7 +44,7 @@ impl ToTokens for expr::Await {
     }
 }
 impl ToTokens for expr::Binary {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.left.to_tokens(tokens);
         self.op.to_tokens(tokens);
@@ -52,7 +52,7 @@ impl ToTokens for expr::Binary {
     }
 }
 impl ToTokens for expr::Block {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.label.to_tokens(tokens);
         self.block.brace.surround(tokens, |tokens| {
@@ -62,7 +62,7 @@ impl ToTokens for expr::Block {
     }
 }
 impl ToTokens for expr::Break {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.break_.to_tokens(tokens);
         self.label.to_tokens(tokens);
@@ -70,7 +70,7 @@ impl ToTokens for expr::Break {
     }
 }
 impl ToTokens for expr::Call {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.func.to_tokens(tokens);
         self.paren.surround(tokens, |tokens| {
@@ -79,7 +79,7 @@ impl ToTokens for expr::Call {
     }
 }
 impl ToTokens for expr::Cast {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.expr.to_tokens(tokens);
         self.as_.to_tokens(tokens);
@@ -87,7 +87,7 @@ impl ToTokens for expr::Cast {
     }
 }
 impl ToTokens for expr::Closure {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.lifes.to_tokens(tokens);
         self.const_.to_tokens(tokens);
@@ -102,7 +102,7 @@ impl ToTokens for expr::Closure {
     }
 }
 impl ToTokens for expr::Const {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.const_.to_tokens(tokens);
         self.block.brace.surround(tokens, |tokens| {
@@ -112,14 +112,14 @@ impl ToTokens for expr::Const {
     }
 }
 impl ToTokens for expr::Continue {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.continue_.to_tokens(tokens);
         self.label.to_tokens(tokens);
     }
 }
 impl ToTokens for expr::Field {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.base.to_tokens(tokens);
         self.dot.to_tokens(tokens);
@@ -127,7 +127,7 @@ impl ToTokens for expr::Field {
     }
 }
 impl ToTokens for expr::ForLoop {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.label.to_tokens(tokens);
         self.for_.to_tokens(tokens);
@@ -141,7 +141,7 @@ impl ToTokens for expr::ForLoop {
     }
 }
 impl ToTokens for expr::Group {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.group.surround(tokens, |tokens| {
             self.expr.to_tokens(tokens);
@@ -149,7 +149,7 @@ impl ToTokens for expr::Group {
     }
 }
 impl ToTokens for expr::If {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.if_.to_tokens(tokens);
         wrap_bare_struct(tokens, &self.cond);
@@ -164,7 +164,7 @@ impl ToTokens for expr::If {
     }
 }
 impl ToTokens for expr::Index {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.expr.to_tokens(tokens);
         self.bracket.surround(tokens, |tokens| {
@@ -173,13 +173,13 @@ impl ToTokens for expr::Index {
     }
 }
 impl ToTokens for expr::Infer {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.underscore.to_tokens(tokens);
     }
 }
 impl ToTokens for expr::Let {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.let_.to_tokens(tokens);
         self.pat.to_tokens(tokens);
@@ -188,13 +188,13 @@ impl ToTokens for expr::Let {
     }
 }
 impl ToTokens for expr::Lit {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.lit.to_tokens(tokens);
     }
 }
 impl ToTokens for expr::Loop {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.label.to_tokens(tokens);
         self.loop_.to_tokens(tokens);
@@ -205,13 +205,13 @@ impl ToTokens for expr::Loop {
     }
 }
 impl ToTokens for expr::Mac {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.mac.to_tokens(tokens);
     }
 }
 impl ToTokens for expr::Match {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.match_.to_tokens(tokens);
         wrap_bare_struct(tokens, &self.expr);
@@ -228,7 +228,7 @@ impl ToTokens for expr::Match {
     }
 }
 impl ToTokens for expr::MethodCall {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.expr.to_tokens(tokens);
         self.dot.to_tokens(tokens);
@@ -240,7 +240,7 @@ impl ToTokens for expr::MethodCall {
     }
 }
 impl ToTokens for expr::Paren {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.paren.surround(tokens, |tokens| {
             self.expr.to_tokens(tokens);
@@ -248,13 +248,13 @@ impl ToTokens for expr::Paren {
     }
 }
 impl ToTokens for expr::Path {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         print_path(tokens, &self.qself, &self.path);
     }
 }
 impl ToTokens for expr::Range {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.beg.to_tokens(tokens);
         self.limits.to_tokens(tokens);
@@ -262,7 +262,7 @@ impl ToTokens for expr::Range {
     }
 }
 impl ToTokens for expr::Ref {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.and.to_tokens(tokens);
         self.mut_.to_tokens(tokens);
@@ -270,7 +270,7 @@ impl ToTokens for expr::Ref {
     }
 }
 impl ToTokens for expr::Repeat {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.bracket.surround(tokens, |tokens| {
             self.expr.to_tokens(tokens);
@@ -280,14 +280,14 @@ impl ToTokens for expr::Repeat {
     }
 }
 impl ToTokens for expr::Return {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.return_.to_tokens(tokens);
         self.expr.to_tokens(tokens);
     }
 }
 impl ToTokens for expr::Struct {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         print_path(tokens, &self.qself, &self.path);
         self.brace.surround(tokens, |tokens| {
@@ -295,28 +295,28 @@ impl ToTokens for expr::Struct {
             if let Some(dot2) = &self.dot2 {
                 dot2.to_tokens(tokens);
             } else if self.rest.is_some() {
-                Token![..](Span::call_site()).to_tokens(tokens);
+                Token![..](pm2::Span::call_site()).to_tokens(tokens);
             }
             self.rest.to_tokens(tokens);
         });
     }
 }
 impl ToTokens for expr::Try {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.expr.to_tokens(tokens);
         self.question.to_tokens(tokens);
     }
 }
 impl ToTokens for expr::TryBlock {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.try_.to_tokens(tokens);
         self.block.to_tokens(tokens);
     }
 }
 impl ToTokens for expr::Tuple {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.paren.surround(tokens, |tokens| {
             self.elems.to_tokens(tokens);
@@ -327,14 +327,14 @@ impl ToTokens for expr::Tuple {
     }
 }
 impl ToTokens for expr::Unary {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.op.to_tokens(tokens);
         self.expr.to_tokens(tokens);
     }
 }
 impl ToTokens for expr::Unsafe {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.unsafe_.to_tokens(tokens);
         self.block.brace.surround(tokens, |tokens| {
@@ -344,7 +344,7 @@ impl ToTokens for expr::Unsafe {
     }
 }
 impl ToTokens for expr::While {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.label.to_tokens(tokens);
         self.while_.to_tokens(tokens);
@@ -356,14 +356,14 @@ impl ToTokens for expr::While {
     }
 }
 impl ToTokens for expr::Yield {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.yield_.to_tokens(tokens);
         self.expr.to_tokens(tokens);
     }
 }
 impl ToTokens for Arm {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         tokens.append_all(&self.attrs);
         self.pat.to_tokens(tokens);
         if let Some((if_, guard)) = &self.guard {
@@ -376,7 +376,7 @@ impl ToTokens for Arm {
     }
 }
 impl ToTokens for FieldValue {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, tokens);
         self.member.to_tokens(tokens);
         if let Some(colon) = &self.colon {
@@ -386,20 +386,20 @@ impl ToTokens for FieldValue {
     }
 }
 impl ToTokens for Index {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        let mut lit = Literal::i64_unsuffixed(i64::from(self.index));
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
+        let mut lit = pm2::Lit::i64_unsuffixed(i64::from(self.index));
         lit.set_span(self.span);
         tokens.append(lit);
     }
 }
 impl ToTokens for Label {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         self.name.to_tokens(tokens);
         self.colon.to_tokens(tokens);
     }
 }
 impl ToTokens for Member {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         match self {
             Member::Named(ident) => ident.to_tokens(tokens),
             Member::Unnamed(index) => index.to_tokens(tokens),
@@ -407,7 +407,7 @@ impl ToTokens for Member {
     }
 }
 impl ToTokens for RangeLimits {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         match self {
             RangeLimits::HalfOpen(x) => x.to_tokens(xs),
             RangeLimits::Closed(x) => x.to_tokens(xs),
@@ -416,7 +416,7 @@ impl ToTokens for RangeLimits {
 }
 
 impl ToTokens for item::ExternCrate {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         tokens.append_all(self.attrs.outer());
         self.vis.to_tokens(tokens);
         self.extern_.to_tokens(tokens);
@@ -430,7 +430,7 @@ impl ToTokens for item::ExternCrate {
     }
 }
 impl ToTokens for item::Use {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         tokens.append_all(self.attrs.outer());
         self.vis.to_tokens(tokens);
         self.use_.to_tokens(tokens);
@@ -440,7 +440,7 @@ impl ToTokens for item::Use {
     }
 }
 impl ToTokens for item::Static {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         tokens.append_all(self.attrs.outer());
         self.vis.to_tokens(tokens);
         self.static_.to_tokens(tokens);
@@ -454,7 +454,7 @@ impl ToTokens for item::Static {
     }
 }
 impl ToTokens for item::Const {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         tokens.append_all(self.attrs.outer());
         self.vis.to_tokens(tokens);
         self.const_.to_tokens(tokens);
@@ -467,7 +467,7 @@ impl ToTokens for item::Const {
     }
 }
 impl ToTokens for item::Fn {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         tokens.append_all(self.attrs.outer());
         self.vis.to_tokens(tokens);
         self.sig.to_tokens(tokens);
@@ -478,7 +478,7 @@ impl ToTokens for item::Fn {
     }
 }
 impl ToTokens for item::Mod {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         tokens.append_all(self.attrs.outer());
         self.vis.to_tokens(tokens);
         self.unsafe_.to_tokens(tokens);
@@ -495,7 +495,7 @@ impl ToTokens for item::Mod {
     }
 }
 impl ToTokens for item::Foreign {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         tokens.append_all(self.attrs.outer());
         self.unsafe_.to_tokens(tokens);
         self.abi.to_tokens(tokens);
@@ -506,7 +506,7 @@ impl ToTokens for item::Foreign {
     }
 }
 impl ToTokens for item::Type {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         xs.append_all(self.attrs.outer());
         self.vis.to_tokens(xs);
         self.type_.to_tokens(xs);
@@ -519,7 +519,7 @@ impl ToTokens for item::Type {
     }
 }
 impl ToTokens for item::Enum {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         xs.append_all(self.attrs.outer());
         self.vis.to_tokens(xs);
         self.enum_.to_tokens(xs);
@@ -532,7 +532,7 @@ impl ToTokens for item::Enum {
     }
 }
 impl ToTokens for item::Struct {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         xs.append_all(self.attrs.outer());
         self.vis.to_tokens(xs);
         self.struct_.to_tokens(xs);
@@ -556,7 +556,7 @@ impl ToTokens for item::Struct {
     }
 }
 impl ToTokens for item::Union {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         xs.append_all(self.attrs.outer());
         self.vis.to_tokens(xs);
         self.union_.to_tokens(xs);
@@ -567,7 +567,7 @@ impl ToTokens for item::Union {
     }
 }
 impl ToTokens for item::Trait {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         xs.append_all(self.attrs.outer());
         self.vis.to_tokens(xs);
         self.unsafe_.to_tokens(xs);
@@ -587,7 +587,7 @@ impl ToTokens for item::Trait {
     }
 }
 impl ToTokens for item::TraitAlias {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         xs.append_all(self.attrs.outer());
         self.vis.to_tokens(xs);
         self.trait_.to_tokens(xs);
@@ -600,7 +600,7 @@ impl ToTokens for item::TraitAlias {
     }
 }
 impl ToTokens for item::Impl {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         xs.append_all(self.attrs.outer());
         self.default_.to_tokens(xs);
         self.unsafe_.to_tokens(xs);
@@ -620,7 +620,7 @@ impl ToTokens for item::Impl {
     }
 }
 impl ToTokens for item::Mac {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         xs.append_all(self.attrs.outer());
         self.mac.path.to_tokens(xs);
         self.mac.bang.to_tokens(xs);
@@ -640,38 +640,38 @@ impl ToTokens for item::Mac {
     }
 }
 impl ToTokens for item::Use::Path {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         self.ident.to_tokens(xs);
         self.colon2.to_tokens(xs);
         self.tree.to_tokens(xs);
     }
 }
 impl ToTokens for item::Use::Name {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         self.ident.to_tokens(xs);
     }
 }
 impl ToTokens for item::Use::Rename {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         self.ident.to_tokens(xs);
         self.as_.to_tokens(xs);
         self.rename.to_tokens(xs);
     }
 }
 impl ToTokens for item::Use::Glob {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         self.star.to_tokens(xs);
     }
 }
 impl ToTokens for item::Use::Group {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         self.brace.surround(xs, |ys| {
             self.elems.to_tokens(ys);
         });
     }
 }
 impl ToTokens for item::Trait::Const {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         xs.append_all(self.attrs.outer());
         self.const_.to_tokens(xs);
         self.ident.to_tokens(xs);
@@ -685,7 +685,7 @@ impl ToTokens for item::Trait::Const {
     }
 }
 impl ToTokens for item::Trait::Fn {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         xs.append_all(self.attrs.outer());
         self.sig.to_tokens(xs);
         match &self.default {
@@ -702,7 +702,7 @@ impl ToTokens for item::Trait::Fn {
     }
 }
 impl ToTokens for item::Trait::Type {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         xs.append_all(self.attrs.outer());
         self.type_.to_tokens(xs);
         self.ident.to_tokens(xs);
@@ -720,14 +720,14 @@ impl ToTokens for item::Trait::Type {
     }
 }
 impl ToTokens for item::Trait::Mac {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         xs.append_all(self.attrs.outer());
         self.mac.to_tokens(xs);
         self.semi.to_tokens(xs);
     }
 }
 impl ToTokens for item::Impl::Const {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         xs.append_all(self.attrs.outer());
         self.vis.to_tokens(xs);
         self.default_.to_tokens(xs);
@@ -741,7 +741,7 @@ impl ToTokens for item::Impl::Const {
     }
 }
 impl ToTokens for item::Impl::Fn {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         xs.append_all(self.attrs.outer());
         self.vis.to_tokens(xs);
         self.default_.to_tokens(xs);
@@ -753,7 +753,7 @@ impl ToTokens for item::Impl::Fn {
     }
 }
 impl ToTokens for item::Impl::Type {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         xs.append_all(self.attrs.outer());
         self.vis.to_tokens(xs);
         self.default_.to_tokens(xs);
@@ -767,14 +767,14 @@ impl ToTokens for item::Impl::Type {
     }
 }
 impl ToTokens for item::Impl::Mac {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         xs.append_all(self.attrs.outer());
         self.mac.to_tokens(xs);
         self.semi.to_tokens(xs);
     }
 }
 impl ToTokens for item::Foreign::Fn {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         xs.append_all(self.attrs.outer());
         self.vis.to_tokens(xs);
         self.sig.to_tokens(xs);
@@ -782,7 +782,7 @@ impl ToTokens for item::Foreign::Fn {
     }
 }
 impl ToTokens for item::Foreign::Static {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         xs.append_all(self.attrs.outer());
         self.vis.to_tokens(xs);
         self.static_.to_tokens(xs);
@@ -794,7 +794,7 @@ impl ToTokens for item::Foreign::Static {
     }
 }
 impl ToTokens for item::Foreign::Type {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         xs.append_all(self.attrs.outer());
         self.vis.to_tokens(xs);
         self.type_.to_tokens(xs);
@@ -805,14 +805,14 @@ impl ToTokens for item::Foreign::Type {
     }
 }
 impl ToTokens for item::Foreign::Mac {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         xs.append_all(self.attrs.outer());
         self.mac.to_tokens(xs);
         self.semi.to_tokens(xs);
     }
 }
 impl ToTokens for item::Sig {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         self.constness.to_tokens(xs);
         self.async_.to_tokens(xs);
         self.unsafe_.to_tokens(xs);
@@ -834,7 +834,7 @@ impl ToTokens for item::Sig {
     }
 }
 impl ToTokens for item::Receiver {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         xs.append_all(self.attrs.outer());
         if let Some((ampersand, lifetime)) = &self.reference {
             ampersand.to_tokens(xs);
@@ -865,7 +865,7 @@ impl ToTokens for item::Receiver {
     }
 }
 impl ToTokens for item::Variadic {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         xs.append_all(self.attrs.outer());
         if let Some((pat, colon)) = &self.pat {
             pat.to_tokens(xs);
@@ -876,7 +876,7 @@ impl ToTokens for item::Variadic {
     }
 }
 impl ToTokens for StaticMut {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         match self {
             StaticMut::None => {},
             StaticMut::Mut(mut_token) => mut_token.to_tokens(xs),
@@ -885,14 +885,14 @@ impl ToTokens for StaticMut {
 }
 
 impl ToTokens for Block {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         self.brace.surround(xs, |ys| {
             ys.append_all(&self.stmts);
         });
     }
 }
 impl ToTokens for stmt::Stmt {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         match self {
             stmt::Stmt::stmt::Local(x) => x.to_tokens(xs),
             stmt::Stmt::Item(x) => x.to_tokens(xs),
@@ -905,7 +905,7 @@ impl ToTokens for stmt::Stmt {
     }
 }
 impl ToTokens for stmt::Local {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, xs);
         self.let_.to_tokens(xs);
         self.pat.to_tokens(xs);
@@ -921,7 +921,7 @@ impl ToTokens for stmt::Local {
     }
 }
 impl ToTokens for stmt::Mac {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         outer_attrs_to_tokens(&self.attrs, xs);
         self.mac.to_tokens(xs);
         self.semi.to_tokens(xs);
@@ -929,7 +929,7 @@ impl ToTokens for stmt::Mac {
 }
 
 impl ToTokens for data::Variant {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         xs.append_all(&self.attrs);
         self.ident.to_tokens(xs);
         self.fields.to_tokens(xs);
@@ -940,21 +940,21 @@ impl ToTokens for data::Variant {
     }
 }
 impl ToTokens for data::Named {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         self.brace.surround(xs, |ys| {
             self.named.to_tokens(ys);
         });
     }
 }
 impl ToTokens for data::Unnamed {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         self.paren.surround(xs, |ys| {
             self.unnamed.to_tokens(ys);
         });
     }
 }
 impl ToTokens for data::Field {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         xs.append_all(&self.attrs);
         self.vis.to_tokens(xs);
         if let Some(x) = &self.ident {
@@ -966,7 +966,7 @@ impl ToTokens for data::Field {
 }
 
 impl ToTokens for DeriveInput {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         for x in self.attrs.outer() {
             x.to_tokens(xs);
         }
@@ -1009,15 +1009,15 @@ impl ToTokens for DeriveInput {
 }
 
 impl ToTokens for File {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         xs.append_all(self.attrs.inner());
         xs.append_all(&self.items);
     }
 }
 
 impl ToTokens for Lifetime {
-    fn to_tokens(&self, xs: &mut TokenStream) {
-        let mut apostrophe = Punct::new('\'', Spacing::Joint);
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
+        let mut apostrophe = Punct::new('\'', pm2::Spacing::Joint);
         apostrophe.set_span(self.apostrophe);
         xs.append(apostrophe);
         self.ident.to_tokens(xs);
@@ -1025,17 +1025,17 @@ impl ToTokens for Lifetime {
 }
 
 impl tok::Delim {
-    pub fn surround(&self, xs: &mut TokenStream, inner: TokenStream) {
+    pub fn surround(&self, xs: &mut pm2::Stream, inner: pm2::Stream) {
         let (delim, span) = match self {
-            tok::Delim::Paren(x) => (Delimiter::Parenthesis, x.span),
-            tok::Delim::Brace(x) => (Delimiter::Brace, x.span),
-            tok::Delim::Bracket(x) => (Delimiter::Bracket, x.span),
+            tok::Delim::Paren(x) => (pm2::Delim::Parenthesis, x.span),
+            tok::Delim::Brace(x) => (pm2::Delim::Brace, x.span),
+            tok::Delim::Bracket(x) => (pm2::Delim::Bracket, x.span),
         };
         delim(delim, span.join(), xs, inner);
     }
 }
 impl ToTokens for mac::Mac {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         self.path.to_tokens(xs);
         self.bang.to_tokens(xs);
         self.delim.surround(xs, self.toks.clone());
@@ -1043,7 +1043,7 @@ impl ToTokens for mac::Mac {
 }
 
 impl ToTokens for BinOp {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         use BinOp::*;
         match self {
             Add(x) => x.to_tokens(xs),
@@ -1078,7 +1078,7 @@ impl ToTokens for BinOp {
     }
 }
 impl ToTokens for UnOp {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         match self {
             UnOp::Deref(x) => x.to_tokens(xs),
             UnOp::Not(x) => x.to_tokens(xs),
@@ -1088,7 +1088,7 @@ impl ToTokens for UnOp {
 }
 
 impl ToTokens for Visibility {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         match self {
             Visibility::Public(x) => x.to_tokens(xs),
             Visibility::Restricted(x) => x.to_tokens(xs),
@@ -1097,7 +1097,7 @@ impl ToTokens for Visibility {
     }
 }
 impl ToTokens for VisRestricted {
-    fn to_tokens(&self, xs: &mut TokenStream) {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
         self.pub_.to_tokens(xs);
         self.paren.surround(xs, |ys| {
             self.in_.to_tokens(ys);
@@ -1108,41 +1108,41 @@ impl ToTokens for VisRestricted {
 
 mod lit {
     use crate::lit::*;
-    use proc_macro2::TokenStream;
+    use proc_macro2::pm2::Stream;
     use quote::ToTokens;
 
     impl ToTokens for Str {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             self.repr.tok.to_tokens(xs);
         }
     }
     impl ToTokens for ByteStr {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             self.repr.tok.to_tokens(xs);
         }
     }
     impl ToTokens for Byte {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             self.repr.tok.to_tokens(xs);
         }
     }
     impl ToTokens for Char {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             self.repr.tok.to_tokens(xs);
         }
     }
     impl ToTokens for Int {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             self.repr.tok.to_tokens(xs);
         }
     }
     impl ToTokens for Float {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             self.repr.tok.to_tokens(xs);
         }
     }
     impl ToTokens for Bool {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             xs.append(self.token());
         }
     }
@@ -1150,11 +1150,11 @@ mod lit {
 
 mod pat {
     use crate::pat::*;
-    use proc_macro2::TokenStream;
+    use proc_macro2::pm2::Stream;
     use quote::ToTokens;
 
     impl ToTokens for Ident {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             xs.append_all(self.attrs.outer());
             self.ref_.to_tokens(xs);
             self.mut_.to_tokens(xs);
@@ -1166,14 +1166,14 @@ mod pat {
         }
     }
     impl ToTokens for Or {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             xs.append_all(self.attrs.outer());
             self.vert.to_tokens(xs);
             self.cases.to_tokens(xs);
         }
     }
     impl ToTokens for Paren {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             xs.append_all(self.attrs.outer());
             self.paren.surround(xs, |ys| {
                 self.pat.to_tokens(ys);
@@ -1181,7 +1181,7 @@ mod pat {
         }
     }
     impl ToTokens for Ref {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             xs.append_all(self.attrs.outer());
             self.and.to_tokens(xs);
             self.mut_.to_tokens(xs);
@@ -1189,13 +1189,13 @@ mod pat {
         }
     }
     impl ToTokens for Rest {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             xs.append_all(self.attrs.outer());
             self.dot2.to_tokens(xs);
         }
     }
     impl ToTokens for Slice {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             xs.append_all(self.attrs.outer());
             self.bracket.surround(xs, |ys| {
                 self.elems.to_tokens(ys);
@@ -1203,7 +1203,7 @@ mod pat {
         }
     }
     impl ToTokens for Struct {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             xs.append_all(self.attrs.outer());
             print_path(xs, &self.qself, &self.path);
             self.brace.surround(xs, |ys| {
@@ -1216,7 +1216,7 @@ mod pat {
         }
     }
     impl ToTokens for Tuple {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             xs.append_all(self.attrs.outer());
             self.paren.surround(xs, |ys| {
                 self.elems.to_tokens(ys);
@@ -1224,7 +1224,7 @@ mod pat {
         }
     }
     impl ToTokens for TupleStruct {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             xs.append_all(self.attrs.outer());
             print_path(xs, &self.qself, &self.path);
             self.paren.surround(xs, |ys| {
@@ -1233,7 +1233,7 @@ mod pat {
         }
     }
     impl ToTokens for Type {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             xs.append_all(self.attrs.outer());
             self.pat.to_tokens(xs);
             self.colon.to_tokens(xs);
@@ -1241,13 +1241,13 @@ mod pat {
         }
     }
     impl ToTokens for Wild {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             xs.append_all(self.attrs.outer());
             self.underscore.to_tokens(xs);
         }
     }
     impl ToTokens for Field {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             xs.append_all(self.attrs.outer());
             if let Some(x) = &self.colon {
                 self.member.to_tokens(xs);
@@ -1260,23 +1260,23 @@ mod pat {
 
 mod path {
     use crate::path::*;
-    use proc_macro2::TokenStream;
+    use proc_macro2::pm2::Stream;
     use quote::ToTokens;
 
     impl ToTokens for Path {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             self.colon.to_tokens(xs);
             self.segs.to_tokens(xs);
         }
     }
     impl ToTokens for Segment {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             self.ident.to_tokens(xs);
             self.args.to_tokens(xs);
         }
     }
     impl ToTokens for Args {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             match self {
                 Args::None => {},
                 Args::Angled(args) => {
@@ -1290,7 +1290,7 @@ mod path {
     }
     impl ToTokens for Arg {
         #[allow(clippy::match_same_arms)]
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             use Arg::*;
             match self {
                 Lifetime(x) => x.to_tokens(xs),
@@ -1309,7 +1309,7 @@ mod path {
         }
     }
     impl ToTokens for AngledArgs {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             self.colon2.to_tokens(xs);
             self.lt.to_tokens(xs);
             let mut trailing_or_empty = true;
@@ -1338,7 +1338,7 @@ mod path {
         }
     }
     impl ToTokens for AssocType {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             self.ident.to_tokens(xs);
             self.args.to_tokens(xs);
             self.eq.to_tokens(xs);
@@ -1346,7 +1346,7 @@ mod path {
         }
     }
     impl ToTokens for AssocConst {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             self.ident.to_tokens(xs);
             self.args.to_tokens(xs);
             self.eq.to_tokens(xs);
@@ -1354,7 +1354,7 @@ mod path {
         }
     }
     impl ToTokens for Constraint {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             self.ident.to_tokens(xs);
             self.args.to_tokens(xs);
             self.colon.to_tokens(xs);
@@ -1362,14 +1362,14 @@ mod path {
         }
     }
     impl ToTokens for ParenthesizedArgs {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             self.paren.surround(xs, |ys| {
                 self.args.to_tokens(ys);
             });
             self.ret.to_tokens(xs);
         }
     }
-    pub(crate) fn print_path(xs: &mut TokenStream, qself: &Option<QSelf>, path: &Path) {
+    pub(crate) fn print_path(xs: &mut pm2::Stream, qself: &Option<QSelf>, path: &Path) {
         let qself = match qself {
             Some(qself) => qself,
             None => {
@@ -1403,25 +1403,25 @@ mod path {
     }
 }
 
-pub fn punct(s: &str, spans: &[Span], xs: &mut TokenStream) {
+pub fn punct(s: &str, spans: &[pm2::Span], xs: &mut pm2::Stream) {
     assert_eq!(s.len(), spans.len());
     let mut chars = s.chars();
     let mut spans = spans.iter();
     let ch = chars.next_back().unwrap();
     let span = spans.next_back().unwrap();
     for (ch, span) in chars.zip(spans) {
-        let mut op = Punct::new(ch, Spacing::Joint);
+        let mut op = Punct::new(ch, pm2::Spacing::Joint);
         op.set_span(*span);
         xs.append(op);
     }
-    let mut op = Punct::new(ch, Spacing::Alone);
+    let mut op = Punct::new(ch, pm2::Spacing::Alone);
     op.set_span(*span);
     xs.append(op);
 }
-pub fn keyword(x: &str, s: Span, xs: &mut TokenStream) {
+pub fn keyword(x: &str, s: pm2::Span, xs: &mut pm2::Stream) {
     xs.append(Ident::new(x, s));
 }
-pub fn delim(d: Delimiter, s: Span, xs: &mut TokenStream, inner: TokenStream) {
+pub fn delim(d: pm2::Delim, s: pm2::Span, xs: &mut pm2::Stream, inner: pm2::Stream) {
     let mut g = Group::new(d, inner);
     g.set_span(s);
     xs.append(g);
@@ -1429,18 +1429,18 @@ pub fn delim(d: Delimiter, s: Span, xs: &mut TokenStream, inner: TokenStream) {
 
 mod ty {
     use crate::ty::*;
-    use proc_macro2::TokenStream;
+    use proc_macro2::pm2::Stream;
     use quote::ToTokens;
 
     impl ToTokens for Slice {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             self.bracket.surround(xs, |ys| {
                 self.elem.to_tokens(ys);
             });
         }
     }
     impl ToTokens for Array {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             self.bracket.surround(xs, |ys| {
                 self.elem.to_tokens(ys);
                 self.semi.to_tokens(ys);
@@ -1449,7 +1449,7 @@ mod ty {
         }
     }
     impl ToTokens for Ptr {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             self.star.to_tokens(xs);
             match &self.mut_ {
                 Some(x) => x.to_tokens(xs),
@@ -1461,7 +1461,7 @@ mod ty {
         }
     }
     impl ToTokens for Ref {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             self.and.to_tokens(xs);
             self.life.to_tokens(xs);
             self.mut_.to_tokens(xs);
@@ -1469,7 +1469,7 @@ mod ty {
         }
     }
     impl ToTokens for Fn {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             self.lifes.to_tokens(xs);
             self.unsafe_.to_tokens(xs);
             self.abi.to_tokens(xs);
@@ -1488,12 +1488,12 @@ mod ty {
         }
     }
     impl ToTokens for Never {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             self.bang.to_tokens(xs);
         }
     }
     impl ToTokens for Tuple {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             self.paren.surround(xs, |ys| {
                 self.elems.to_tokens(ys);
                 if self.elems.len() == 1 && !self.elems.trailing_punct() {
@@ -1503,48 +1503,48 @@ mod ty {
         }
     }
     impl ToTokens for Path {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             print_path(xs, &self.qself, &self.path);
         }
     }
     impl ToTokens for TraitObj {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             self.dyn_.to_tokens(xs);
             self.bounds.to_tokens(xs);
         }
     }
     impl ToTokens for Impl {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             self.impl_.to_tokens(xs);
             self.bounds.to_tokens(xs);
         }
     }
     impl ToTokens for Group {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             self.group.surround(xs, |ys| {
                 self.elem.to_tokens(ys);
             });
         }
     }
     impl ToTokens for Paren {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             self.paren.surround(xs, |ys| {
                 self.elem.to_tokens(ys);
             });
         }
     }
     impl ToTokens for Infer {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             self.underscore.to_tokens(xs);
         }
     }
     impl ToTokens for Mac {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             self.mac.to_tokens(xs);
         }
     }
     impl ToTokens for Ret {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             match self {
                 Ret::Type(arrow, ty) => {
                     arrow.to_tokens(xs);
@@ -1555,7 +1555,7 @@ mod ty {
         }
     }
     impl ToTokens for FnArg {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             xs.append_all(self.attrs.outer());
             if let Some((name, colon)) = &self.name {
                 name.to_tokens(xs);
@@ -1565,7 +1565,7 @@ mod ty {
         }
     }
     impl ToTokens for Variadic {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             xs.append_all(self.attrs.outer());
             if let Some((name, colon)) = &self.name {
                 name.to_tokens(xs);
@@ -1576,7 +1576,7 @@ mod ty {
         }
     }
     impl ToTokens for Abi {
-        fn to_tokens(&self, xs: &mut TokenStream) {
+        fn to_tokens(&self, xs: &mut pm2::Stream) {
             self.extern_.to_tokens(xs);
             self.name.to_tokens(xs);
         }
@@ -1588,7 +1588,7 @@ where
     T: ToTokens,
     P: ToTokens,
 {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         tokens.append_all(self.pairs());
     }
 }
@@ -1597,7 +1597,7 @@ where
     T: ToTokens,
     P: ToTokens,
 {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         match self {
             Pair::Punctuated(a, b) => {
                 a.to_tokens(tokens);
