@@ -143,10 +143,10 @@ pub mod meta {
 
     pub struct ParseNested<'a> {
         pub path: Path,
-        pub ins: ParseStream<'a>,
+        pub ins: parse::Stream<'a>,
     }
     impl<'a> ParseNested<'a> {
-        pub fn val(&self) -> Result<ParseStream<'a>> {
+        pub fn val(&self) -> Result<parse::Stream<'a>> {
             self.ins.parse::<Token![=]>()?;
             Ok(self.ins)
         }
@@ -163,7 +163,7 @@ pub mod meta {
     }
 
     pub fn parser(cb: impl FnMut(ParseNested) -> Result<()>) -> impl Parser<Output = ()> {
-        |x: ParseStream| {
+        |x: parse::Stream| {
             if x.is_empty() {
                 Ok(())
             } else {
@@ -171,7 +171,7 @@ pub mod meta {
             }
         }
     }
-    pub fn parse_nested(ins: ParseStream, mut cb: impl FnMut(ParseNested) -> Result<()>) -> Result<()> {
+    pub fn parse_nested(ins: parse::Stream, mut cb: impl FnMut(ParseNested) -> Result<()>) -> Result<()> {
         loop {
             let path = ins.call(parse_path)?;
             cb(ParseNested { path, ins })?;
@@ -184,7 +184,7 @@ pub mod meta {
             }
         }
     }
-    fn parse_path(x: ParseStream) -> Result<Path> {
+    fn parse_path(x: parse::Stream) -> Result<Path> {
         Ok(Path {
             colon: x.parse()?,
             segs: {
@@ -254,14 +254,14 @@ pub mod attr {
         pub fn parse_nested_meta(&self, x: impl FnMut(meta::ParseNested) -> Result<()>) -> Result<()> {
             self.parse_args_with(meta_parser(x))
         }
-        pub fn parse_outer(x: ParseStream) -> Result<Vec<Self>> {
+        pub fn parse_outer(x: parse::Stream) -> Result<Vec<Self>> {
             let mut y = Vec::new();
             while x.peek(Token![#]) {
                 y.push(x.call(parsing::single_parse_outer)?);
             }
             Ok(y)
         }
-        pub fn parse_inner(x: ParseStream) -> Result<Vec<Self>> {
+        pub fn parse_inner(x: parse::Stream) -> Result<Vec<Self>> {
             let mut y = Vec::new();
             parsing::parse_inner(x, &mut y)?;
             Ok(y)
@@ -368,7 +368,7 @@ mod cur {
             }
             None
         }
-        pub(crate) fn any_group(self) -> Option<(Cursor<'a>, Delimiter, DelimSpan, Cursor<'a>)> {
+        pub fn any_group(self) -> Option<(Cursor<'a>, Delimiter, DelimSpan, Cursor<'a>)> {
             if let Entry::Group(x, end) = self.entry() {
                 let delimiter = x.delimiter();
                 let span = x.delim_span();
@@ -379,7 +379,7 @@ mod cur {
             }
             None
         }
-        pub(crate) fn any_group_token(self) -> Option<(Group, Cursor<'a>)> {
+        pub fn any_group_token(self) -> Option<(Group, Cursor<'a>)> {
             if let Entry::Group(x, end) = self.entry() {
                 let end_of_group = unsafe { self.ptr.add(*end) };
                 let after_group = unsafe { Cursor::create(end_of_group, self.scope) };
@@ -454,7 +454,7 @@ mod cur {
                 End(_) => Span::call_site(),
             }
         }
-        pub(crate) fn prev_span(mut self) -> Span {
+        pub fn prev_span(mut self) -> Span {
             if buff_start(self) < self.ptr {
                 self.ptr = unsafe { self.ptr.offset(-1) };
                 if let Entry::End(_) = self.entry() {
@@ -477,7 +477,7 @@ mod cur {
             }
             self.span()
         }
-        pub(crate) fn skip(self) -> Option<Cursor<'a>> {
+        pub fn skip(self) -> Option<Cursor<'a>> {
             use Entry::*;
             let y = match self.entry() {
                 End(_) => return None,
@@ -695,69 +695,64 @@ mod ident {
     }
 }
 pub use ident::{Ident, Lifetime};
+pub mod ext {
+    use super::{
+        parse::{Peek, Result, Stream},
+        sealed::look,
+        tok::Custom,
+    };
+    use proc_macro2::Ident;
+    pub trait IdentExt: Sized + private::Sealed {
+        #[allow(non_upper_case_globals)]
+        const peek_any: private::PeekFn = private::PeekFn;
+        fn parse_any(x: Stream) -> Result<Self>;
+        fn unraw(&self) -> Ident;
+    }
+    impl IdentExt for Ident {
+        fn parse_any(x: Stream) -> Result<Self> {
+            x.step(|c| match c.ident() {
+                Some((ident, rest)) => Ok((ident, rest)),
+                None => Err(c.error("expected ident")),
+            })
+        }
+        fn unraw(&self) -> Ident {
+            let y = self.to_string();
+            if let Some(x) = y.strip_prefix("r#") {
+                Ident::new(x, self.span())
+            } else {
+                self.clone()
+            }
+        }
+    }
+    impl Peek for private::PeekFn {
+        type Token = private::IdentAny;
+    }
+    impl Custom for private::IdentAny {
+        fn peek(x: Cursor) -> bool {
+            x.ident().is_some()
+        }
+        fn display() -> &'static str {
+            "identifier"
+        }
+    }
+    impl look::Sealed for private::PeekFn {}
+    mod private {
+        use proc_macro2::Ident;
+        pub trait Sealed {}
+        impl Sealed for Ident {}
+        pub struct PeekFn;
+        pub struct IdentAny;
+        impl Copy for PeekFn {}
+        impl Clone for PeekFn {
+            fn clone(&self) -> Self {
+                *self
+            }
+        }
+    }
+}
+
 pub mod punct;
 use punct::Punctuated;
-
-pub struct Parens<'a> {
-    pub tok: tok::Paren,
-    pub gist: ParseBuffer<'a>,
-}
-pub fn parse_parens<'a>(x: &ParseBuffer<'a>) -> Result<Parens<'a>> {
-    parse_delimited(x, Delimiter::Parenthesis).map(|(span, gist)| Parens {
-        tok: tok::Paren(span),
-        gist,
-    })
-}
-pub struct Braces<'a> {
-    pub token: tok::Brace,
-    pub gist: ParseBuffer<'a>,
-}
-pub fn parse_braces<'a>(x: &ParseBuffer<'a>) -> Result<Braces<'a>> {
-    parse_delimited(x, Delimiter::Brace).map(|(span, gist)| Braces {
-        token: tok::Brace(span),
-        gist,
-    })
-}
-pub struct Brackets<'a> {
-    pub token: tok::Bracket,
-    pub gist: ParseBuffer<'a>,
-}
-pub fn parse_brackets<'a>(x: &ParseBuffer<'a>) -> Result<Brackets<'a>> {
-    parse_delimited(x, Delimiter::Bracket).map(|(span, gist)| Brackets {
-        token: tok::Bracket(span),
-        gist,
-    })
-}
-pub struct Group<'a> {
-    pub token: tok::Group,
-    pub gist: ParseBuffer<'a>,
-}
-pub fn parse_group<'a>(x: &ParseBuffer<'a>) -> Result<Group<'a>> {
-    parse_delimited(x, Delimiter::None).map(|(span, gist)| Group {
-        token: tok::Group(span.join()),
-        gist,
-    })
-}
-fn parse_delimited<'a>(x: &ParseBuffer<'a>, d: Delimiter) -> Result<(DelimSpan, ParseBuffer<'a>)> {
-    x.step(|c| {
-        if let Some((gist, span, rest)) = c.group(d) {
-            let scope = close_span_of_group(*c);
-            let nested = parse::advance_step_cursor(c, gist);
-            let unexpected = parse::get_unexpected(x);
-            let gist = parse::new_parse_buffer(scope, nested, unexpected);
-            Ok(((span, gist), rest))
-        } else {
-            use Delimiter::*;
-            let y = match d {
-                Parenthesis => "expected parentheses",
-                Brace => "expected braces",
-                Bracket => "expected brackets",
-                None => "expected group",
-            };
-            Err(c.error(y))
-        }
-    })
-}
 
 pub mod gen {
     pub mod bound {
@@ -1759,62 +1754,6 @@ mod err {
 }
 pub use err::{Err, Result};
 
-pub mod ext {
-    use super::{
-        parse::{ParseStream, Peek, Result},
-        sealed::look,
-        tok::Custom,
-    };
-    use proc_macro2::Ident;
-    pub trait IdentExt: Sized + private::Sealed {
-        fn parse_any(input: ParseStream) -> Result<Self>;
-        #[allow(non_upper_case_globals)]
-        const peek_any: private::PeekFn = private::PeekFn;
-        fn unraw(&self) -> Ident;
-    }
-    impl IdentExt for Ident {
-        fn parse_any(input: ParseStream) -> Result<Self> {
-            input.step(|cursor| match cursor.ident() {
-                Some((ident, rest)) => Ok((ident, rest)),
-                None => Err(cursor.error("expected ident")),
-            })
-        }
-        fn unraw(&self) -> Ident {
-            let string = self.to_string();
-            if let Some(string) = string.strip_prefix("r#") {
-                Ident::new(string, self.span())
-            } else {
-                self.clone()
-            }
-        }
-    }
-    impl Peek for private::PeekFn {
-        type Token = private::IdentAny;
-    }
-    impl Custom for private::IdentAny {
-        fn peek(cursor: Cursor) -> bool {
-            cursor.ident().is_some()
-        }
-        fn display() -> &'static str {
-            "identifier"
-        }
-    }
-    impl look::Sealed for private::PeekFn {}
-    mod private {
-        use proc_macro2::Ident;
-        pub trait Sealed {}
-        impl Sealed for Ident {}
-        pub struct PeekFn;
-        pub struct IdentAny;
-        impl Copy for PeekFn {}
-        impl Clone for PeekFn {
-            fn clone(&self) -> Self {
-                *self
-            }
-        }
-    }
-}
-
 mod look {
     use super::{
         err::{self, Err},
@@ -1899,7 +1838,6 @@ pub mod parse {
     use super::{
         err::{self, Err, Result},
         look::{self, Lookahead1, Peek},
-        proc_macro,
         punct::Punctuated,
         tok::Tok,
     };
@@ -1915,119 +1853,124 @@ pub mod parse {
         str::FromStr,
     };
 
-    pub mod discouraged {
-        use proc_macro2::extra::DelimSpan;
-        pub trait Speculative {
-            fn advance_to(&self, fork: &Self);
-        }
-        impl<'a> Speculative for ParseBuffer<'a> {
-            fn advance_to(&self, fork: &Self) {
-                if !crate::same_scope(self.cursor(), fork.cursor()) {
-                    panic!("Fork was not derived from the advancing parse stream");
-                }
-                let (self_unexp, self_sp) = inner_unexpected(self);
-                let (fork_unexp, fork_sp) = inner_unexpected(fork);
-                if !Rc::ptr_eq(&self_unexp, &fork_unexp) {
-                    match (fork_sp, self_sp) {
-                        (Some(span), None) => {
-                            self_unexp.set(Unexpected::Some(span));
-                        },
-                        (None, None) => {
-                            fork_unexp.set(Unexpected::Chain(self_unexp));
-                            fork.unexpected.set(Some(Rc::new(Cell::new(Unexpected::None))));
-                        },
-                        (_, Some(_)) => {},
-                    }
-                }
-                self.cell
-                    .set(unsafe { mem::transmute::<Cursor, Cursor<'static>>(fork.cursor()) });
-            }
-        }
-        pub trait AnyDelimiter {
-            fn parse_any_delimiter(&self) -> Result<(Delimiter, DelimSpan, ParseBuffer)>;
-        }
-        impl<'a> AnyDelimiter for ParseBuffer<'a> {
-            fn parse_any_delimiter(&self) -> Result<(Delimiter, DelimSpan, ParseBuffer)> {
-                self.step(|cursor| {
-                    if let Some((content, delimiter, span, rest)) = cursor.any_group() {
-                        let scope = crate::close_span_of_group(*cursor);
-                        let nested = crate::parse::advance_step_cursor(cursor, content);
-                        let unexpected = crate::parse::get_unexpected(self);
-                        let content = crate::parse::new_parse_buffer(scope, nested, unexpected);
-                        Ok(((delimiter, span, content), rest))
-                    } else {
-                        Err(cursor.error("expected any delimiter"))
-                    }
-                })
-            }
-        }
-    }
-
-    pub trait Parse: Sized {
-        fn parse(input: ParseStream) -> Result<Self>;
-    }
-    pub type ParseStream<'a> = &'a ParseBuffer<'a>;
-    pub struct ParseBuffer<'a> {
+    pub struct Buffer<'a> {
         scope: Span,
         cell: Cell<Cursor<'static>>,
         marker: PhantomData<Cursor<'a>>,
         unexpected: Cell<Option<Rc<Cell<Unexpected>>>>,
     }
-    impl<'a> Drop for ParseBuffer<'a> {
+    impl<'a> Buffer<'a> {
+        pub fn parse<T: Parse>(&self) -> Result<T> {
+            T::parse(self)
+        }
+        pub fn call<T>(&self, x: fn(Stream) -> Result<T>) -> Result<T> {
+            x(self)
+        }
+        pub fn peek<T: Peek>(&self, x: T) -> bool {
+            let _ = x;
+            T::Token::peek(self.cursor())
+        }
+        pub fn peek2<T: Peek>(&self, x: T) -> bool {
+            fn peek2(x: &Buffer, f: fn(Cursor) -> bool) -> bool {
+                if let Some(x) = x.cursor().group(Delimiter::None) {
+                    if x.0.skip().map_or(false, f) {
+                        return true;
+                    }
+                }
+                x.cursor().skip().map_or(false, f)
+            }
+            let _ = x;
+            peek2(self, T::Token::peek)
+        }
+        pub fn peek3<T: Peek>(&self, x: T) -> bool {
+            fn peek3(x: &Buffer, f: fn(Cursor) -> bool) -> bool {
+                if let Some(x) = x.cursor().group(Delimiter::None) {
+                    if x.0.skip().and_then(Cursor::skip).map_or(false, f) {
+                        return true;
+                    }
+                }
+                x.cursor().skip().and_then(Cursor::skip).map_or(false, f)
+            }
+            let _ = x;
+            peek3(self, T::Token::peek)
+        }
+        pub fn parse_terminated<T, P>(&self, f: fn(Stream) -> Result<T>, sep: P) -> Result<Punctuated<T, P::Token>>
+        where
+            P: Peek,
+            P::Token: Parse,
+        {
+            let _ = sep;
+            Punctuated::parse_terminated_with(self, f)
+        }
+        pub fn is_empty(&self) -> bool {
+            self.cursor().eof()
+        }
+        pub fn lookahead1(&self) -> Lookahead1<'a> {
+            look::new(self.scope, self.cursor())
+        }
+        pub fn fork(&self) -> Self {
+            Buffer {
+                scope: self.scope,
+                cell: self.cell.clone(),
+                marker: PhantomData,
+                unexpected: Cell::new(Some(Rc::new(Cell::new(Unexpected::None)))),
+            }
+        }
+        pub fn error<T: Display>(&self, x: T) -> Err {
+            err::new_at(self.scope, self.cursor(), x)
+        }
+        pub fn step<F, R>(&self, f: F) -> Result<R>
+        where
+            F: for<'c> FnOnce(Step<'c, 'a>) -> Result<(R, Cursor<'c>)>,
+        {
+            let (y, rest) = f(Step {
+                scope: self.scope,
+                cursor: self.cell.get(),
+                marker: PhantomData,
+            })?;
+            self.cell.set(rest);
+            Ok(y)
+        }
+        pub fn span(&self) -> Span {
+            let y = self.cursor();
+            if y.eof() {
+                self.scope
+            } else {
+                super::open_span_of_group(y)
+            }
+        }
+        pub fn cursor(&self) -> Cursor<'a> {
+            self.cell.get()
+        }
+        fn check_unexpected(&self) -> Result<()> {
+            match inner_unexpected(self).1 {
+                Some(x) => Err(Err::new(x, "unexpected token")),
+                None => Ok(()),
+            }
+        }
+    }
+    impl<'a> Drop for Buffer<'a> {
         fn drop(&mut self) {
-            if let Some(unexpected_span) = span_of_unexpected_ignoring_nones(self.cursor()) {
-                let (inner, old_span) = inner_unexpected(self);
-                if old_span.is_none() {
-                    inner.set(Unexpected::Some(unexpected_span));
+            if let Some(x) = span_of_unexpected_ignoring_nones(self.cursor()) {
+                let (inner, old) = inner_unexpected(self);
+                if old.is_none() {
+                    inner.set(Unexpected::Some(x));
                 }
             }
         }
     }
-    impl<'a> Display for ParseBuffer<'a> {
+    impl<'a> Display for Buffer<'a> {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             Display::fmt(&self.cursor().token_stream(), f)
         }
     }
-    impl<'a> Debug for ParseBuffer<'a> {
+    impl<'a> Debug for Buffer<'a> {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             Debug::fmt(&self.cursor().token_stream(), f)
         }
     }
-    pub struct StepCursor<'c, 'a> {
-        scope: Span,
-        cursor: Cursor<'c>,
-        marker: PhantomData<fn(Cursor<'c>) -> Cursor<'a>>,
-    }
-    impl<'c, 'a> Deref for StepCursor<'c, 'a> {
-        type Target = Cursor<'c>;
-        fn deref(&self) -> &Self::Target {
-            &self.cursor
-        }
-    }
-    impl<'c, 'a> Copy for StepCursor<'c, 'a> {}
-    impl<'c, 'a> Clone for StepCursor<'c, 'a> {
-        fn clone(&self) -> Self {
-            *self
-        }
-    }
-    impl<'c, 'a> StepCursor<'c, 'a> {
-        pub fn error<T: Display>(self, message: T) -> Err {
-            err::new_at(self.scope, self.cursor, message)
-        }
-    }
-    pub(crate) fn advance_step_cursor<'c, 'a>(proof: StepCursor<'c, 'a>, to: Cursor<'c>) -> Cursor<'a> {
-        let _ = proof;
-        unsafe { mem::transmute::<Cursor<'c>, Cursor<'a>>(to) }
-    }
-    pub(crate) fn new_parse_buffer(scope: Span, cursor: Cursor, unexpected: Rc<Cell<Unexpected>>) -> ParseBuffer {
-        ParseBuffer {
-            scope,
-            cell: Cell::new(unsafe { mem::transmute::<Cursor, Cursor<'static>>(cursor) }),
-            marker: PhantomData,
-            unexpected: Cell::new(Some(unexpected)),
-        }
-    }
-    pub(crate) enum Unexpected {
+
+    pub enum Unexpected {
         None,
         Some(Span),
         Chain(Rc<Cell<Unexpected>>),
@@ -2039,204 +1982,99 @@ pub mod parse {
     }
     impl Clone for Unexpected {
         fn clone(&self) -> Self {
+            use Unexpected::*;
             match self {
-                Unexpected::None => Unexpected::None,
-                Unexpected::Some(span) => Unexpected::Some(*span),
-                Unexpected::Chain(next) => Unexpected::Chain(next.clone()),
-            }
-        }
-    }
-    fn cell_clone<T: Default + Clone>(cell: &Cell<T>) -> T {
-        let prev = cell.take();
-        let ret = prev.clone();
-        cell.set(prev);
-        ret
-    }
-    fn inner_unexpected(buffer: &ParseBuffer) -> (Rc<Cell<Unexpected>>, Option<Span>) {
-        let mut unexpected = get_unexpected(buffer);
-        loop {
-            match cell_clone(&unexpected) {
-                Unexpected::None => return (unexpected, None),
-                Unexpected::Some(span) => return (unexpected, Some(span)),
-                Unexpected::Chain(next) => unexpected = next,
-            }
-        }
-    }
-    pub(crate) fn get_unexpected(buffer: &ParseBuffer) -> Rc<Cell<Unexpected>> {
-        cell_clone(&buffer.unexpected).unwrap()
-    }
-    fn span_of_unexpected_ignoring_nones(mut cursor: Cursor) -> Option<Span> {
-        if cursor.eof() {
-            return None;
-        }
-        while let Some((inner, _span, rest)) = cursor.group(Delimiter::None) {
-            if let Some(unexpected) = span_of_unexpected_ignoring_nones(inner) {
-                return Some(unexpected);
-            }
-            cursor = rest;
-        }
-        if cursor.eof() {
-            None
-        } else {
-            Some(cursor.span())
-        }
-    }
-    impl<'a> ParseBuffer<'a> {
-        pub fn parse<T: Parse>(&self) -> Result<T> {
-            T::parse(self)
-        }
-        pub fn call<T>(&self, function: fn(ParseStream) -> Result<T>) -> Result<T> {
-            function(self)
-        }
-        pub fn peek<T: Peek>(&self, token: T) -> bool {
-            let _ = token;
-            T::Token::peek(self.cursor())
-        }
-        pub fn peek2<T: Peek>(&self, token: T) -> bool {
-            fn peek2(buffer: &ParseBuffer, peek: fn(Cursor) -> bool) -> bool {
-                if let Some(group) = buffer.cursor().group(Delimiter::None) {
-                    if group.0.skip().map_or(false, peek) {
-                        return true;
-                    }
-                }
-                buffer.cursor().skip().map_or(false, peek)
-            }
-            let _ = token;
-            peek2(self, T::Token::peek)
-        }
-        pub fn peek3<T: Peek>(&self, token: T) -> bool {
-            fn peek3(buffer: &ParseBuffer, peek: fn(Cursor) -> bool) -> bool {
-                if let Some(group) = buffer.cursor().group(Delimiter::None) {
-                    if group.0.skip().and_then(Cursor::skip).map_or(false, peek) {
-                        return true;
-                    }
-                }
-                buffer.cursor().skip().and_then(Cursor::skip).map_or(false, peek)
-            }
-            let _ = token;
-            peek3(self, T::Token::peek)
-        }
-        pub fn parse_terminated<T, P>(
-            &self,
-            parser: fn(ParseStream) -> Result<T>,
-            separator: P,
-        ) -> Result<Punctuated<T, P::Token>>
-        where
-            P: Peek,
-            P::Token: Parse,
-        {
-            let _ = separator;
-            Punctuated::parse_terminated_with(self, parser)
-        }
-        pub fn is_empty(&self) -> bool {
-            self.cursor().eof()
-        }
-        pub fn lookahead1(&self) -> Lookahead1<'a> {
-            look::new(self.scope, self.cursor())
-        }
-        pub fn fork(&self) -> Self {
-            ParseBuffer {
-                scope: self.scope,
-                cell: self.cell.clone(),
-                marker: PhantomData,
-                unexpected: Cell::new(Some(Rc::new(Cell::new(Unexpected::None)))),
-            }
-        }
-        pub fn error<T: Display>(&self, message: T) -> Err {
-            err::new_at(self.scope, self.cursor(), message)
-        }
-        pub fn step<F, R>(&self, function: F) -> Result<R>
-        where
-            F: for<'c> FnOnce(StepCursor<'c, 'a>) -> Result<(R, Cursor<'c>)>,
-        {
-            let (node, rest) = function(StepCursor {
-                scope: self.scope,
-                cursor: self.cell.get(),
-                marker: PhantomData,
-            })?;
-            self.cell.set(rest);
-            Ok(node)
-        }
-        pub fn span(&self) -> Span {
-            let cursor = self.cursor();
-            if cursor.eof() {
-                self.scope
-            } else {
-                super::open_span_of_group(cursor)
-            }
-        }
-        pub fn cursor(&self) -> Cursor<'a> {
-            self.cell.get()
-        }
-        fn check_unexpected(&self) -> Result<()> {
-            match inner_unexpected(self).1 {
-                Some(span) => Err(Err::new(span, "unexpected token")),
-                None => Ok(()),
+                None => None,
+                Some(x) => Some(*x),
+                Chain(x) => Chain(x.clone()),
             }
         }
     }
 
+    pub struct Step<'c, 'a> {
+        scope: Span,
+        cursor: Cursor<'c>,
+        marker: PhantomData<fn(Cursor<'c>) -> Cursor<'a>>,
+    }
+    impl<'c, 'a> Deref for Step<'c, 'a> {
+        type Target = Cursor<'c>;
+        fn deref(&self) -> &Self::Target {
+            &self.cursor
+        }
+    }
+    impl<'c, 'a> Copy for Step<'c, 'a> {}
+    impl<'c, 'a> Clone for Step<'c, 'a> {
+        fn clone(&self) -> Self {
+            *self
+        }
+    }
+    impl<'c, 'a> Step<'c, 'a> {
+        pub fn error<T: Display>(self, x: T) -> Err {
+            err::new_at(self.scope, self.cursor, x)
+        }
+    }
+
+    pub type Stream<'a> = &'a Buffer<'a>;
+
+    pub trait Parse: Sized {
+        fn parse(x: Stream) -> Result<Self>;
+    }
     impl<T: Parse> Parse for Box<T> {
-        fn parse(input: ParseStream) -> Result<Self> {
-            input.parse().map(Box::new)
+        fn parse(x: Stream) -> Result<Self> {
+            x.parse().map(Box::new)
         }
     }
-
     impl<T: Parse + Tok> Parse for Option<T> {
-        fn parse(input: ParseStream) -> Result<Self> {
-            if T::peek(input.cursor()) {
-                Ok(Some(input.parse()?))
+        fn parse(x: Stream) -> Result<Self> {
+            if T::peek(x.cursor()) {
+                Ok(Some(x.parse()?))
             } else {
                 Ok(None)
             }
         }
     }
-
     impl Parse for TokenStream {
-        fn parse(input: ParseStream) -> Result<Self> {
-            input.step(|cursor| Ok((cursor.token_stream(), Cursor::empty())))
+        fn parse(x: Stream) -> Result<Self> {
+            x.step(|x| Ok((x.token_stream(), Cursor::empty())))
         }
     }
-
     impl Parse for TokenTree {
-        fn parse(input: ParseStream) -> Result<Self> {
-            input.step(|cursor| match cursor.token_tree() {
+        fn parse(x: Stream) -> Result<Self> {
+            x.step(|x| match x.token_tree() {
                 Some((tt, rest)) => Ok((tt, rest)),
-                None => Err(cursor.error("expected token tree")),
+                None => Err(x.error("expected token tree")),
             })
         }
     }
-
     impl Parse for Group {
-        fn parse(input: ParseStream) -> Result<Self> {
-            input.step(|cursor| {
-                if let Some((group, rest)) = cursor.any_group_token() {
-                    if group.delimiter() != Delimiter::None {
-                        return Ok((group, rest));
+        fn parse(x: Stream) -> Result<Self> {
+            x.step(|x| {
+                if let Some((y, rest)) = x.any_group_token() {
+                    if y.delimiter() != Delimiter::None {
+                        return Ok((y, rest));
                     }
                 }
-                Err(cursor.error("expected group token"))
+                Err(x.error("expected group token"))
             })
         }
     }
-
     impl Parse for Punct {
-        fn parse(input: ParseStream) -> Result<Self> {
-            input.step(|cursor| match cursor.punct() {
-                Some((punct, rest)) => Ok((punct, rest)),
-                None => Err(cursor.error("expected punctuation token")),
+        fn parse(x: Stream) -> Result<Self> {
+            x.step(|x| match x.punct() {
+                Some((y, rest)) => Ok((y, rest)),
+                None => Err(x.error("expected punctuation token")),
+            })
+        }
+    }
+    impl Parse for Literal {
+        fn parse(x: Stream) -> Result<Self> {
+            x.step(|x| match x.literal() {
+                Some((y, rest)) => Ok((y, rest)),
+                None => Err(x.error("expected literal token")),
             })
         }
     }
 
-    impl Parse for Literal {
-        fn parse(input: ParseStream) -> Result<Self> {
-            input.step(|cursor| match cursor.literal() {
-                Some((literal, rest)) => Ok((literal, rest)),
-                None => Err(cursor.error("expected literal token")),
-            })
-        }
-    }
     pub trait Parser: Sized {
         type Output;
         fn parse2(self, tokens: TokenStream) -> Result<Self::Output>;
@@ -2251,15 +2089,9 @@ pub mod parse {
             self.parse2(tokens)
         }
     }
-    fn tokens_to_parse_buffer(tokens: &cur::Buffer) -> ParseBuffer {
-        let scope = Span::call_site();
-        let cursor = tokens.begin();
-        let unexpected = Rc::new(Cell::new(Unexpected::None));
-        new_parse_buffer(scope, cursor, unexpected)
-    }
     impl<F, T> Parser for F
     where
-        F: FnOnce(ParseStream) -> Result<T>,
+        F: FnOnce(Stream) -> Result<T>,
     {
         type Output = T;
         fn parse2(self, tokens: TokenStream) -> Result<T> {
@@ -2288,12 +2120,70 @@ pub mod parse {
         }
     }
 
-    pub(crate) fn parse_scoped<F: Parser>(f: F, scope: Span, tokens: TokenStream) -> Result<F::Output> {
-        f.__parse_scoped(scope, tokens)
+    pub fn advance_step_cursor<'c, 'a>(proof: Step<'c, 'a>, to: Cursor<'c>) -> Cursor<'a> {
+        let _ = proof;
+        unsafe { mem::transmute::<Cursor<'c>, Cursor<'a>>(to) }
     }
+    pub fn new_parse_buffer(scope: Span, cursor: Cursor, unexpected: Rc<Cell<Unexpected>>) -> Buffer {
+        Buffer {
+            scope,
+            cell: Cell::new(unsafe { mem::transmute::<Cursor, Cursor<'static>>(cursor) }),
+            marker: PhantomData,
+            unexpected: Cell::new(Some(unexpected)),
+        }
+    }
+
+    fn cell_clone<T: Default + Clone>(x: &Cell<T>) -> T {
+        let prev = x.take();
+        let y = prev.clone();
+        x.set(prev);
+        y
+    }
+    fn inner_unexpected(x: &Buffer) -> (Rc<Cell<Unexpected>>, Option<Span>) {
+        let mut y = get_unexpected(x);
+        loop {
+            use Unexpected::*;
+            match cell_clone(&y) {
+                None => return (y, None),
+                Some(x) => return (y, Some(x)),
+                Chain(x) => y = x,
+            }
+        }
+    }
+    pub fn get_unexpected(x: &Buffer) -> Rc<Cell<Unexpected>> {
+        cell_clone(&x.unexpected).unwrap()
+    }
+    fn span_of_unexpected_ignoring_nones(mut x: Cursor) -> Option<Span> {
+        if x.eof() {
+            return None;
+        }
+        while let Some((inner, _span, rest)) = x.group(Delimiter::None) {
+            if let Some(x) = span_of_unexpected_ignoring_nones(inner) {
+                return Some(x);
+            }
+            x = rest;
+        }
+        if x.eof() {
+            None
+        } else {
+            Some(x.span())
+        }
+    }
+
+    fn tokens_to_parse_buffer(x: &cur::Buffer) -> Buffer {
+        let scope = Span::call_site();
+        let cursor = x.begin();
+        let unexpected = Rc::new(Cell::new(Unexpected::None));
+        new_parse_buffer(scope, cursor, unexpected)
+    }
+
+    pub fn parse_scoped<F: Parser>(f: F, s: Span, xs: TokenStream) -> Result<F::Output> {
+        f.__parse_scoped(s, xs)
+    }
+
     pub struct Nothing;
     impl Parse for Nothing {
-        fn parse(_input: ParseStream) -> Result<Self> {
+        fn parse(_: Stream) -> Result<Self> {
             Ok(Nothing)
         }
     }
@@ -2304,25 +2194,134 @@ pub mod parse {
     }
     impl Eq for Nothing {}
     impl PartialEq for Nothing {
-        fn eq(&self, _other: &Self) -> bool {
+        fn eq(&self, _: &Self) -> bool {
             true
         }
     }
     impl Hash for Nothing {
-        fn hash<H: Hasher>(&self, _state: &mut H) {}
+        fn hash<H: Hasher>(&self, _: &mut H) {}
+    }
+
+    pub mod discouraged {
+        use proc_macro2::extra::DelimSpan;
+        pub trait Speculative {
+            fn advance_to(&self, fork: &Self);
+        }
+        impl<'a> Speculative for Buffer<'a> {
+            fn advance_to(&self, fork: &Self) {
+                if !crate::same_scope(self.cursor(), fork.cursor()) {
+                    panic!("Fork was not derived from the advancing parse stream");
+                }
+                let (self_unexp, self_sp) = inner_unexpected(self);
+                let (fork_unexp, fork_sp) = inner_unexpected(fork);
+                if !Rc::ptr_eq(&self_unexp, &fork_unexp) {
+                    match (fork_sp, self_sp) {
+                        (Some(x), None) => {
+                            self_unexp.set(Unexpected::Some(x));
+                        },
+                        (None, None) => {
+                            fork_unexp.set(Unexpected::Chain(self_unexp));
+                            fork.unexpected.set(Some(Rc::new(Cell::new(Unexpected::None))));
+                        },
+                        (_, Some(_)) => {},
+                    }
+                }
+                self.cell
+                    .set(unsafe { mem::transmute::<Cursor, Cursor<'static>>(fork.cursor()) });
+            }
+        }
+        pub trait AnyDelim {
+            fn parse_any_delim(&self) -> Result<(Delimiter, DelimSpan, Buffer)>;
+        }
+        impl<'a> AnyDelim for Buffer<'a> {
+            fn parse_any_delim(&self) -> Result<(Delimiter, DelimSpan, Buffer)> {
+                self.step(|cursor| {
+                    if let Some((content, delimiter, span, rest)) = cursor.any_group() {
+                        let scope = crate::close_span_of_group(*cursor);
+                        let nested = advance_step_cursor(cursor, content);
+                        let unexpected = get_unexpected(self);
+                        let content = new_parse_buffer(scope, nested, unexpected);
+                        Ok(((delimiter, span, content), rest))
+                    } else {
+                        Err(cursor.error("expected any delimiter"))
+                    }
+                })
+            }
+        }
     }
 }
 
+pub struct Parens<'a> {
+    pub tok: tok::Paren,
+    pub buf: parse::Buffer<'a>,
+}
+pub fn parse_parens<'a>(x: &parse::Buffer<'a>) -> Result<Parens<'a>> {
+    parse_delimited(x, Delimiter::Parenthesis).map(|(span, buf)| Parens {
+        tok: tok::Paren(span),
+        buf,
+    })
+}
+pub struct Braces<'a> {
+    pub token: tok::Brace,
+    pub buf: parse::Buffer<'a>,
+}
+pub fn parse_braces<'a>(x: &parse::Buffer<'a>) -> Result<Braces<'a>> {
+    parse_delimited(x, Delimiter::Brace).map(|(span, buf)| Braces {
+        token: tok::Brace(span),
+        buf,
+    })
+}
+pub struct Brackets<'a> {
+    pub token: tok::Bracket,
+    pub buf: parse::Buffer<'a>,
+}
+pub fn parse_brackets<'a>(x: &parse::Buffer<'a>) -> Result<Brackets<'a>> {
+    parse_delimited(x, Delimiter::Bracket).map(|(span, buf)| Brackets {
+        token: tok::Bracket(span),
+        buf,
+    })
+}
+pub struct Group<'a> {
+    pub token: tok::Group,
+    pub buf: parse::Buffer<'a>,
+}
+pub fn parse_group<'a>(x: &parse::Buffer<'a>) -> Result<Group<'a>> {
+    parse_delimited(x, Delimiter::None).map(|(span, buf)| Group {
+        token: tok::Group(span.join()),
+        buf,
+    })
+}
+fn parse_delimited<'a>(x: &parse::Buffer<'a>, d: Delimiter) -> Result<(DelimSpan, parse::Buffer<'a>)> {
+    x.step(|c| {
+        if let Some((gist, span, rest)) = c.group(d) {
+            let scope = close_span_of_group(*c);
+            let nested = parse::advance_step_cursor(c, gist);
+            let unexpected = parse::get_unexpected(x);
+            let gist = parse::new_parse_buffer(scope, nested, unexpected);
+            Ok(((span, gist), rest))
+        } else {
+            use Delimiter::*;
+            let y = match d {
+                Parenthesis => "expected parentheses",
+                Brace => "expected braces",
+                Bracket => "expected brackets",
+                None => "expected group",
+            };
+            Err(c.error(y))
+        }
+    })
+}
+
 pub trait ParseQuote: Sized {
-    fn parse(x: ParseStream) -> Result<Self>;
+    fn parse(x: parse::Stream) -> Result<Self>;
 }
 impl<T: Parse> ParseQuote for T {
-    fn parse(x: ParseStream) -> Result<Self> {
+    fn parse(x: parse::Stream) -> Result<Self> {
         <T as Parse>::parse(x)
     }
 }
 impl ParseQuote for attr::Attr {
-    fn parse(x: ParseStream) -> Result<Self> {
+    fn parse(x: parse::Stream) -> Result<Self> {
         if x.peek(Token![#]) && x.peek2(Token![!]) {
             parsing::single_parse_inner(x)
         } else {
@@ -2331,22 +2330,22 @@ impl ParseQuote for attr::Attr {
     }
 }
 impl ParseQuote for pat::Pat {
-    fn parse(x: ParseStream) -> Result<Self> {
+    fn parse(x: parse::Stream) -> Result<Self> {
         pat::Pat::parse_multi_with_leading_vert(x)
     }
 }
 impl ParseQuote for Box<pat::Pat> {
-    fn parse(x: ParseStream) -> Result<Self> {
+    fn parse(x: parse::Stream) -> Result<Self> {
         <pat::Pat as ParseQuote>::parse(x).map(Box::new)
     }
 }
 impl<T: Parse, P: Parse> ParseQuote for Punctuated<T, P> {
-    fn parse(x: ParseStream) -> Result<Self> {
+    fn parse(x: parse::Stream) -> Result<Self> {
         Self::parse_terminated(x)
     }
 }
 impl ParseQuote for Vec<Stmt> {
-    fn parse(x: ParseStream) -> Result<Self> {
+    fn parse(x: parse::Stream) -> Result<Self> {
         Block::parse_within(x)
     }
 }
@@ -2587,7 +2586,7 @@ impl<'a> Hash for TokenStreamHelper<'a> {
     }
 }
 
-pub fn verbatim_between<'a>(begin: ParseStream<'a>, end: ParseStream<'a>) -> TokenStream {
+pub fn verbatim_between<'a>(begin: parse::Stream<'a>, end: parse::Stream<'a>) -> TokenStream {
     let end = end.cursor();
     let mut cursor = begin.cursor();
     assert!(same_buffer(end, cursor));
@@ -2743,7 +2742,7 @@ pub mod __private {
         pub type Bool = bool;
         pub type Str = str;
     }
-    pub struct private(pub(crate) ());
+    pub struct private(pub ());
 }
 pub fn parse<T: parse::Parse>(tokens: proc_macro::TokenStream) -> Result<T> {
     parse::Parser::parse(T::parse, tokens)

@@ -1,5 +1,5 @@
 use super::{
-    parse::{Parse, ParseStream, Result},
+    parse::{Parse, Result, Stream},
     tok::Tok,
 };
 use std::{
@@ -136,57 +136,57 @@ impl<T, P> Punctuated<T, P> {
         self.last = None;
     }
 
-    pub fn parse_terminated(input: ParseStream) -> Result<Self>
+    pub fn parse_terminated(x: Stream) -> Result<Self>
     where
         T: Parse,
         P: Parse,
     {
-        Self::parse_terminated_with(input, T::parse)
+        Self::parse_terminated_with(x, T::parse)
     }
 
-    pub fn parse_terminated_with(input: ParseStream, parser: fn(ParseStream) -> Result<T>) -> Result<Self>
+    pub fn parse_terminated_with(x: Stream, f: fn(Stream) -> Result<T>) -> Result<Self>
     where
         P: Parse,
     {
-        let mut punctuated = Punctuated::new();
+        let mut ys = Punctuated::new();
         loop {
-            if input.is_empty() {
+            if x.is_empty() {
                 break;
             }
-            let value = parser(input)?;
-            punctuated.push_value(value);
-            if input.is_empty() {
+            let y = f(x)?;
+            ys.push_value(y);
+            if x.is_empty() {
                 break;
             }
-            let punct = input.parse()?;
-            punctuated.push_punct(punct);
+            let y = x.parse()?;
+            ys.push_punct(y);
         }
-        Ok(punctuated)
+        Ok(ys)
     }
 
-    pub fn parse_separated_nonempty(input: ParseStream) -> Result<Self>
+    pub fn parse_separated_nonempty(x: Stream) -> Result<Self>
     where
         T: Parse,
         P: Tok + Parse,
     {
-        Self::parse_separated_nonempty_with(input, T::parse)
+        Self::parse_separated_nonempty_with(x, T::parse)
     }
 
-    pub fn parse_separated_nonempty_with(input: ParseStream, parser: fn(ParseStream) -> Result<T>) -> Result<Self>
+    pub fn parse_separated_nonempty_with(x: Stream, f: fn(Stream) -> Result<T>) -> Result<Self>
     where
         P: Tok + Parse,
     {
-        let mut punctuated = Punctuated::new();
+        let mut ys = Punctuated::new();
         loop {
-            let value = parser(input)?;
-            punctuated.push_value(value);
-            if !P::peek(input.cursor()) {
+            let y = f(x)?;
+            ys.push_value(y);
+            if !P::peek(x.cursor()) {
                 break;
             }
-            let punct = input.parse()?;
-            punctuated.push_punct(punct);
+            let y = x.parse()?;
+            ys.push_punct(y);
         }
-        Ok(punctuated)
+        Ok(ys)
     }
 }
 impl<T, P> Clone for Punctuated<T, P>

@@ -1,6 +1,6 @@
 use super::{
     err::Result,
-    parse::{Parse, ParseStream},
+    parse::{Parse, Stream},
 };
 use proc_macro2::{extra::DelimSpan, Delimiter, Ident, Literal, Punct, Span, TokenStream, TokenTree};
 use quote::{ToTokens, TokenStreamExt};
@@ -16,19 +16,19 @@ pub trait Tok: private::Sealed {
     fn display() -> &'static str;
 }
 
-fn peek_impl(x: Cursor, peek: fn(ParseStream) -> bool) -> bool {
+fn peek_impl(x: Cursor, f: fn(Stream) -> bool) -> bool {
     use crate::parse::Unexpected;
     use std::{cell::Cell, rc::Rc};
     let scope = Span::call_site();
     let unexpected = Rc::new(Cell::new(Unexpected::None));
     let y = crate::parse::new_parse_buffer(scope, x, unexpected);
-    peek(&y)
+    f(&y)
 }
 macro_rules! impl_tok {
     ($d:literal $n:ty) => {
         impl Tok for $n {
             fn peek(x: Cursor) -> bool {
-                fn peek(x: ParseStream) -> bool {
+                fn peek(x: parse::Stream) -> bool {
                     <$n as Parse>::parse(x).is_ok()
                 }
                 peek_impl(x, peek)
@@ -123,11 +123,11 @@ macro_rules! def_keywords {
             }
             impl ToTokens for $n {
                 fn to_tokens(&self, toks: &mut TokenStream) {
-                    crate::dump::keyword($t, self.span, toks);
+                    crate::lower::keyword($t, self.span, toks);
                 }
             }
             impl Parse for $n {
-                fn parse(x: ParseStream) -> Result<Self> {
+                fn parse(x: parse::Stream) -> Result<Self> {
                     Ok($n {
                         span: parsing::keyword(x, $t)?,
                     })
@@ -269,7 +269,7 @@ impl ToTokens for Underscore {
     }
 }
 impl Parse for Underscore {
-    fn parse(x: ParseStream) -> Result<Self> {
+    fn parse(x: Stream) -> Result<Self> {
         x.step(|x| {
             if let Some((x, rest)) = x.ident() {
                 if x == "_" {
@@ -309,11 +309,11 @@ macro_rules! def_punct {
             }
             impl ToTokens for $n {
                 fn to_tokens(&self, ts: &mut TokenStream) {
-                    crate::dump::punct($t, &self.spans, ts);
+                    crate::lower::punct($t, &self.spans, ts);
                 }
             }
             impl Parse for $n {
-                fn parse(x: ParseStream) -> Result<Self> {
+                fn parse(x: parse::Stream) -> Result<Self> {
                     Ok($n {
                         spans: parsing::punct(x, $t)?,
                     })
@@ -424,7 +424,7 @@ macro_rules! def_delims {
                 {
                     let mut inner = TokenStream::new();
                     f(&mut inner);
-                    crate::dump::delim(Delimiter::$d, self.span.join(), ts, inner);
+                    crate::lower::delim(Delimiter::$d, self.span.join(), ts, inner);
                 }
             }
             impl private::Sealed for $n {}
@@ -487,7 +487,7 @@ impl Group {
     {
         let mut inner = TokenStream::new();
         f(&mut inner);
-        dump::delim(Delimiter::None, self.span, ts, inner);
+        lower::delim(Delimiter::None, self.span, ts, inner);
     }
 }
 impl std::default::Default for Group {

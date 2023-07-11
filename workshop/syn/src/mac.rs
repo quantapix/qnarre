@@ -13,7 +13,7 @@ impl Mac {
         parse::parse_scoped(parser, scope, self.toks.clone())
     }
 }
-pub fn parse_delim(x: ParseStream) -> Result<(tok::Delim, TokenStream)> {
+pub fn parse_delim(x: parse::Stream) -> Result<(tok::Delim, TokenStream)> {
     x.step(|c| {
         if let Some((TokenTree::Group(g), rest)) = c.token_tree() {
             let s = g.delim_span();
@@ -206,7 +206,7 @@ macro_rules! impl_parse_for_custom_keyword {
             }
         }
         impl $crate::parse::Parse for $ident {
-            fn parse(input: $crate::parse::ParseStream) -> $crate::parse::Result<$ident> {
+            fn parse(input: $crate::parse::Stream) -> $crate::parse::Result<$ident> {
                 input.step(|cursor| {
                     if let $crate::__private::Some((ident, rest)) = cursor.ident() {
                         if ident == $crate::__private::stringify!($ident) {
@@ -309,7 +309,7 @@ macro_rules! impl_parse_for_custom_punctuation {
             }
         }
         impl $crate::parse::Parse for $ident {
-            fn parse(input: $crate::parse::ParseStream) -> $crate::parse::Result<$ident> {
+            fn parse(input: $crate::parse::Stream) -> $crate::parse::Result<$ident> {
                 let spans: $crate::custom_punctuation_repr!($($tt)+) =
                     $crate::__private::parse_punct(input, $crate::stringify_punct!($($tt)+))?;
                 Ok($ident(spans))

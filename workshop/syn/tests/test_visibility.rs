@@ -2,7 +2,7 @@
 #[macro_use]
 mod macros;
 use proc_macro2::{Delimiter, Group, Ident, Punct, Spacing, Span, TokenStream, TokenTree};
-use syn::parse::{Parse, ParseStream};
+use syn::parse::{Parse, Stream};
 use syn::{DeriveInput, Result, Visibility};
 #[derive(Debug)]
 struct VisRest {
@@ -10,7 +10,7 @@ struct VisRest {
     rest: TokenStream,
 }
 impl Parse for VisRest {
-    fn parse(input: ParseStream) -> Result<Self> {
+    fn parse(input: Stream) -> Result<Self> {
         Ok(VisRest {
             vis: input.parse()?,
             rest: input.parse()?,

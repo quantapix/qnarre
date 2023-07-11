@@ -1,7 +1,3 @@
-use super::{
-    parse::{Parse, Parser},
-    Err, Result,
-};
 use proc_macro2::{Ident, Literal, Span, TokenStream, TokenTree};
 use std::{
     char,
@@ -155,10 +151,10 @@ impl Str {
         let (value, _) = parse_str(&repr);
         String::from(value)
     }
-    pub fn parse<T: Parse>(&self) -> Result<T> {
+    pub fn parse<T: parse::Parse>(&self) -> Result<T> {
         self.parse_with(T::parse)
     }
-    pub fn parse_with<F: Parser>(&self, parser: F) -> Result<F::Output> {
+    pub fn parse_with<F: parse::Parser>(&self, parser: F) -> Result<F::Output> {
         use proc_macro2::Group;
         fn respan_token_stream(x: TokenStream, s: Span) -> TokenStream {
             x.into_iter().map(|x| respan_token_tree(x, s)).collect()
