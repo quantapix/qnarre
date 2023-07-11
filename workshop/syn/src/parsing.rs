@@ -64,7 +64,7 @@ pub fn parse_meta_after_path(path: Path, x: ParseStream) -> Result<meta::Meta> {
     }
 }
 fn parse_meta_list_after_path(path: Path, x: ParseStream) -> Result<meta::List> {
-    let (delimiter, tokens) = mac_parse_delimiter(x)?;
+    let (delimiter, tokens) = mac::parse_delim(x)?;
     Ok(meta::List {
         path,
         delim: delimiter,
@@ -944,7 +944,7 @@ fn path_or_macro_or_struct(input: ParseStream, #[cfg(feature = "full")] allow_st
     let (qself, path) = qpath(input, true)?;
     if qself.is_none() && input.peek(Token![!]) && !input.peek(Token![!=]) && path.is_mod_style() {
         let bang: Token![!] = input.parse()?;
-        let (delimiter, tokens) = mac_parse_delimiter(input)?;
+        let (delimiter, tokens) = mac::parse_delim(input)?;
         return Ok(Expr::Macro(expr::Mac {
             attrs: Vec::new(),
             mac: Macro {
@@ -2088,7 +2088,7 @@ impl Parse for item::Mac {
         } else {
             input.parse()
         }?;
-        let (delimiter, tokens) = input.call(mac::mac_parse_delimiter)?;
+        let (delimiter, tokens) = input.call(mac::mac::parse_delim)?;
         let semi: Option<Token![;]> = if !delimiter.is_brace() {
             Some(input.parse()?)
         } else {
@@ -3408,11 +3408,11 @@ impl Visibility {
         }
     }
 }
-impl MacroDelim {
+impl tok::Delim {
     pub fn is_brace(&self) -> bool {
         match self {
-            MacroDelim::Brace(_) => true,
-            MacroDelim::Paren(_) | MacroDelim::Bracket(_) => false,
+            tok::Delim::Brace(_) => true,
+            tok::Delim::Paren(_) | tok::Delim::Bracket(_) => false,
         }
     }
 }
@@ -3520,7 +3520,7 @@ mod parsing {
     }
     fn stmt_mac(x: ParseStream, attrs: Vec<attr::Attr>, path: Path) -> Result<stmt::Mac> {
         let bang: Token![!] = x.parse()?;
-        let (delimiter, tokens) = mac_parse_delimiter(x)?;
+        let (delimiter, tokens) = mac::parse_delim(x)?;
         let semi: Option<Token![;]> = x.parse()?;
         Ok(stmt::Mac {
             attrs,
@@ -3881,7 +3881,7 @@ mod parsing {
                 path: input.call(Path::parse_mod_style)?,
                 bang: input.parse()?,
                 delimiter: {
-                    let (delimiter, content) = mac_parse_delimiter(input)?;
+                    let (delimiter, content) = mac::parse_delim(input)?;
                     tokens = content;
                     delimiter
                 },
@@ -4232,7 +4232,7 @@ pub mod pat {
         let (qself, path) = qpath(x, true)?;
         if qself.is_none() && x.peek(Token![!]) && !x.peek(Token![!=]) && path.is_mod_style() {
             let bang: Token![!] = x.parse()?;
-            let (delimiter, tokens) = mac_parse_delimiter(x)?;
+            let (delimiter, tokens) = mac::parse_delim(x)?;
             return Ok(Pat::Macro(expr::Mac {
                 attrs: Vec::new(),
                 mac: Macro {
@@ -5104,7 +5104,7 @@ pub mod ty {
             }
             if x.peek(Token![!]) && !x.peek(Token![!=]) && ty.path.is_mod_style() {
                 let bang: Token![!] = x.parse()?;
-                let (delimiter, tokens) = mac_parse_delimiter(x)?;
+                let (delimiter, tokens) = mac::parse_delim(x)?;
                 return Ok(Type::Mac(Mac {
                     mac: Macro {
                         path: ty.path,

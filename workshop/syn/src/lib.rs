@@ -119,7 +119,7 @@ pub mod meta {
     }
     pub struct List {
         pub path: Path,
-        pub delim: MacroDelim,
+        pub delim: tok::Delim,
         pub toks: TokenStream,
     }
     impl List {
@@ -1893,94 +1893,6 @@ mod look {
     }
 
     impl<F: Copy + FnOnce(TokenMarker) -> T, T: Tok> Sealed for F {}
-}
-
-pub enum MacroDelim {
-    Paren(tok::Paren),
-    Brace(tok::Brace),
-    Bracket(tok::Bracket),
-}
-
-impl MacroDelim {
-    pub fn span(&self) -> &DelimSpan {
-        use MacroDelim::*;
-        match self {
-            Paren(x) => &x.span,
-            Brace(x) => &x.span,
-            Bracket(x) => &x.span,
-        }
-    }
-}
-
-pub struct Macro {
-    pub path: Path,
-    pub bang: Token![!],
-    pub delim: MacroDelim,
-    pub toks: TokenStream,
-}
-
-impl Macro {
-    pub fn parse_body<T: Parse>(&self) -> Result<T> {
-        self.parse_body_with(T::parse)
-    }
-    pub fn parse_body_with<F: Parser>(&self, parser: F) -> Result<F::Output> {
-        let scope = self.delim.span().close();
-        parse::parse_scoped(parser, scope, self.toks.clone())
-    }
-}
-fn mac_parse_delimiter(x: ParseStream) -> Result<(MacroDelim, TokenStream)> {
-    x.step(|c| {
-        if let Some((TokenTree::Group(g), rest)) = c.token_tree() {
-            let s = g.delim_span();
-            let delim = match g.delimiter() {
-                Delimiter::Parenthesis => MacroDelim::Paren(Paren(s)),
-                Delimiter::Brace => MacroDelim::Brace(Brace(s)),
-                Delimiter::Bracket => MacroDelim::Bracket(Bracket(s)),
-                Delimiter::None => {
-                    return Err(c.error("expected delimiter"));
-                },
-            };
-            Ok(((delim, g.stream()), rest))
-        } else {
-            Err(c.error("expected delimiter"))
-        }
-    })
-}
-
-pub enum BinOp {
-    Add(Token![+]),
-    Sub(Token![-]),
-    Mul(Token![*]),
-    Div(Token![/]),
-    Rem(Token![%]),
-    And(Token![&&]),
-    Or(Token![||]),
-    BitXor(Token![^]),
-    BitAnd(Token![&]),
-    BitOr(Token![|]),
-    Shl(Token![<<]),
-    Shr(Token![>>]),
-    Eq(Token![==]),
-    Lt(Token![<]),
-    Le(Token![<=]),
-    Ne(Token![!=]),
-    Ge(Token![>=]),
-    Gt(Token![>]),
-    AddAssign(Token![+=]),
-    SubAssign(Token![-=]),
-    MulAssign(Token![*=]),
-    DivAssign(Token![/=]),
-    RemAssign(Token![%=]),
-    BitXorAssign(Token![^=]),
-    BitAndAssign(Token![&=]),
-    BitOrAssign(Token![|=]),
-    ShlAssign(Token![<<=]),
-    ShrAssign(Token![>>=]),
-}
-pub enum UnOp {
-    Deref(Token![*]),
-    Not(Token![!]),
-    Neg(Token![-]),
 }
 
 pub mod parse {

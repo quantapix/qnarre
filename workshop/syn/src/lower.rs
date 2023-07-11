@@ -865,13 +865,13 @@ impl ToTokens for item::Mac {
         self.mac.bang.to_tokens(xs);
         self.ident.to_tokens(xs);
         match &self.mac.delim {
-            MacroDelim::Paren(x) => {
+            tok::Delim::Paren(x) => {
                 x.surround(xs, |ys| self.mac.toks.to_tokens(ys));
             },
-            MacroDelim::Brace(x) => {
+            tok::Delim::Brace(x) => {
                 x.surround(xs, |ys| self.mac.toks.to_tokens(ys));
             },
-            MacroDelim::Bracket(x) => {
+            tok::Delim::Bracket(x) => {
                 x.surround(xs, |ys| self.mac.toks.to_tokens(ys));
             },
         }
@@ -1263,17 +1263,17 @@ impl ToTokens for Lifetime {
     }
 }
 
-impl MacroDelim {
+impl tok::Delim {
     pub fn surround(&self, xs: &mut TokenStream, inner: TokenStream) {
         let (delim, span) = match self {
-            MacroDelim::Paren(x) => (Delimiter::Parenthesis, x.span),
-            MacroDelim::Brace(x) => (Delimiter::Brace, x.span),
-            MacroDelim::Bracket(x) => (Delimiter::Bracket, x.span),
+            tok::Delim::Paren(x) => (Delimiter::Parenthesis, x.span),
+            tok::Delim::Brace(x) => (Delimiter::Brace, x.span),
+            tok::Delim::Bracket(x) => (Delimiter::Bracket, x.span),
         };
         delim(delim, span.join(), xs, inner);
     }
 }
-impl ToTokens for Macro {
+impl ToTokens for mac::Mac {
     fn to_tokens(&self, xs: &mut TokenStream) {
         self.path.to_tokens(xs);
         self.bang.to_tokens(xs);

@@ -183,7 +183,7 @@ pub struct Loop {
 }
 pub struct Mac {
     pub attrs: Vec<attr::Attr>,
-    pub mac: Macro,
+    pub mac: mac::Mac,
 }
 pub struct Match {
     pub attrs: Vec<attr::Attr>,
@@ -424,6 +424,42 @@ impl IdentFragment for Idx {
     fn span(&self) -> Option<Span> {
         Some(self.span)
     }
+}
+
+pub enum BinOp {
+    Add(Token![+]),
+    Sub(Token![-]),
+    Mul(Token![*]),
+    Div(Token![/]),
+    Rem(Token![%]),
+    And(Token![&&]),
+    Or(Token![||]),
+    BitXor(Token![^]),
+    BitAnd(Token![&]),
+    BitOr(Token![|]),
+    Shl(Token![<<]),
+    Shr(Token![>>]),
+    Eq(Token![==]),
+    Lt(Token![<]),
+    Le(Token![<=]),
+    Ne(Token![!=]),
+    Ge(Token![>=]),
+    Gt(Token![>]),
+    AddAssign(Token![+=]),
+    SubAssign(Token![-=]),
+    MulAssign(Token![*=]),
+    DivAssign(Token![/=]),
+    RemAssign(Token![%=]),
+    BitXorAssign(Token![^=]),
+    BitAndAssign(Token![&=]),
+    BitOrAssign(Token![|=]),
+    ShlAssign(Token![<<=]),
+    ShrAssign(Token![>>=]),
+}
+pub enum UnOp {
+    Deref(Token![*]),
+    Not(Token![!]),
+    Neg(Token![-]),
 }
 
 pub struct FieldValue {

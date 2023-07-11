@@ -357,7 +357,7 @@ pub trait VisitMut {
     fn visit_macro_mut(&mut self, i: &mut Macro) {
         visit_macro_mut(self, i);
     }
-    fn visit_macro_delimiter_mut(&mut self, i: &mut MacroDelim) {
+    fn visit_macro_delimiter_mut(&mut self, i: &mut tok::Delim) {
         visit_macro_delimiter_mut(self, i);
     }
     fn visit_member_mut(&mut self, i: &mut Member) {
@@ -2225,18 +2225,18 @@ where
     v.visit_macro_delimiter_mut(&mut node.delim);
     skip!(node.tokens);
 }
-pub fn visit_macro_delimiter_mut<V>(v: &mut V, node: &mut MacroDelim)
+pub fn visit_macro_delimiter_mut<V>(v: &mut V, node: &mut tok::Delim)
 where
     V: VisitMut + ?Sized,
 {
     match node {
-        MacroDelim::Paren(_binding_0) => {
+        tok::Delim::Paren(_binding_0) => {
             skip!(_binding_0);
         },
-        MacroDelim::Brace(_binding_0) => {
+        tok::Delim::Brace(_binding_0) => {
             skip!(_binding_0);
         },
-        MacroDelim::Bracket(_binding_0) => {
+        tok::Delim::Bracket(_binding_0) => {
             skip!(_binding_0);
         },
     }

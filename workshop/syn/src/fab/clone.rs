@@ -1142,12 +1142,12 @@ impl Clone for Macro {
         }
     }
 }
-impl Clone for MacroDelim {
+impl Clone for tok::Delim {
     fn clone(&self) -> Self {
         match self {
-            MacroDelim::Paren(v0) => MacroDelim::Paren(v0.clone()),
-            MacroDelim::Brace(v0) => MacroDelim::Brace(v0.clone()),
-            MacroDelim::Bracket(v0) => MacroDelim::Bracket(v0.clone()),
+            tok::Delim::Paren(v0) => tok::Delim::Paren(v0.clone()),
+            tok::Delim::Brace(v0) => tok::Delim::Brace(v0.clone()),
+            tok::Delim::Bracket(v0) => tok::Delim::Bracket(v0.clone()),
         }
     }
 }

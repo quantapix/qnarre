@@ -1710,21 +1710,21 @@ impl Debug for Macro {
         formatter.finish()
     }
 }
-impl Debug for MacroDelim {
+impl Debug for tok::Delim {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.write_str("MacroDelimiter::")?;
         match self {
-            MacroDelim::Paren(v0) => {
+            tok::Delim::Paren(v0) => {
                 let mut formatter = formatter.debug_tuple("Paren");
                 formatter.field(v0);
                 formatter.finish()
             },
-            MacroDelim::Brace(v0) => {
+            tok::Delim::Brace(v0) => {
                 let mut formatter = formatter.debug_tuple("Brace");
                 formatter.field(v0);
                 formatter.finish()
             },
-            MacroDelim::Bracket(v0) => {
+            tok::Delim::Bracket(v0) => {
                 let mut formatter = formatter.debug_tuple("Bracket");
                 formatter.field(v0);
                 formatter.finish()

@@ -893,13 +893,13 @@ impl PartialEq for Macro {
             && TokenStreamHelper(&self.toks) == TokenStreamHelper(&other.toks)
     }
 }
-impl Eq for MacroDelim {}
-impl PartialEq for MacroDelim {
+impl Eq for tok::Delim {}
+impl PartialEq for tok::Delim {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (MacroDelim::Paren(_), MacroDelim::Paren(_)) => true,
-            (MacroDelim::Brace(_), MacroDelim::Brace(_)) => true,
-            (MacroDelim::Bracket(_), MacroDelim::Bracket(_)) => true,
+            (tok::Delim::Paren(_), tok::Delim::Paren(_)) => true,
+            (tok::Delim::Brace(_), tok::Delim::Brace(_)) => true,
+            (tok::Delim::Bracket(_), tok::Delim::Bracket(_)) => true,
             _ => false,
         }
     }

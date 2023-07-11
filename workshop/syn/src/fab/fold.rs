@@ -355,7 +355,7 @@ pub trait Fold {
     fn fold_macro(&mut self, i: Macro) -> Macro {
         fold_macro(self, i)
     }
-    fn fold_macro_delimiter(&mut self, i: MacroDelim) -> MacroDelim {
+    fn fold_macro_delimiter(&mut self, i: tok::Delim) -> tok::Delim {
         fold_macro_delimiter(self, i)
     }
     fn fold_member(&mut self, i: Member) -> Member {
@@ -1910,14 +1910,14 @@ where
         toks: node.toks,
     }
 }
-pub fn fold_macro_delimiter<F>(f: &mut F, node: MacroDelim) -> MacroDelim
+pub fn fold_macro_delimiter<F>(f: &mut F, node: tok::Delim) -> tok::Delim
 where
     F: Fold + ?Sized,
 {
     match node {
-        MacroDelim::Paren(_binding_0) => MacroDelim::Paren(_binding_0),
-        MacroDelim::Brace(_binding_0) => MacroDelim::Brace(_binding_0),
-        MacroDelim::Bracket(_binding_0) => MacroDelim::Bracket(_binding_0),
+        tok::Delim::Paren(_binding_0) => tok::Delim::Paren(_binding_0),
+        tok::Delim::Brace(_binding_0) => tok::Delim::Brace(_binding_0),
+        tok::Delim::Bracket(_binding_0) => tok::Delim::Bracket(_binding_0),
     }
 }
 pub fn fold_member<F>(f: &mut F, node: Member) -> Member

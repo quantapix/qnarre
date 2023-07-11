@@ -1,3 +1,37 @@
+pub struct Mac {
+    pub path: Path,
+    pub bang: Token![!],
+    pub delim: tok::Delim,
+    pub toks: TokenStream,
+}
+impl Mac {
+    pub fn parse_body<T: Parse>(&self) -> Result<T> {
+        self.parse_body_with(T::parse)
+    }
+    pub fn parse_body_with<F: Parser>(&self, parser: F) -> Result<F::Output> {
+        let scope = self.delim.span().close();
+        parse::parse_scoped(parser, scope, self.toks.clone())
+    }
+}
+pub fn parse_delim(x: ParseStream) -> Result<(tok::Delim, TokenStream)> {
+    x.step(|c| {
+        if let Some((TokenTree::Group(g), rest)) = c.token_tree() {
+            let s = g.delim_span();
+            let delim = match g.delimiter() {
+                Delimiter::Parenthesis => tok::Delim::Paren(Paren(s)),
+                Delimiter::Brace => tok::Delim::Brace(Brace(s)),
+                Delimiter::Bracket => tok::Delim::Bracket(Bracket(s)),
+                Delimiter::None => {
+                    return Err(c.error("expected delimiter"));
+                },
+            };
+            Ok(((delim, g.stream()), rest))
+        } else {
+            Err(c.error("expected delimiter"))
+        }
+    })
+}
+
 macro_rules! ast_struct {
     (
         [$($attrs_pub:tt)*]

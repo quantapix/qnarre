@@ -461,6 +461,22 @@ impl Tok for Bracket {
     }
 }
 
+pub enum Delim {
+    Paren(Paren),
+    Brace(Brace),
+    Bracket(Bracket),
+}
+impl Delim {
+    pub fn span(&self) -> &DelimSpan {
+        use MacroDelim::*;
+        match self {
+            Paren(x) => &x.span,
+            Brace(x) => &x.span,
+            Bracket(x) => &x.span,
+        }
+    }
+}
+
 pub struct Group {
     pub span: Span,
 }

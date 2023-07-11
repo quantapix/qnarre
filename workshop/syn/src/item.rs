@@ -10,7 +10,7 @@ ast_enum_of_structs! {
         Fn(Fn),
         Foreign(Foreign),
         Impl(Impl),
-        Macro(Mac),
+        Mac(Mac),
         Mod(Mod),
         Static(Static),
         Struct(Struct),
@@ -31,7 +31,7 @@ impl Item {
             | Fn(Fn { attrs, .. })
             | Foreign(Foreign { attrs, .. })
             | Impl(Impl { attrs, .. })
-            | Macro(Mac { attrs, .. })
+            | Mac(Mac { attrs, .. })
             | Mod(Mod { attrs, .. })
             | Static(Static { attrs, .. })
             | Struct(Struct { attrs, .. })
@@ -151,7 +151,7 @@ pub struct Impl {
 pub struct Mac {
     pub attrs: Vec<attr::Attr>,
     pub ident: Option<Ident>,
-    pub mac: Macro,
+    pub mac: mac::Mac,
     pub semi: Option<Token![;]>,
 }
 pub struct Mod {
@@ -329,7 +329,7 @@ pub mod Foreign {
             Fn(Fn),
             Static(Static),
             Type(Type),
-            Macro(Mac),
+            Mac(Mac),
             Verbatim(TokenStream),
         }
     }
@@ -359,7 +359,7 @@ pub mod Foreign {
     }
     pub struct Mac {
         pub attrs: Vec<attr::Attr>,
-        pub mac: Macro,
+        pub mac: mac::Mac,
         pub semi: Option<Token![;]>,
     }
 }
@@ -406,7 +406,7 @@ pub mod Impl {
     }
     pub struct Mac {
         pub attrs: Vec<attr::Attr>,
-        pub mac: Macro,
+        pub mac: mac::Mac,
         pub semi: Option<Token![;]>,
     }
     pub enum Restriction {}
@@ -449,7 +449,7 @@ pub mod Trait {
     }
     pub struct Mac {
         pub attrs: Vec<attr::Attr>,
-        pub mac: Macro,
+        pub mac: mac::Mac,
         pub semi: Option<Token![;]>,
     }
 }
