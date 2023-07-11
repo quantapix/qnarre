@@ -1,5 +1,4 @@
 use super::{
-    ident, look,
     parse::{Parse, Parser},
     Err, Result,
 };
@@ -797,6 +796,57 @@ pub fn parse_char(mut x: &str) -> (char, Box<str>) {
     assert_eq!(byte(x, 0), b'\'');
     let suffix = x[1..].to_owned().into_boxed_str();
     (ch, suffix)
+}
+
+pub struct BigInt {
+    digits: Vec<u8>,
+}
+impl BigInt {
+    pub fn new() -> Self {
+        BigInt { digits: Vec::new() }
+    }
+    pub fn to_string(&self) -> String {
+        let mut y = String::with_capacity(self.digits.len());
+        let mut nonzero = false;
+        for x in self.digits.iter().rev() {
+            nonzero |= *x != 0;
+            if nonzero {
+                y.push((*x + b'0') as char);
+            }
+        }
+        if y.is_empty() {
+            y.push('0');
+        }
+        y
+    }
+    fn reserve_two(&mut self) {
+        let len = self.digits.len();
+        let y = len + !self.digits.ends_with(&[0, 0]) as usize + !self.digits.ends_with(&[0]) as usize;
+        self.digits.resize(y, 0);
+    }
+}
+impl ops::AddAssign<u8> for BigInt {
+    fn add_assign(&mut self, mut inc: u8) {
+        self.reserve_two();
+        let mut i = 0;
+        while inc > 0 {
+            let y = self.digits[i] + inc;
+            self.digits[i] = y % 10;
+            inc = y / 10;
+            i += 1;
+        }
+    }
+}
+impl ops::MulAssign<u8> for BigInt {
+    fn mul_assign(&mut self, base: u8) {
+        self.reserve_two();
+        let mut carry = 0;
+        for x in &mut self.digits {
+            let y = *x * base + carry;
+            *x = y % 10;
+            carry = y / 10;
+        }
+    }
 }
 
 pub fn parse_int(mut x: &str) -> Option<(Box<str>, Box<str>)> {

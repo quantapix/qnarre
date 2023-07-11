@@ -251,7 +251,7 @@ impl Hash for data::Enum {
     where
         H: Hasher,
     {
-        self.elems.hash(state);
+        self.variants.hash(state);
     }
 }
 impl Hash for data::Struct {
@@ -268,7 +268,7 @@ impl Hash for data::Union {
     where
         H: Hasher,
     {
-        self.fields.hash(state);
+        self.named.hash(state);
     }
 }
 impl Hash for DeriveInput {
@@ -831,7 +831,7 @@ impl Hash for expr::Yield {
         self.expr.hash(state);
     }
 }
-impl Hash for Field {
+impl Hash for data::Field {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -844,19 +844,19 @@ impl Hash for Field {
         self.typ.hash(state);
     }
 }
-impl Hash for FieldMut {
+impl Hash for data::Mut {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         match self {
-            FieldMut::None => {
+            data::Mut::None => {
                 state.write_u8(0u8);
             },
         }
     }
 }
-impl Hash for patt::Field {
+impl Hash for pat::Field {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -864,7 +864,7 @@ impl Hash for patt::Field {
         self.attrs.hash(state);
         self.member.hash(state);
         self.colon.hash(state);
-        self.patt.hash(state);
+        self.pat.hash(state);
     }
 }
 impl Hash for FieldValue {
@@ -878,40 +878,40 @@ impl Hash for FieldValue {
         self.expr.hash(state);
     }
 }
-impl Hash for Fields {
+impl Hash for data::Fields {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         match self {
-            Fields::Named(v0) => {
+            data::Fields::Named(v0) => {
                 state.write_u8(0u8);
                 v0.hash(state);
             },
-            Fields::Unnamed(v0) => {
+            data::Fields::Unnamed(v0) => {
                 state.write_u8(1u8);
                 v0.hash(state);
             },
-            Fields::Unit => {
+            data::Fields::Unit => {
                 state.write_u8(2u8);
             },
         }
     }
 }
-impl Hash for FieldsNamed {
+impl Hash for data::Named {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
-        self.named.hash(state);
+        self.field.hash(state);
     }
 }
-impl Hash for FieldsUnnamed {
+impl Hash for data::Unnamed {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
-        self.unnamed.hash(state);
+        self.field.hash(state);
     }
 }
 impl Hash for File {
@@ -1587,84 +1587,84 @@ impl Hash for ParenthesizedArgs {
         self.out.hash(state);
     }
 }
-impl Hash for patt::Patt {
+impl Hash for pat::Pat {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         match self {
-            patt::Patt::Const(v0) => {
+            pat::Pat::Const(v0) => {
                 state.write_u8(0u8);
                 v0.hash(state);
             },
-            patt::Patt::Ident(v0) => {
+            pat::Pat::Ident(v0) => {
                 state.write_u8(1u8);
                 v0.hash(state);
             },
-            patt::Patt::Lit(v0) => {
+            pat::Pat::Lit(v0) => {
                 state.write_u8(2u8);
                 v0.hash(state);
             },
-            patt::Patt::Mac(v0) => {
+            pat::Pat::Mac(v0) => {
                 state.write_u8(3u8);
                 v0.hash(state);
             },
-            patt::Patt::Or(v0) => {
+            pat::Pat::Or(v0) => {
                 state.write_u8(4u8);
                 v0.hash(state);
             },
-            patt::Patt::Paren(v0) => {
+            pat::Pat::Paren(v0) => {
                 state.write_u8(5u8);
                 v0.hash(state);
             },
-            patt::Patt::Path(v0) => {
+            pat::Pat::Path(v0) => {
                 state.write_u8(6u8);
                 v0.hash(state);
             },
-            patt::Patt::Range(v0) => {
+            pat::Pat::Range(v0) => {
                 state.write_u8(7u8);
                 v0.hash(state);
             },
-            patt::Patt::Ref(v0) => {
+            pat::Pat::Ref(v0) => {
                 state.write_u8(8u8);
                 v0.hash(state);
             },
-            patt::Patt::Rest(v0) => {
+            pat::Pat::Rest(v0) => {
                 state.write_u8(9u8);
                 v0.hash(state);
             },
-            patt::Patt::Slice(v0) => {
+            pat::Pat::Slice(v0) => {
                 state.write_u8(10u8);
                 v0.hash(state);
             },
-            patt::Patt::Struct(v0) => {
+            pat::Pat::Struct(v0) => {
                 state.write_u8(11u8);
                 v0.hash(state);
             },
-            patt::Patt::Tuple(v0) => {
+            pat::Pat::Tuple(v0) => {
                 state.write_u8(12u8);
                 v0.hash(state);
             },
-            patt::Patt::TupleStruct(v0) => {
+            pat::Pat::TupleStruct(v0) => {
                 state.write_u8(13u8);
                 v0.hash(state);
             },
-            patt::Patt::Type(v0) => {
+            pat::Pat::Type(v0) => {
                 state.write_u8(14u8);
                 v0.hash(state);
             },
-            patt::Patt::Verbatim(v0) => {
+            pat::Pat::Verbatim(v0) => {
                 state.write_u8(15u8);
                 TokenStreamHelper(v0).hash(state);
             },
-            patt::Patt::Wild(v0) => {
+            pat::Pat::Wild(v0) => {
                 state.write_u8(16u8);
                 v0.hash(state);
             },
         }
     }
 }
-impl Hash for patt::Ident {
+impl Hash for pat::Ident {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -1676,7 +1676,7 @@ impl Hash for patt::Ident {
         self.sub.hash(state);
     }
 }
-impl Hash for patt::Or {
+impl Hash for pat::Or {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -1686,26 +1686,26 @@ impl Hash for patt::Or {
         self.cases.hash(state);
     }
 }
-impl Hash for patt::Paren {
+impl Hash for pat::Paren {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         self.attrs.hash(state);
-        self.patt.hash(state);
+        self.pat.hash(state);
     }
 }
-impl Hash for patt::Ref {
+impl Hash for pat::Ref {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         self.attrs.hash(state);
         self.mut_.hash(state);
-        self.patt.hash(state);
+        self.pat.hash(state);
     }
 }
-impl Hash for patt::Rest {
+impl Hash for pat::Rest {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -1713,7 +1713,7 @@ impl Hash for patt::Rest {
         self.attrs.hash(state);
     }
 }
-impl Hash for patt::Slice {
+impl Hash for pat::Slice {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -1722,7 +1722,7 @@ impl Hash for patt::Slice {
         self.elems.hash(state);
     }
 }
-impl Hash for patt::Struct {
+impl Hash for pat::Struct {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -1734,7 +1734,7 @@ impl Hash for patt::Struct {
         self.rest.hash(state);
     }
 }
-impl Hash for patt::Tuple {
+impl Hash for pat::Tuple {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -1743,7 +1743,7 @@ impl Hash for patt::Tuple {
         self.elems.hash(state);
     }
 }
-impl Hash for patt::TupleStruct {
+impl Hash for pat::TupleStruct {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -1754,17 +1754,17 @@ impl Hash for patt::TupleStruct {
         self.elems.hash(state);
     }
 }
-impl Hash for patt::Type {
+impl Hash for pat::Type {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         self.attrs.hash(state);
-        self.patt.hash(state);
+        self.pat.hash(state);
         self.typ.hash(state);
     }
 }
-impl Hash for patt::Wild {
+impl Hash for pat::Wild {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -2373,7 +2373,7 @@ impl Hash for item::Variadic {
         self.comma.hash(state);
     }
 }
-impl Hash for Variant {
+impl Hash for data::Variant {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,

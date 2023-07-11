@@ -97,7 +97,7 @@ pub struct Enum {
     pub ident: Ident,
     pub gens: gen::Gens,
     pub brace: tok::Brace,
-    pub elems: Punctuated<Variant, Token![,]>,
+    pub elems: Punctuated<data::Variant, Token![,]>,
 }
 impl From<Enum> for DeriveInput {
     fn from(x: Enum) -> DeriveInput {
@@ -182,7 +182,7 @@ pub struct Struct {
     pub struct_: Token![struct],
     pub ident: Ident,
     pub gens: gen::Gens,
-    pub fields: Fields,
+    pub fields: data::Fields,
     pub semi: Option<Token![;]>,
 }
 impl From<Struct> for DeriveInput {
@@ -242,7 +242,7 @@ pub struct Union {
     pub union_: Token![union],
     pub ident: Ident,
     pub gens: gen::Gens,
-    pub fields: FieldsNamed,
+    pub fields: data::Named,
 }
 impl From<Union> for DeriveInput {
     fn from(x: Union) -> DeriveInput {
@@ -285,7 +285,7 @@ impl Receiver {
 ast_enum_of_structs! {
     pub enum FnArg {
         Receiver(Receiver),
-        Typed(patt::Type),
+        Typed(pat::Type),
     }
 }
 
@@ -314,7 +314,7 @@ impl Sig {
 
 pub struct Variadic {
     pub attrs: Vec<attr::Attr>,
-    pub pat: Option<(Box<patt::Patt>, Token![:])>,
+    pub pat: Option<(Box<pat::Pat>, Token![:])>,
     pub dots: Token![...],
     pub comma: Option<Token![,]>,
 }

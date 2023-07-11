@@ -778,16 +778,16 @@ impl ToTokens for item::Struct {
         self.ident.to_tokens(xs);
         self.gens.to_tokens(xs);
         match &self.fields {
-            Fields::Named(fields) => {
+            data::Fields::Named(fields) => {
                 self.gens.where_.to_tokens(xs);
                 fields.to_tokens(xs);
             },
-            Fields::Unnamed(fields) => {
+            data::Fields::Unnamed(fields) => {
                 fields.to_tokens(xs);
                 self.gens.where_.to_tokens(xs);
                 TokensOrDefault(&self.semi).to_tokens(xs);
             },
-            Fields::Unit => {
+            data::Fields::Unit => {
                 self.gens.where_.to_tokens(xs);
                 TokensOrDefault(&self.semi).to_tokens(xs);
             },
@@ -1167,7 +1167,7 @@ impl ToTokens for stmt::Mac {
     }
 }
 
-impl ToTokens for Variant {
+impl ToTokens for data::Variant {
     fn to_tokens(&self, xs: &mut TokenStream) {
         xs.append_all(&self.attrs);
         self.ident.to_tokens(xs);
@@ -1178,26 +1178,26 @@ impl ToTokens for Variant {
         }
     }
 }
-impl ToTokens for FieldsNamed {
+impl ToTokens for data::Named {
     fn to_tokens(&self, xs: &mut TokenStream) {
         self.brace.surround(xs, |ys| {
             self.named.to_tokens(ys);
         });
     }
 }
-impl ToTokens for FieldsUnnamed {
+impl ToTokens for data::Unnamed {
     fn to_tokens(&self, xs: &mut TokenStream) {
         self.paren.surround(xs, |ys| {
             self.unnamed.to_tokens(ys);
         });
     }
 }
-impl ToTokens for Field {
+impl ToTokens for data::Field {
     fn to_tokens(&self, xs: &mut TokenStream) {
         xs.append_all(&self.attrs);
         self.vis.to_tokens(xs);
-        if let Some(ident) = &self.ident {
-            ident.to_tokens(xs);
+        if let Some(x) = &self.ident {
+            x.to_tokens(xs);
             TokensOrDefault(&self.colon).to_tokens(xs);
         }
         self.typ.to_tokens(xs);
@@ -1219,16 +1219,16 @@ impl ToTokens for DeriveInput {
         self.gens.to_tokens(xs);
         match &self.data {
             Data::Struct(data) => match &data.fields {
-                Fields::Named(x) => {
+                data::Fields::Named(x) => {
                     self.gens.where_.to_tokens(xs);
                     x.to_tokens(xs);
                 },
-                Fields::Unnamed(x) => {
+                data::Fields::Unnamed(x) => {
                     x.to_tokens(xs);
                     self.gens.where_.to_tokens(xs);
                     TokensOrDefault(&data.semi).to_tokens(xs);
                 },
-                Fields::Unit => {
+                data::Fields::Unit => {
                     self.gens.where_.to_tokens(xs);
                     TokensOrDefault(&data.semi).to_tokens(xs);
                 },
@@ -1387,8 +1387,8 @@ mod lit {
     }
 }
 
-mod patt {
-    use crate::patt::*;
+mod pat {
+    use crate::pat::*;
     use proc_macro2::TokenStream;
     use quote::ToTokens;
 
@@ -1415,7 +1415,7 @@ mod patt {
         fn to_tokens(&self, xs: &mut TokenStream) {
             xs.append_all(self.attrs.outer());
             self.paren.surround(xs, |ys| {
-                self.patt.to_tokens(ys);
+                self.pat.to_tokens(ys);
             });
         }
     }
@@ -1424,7 +1424,7 @@ mod patt {
             xs.append_all(self.attrs.outer());
             self.and.to_tokens(xs);
             self.mut_.to_tokens(xs);
-            self.patt.to_tokens(xs);
+            self.pat.to_tokens(xs);
         }
     }
     impl ToTokens for Rest {
@@ -1474,7 +1474,7 @@ mod patt {
     impl ToTokens for Type {
         fn to_tokens(&self, xs: &mut TokenStream) {
             xs.append_all(self.attrs.outer());
-            self.patt.to_tokens(xs);
+            self.pat.to_tokens(xs);
             self.colon.to_tokens(xs);
             self.typ.to_tokens(xs);
         }
@@ -1488,11 +1488,11 @@ mod patt {
     impl ToTokens for Field {
         fn to_tokens(&self, xs: &mut TokenStream) {
             xs.append_all(self.attrs.outer());
-            if let Some(colon) = &self.colon {
+            if let Some(x) = &self.colon {
                 self.member.to_tokens(xs);
-                colon.to_tokens(xs);
+                x.to_tokens(xs);
             }
-            self.patt.to_tokens(xs);
+            self.pat.to_tokens(xs);
         }
     }
 }

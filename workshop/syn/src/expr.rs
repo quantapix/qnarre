@@ -112,7 +112,7 @@ pub struct Closure {
     pub async_: Option<Token![async]>,
     pub move_: Option<Token![move]>,
     pub or1: Token![|],
-    pub ins: Punctuated<patt::Patt, Token![,]>,
+    pub ins: Punctuated<pat::Pat, Token![,]>,
     pub or2: Token![|],
     pub ret: ty::Ret,
     pub body: Box<Expr>,
@@ -137,7 +137,7 @@ pub struct ForLoop {
     pub attrs: Vec<attr::Attr>,
     pub label: Option<Label>,
     pub for_: Token![for],
-    pub patt: Box<patt::Patt>,
+    pub pat: Box<pat::Pat>,
     pub in_: Token![in],
     pub expr: Box<Expr>,
     pub body: stmt::Block,
@@ -167,7 +167,7 @@ pub struct Infer {
 pub struct Let {
     pub attrs: Vec<attr::Attr>,
     pub let_: Token![let],
-    pub patt: Box<patt::Patt>,
+    pub pat: Box<pat::Pat>,
     pub eq: Token![=],
     pub expr: Box<Expr>,
 }
@@ -438,7 +438,7 @@ pub struct Label {
 }
 pub struct Arm {
     pub attrs: Vec<attr::Attr>,
-    pub patt: patt::Patt,
+    pub pat: pat::Pat,
     pub guard: Option<(Token![if], Box<Expr>)>,
     pub fat_arrow: Token![=>],
     pub body: Box<Expr>,

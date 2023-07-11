@@ -192,25 +192,25 @@ pub trait Visit<'ast> {
     fn visit_expr_yield(&mut self, i: &'ast expr::Yield) {
         visit_expr_yield(self, i);
     }
-    fn visit_field(&mut self, i: &'ast Field) {
+    fn visit_field(&mut self, i: &'ast data::Field) {
         visit_field(self, i);
     }
-    fn visit_field_mutability(&mut self, i: &'ast FieldMut) {
+    fn visit_field_mutability(&mut self, i: &'ast data::Mut) {
         visit_field_mutability(self, i);
     }
-    fn visit_field_pat(&mut self, i: &'ast patt::Field) {
+    fn visit_field_pat(&mut self, i: &'ast pat::Field) {
         visit_field_pat(self, i);
     }
     fn visit_field_value(&mut self, i: &'ast FieldValue) {
         visit_field_value(self, i);
     }
-    fn visit_fields(&mut self, i: &'ast Fields) {
+    fn visit_fields(&mut self, i: &'ast data::Fields) {
         visit_fields(self, i);
     }
-    fn visit_fields_named(&mut self, i: &'ast FieldsNamed) {
+    fn visit_fields_named(&mut self, i: &'ast data::Named) {
         visit_fields_named(self, i);
     }
-    fn visit_fields_unnamed(&mut self, i: &'ast FieldsUnnamed) {
+    fn visit_fields_unnamed(&mut self, i: &'ast data::Unnamed) {
         visit_fields_unnamed(self, i);
     }
     fn visit_file(&mut self, i: &'ast File) {
@@ -375,40 +375,40 @@ pub trait Visit<'ast> {
     fn visit_parenthesized_generic_arguments(&mut self, i: &'ast ParenthesizedArgs) {
         visit_parenthesized_generic_arguments(self, i);
     }
-    fn visit_pat(&mut self, i: &'ast patt::Patt) {
+    fn visit_pat(&mut self, i: &'ast pat::Pat) {
         visit_pat(self, i);
     }
-    fn visit_pat_ident(&mut self, i: &'ast patt::Ident) {
+    fn visit_pat_ident(&mut self, i: &'ast pat::Ident) {
         visit_pat_ident(self, i);
     }
-    fn visit_pat_or(&mut self, i: &'ast patt::Or) {
+    fn visit_pat_or(&mut self, i: &'ast pat::Or) {
         visit_pat_or(self, i);
     }
-    fn visit_pat_paren(&mut self, i: &'ast patt::Paren) {
+    fn visit_pat_paren(&mut self, i: &'ast pat::Paren) {
         visit_pat_paren(self, i);
     }
-    fn visit_pat_reference(&mut self, i: &'ast patt::Ref) {
+    fn visit_pat_reference(&mut self, i: &'ast pat::Ref) {
         visit_pat_reference(self, i);
     }
-    fn visit_pat_rest(&mut self, i: &'ast patt::Rest) {
+    fn visit_pat_rest(&mut self, i: &'ast pat::Rest) {
         visit_pat_rest(self, i);
     }
-    fn visit_pat_slice(&mut self, i: &'ast patt::Slice) {
+    fn visit_pat_slice(&mut self, i: &'ast pat::Slice) {
         visit_pat_slice(self, i);
     }
-    fn visit_pat_struct(&mut self, i: &'ast patt::Struct) {
+    fn visit_pat_struct(&mut self, i: &'ast pat::Struct) {
         visit_pat_struct(self, i);
     }
-    fn visit_pat_tuple(&mut self, i: &'ast patt::Tuple) {
+    fn visit_pat_tuple(&mut self, i: &'ast pat::Tuple) {
         visit_pat_tuple(self, i);
     }
-    fn visit_pat_tuple_struct(&mut self, i: &'ast patt::TupleStruct) {
+    fn visit_pat_tuple_struct(&mut self, i: &'ast pat::TupleStruct) {
         visit_pat_tuple_struct(self, i);
     }
-    fn visit_pat_type(&mut self, i: &'ast patt::Type) {
+    fn visit_pat_type(&mut self, i: &'ast pat::Type) {
         visit_pat_type(self, i);
     }
-    fn visit_pat_wild(&mut self, i: &'ast patt::Wild) {
+    fn visit_pat_wild(&mut self, i: &'ast pat::Wild) {
         visit_pat_wild(self, i);
     }
     fn visit_path(&mut self, i: &'ast Path) {
@@ -549,7 +549,7 @@ pub trait Visit<'ast> {
     fn visit_variadic(&mut self, i: &'ast item::Variadic) {
         visit_variadic(self, i);
     }
-    fn visit_variant(&mut self, i: &'ast Variant) {
+    fn visit_variant(&mut self, i: &'ast data::Variant) {
         visit_variant(self, i);
     }
     fn visit_vis_restricted(&mut self, i: &'ast VisRestricted) {
@@ -835,7 +835,7 @@ where
 {
     skip!(node.enum_);
     skip!(node.brace);
-    for el in Punctuated::pairs(&node.elems) {
+    for el in Punctuated::pairs(&node.variants) {
         let it = el.value();
         v.visit_variant(it);
     }
@@ -853,7 +853,7 @@ where
     V: Visit<'ast> + ?Sized,
 {
     skip!(node.union_);
-    v.visit_fields_named(&node.fields);
+    v.visit_fields_named(&node.named);
 }
 pub fn visit_derive_input<'ast, V>(v: &mut V, node: &'ast DeriveInput)
 where
@@ -1465,7 +1465,7 @@ where
         v.visit_expr(&**it);
     }
 }
-pub fn visit_field<'ast, V>(v: &mut V, node: &'ast Field)
+pub fn visit_field<'ast, V>(v: &mut V, node: &'ast data::Field)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1480,15 +1480,15 @@ where
     skip!(node.colon);
     v.visit_type(&node.typ);
 }
-pub fn visit_field_mutability<'ast, V>(v: &mut V, node: &'ast FieldMut)
+pub fn visit_field_mutability<'ast, V>(v: &mut V, node: &'ast data::Mut)
 where
     V: Visit<'ast> + ?Sized,
 {
     match node {
-        FieldMut::None => {},
+        data::Mut::None => {},
     }
 }
-pub fn visit_field_pat<'ast, V>(v: &mut V, node: &'ast patt::Field)
+pub fn visit_field_pat<'ast, V>(v: &mut V, node: &'ast pat::Field)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1497,7 +1497,7 @@ where
     }
     v.visit_member(&node.member);
     skip!(node.colon);
-    v.visit_pat(&*node.patt);
+    v.visit_pat(&*node.pat);
 }
 pub fn visit_field_value<'ast, V>(v: &mut V, node: &'ast FieldValue)
 where
@@ -1510,36 +1510,36 @@ where
     skip!(node.colon);
     v.visit_expr(&node.expr);
 }
-pub fn visit_fields<'ast, V>(v: &mut V, node: &'ast Fields)
+pub fn visit_fields<'ast, V>(v: &mut V, node: &'ast data::Fields)
 where
     V: Visit<'ast> + ?Sized,
 {
     match node {
-        Fields::Named(_binding_0) => {
+        data::Fields::Named(_binding_0) => {
             v.visit_fields_named(_binding_0);
         },
-        Fields::Unnamed(_binding_0) => {
+        data::Fields::Unnamed(_binding_0) => {
             v.visit_fields_unnamed(_binding_0);
         },
-        Fields::Unit => {},
+        data::Fields::Unit => {},
     }
 }
-pub fn visit_fields_named<'ast, V>(v: &mut V, node: &'ast FieldsNamed)
+pub fn visit_fields_named<'ast, V>(v: &mut V, node: &'ast data::Named)
 where
     V: Visit<'ast> + ?Sized,
 {
     skip!(node.brace);
-    for el in Punctuated::pairs(&node.named) {
+    for el in Punctuated::pairs(&node.field) {
         let it = el.value();
         v.visit_field(it);
     }
 }
-pub fn visit_fields_unnamed<'ast, V>(v: &mut V, node: &'ast FieldsUnnamed)
+pub fn visit_fields_unnamed<'ast, V>(v: &mut V, node: &'ast data::Unnamed)
 where
     V: Visit<'ast> + ?Sized,
 {
     skip!(node.paren);
-    for el in Punctuated::pairs(&node.unnamed) {
+    for el in Punctuated::pairs(&node.field) {
         let it = el.value();
         v.visit_field(it);
     }
@@ -2295,65 +2295,65 @@ where
     }
     v.visit_return_type(&node.out);
 }
-pub fn visit_pat<'ast, V>(v: &mut V, node: &'ast patt::Patt)
+pub fn visit_pat<'ast, V>(v: &mut V, node: &'ast pat::Pat)
 where
     V: Visit<'ast> + ?Sized,
 {
     match node {
-        patt::Patt::Const(_binding_0) => {
+        pat::Pat::Const(_binding_0) => {
             v.visit_expr_const(_binding_0);
         },
-        patt::Patt::Ident(_binding_0) => {
+        pat::Pat::Ident(_binding_0) => {
             v.visit_pat_ident(_binding_0);
         },
-        patt::Patt::Lit(_binding_0) => {
+        pat::Pat::Lit(_binding_0) => {
             v.visit_expr_lit(_binding_0);
         },
-        patt::Patt::Mac(_binding_0) => {
+        pat::Pat::Mac(_binding_0) => {
             v.visit_expr_macro(_binding_0);
         },
-        patt::Patt::Or(_binding_0) => {
+        pat::Pat::Or(_binding_0) => {
             v.visit_pat_or(_binding_0);
         },
-        patt::Patt::Paren(_binding_0) => {
+        pat::Pat::Paren(_binding_0) => {
             v.visit_pat_paren(_binding_0);
         },
-        patt::Patt::Path(_binding_0) => {
+        pat::Pat::Path(_binding_0) => {
             v.visit_expr_path(_binding_0);
         },
-        patt::Patt::Range(_binding_0) => {
+        pat::Pat::Range(_binding_0) => {
             v.visit_expr_range(_binding_0);
         },
-        patt::Patt::Ref(_binding_0) => {
+        pat::Pat::Ref(_binding_0) => {
             v.visit_pat_reference(_binding_0);
         },
-        patt::Patt::Rest(_binding_0) => {
+        pat::Pat::Rest(_binding_0) => {
             v.visit_pat_rest(_binding_0);
         },
-        patt::Patt::Slice(_binding_0) => {
+        pat::Pat::Slice(_binding_0) => {
             v.visit_pat_slice(_binding_0);
         },
-        patt::Patt::Struct(_binding_0) => {
+        pat::Pat::Struct(_binding_0) => {
             v.visit_pat_struct(_binding_0);
         },
-        patt::Patt::Tuple(_binding_0) => {
+        pat::Pat::Tuple(_binding_0) => {
             v.visit_pat_tuple(_binding_0);
         },
-        patt::Patt::TupleStruct(_binding_0) => {
+        pat::Pat::TupleStruct(_binding_0) => {
             v.visit_pat_tuple_struct(_binding_0);
         },
-        patt::Patt::Type(_binding_0) => {
+        pat::Pat::Type(_binding_0) => {
             v.visit_pat_type(_binding_0);
         },
-        patt::Patt::Verbatim(_binding_0) => {
+        pat::Pat::Verbatim(_binding_0) => {
             skip!(_binding_0);
         },
-        patt::Patt::Wild(_binding_0) => {
+        pat::Pat::Wild(_binding_0) => {
             v.visit_pat_wild(_binding_0);
         },
     }
 }
-pub fn visit_pat_ident<'ast, V>(v: &mut V, node: &'ast patt::Ident)
+pub fn visit_pat_ident<'ast, V>(v: &mut V, node: &'ast pat::Ident)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -2368,7 +2368,7 @@ where
         v.visit_pat(&*(it).1);
     }
 }
-pub fn visit_pat_or<'ast, V>(v: &mut V, node: &'ast patt::Or)
+pub fn visit_pat_or<'ast, V>(v: &mut V, node: &'ast pat::Or)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -2381,7 +2381,7 @@ where
         v.visit_pat(it);
     }
 }
-pub fn visit_pat_paren<'ast, V>(v: &mut V, node: &'ast patt::Paren)
+pub fn visit_pat_paren<'ast, V>(v: &mut V, node: &'ast pat::Paren)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -2389,9 +2389,9 @@ where
         v.visit_attribute(it);
     }
     skip!(node.paren);
-    v.visit_pat(&*node.patt);
+    v.visit_pat(&*node.pat);
 }
-pub fn visit_pat_reference<'ast, V>(v: &mut V, node: &'ast patt::Ref)
+pub fn visit_pat_reference<'ast, V>(v: &mut V, node: &'ast pat::Ref)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -2400,9 +2400,9 @@ where
     }
     skip!(node.and);
     skip!(node.mutability);
-    v.visit_pat(&*node.patt);
+    v.visit_pat(&*node.pat);
 }
-pub fn visit_pat_rest<'ast, V>(v: &mut V, node: &'ast patt::Rest)
+pub fn visit_pat_rest<'ast, V>(v: &mut V, node: &'ast pat::Rest)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -2411,7 +2411,7 @@ where
     }
     skip!(node.dot2);
 }
-pub fn visit_pat_slice<'ast, V>(v: &mut V, node: &'ast patt::Slice)
+pub fn visit_pat_slice<'ast, V>(v: &mut V, node: &'ast pat::Slice)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -2424,7 +2424,7 @@ where
         v.visit_pat(it);
     }
 }
-pub fn visit_pat_struct<'ast, V>(v: &mut V, node: &'ast patt::Struct)
+pub fn visit_pat_struct<'ast, V>(v: &mut V, node: &'ast pat::Struct)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -2444,7 +2444,7 @@ where
         v.visit_pat_rest(it);
     }
 }
-pub fn visit_pat_tuple<'ast, V>(v: &mut V, node: &'ast patt::Tuple)
+pub fn visit_pat_tuple<'ast, V>(v: &mut V, node: &'ast pat::Tuple)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -2457,7 +2457,7 @@ where
         v.visit_pat(it);
     }
 }
-pub fn visit_pat_tuple_struct<'ast, V>(v: &mut V, node: &'ast patt::TupleStruct)
+pub fn visit_pat_tuple_struct<'ast, V>(v: &mut V, node: &'ast pat::TupleStruct)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -2474,18 +2474,18 @@ where
         v.visit_pat(it);
     }
 }
-pub fn visit_pat_type<'ast, V>(v: &mut V, node: &'ast patt::Type)
+pub fn visit_pat_type<'ast, V>(v: &mut V, node: &'ast pat::Type)
 where
     V: Visit<'ast> + ?Sized,
 {
     for it in &node.attrs {
         v.visit_attribute(it);
     }
-    v.visit_pat(&*node.patt);
+    v.visit_pat(&*node.pat);
     skip!(node.colon);
     v.visit_type(&*node.typ);
 }
-pub fn visit_pat_wild<'ast, V>(v: &mut V, node: &'ast patt::Wild)
+pub fn visit_pat_wild<'ast, V>(v: &mut V, node: &'ast pat::Wild)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -3083,7 +3083,7 @@ where
     skip!(node.dots);
     skip!(node.comma);
 }
-pub fn visit_variant<'ast, V>(v: &mut V, node: &'ast Variant)
+pub fn visit_variant<'ast, V>(v: &mut V, node: &'ast data::Variant)
 where
     V: Visit<'ast> + ?Sized,
 {

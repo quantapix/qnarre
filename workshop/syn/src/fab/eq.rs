@@ -140,7 +140,7 @@ impl PartialEq for Data {
 impl Eq for data::Enum {}
 impl PartialEq for data::Enum {
     fn eq(&self, other: &Self) -> bool {
-        self.elems == other.elems
+        self.variants == other.variants
     }
 }
 impl Eq for data::Struct {}
@@ -152,7 +152,7 @@ impl PartialEq for data::Struct {
 impl Eq for data::Union {}
 impl PartialEq for data::Union {
     fn eq(&self, other: &Self) -> bool {
-        self.fields == other.fields
+        self.named == other.named
     }
 }
 impl Eq for DeriveInput {}
@@ -464,29 +464,29 @@ impl PartialEq for expr::Yield {
         self.attrs == other.attrs && self.expr == other.expr
     }
 }
-impl Eq for Field {}
-impl PartialEq for Field {
+impl Eq for data::Field {}
+impl PartialEq for data::Field {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
             && self.vis == other.vis
-            && self.mutability == other.mutability
+            && self.mut_ == other.mutability
             && self.ident == other.ident
             && self.colon == other.colon
             && self.typ == other.typ
     }
 }
-impl Eq for FieldMut {}
-impl PartialEq for FieldMut {
+impl Eq for data::Mut {}
+impl PartialEq for data::Mut {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (FieldMut::None, FieldMut::None) => true,
+            (data::Mut::None, data::Mut::None) => true,
         }
     }
 }
-impl Eq for patt::Field {}
-impl PartialEq for patt::Field {
+impl Eq for pat::Field {}
+impl PartialEq for pat::Field {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs && self.member == other.member && self.colon == other.colon && self.patt == other.patt
+        self.attrs == other.attrs && self.member == other.member && self.colon == other.colon && self.pat == other.pat
     }
 }
 impl Eq for FieldValue {}
@@ -495,27 +495,27 @@ impl PartialEq for FieldValue {
         self.attrs == other.attrs && self.member == other.member && self.colon == other.colon && self.expr == other.expr
     }
 }
-impl Eq for Fields {}
-impl PartialEq for Fields {
+impl Eq for data::Fields {}
+impl PartialEq for data::Fields {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Fields::Named(self0), Fields::Named(other0)) => self0 == other0,
-            (Fields::Unnamed(self0), Fields::Unnamed(other0)) => self0 == other0,
-            (Fields::Unit, Fields::Unit) => true,
+            (data::Fields::Named(self0), data::Fields::Named(other0)) => self0 == other0,
+            (data::Fields::Unnamed(self0), data::Fields::Unnamed(other0)) => self0 == other0,
+            (data::Fields::Unit, data::Fields::Unit) => true,
             _ => false,
         }
     }
 }
-impl Eq for FieldsNamed {}
-impl PartialEq for FieldsNamed {
+impl Eq for data::Named {}
+impl PartialEq for data::Named {
     fn eq(&self, other: &Self) -> bool {
-        self.named == other.named
+        self.field == other.field
     }
 }
-impl Eq for FieldsUnnamed {}
-impl PartialEq for FieldsUnnamed {
+impl Eq for data::Unnamed {}
+impl PartialEq for data::Unnamed {
     fn eq(&self, other: &Self) -> bool {
-        self.unnamed == other.unnamed
+        self.field == other.field
     }
 }
 impl Eq for File {}
@@ -935,35 +935,35 @@ impl PartialEq for ParenthesizedArgs {
         self.ins == other.ins && self.out == other.out
     }
 }
-impl Eq for patt::Patt {}
-impl PartialEq for patt::Patt {
+impl Eq for pat::Pat {}
+impl PartialEq for pat::Pat {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (patt::Patt::Const(self0), patt::Patt::Const(other0)) => self0 == other0,
-            (patt::Patt::Ident(self0), patt::Patt::Ident(other0)) => self0 == other0,
-            (patt::Patt::Lit(self0), patt::Patt::Lit(other0)) => self0 == other0,
-            (patt::Patt::Mac(self0), patt::Patt::Mac(other0)) => self0 == other0,
-            (patt::Patt::Or(self0), patt::Patt::Or(other0)) => self0 == other0,
-            (patt::Patt::Paren(self0), patt::Patt::Paren(other0)) => self0 == other0,
-            (patt::Patt::Path(self0), patt::Patt::Path(other0)) => self0 == other0,
-            (patt::Patt::Range(self0), patt::Patt::Range(other0)) => self0 == other0,
-            (patt::Patt::Ref(self0), patt::Patt::Ref(other0)) => self0 == other0,
-            (patt::Patt::Rest(self0), patt::Patt::Rest(other0)) => self0 == other0,
-            (patt::Patt::Slice(self0), patt::Patt::Slice(other0)) => self0 == other0,
-            (patt::Patt::Struct(self0), patt::Patt::Struct(other0)) => self0 == other0,
-            (patt::Patt::Tuple(self0), patt::Patt::Tuple(other0)) => self0 == other0,
-            (patt::Patt::TupleStruct(self0), patt::Patt::TupleStruct(other0)) => self0 == other0,
-            (patt::Patt::Type(self0), patt::Patt::Type(other0)) => self0 == other0,
-            (patt::Patt::Verbatim(self0), patt::Patt::Verbatim(other0)) => {
+            (pat::Pat::Const(self0), pat::Pat::Const(other0)) => self0 == other0,
+            (pat::Pat::Ident(self0), pat::Pat::Ident(other0)) => self0 == other0,
+            (pat::Pat::Lit(self0), pat::Pat::Lit(other0)) => self0 == other0,
+            (pat::Pat::Mac(self0), pat::Pat::Mac(other0)) => self0 == other0,
+            (pat::Pat::Or(self0), pat::Pat::Or(other0)) => self0 == other0,
+            (pat::Pat::Paren(self0), pat::Pat::Paren(other0)) => self0 == other0,
+            (pat::Pat::Path(self0), pat::Pat::Path(other0)) => self0 == other0,
+            (pat::Pat::Range(self0), pat::Pat::Range(other0)) => self0 == other0,
+            (pat::Pat::Ref(self0), pat::Pat::Ref(other0)) => self0 == other0,
+            (pat::Pat::Rest(self0), pat::Pat::Rest(other0)) => self0 == other0,
+            (pat::Pat::Slice(self0), pat::Pat::Slice(other0)) => self0 == other0,
+            (pat::Pat::Struct(self0), pat::Pat::Struct(other0)) => self0 == other0,
+            (pat::Pat::Tuple(self0), pat::Pat::Tuple(other0)) => self0 == other0,
+            (pat::Pat::TupleStruct(self0), pat::Pat::TupleStruct(other0)) => self0 == other0,
+            (pat::Pat::Type(self0), pat::Pat::Type(other0)) => self0 == other0,
+            (pat::Pat::Verbatim(self0), pat::Pat::Verbatim(other0)) => {
                 TokenStreamHelper(self0) == TokenStreamHelper(other0)
             },
-            (patt::Patt::Wild(self0), patt::Patt::Wild(other0)) => self0 == other0,
+            (pat::Pat::Wild(self0), pat::Pat::Wild(other0)) => self0 == other0,
             _ => false,
         }
     }
 }
-impl Eq for patt::Ident {}
-impl PartialEq for patt::Ident {
+impl Eq for pat::Ident {}
+impl PartialEq for pat::Ident {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
             && self.ref_ == other.ref_
@@ -972,38 +972,38 @@ impl PartialEq for patt::Ident {
             && self.sub == other.sub
     }
 }
-impl Eq for patt::Or {}
-impl PartialEq for patt::Or {
+impl Eq for pat::Or {}
+impl PartialEq for pat::Or {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.vert == other.vert && self.cases == other.cases
     }
 }
-impl Eq for patt::Paren {}
-impl PartialEq for patt::Paren {
+impl Eq for pat::Paren {}
+impl PartialEq for pat::Paren {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs && self.patt == other.patt
+        self.attrs == other.attrs && self.pat == other.pat
     }
 }
-impl Eq for patt::Ref {}
-impl PartialEq for patt::Ref {
+impl Eq for pat::Ref {}
+impl PartialEq for pat::Ref {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs && self.mut_ == other.mut_ && self.patt == other.patt
+        self.attrs == other.attrs && self.mut_ == other.mut_ && self.pat == other.pat
     }
 }
-impl Eq for patt::Rest {}
-impl PartialEq for patt::Rest {
+impl Eq for pat::Rest {}
+impl PartialEq for pat::Rest {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
     }
 }
-impl Eq for patt::Slice {}
-impl PartialEq for patt::Slice {
+impl Eq for pat::Slice {}
+impl PartialEq for pat::Slice {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.elems == other.elems
     }
 }
-impl Eq for patt::Struct {}
-impl PartialEq for patt::Struct {
+impl Eq for pat::Struct {}
+impl PartialEq for pat::Struct {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
             && self.qself == other.qself
@@ -1012,26 +1012,26 @@ impl PartialEq for patt::Struct {
             && self.rest == other.rest
     }
 }
-impl Eq for patt::Tuple {}
-impl PartialEq for patt::Tuple {
+impl Eq for pat::Tuple {}
+impl PartialEq for pat::Tuple {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.elems == other.elems
     }
 }
-impl Eq for patt::TupleStruct {}
-impl PartialEq for patt::TupleStruct {
+impl Eq for pat::TupleStruct {}
+impl PartialEq for pat::TupleStruct {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.qself == other.qself && self.path == other.path && self.elems == other.elems
     }
 }
-impl Eq for patt::Type {}
-impl PartialEq for patt::Type {
+impl Eq for pat::Type {}
+impl PartialEq for pat::Type {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs && self.patt == other.patt && self.typ == other.typ
+        self.attrs == other.attrs && self.pat == other.pat && self.typ == other.typ
     }
 }
-impl Eq for patt::Wild {}
-impl PartialEq for patt::Wild {
+impl Eq for pat::Wild {}
+impl PartialEq for pat::Wild {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
     }
@@ -1414,8 +1414,8 @@ impl PartialEq for item::Variadic {
         self.attrs == other.attrs && self.pat == other.pat && self.comma == other.comma
     }
 }
-impl Eq for Variant {}
-impl PartialEq for Variant {
+impl Eq for data::Variant {}
+impl PartialEq for data::Variant {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
             && self.ident == other.ident

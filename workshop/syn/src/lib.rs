@@ -1050,9 +1050,9 @@ pub mod item;
 pub mod lit;
 pub mod tok;
 
-mod patt {
+mod pat {
     ast_enum_of_structs! {
-        pub enum Patt {
+        pub enum Pat {
             Const(Const),
             Ident(Ident),
             Lit(Lit),
@@ -1078,19 +1078,19 @@ mod patt {
         pub ref_: Option<Token![ref]>,
         pub mut_: Option<Token![mut]>,
         pub ident: Ident,
-        pub sub: Option<(Token![@], Box<Patt>)>,
+        pub sub: Option<(Token![@], Box<Pat>)>,
     }
     use expr::Lit;
     use expr::Macro as Mac;
     pub struct Or {
         pub attrs: Vec<attr::Attr>,
         pub vert: Option<Token![|]>,
-        pub cases: Punctuated<Patt, Token![|]>,
+        pub cases: Punctuated<Pat, Token![|]>,
     }
     pub struct Paren {
         pub attrs: Vec<attr::Attr>,
         pub paren: tok::Paren,
-        pub patt: Box<Patt>,
+        pub pat: Box<Pat>,
     }
     use expr::Path;
     use expr::Range;
@@ -1098,7 +1098,7 @@ mod patt {
         pub attrs: Vec<attr::Attr>,
         pub and: Token![&],
         pub mut_: Option<Token![mut]>,
-        pub patt: Box<Patt>,
+        pub pat: Box<Pat>,
     }
     pub struct Rest {
         pub attrs: Vec<attr::Attr>,
@@ -1107,7 +1107,7 @@ mod patt {
     pub struct Slice {
         pub attrs: Vec<attr::Attr>,
         pub bracket: tok::Bracket,
-        pub elems: Punctuated<Patt, Token![,]>,
+        pub elems: Punctuated<Pat, Token![,]>,
     }
     pub struct Struct {
         pub attrs: Vec<attr::Attr>,
@@ -1120,18 +1120,18 @@ mod patt {
     pub struct Tuple {
         pub attrs: Vec<attr::Attr>,
         pub paren: tok::Paren,
-        pub elems: Punctuated<Patt, Token![,]>,
+        pub elems: Punctuated<Pat, Token![,]>,
     }
     pub struct TupleStruct {
         pub attrs: Vec<attr::Attr>,
         pub qself: Option<QSelf>,
         pub path: Path,
         pub paren: tok::Paren,
-        pub elems: Punctuated<Patt, Token![,]>,
+        pub elems: Punctuated<Pat, Token![,]>,
     }
     pub struct Type {
         pub attrs: Vec<attr::Attr>,
-        pub patt: Box<Patt>,
+        pub pat: Box<Pat>,
         pub colon: Token![:],
         pub typ: Box<ty::Type>,
     }
@@ -1143,7 +1143,7 @@ mod patt {
         pub attrs: Vec<attr::Attr>,
         pub member: Member,
         pub colon: Option<Token![:]>,
-        pub patt: Box<Patt>,
+        pub pat: Box<Pat>,
     }
 }
 mod path {
@@ -1287,7 +1287,7 @@ mod stmt {
     pub struct Local {
         pub attrs: Vec<attr::Attr>,
         pub let_: Token![let],
-        pub pat: patt::Patt,
+        pub pat: pat::Pat,
         pub init: Option<LocalInit>,
         pub semi: Token![;],
     }
@@ -1408,143 +1408,6 @@ mod ty {
     }
 }
 
-pub struct BigInt {
-    digits: Vec<u8>,
-}
-impl BigInt {
-    pub fn new() -> Self {
-        BigInt { digits: Vec::new() }
-    }
-    pub fn to_string(&self) -> String {
-        let mut y = String::with_capacity(self.digits.len());
-        let mut has_nonzero = false;
-        for x in self.digits.iter().rev() {
-            has_nonzero |= *x != 0;
-            if has_nonzero {
-                y.push((*x + b'0') as char);
-            }
-        }
-        if y.is_empty() {
-            y.push('0');
-        }
-        y
-    }
-    fn reserve_two_digits(&mut self) {
-        let len = self.digits.len();
-        let desired = len + !self.digits.ends_with(&[0, 0]) as usize + !self.digits.ends_with(&[0]) as usize;
-        self.digits.resize(desired, 0);
-    }
-}
-impl ops::AddAssign<u8> for BigInt {
-    fn add_assign(&mut self, mut increment: u8) {
-        self.reserve_two_digits();
-        let mut i = 0;
-        while increment > 0 {
-            let sum = self.digits[i] + increment;
-            self.digits[i] = sum % 10;
-            increment = sum / 10;
-            i += 1;
-        }
-    }
-}
-impl ops::MulAssign<u8> for BigInt {
-    fn mul_assign(&mut self, base: u8) {
-        self.reserve_two_digits();
-        let mut carry = 0;
-        for digit in &mut self.digits {
-            let prod = *digit * base + carry;
-            *digit = prod % 10;
-            carry = prod / 10;
-        }
-    }
-}
-
-pub struct Variant {
-    pub attrs: Vec<attr::Attr>,
-    pub ident: Ident,
-    pub fields: Fields,
-    pub discriminant: Option<(Token![=], Expr)>,
-}
-
-ast_enum_of_structs! {
-    pub enum Fields {
-        Named(FieldsNamed),
-        Unnamed(FieldsUnnamed),
-        Unit,
-    }
-}
-pub struct FieldsNamed {
-    pub brace: tok::Brace,
-    pub named: Punctuated<Field, Token![,]>,
-}
-pub struct FieldsUnnamed {
-    pub paren: tok::Paren,
-    pub unnamed: Punctuated<Field, Token![,]>,
-}
-impl Fields {
-    pub fn iter(&self) -> punct::Iter<Field> {
-        match self {
-            Fields::Unit => punct::empty_punctuated_iter(),
-            Fields::Named(f) => f.named.iter(),
-            Fields::Unnamed(f) => f.unnamed.iter(),
-        }
-    }
-    pub fn iter_mut(&mut self) -> punct::IterMut<Field> {
-        match self {
-            Fields::Unit => punct::empty_punctuated_iter_mut(),
-            Fields::Named(f) => f.named.iter_mut(),
-            Fields::Unnamed(f) => f.unnamed.iter_mut(),
-        }
-    }
-    pub fn len(&self) -> usize {
-        match self {
-            Fields::Unit => 0,
-            Fields::Named(f) => f.named.len(),
-            Fields::Unnamed(f) => f.unnamed.len(),
-        }
-    }
-    pub fn is_empty(&self) -> bool {
-        match self {
-            Fields::Unit => true,
-            Fields::Named(f) => f.named.is_empty(),
-            Fields::Unnamed(f) => f.unnamed.is_empty(),
-        }
-    }
-}
-impl IntoIterator for Fields {
-    type Item = Field;
-    type IntoIter = punct::IntoIter<Field>;
-    fn into_iter(self) -> Self::IntoIter {
-        match self {
-            Fields::Unit => Punctuated::<Field, ()>::new().into_iter(),
-            Fields::Named(f) => f.named.into_iter(),
-            Fields::Unnamed(f) => f.unnamed.into_iter(),
-        }
-    }
-}
-impl<'a> IntoIterator for &'a Fields {
-    type Item = &'a Field;
-    type IntoIter = punct::Iter<'a, Field>;
-    fn into_iter(self) -> Self::IntoIter {
-        self.iter()
-    }
-}
-impl<'a> IntoIterator for &'a mut Fields {
-    type Item = &'a mut Field;
-    type IntoIter = punct::IterMut<'a, Field>;
-    fn into_iter(self) -> Self::IntoIter {
-        self.iter_mut()
-    }
-}
-pub struct Field {
-    pub attrs: Vec<attr::Attr>,
-    pub vis: Visibility,
-    pub mutability: FieldMut,
-    pub ident: Option<Ident>,
-    pub colon: Option<Token![:]>,
-    pub typ: ty::Type,
-}
-
 pub mod data {
     pub struct DeriveInput {
         pub attrs: Vec<attr::Attr>,
@@ -1561,7 +1424,7 @@ pub mod data {
     pub struct Enum {
         pub enum_: Token![enum],
         pub brace: tok::Brace,
-        pub elems: Punctuated<Variant, Token![,]>,
+        pub variants: Punctuated<Variant, Token![,]>,
     }
     pub struct Struct {
         pub struct_: Token![struct],
@@ -1570,7 +1433,99 @@ pub mod data {
     }
     pub struct Union {
         pub union_: Token![union],
-        pub fields: FieldsNamed,
+        pub named: Named,
+    }
+    pub struct Variant {
+        pub attrs: Vec<attr::Attr>,
+        pub ident: Ident,
+        pub fields: Fields,
+        pub discriminant: Option<(Token![=], Expr)>,
+    }
+    ast_enum_of_structs! {
+        pub enum Fields {
+            Named(Named),
+            Unnamed(Unnamed),
+            Unit,
+        }
+    }
+    impl Fields {
+        pub fn iter(&self) -> punct::Iter<Field> {
+            use Fields::*;
+            match self {
+                Named(x) => x.field.iter(),
+                Unnamed(x) => x.field.iter(),
+                Unit => punct::empty_punctuated_iter(),
+            }
+        }
+        pub fn iter_mut(&mut self) -> punct::IterMut<Field> {
+            use Fields::*;
+            match self {
+                Named(x) => x.field.iter_mut(),
+                Unnamed(x) => x.field.iter_mut(),
+                Unit => punct::empty_punctuated_iter_mut(),
+            }
+        }
+        pub fn len(&self) -> usize {
+            use Fields::*;
+            match self {
+                Named(x) => x.field.len(),
+                Unnamed(x) => x.field.len(),
+                Unit => 0,
+            }
+        }
+        pub fn is_empty(&self) -> bool {
+            use Fields::*;
+            match self {
+                Named(x) => x.field.is_empty(),
+                Unnamed(x) => x.field.is_empty(),
+                Unit => true,
+            }
+        }
+    }
+    impl IntoIterator for Fields {
+        type Item = Field;
+        type IntoIter = punct::IntoIter<Field>;
+        fn into_iter(self) -> Self::IntoIter {
+            use Fields::*;
+            match self {
+                Named(x) => x.field.into_iter(),
+                Unnamed(x) => x.field.into_iter(),
+                Unit => Punctuated::<Field, ()>::new().into_iter(),
+            }
+        }
+    }
+    impl<'a> IntoIterator for &'a Fields {
+        type Item = &'a Field;
+        type IntoIter = punct::Iter<'a, Field>;
+        fn into_iter(self) -> Self::IntoIter {
+            self.iter()
+        }
+    }
+    impl<'a> IntoIterator for &'a mut Fields {
+        type Item = &'a mut Field;
+        type IntoIter = punct::IterMut<'a, Field>;
+        fn into_iter(self) -> Self::IntoIter {
+            self.iter_mut()
+        }
+    }
+    pub struct Named {
+        pub brace: tok::Brace,
+        pub field: Punctuated<Field, Token![,]>,
+    }
+    pub struct Unnamed {
+        pub paren: tok::Paren,
+        pub field: Punctuated<Field, Token![,]>,
+    }
+    pub struct Field {
+        pub attrs: Vec<attr::Attr>,
+        pub vis: Visibility,
+        pub mut_: Mut,
+        pub ident: Option<Ident>,
+        pub colon: Option<Token![:]>,
+        pub typ: ty::Type,
+    }
+    pub enum Mut {
+        None,
     }
 }
 use data::DeriveInput;
@@ -1858,12 +1813,6 @@ pub mod ext {
             }
         }
     }
-}
-
-pub struct File {
-    pub shebang: Option<String>,
-    pub attrs: Vec<attr::Attr>,
-    pub items: Vec<Item>,
 }
 
 mod look {
@@ -2469,14 +2418,14 @@ impl ParseQuote for attr::Attr {
         }
     }
 }
-impl ParseQuote for patt::Patt {
+impl ParseQuote for pat::Pat {
     fn parse(x: ParseStream) -> Result<Self> {
-        patt::Patt::parse_multi_with_leading_vert(x)
+        pat::Pat::parse_multi_with_leading_vert(x)
     }
 }
-impl ParseQuote for Box<patt::Patt> {
+impl ParseQuote for Box<pat::Pat> {
     fn parse(x: ParseStream) -> Result<Self> {
-        <patt::Patt as ParseQuote>::parse(x).map(Box::new)
+        <pat::Pat as ParseQuote>::parse(x).map(Box::new)
     }
 }
 impl<T: Parse, P: Parse> ParseQuote for Punctuated<T, P> {
@@ -2522,10 +2471,6 @@ pub struct VisRestricted {
     pub paren: tok::Paren,
     pub in_: Option<Token![in]>,
     pub path: Box<Path>,
-}
-
-pub enum FieldMut {
-    None,
 }
 
 mod sealed {
@@ -2894,30 +2839,36 @@ pub fn parse<T: parse::Parse>(tokens: proc_macro::TokenStream) -> Result<T> {
 pub fn parse2<T: parse::Parse>(tokens: proc_macro2::TokenStream) -> Result<T> {
     parse::Parser::parse2(T::parse, tokens)
 }
-pub fn parse_str<T: parse::Parse>(s: &str) -> Result<T> {
-    parse::Parser::parse_str(T::parse, s)
+
+pub struct File {
+    pub shebang: Option<String>,
+    pub attrs: Vec<attr::Attr>,
+    pub items: Vec<Item>,
 }
-pub fn parse_file(mut content: &str) -> Result<File> {
+pub fn parse_file(mut x: &str) -> Result<File> {
     const BOM: &str = "\u{feff}";
-    if content.starts_with(BOM) {
-        content = &content[BOM.len()..];
+    if x.starts_with(BOM) {
+        x = &x[BOM.len()..];
     }
     let mut shebang = None;
-    if content.starts_with("#!") {
-        let rest = whitespace::ws_skip(&content[2..]);
+    if x.starts_with("#!") {
+        let rest = whitespace::ws_skip(&x[2..]);
         if !rest.starts_with('[') {
-            if let Some(idx) = content.find('\n') {
-                shebang = Some(content[..idx].to_string());
-                content = &content[idx..];
+            if let Some(i) = x.find('\n') {
+                shebang = Some(x[..i].to_string());
+                x = &x[i..];
             } else {
-                shebang = Some(content.to_string());
-                content = "";
+                shebang = Some(x.to_string());
+                x = "";
             }
         }
     }
-    let mut file: File = parse_str(content)?;
-    file.shebang = shebang;
-    Ok(file)
+    let mut y: File = parse_str(x)?;
+    y.shebang = shebang;
+    Ok(y)
+}
+pub fn parse_str<T: parse::Parse>(s: &str) -> Result<T> {
+    parse::Parser::parse_str(T::parse, s)
 }
 
 pub mod lower;
