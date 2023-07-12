@@ -239,7 +239,7 @@ impl Parse for pm2::Lit {
 pub trait Parser: Sized {
     type Output;
     fn parse2(self, tokens: pm2::Stream) -> Res<Self::Output>;
-    fn parse(self, tokens: proc_macro::pm2::Stream) -> Res<Self::Output> {
+    fn parse(self, tokens: pm2::Stream) -> Res<Self::Output> {
         self.parse2(proc_macro2::pm2::Stream::from(tokens))
     }
     fn parse_str(self, s: &str) -> Res<Self::Output> {

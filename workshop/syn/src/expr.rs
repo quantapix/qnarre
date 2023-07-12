@@ -1,4 +1,4 @@
-pub use pm2::Stream;
+pub use super::{attr, pm2::Stream, stmt, tok};
 use quote::IdentFragment;
 
 ast_enum_of_structs! {
@@ -508,8 +508,8 @@ impl Parse for If {
             attrs,
             if_: x.parse()?,
             cond: Box::new(x.call(Expr::parse_without_eager_brace)?),
-            then_branch: x.parse()?,
-            else_branch: {
+            then_: x.parse()?,
+            else_: {
                 if x.peek(Token![else]) {
                     Some(x.call(else_block)?)
                 } else {
@@ -1039,7 +1039,7 @@ impl Parse for While {
             label,
             while_,
             cond: Box::new(cond),
-            body: stmt::Block { brace, stmts },
+            block: stmt::Block { brace, stmts },
         })
     }
 }
@@ -1049,9 +1049,9 @@ impl ToTokens for While {
         self.label.to_tokens(ys);
         self.while_.to_tokens(ys);
         wrap_bare_struct(ys, &self.cond);
-        self.body.brace.surround(ys, |ys| {
+        self.block.brace.surround(ys, |ys| {
             inner_attrs_to_tokens(&self.attrs, ys);
-            ys.append_all(&self.body.stmts);
+            ys.append_all(&self.block.stmts);
         });
     }
 }

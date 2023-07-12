@@ -1,3 +1,6 @@
+use super::{err, meta, path::Path, pm2::Stream, tok};
+use std::fmt;
+
 pub enum Style {
     Outer,
     Inner(Token![!]),
@@ -10,14 +13,14 @@ pub struct Attr {
     pub meta: meta::Meta,
 }
 impl Attr {
-    pub fn path(&self) -> &path::Path {
+    pub fn path(&self) -> &Path {
         self.meta.path()
     }
     pub fn parse_args<T: Parse>(&self) -> Res<T> {
         self.parse_args_with(T::parse)
     }
     pub fn parse_args_with<T: Parser>(&self, p: T) -> Res<T::Output> {
-        use super::meta::Meta;
+        use meta::Meta;
         match &self.meta {
             Meta::Path(x) => Err(err::new2(
                 x.segs.first().unwrap().ident.span(),

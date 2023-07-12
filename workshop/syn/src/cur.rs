@@ -1,3 +1,10 @@
+use super::{
+    err, err, mac,
+    path::Path,
+    pm2::{self, Stream},
+    tok,
+};
+
 enum Entry {
     Group(Group, usize),
     Ident(Ident),
@@ -266,7 +273,7 @@ impl Buffer {
             }
         }
     }
-    pub fn new(x: proc_macro::pm2::Stream) -> Self {
+    pub fn new(x: pm2::Stream) -> Self {
         Self::new2(x.into())
     }
     pub fn new2(x: pm2::Stream) -> Self {

@@ -642,8 +642,8 @@ pub mod __private {
         parse_quote_fn,
         parsing::{peek_punct, punct as parse_punct},
     };
-    pub use proc_macro::pm2::Stream;
-    pub use proc_macro2::pm2::Stream as TokenStream2;
+    pub use proc_macro::TokenStream;
+    pub use proc_macro2::TokenStream as TokenStream2;
     pub use quote::{self, ToTokens, TokenStreamExt};
     pub use std::{
         clone::Clone,
