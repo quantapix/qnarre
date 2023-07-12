@@ -1,0 +1,566 @@
+use pm2::Stream;
+
+pub struct Path {
+    pub colon: Option<Token![::]>,
+    pub segs: Punctuated<Segment, Token![::]>,
+}
+impl Path {
+    pub fn is_ident<I: ?Sized>(&self, i: &I) -> bool
+    where
+        Ident: PartialEq<I>,
+    {
+        match self.get_ident() {
+            Some(x) => x == i,
+            None => false,
+        }
+    }
+    pub fn get_ident(&self) -> Option<&Ident> {
+        if self.colon.is_none() && self.segs.len() == 1 && self.segs[0].args.is_none() {
+            Some(&self.segs[0].ident)
+        } else {
+            None
+        }
+    }
+}
+impl<T> From<T> for Path
+where
+    T: Into<Segment>,
+{
+    fn from(x: T) -> Self {
+        let mut y = Path {
+            colon: None,
+            segs: Punctuated::new(),
+        };
+        y.segs.push_value(x.into());
+        y
+    }
+}
+
+pub struct Segment {
+    pub ident: Ident,
+    pub args: Args,
+}
+impl<T> From<T> for Segment
+where
+    T: Into<Ident>,
+{
+    fn from(x: T) -> Self {
+        Segment {
+            ident: x.into(),
+            args: Args::None,
+        }
+    }
+}
+
+pub enum Args {
+    None,
+    Angled(AngledArgs),
+    Parenthesized(ParenthesizedArgs),
+}
+impl Args {
+    pub fn is_empty(&self) -> bool {
+        use Args::*;
+        match self {
+            None => true,
+            Angled(x) => x.args.is_empty(),
+            Parenthesized(_) => false,
+        }
+    }
+    pub fn is_none(&self) -> bool {
+        use Args::*;
+        match self {
+            None => true,
+            Angled(_) | Parenthesized(_) => false,
+        }
+    }
+}
+impl Default for Args {
+    fn default() -> Self {
+        Args::None
+    }
+}
+
+pub enum Arg {
+    Lifetime(Lifetime),
+    Type(typ::Type),
+    Const(Expr),
+    AssocType(AssocType),
+    AssocConst(AssocConst),
+    Constraint(Constraint),
+}
+
+pub struct AngledArgs {
+    pub colon2: Option<Token![::]>,
+    pub lt: Token![<],
+    pub args: Punctuated<Arg, Token![,]>,
+    pub gt: Token![>],
+}
+pub struct AssocType {
+    pub ident: Ident,
+    pub args: Option<AngledArgs>,
+    pub eq: Token![=],
+    pub typ: typ::Type,
+}
+pub struct AssocConst {
+    pub ident: Ident,
+    pub args: Option<AngledArgs>,
+    pub eq: Token![=],
+    pub val: Expr,
+}
+pub struct Constraint {
+    pub ident: Ident,
+    pub args: Option<AngledArgs>,
+    pub colon: Token![:],
+    pub bounds: Punctuated<gen::bound::Type, Token![+]>,
+}
+pub struct ParenthesizedArgs {
+    pub paren: tok::Paren,
+    pub args: Punctuated<typ::Type, Token![,]>,
+    pub ret: Ret,
+}
+pub struct QSelf {
+    pub lt: Token![<],
+    pub typ: Box<typ::Type>,
+    pub pos: usize,
+    pub as_: Option<Token![as]>,
+    pub gt: Token![>],
+}
+
+impl Path {
+    pub fn parse_mod_style(x: Stream) -> Res<Self> {
+        Ok(Path {
+            colon: x.parse()?,
+            segs: {
+                let mut ys = Punctuated::new();
+                loop {
+                    if !x.peek(Ident)
+                        && !x.peek(Token![super])
+                        && !x.peek(Token![self])
+                        && !x.peek(Token![Self])
+                        && !x.peek(Token![crate])
+                    {
+                        break;
+                    }
+                    let ident = Ident::parse_any(x)?;
+                    ys.push_value(Segment::from(ident));
+                    if !x.peek(Token![::]) {
+                        break;
+                    }
+                    let punct = x.parse()?;
+                    ys.push_punct(punct);
+                }
+                if ys.is_empty() {
+                    return Err(x.parse::<Ident>().unwrap_err());
+                } else if ys.trailing_punct() {
+                    return Err(x.error("expected path segment after `::`"));
+                }
+                ys
+            },
+        })
+    }
+    pub fn parse_helper(x: Stream, expr_style: bool) -> Res<Self> {
+        let mut path = Path {
+            colon: x.parse()?,
+            segs: {
+                let mut ys = Punctuated::new();
+                let value = Segment::parse_helper(x, expr_style)?;
+                ys.push_value(value);
+                ys
+            },
+        };
+        Path::parse_rest(x, &mut path, expr_style)?;
+        Ok(path)
+    }
+    pub fn parse_rest(x: Stream, path: &mut Self, expr_style: bool) -> Res<()> {
+        while x.peek(Token![::]) && !x.peek3(tok::Paren) {
+            let punct: Token![::] = x.parse()?;
+            path.segs.push_punct(punct);
+            let value = Segment::parse_helper(x, expr_style)?;
+            path.segs.push_value(value);
+        }
+        Ok(())
+    }
+    pub fn is_mod_style(&self) -> bool {
+        self.segs.iter().all(|x| x.arguments.is_none())
+    }
+}
+impl Parse for Path {
+    fn parse(x: Stream) -> Res<Self> {
+        Self::parse_helper(x, false)
+    }
+}
+impl Segment {
+    fn parse_helper(x: Stream, expr_style: bool) -> Res<Self> {
+        if x.peek(Token![super])
+            || x.peek(Token![self])
+            || x.peek(Token![crate])
+            || cfg!(feature = "full") && x.peek(Token![try])
+        {
+            let ident = x.call(Ident::parse_any)?;
+            return Ok(Segment::from(ident));
+        }
+        let ident = if x.peek(Token![Self]) {
+            x.call(Ident::parse_any)?
+        } else {
+            x.parse()?
+        };
+        if !expr_style && x.peek(Token![<]) && !x.peek(Token![<=]) || x.peek(Token![::]) && x.peek3(Token![<]) {
+            Ok(Segment {
+                ident,
+                args: Args::Angled(x.parse()?),
+            })
+        } else {
+            Ok(Segment::from(ident))
+        }
+    }
+}
+impl Parse for Segment {
+    fn parse(x: Stream) -> Res<Self> {
+        Self::parse_helper(x, false)
+    }
+}
+impl AngledArgs {
+    pub fn parse_turbofish(x: Stream) -> Res<Self> {
+        let y: Token![::] = x.parse()?;
+        Self::do_parse(Some(y), x)
+    }
+    fn do_parse(colon2: Option<Token![::]>, x: Stream) -> Res<Self> {
+        Ok(AngledArgs {
+            colon2,
+            lt: x.parse()?,
+            args: {
+                let mut ys = Punctuated::new();
+                loop {
+                    if x.peek(Token![>]) {
+                        break;
+                    }
+                    let y: Arg = x.parse()?;
+                    ys.push_value(y);
+                    if x.peek(Token![>]) {
+                        break;
+                    }
+                    let y: Token![,] = x.parse()?;
+                    ys.push_punct(y);
+                }
+                ys
+            },
+            gt: x.parse()?,
+        })
+    }
+}
+impl Parse for AngledArgs {
+    fn parse(x: Stream) -> Res<Self> {
+        let y: Option<Token![::]> = x.parse()?;
+        Self::do_parse(y, x)
+    }
+}
+impl Parse for ParenthesizedArgs {
+    fn parse(x: Stream) -> Res<Self> {
+        let gist;
+        Ok(ParenthesizedArgs {
+            paren: parenthesized!(gist in x),
+            args: gist.parse_terminated(typ::Type::parse, Token![,])?,
+            ret: x.call(typ::Ret::without_plus)?,
+        })
+    }
+}
+impl Parse for Arg {
+    fn parse(x: Stream) -> Res<Self> {
+        if x.peek(Lifetime) && !x.peek2(Token![+]) {
+            return Ok(Arg::Lifetime(x.parse()?));
+        }
+        if x.peek(Lit) || x.peek(tok::Brace) {
+            return const_argument(x).map(Arg::Const);
+        }
+        let mut y: Type = x.parse()?;
+        match y {
+            typ::Type::Path(mut ty)
+                if ty.qself.is_none()
+                    && ty.path.colon.is_none()
+                    && ty.path.segs.len() == 1
+                    && match &ty.path.segments[0].arguments {
+                        Args::None | Args::AngleBracketed(_) => true,
+                        Args::Parenthesized(_) => false,
+                    } =>
+            {
+                if let Some(eq) = x.parse::<Option<Token![=]>>()? {
+                    let seg = ty.path.segs.pop().unwrap().into_value();
+                    let ident = seg.ident;
+                    let gnrs = match seg.args {
+                        Args::None => None,
+                        Args::Angled(x) => Some(x),
+                        Args::Parenthesized(_) => unreachable!(),
+                    };
+                    return if x.peek(Lit) || x.peek(tok::Brace) {
+                        Ok(Arg::AssocConst(AssocConst {
+                            ident,
+                            args: gnrs,
+                            eq,
+                            val: const_argument(x)?,
+                        }))
+                    } else {
+                        Ok(Arg::AssocType(AssocType {
+                            ident,
+                            args: gnrs,
+                            eq,
+                            typ: x.parse()?,
+                        }))
+                    };
+                }
+                if let Some(colon) = x.parse::<Option<Token![:]>>()? {
+                    let seg = ty.path.segs.pop().unwrap().into_value();
+                    return Ok(Arg::Constraint(Constraint {
+                        ident: seg.ident,
+                        args: match seg.args {
+                            Args::None => None,
+                            Args::Angled(x) => Some(x),
+                            Args::Parenthesized(_) => unreachable!(),
+                        },
+                        colon,
+                        bounds: {
+                            let mut ys = Punctuated::new();
+                            loop {
+                                if x.peek(Token![,]) || x.peek(Token![>]) {
+                                    break;
+                                }
+                                let y: gen::bound::Type = x.parse()?;
+                                ys.push_value(y);
+                                if !x.peek(Token![+]) {
+                                    break;
+                                }
+                                let y: Token![+] = x.parse()?;
+                                ys.push_punct(y);
+                            }
+                            ys
+                        },
+                    }));
+                }
+                y = typ::Type::Path(ty);
+            },
+            _ => {},
+        }
+        Ok(Arg::Type(y))
+    }
+}
+pub fn const_argument(x: Stream) -> Res<Expr> {
+    let y = x.lookahead1();
+    if x.peek(Lit) {
+        let y = x.parse()?;
+        return Ok(Expr::Lit(y));
+    }
+    if x.peek(Ident) {
+        let y: Ident = x.parse()?;
+        return Ok(Expr::Path(expr::Path {
+            attrs: Vec::new(),
+            qself: None,
+            path: Path::from(y),
+        }));
+    }
+    if x.peek(tok::Brace) {
+        let y: expr::Block = x.parse()?;
+        return Ok(Expr::Block(y));
+    }
+    Err(y.error())
+}
+pub fn qpath(x: Stream, expr_style: bool) -> Res<(Option<QSelf>, Path)> {
+    if x.peek(Token![<]) {
+        let lt: Token![<] = x.parse()?;
+        let this: Type = x.parse()?;
+        let y = if x.peek(Token![as]) {
+            let as_: Token![as] = x.parse()?;
+            let y: Path = x.parse()?;
+            Some((as_, y))
+        } else {
+            None
+        };
+        let gt: Token![>] = x.parse()?;
+        let colon2: Token![::] = x.parse()?;
+        let mut rest = Punctuated::new();
+        loop {
+            let path = Segment::parse_helper(x, expr_style)?;
+            rest.push_value(path);
+            if !x.peek(Token![::]) {
+                break;
+            }
+            let punct: Token![::] = x.parse()?;
+            rest.push_punct(punct);
+        }
+        let (pos, as_, y) = match y {
+            Some((as_, mut y)) => {
+                let pos = y.segs.len();
+                y.segs.push_punct(colon2);
+                y.segs.extend(rest.into_pairs());
+                (pos, Some(as_), y)
+            },
+            None => {
+                let y = Path {
+                    colon: Some(colon2),
+                    segs: rest,
+                };
+                (0, None, y)
+            },
+        };
+        let qself = QSelf {
+            lt,
+            typ: Box::new(this),
+            pos,
+            as_,
+            gt,
+        };
+        Ok((Some(qself), y))
+    } else {
+        let y = Path::parse_helper(x, expr_style)?;
+        Ok((None, y))
+    }
+}
+pub struct DisplayPath<'a>(pub &'a Path);
+impl<'a> Display for DisplayPath<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for (i, x) in self.0.segs.iter().enumerate() {
+            if i > 0 || self.0.colon.is_some() {
+                f.write_str("::")?;
+            }
+            write!(f, "{}", x.ident)?;
+        }
+        Ok(())
+    }
+}
+
+impl ToTokens for Path {
+    fn to_tokens(&self, xs: &mut Stream) {
+        self.colon.to_tokens(xs);
+        self.segs.to_tokens(xs);
+    }
+}
+impl ToTokens for Segment {
+    fn to_tokens(&self, xs: &mut Stream) {
+        self.ident.to_tokens(xs);
+        self.args.to_tokens(xs);
+    }
+}
+impl ToTokens for Args {
+    fn to_tokens(&self, xs: &mut Stream) {
+        match self {
+            Args::None => {},
+            Args::Angled(args) => {
+                args.to_tokens(xs);
+            },
+            Args::Parenthesized(args) => {
+                args.to_tokens(xs);
+            },
+        }
+    }
+}
+impl ToTokens for Arg {
+    #[allow(clippy::match_same_arms)]
+    fn to_tokens(&self, xs: &mut Stream) {
+        use Arg::*;
+        match self {
+            Lifetime(x) => x.to_tokens(xs),
+            Type(x) => x.to_tokens(xs),
+            Const(x) => match x {
+                Expr::Lit(_) => x.to_tokens(xs),
+                Expr::Block(_) => x.to_tokens(xs),
+                _ => tok::Brace::default().surround(xs, |xs| {
+                    x.to_tokens(xs);
+                }),
+            },
+            AssocType(x) => x.to_tokens(xs),
+            AssocConst(x) => x.to_tokens(xs),
+            Constraint(x) => x.to_tokens(xs),
+        }
+    }
+}
+impl ToTokens for AngledArgs {
+    fn to_tokens(&self, xs: &mut Stream) {
+        self.colon2.to_tokens(xs);
+        self.lt.to_tokens(xs);
+        let mut trailing_or_empty = true;
+        for x in self.args.pairs() {
+            match x.value() {
+                Arg::Lifetime(_) => {
+                    x.to_tokens(xs);
+                    trailing_or_empty = x.punct().is_some();
+                },
+                Arg::Type(_) | Arg::Const(_) | Arg::AssocType(_) | Arg::AssocConst(_) | Arg::Constraint(_) => {},
+            }
+        }
+        for x in self.args.pairs() {
+            match x.value() {
+                Arg::Type(_) | Arg::Const(_) | Arg::AssocType(_) | Arg::AssocConst(_) | Arg::Constraint(_) => {
+                    if !trailing_or_empty {
+                        <Token![,]>::default().to_tokens(xs);
+                    }
+                    x.to_tokens(xs);
+                    trailing_or_empty = x.punct().is_some();
+                },
+                Arg::Lifetime(_) => {},
+            }
+        }
+        self.gt.to_tokens(xs);
+    }
+}
+impl ToTokens for AssocType {
+    fn to_tokens(&self, xs: &mut Stream) {
+        self.ident.to_tokens(xs);
+        self.args.to_tokens(xs);
+        self.eq.to_tokens(xs);
+        self.typ.to_tokens(xs);
+    }
+}
+impl ToTokens for AssocConst {
+    fn to_tokens(&self, xs: &mut Stream) {
+        self.ident.to_tokens(xs);
+        self.args.to_tokens(xs);
+        self.eq.to_tokens(xs);
+        self.val.to_tokens(xs);
+    }
+}
+impl ToTokens for Constraint {
+    fn to_tokens(&self, xs: &mut Stream) {
+        self.ident.to_tokens(xs);
+        self.args.to_tokens(xs);
+        self.colon.to_tokens(xs);
+        self.bounds.to_tokens(xs);
+    }
+}
+impl ToTokens for ParenthesizedArgs {
+    fn to_tokens(&self, xs: &mut Stream) {
+        self.paren.surround(xs, |ys| {
+            self.args.to_tokens(ys);
+        });
+        self.ret.to_tokens(xs);
+    }
+}
+pub(crate) fn print_path(xs: &mut Stream, qself: &Option<QSelf>, path: &Path) {
+    let qself = match qself {
+        Some(qself) => qself,
+        None => {
+            path.to_tokens(xs);
+            return;
+        },
+    };
+    qself.lt.to_tokens(xs);
+    qself.typ.to_tokens(xs);
+    let pos = cmp::min(qself.pos, path.segs.len());
+    let mut segments = path.segs.pairs();
+    if pos > 0 {
+        TokensOrDefault(&qself.as_).to_tokens(xs);
+        path.colon.to_tokens(xs);
+        for (i, segment) in segments.by_ref().take(pos).enumerate() {
+            if i + 1 == pos {
+                segment.value().to_tokens(xs);
+                qself.gt.to_tokens(xs);
+                segment.punct().to_tokens(xs);
+            } else {
+                segment.to_tokens(xs);
+            }
+        }
+    } else {
+        qself.gt.to_tokens(xs);
+        path.colon.to_tokens(xs);
+    }
+    for segment in segments {
+        segment.to_tokens(xs);
+    }
+}

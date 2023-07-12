@@ -898,6 +898,7 @@ impl Parse for FnArg {
         }
     }
 }
+
 enum FnArgOrVariadic {
     FnArg(FnArg),
     Variadic(Variadic),

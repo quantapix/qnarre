@@ -1,3 +1,4 @@
+pub use pm2::Stream;
 use std::{
     char,
     ops::{Index, RangeFrom},
@@ -1069,5 +1070,158 @@ fn backslash_u(mut s: &str) -> (char, &str) {
         (ch, s)
     } else {
         panic!("character code {:x} is not a valid unicode character", ch);
+    }
+}
+
+impl Parse for Lit {
+    fn parse(input: Stream) -> Res<Self> {
+        input.step(|cursor| {
+            if let Some((lit, rest)) = cursor.literal() {
+                return Ok((Lit::new(lit), rest));
+            }
+            if let Some((ident, rest)) = cursor.ident() {
+                let val = ident == "true";
+                if val || ident == "false" {
+                    let lit_bool = Bool {
+                        val,
+                        span: ident.span(),
+                    };
+                    return Ok((Lit::Bool(lit_bool), rest));
+                }
+            }
+            if let Some((punct, rest)) = cursor.punct() {
+                if punct.as_char() == '-' {
+                    if let Some((lit, rest)) = parse_negative(punct, rest) {
+                        return Ok((lit, rest));
+                    }
+                }
+            }
+            Err(cursor.error("expected literal"))
+        })
+    }
+}
+fn parse_negative(neg: Punct, cursor: Cursor) -> Option<(Lit, Cursor)> {
+    let (lit, rest) = cursor.literal()?;
+    let mut span = neg.span();
+    span = span.join(lit.span()).unwrap_or(span);
+    let mut repr = lit.to_string();
+    repr.insert(0, '-');
+    if let Some((digits, suff)) = parse_int(&repr) {
+        let mut tok: pm2::Lit = repr.parse().unwrap();
+        tok.set_span(span);
+        return Some((
+            Lit::Int(Int {
+                repr: Box::new(IntRepr { tok, digits, suff }),
+            }),
+            rest,
+        ));
+    }
+    let (digits, suff) = parse_float(&repr)?;
+    let mut tok: pm2::Lit = repr.parse().unwrap();
+    tok.set_span(span);
+    Some((
+        Lit::Float(Float {
+            repr: Box::new(FloatRepr { tok, digits, suff }),
+        }),
+        rest,
+    ))
+}
+impl Parse for Str {
+    fn parse(x: Stream) -> Res<Self> {
+        let head = x.fork();
+        match x.parse() {
+            Ok(Lit::Str(x)) => Ok(x),
+            _ => Err(head.error("expected string literal")),
+        }
+    }
+}
+impl Parse for ByteStr {
+    fn parse(x: Stream) -> Res<Self> {
+        let head = x.fork();
+        match x.parse() {
+            Ok(Lit::ByteStr(x)) => Ok(x),
+            _ => Err(head.error("expected byte string literal")),
+        }
+    }
+}
+impl Parse for Byte {
+    fn parse(x: Stream) -> Res<Self> {
+        let head = x.fork();
+        match x.parse() {
+            Ok(Lit::Byte(x)) => Ok(x),
+            _ => Err(head.error("expected byte literal")),
+        }
+    }
+}
+impl Parse for Char {
+    fn parse(x: Stream) -> Res<Self> {
+        let head = x.fork();
+        match x.parse() {
+            Ok(Lit::Char(x)) => Ok(x),
+            _ => Err(head.error("expected character literal")),
+        }
+    }
+}
+impl Parse for Int {
+    fn parse(x: Stream) -> Res<Self> {
+        let head = x.fork();
+        match x.parse() {
+            Ok(Lit::Int(x)) => Ok(x),
+            _ => Err(head.error("expected integer literal")),
+        }
+    }
+}
+impl Parse for Float {
+    fn parse(x: Stream) -> Res<Self> {
+        let head = x.fork();
+        match x.parse() {
+            Ok(Lit::Float(x)) => Ok(x),
+            _ => Err(head.error("expected floating point literal")),
+        }
+    }
+}
+impl Parse for Bool {
+    fn parse(x: Stream) -> Res<Self> {
+        let head = x.fork();
+        match x.parse() {
+            Ok(Lit::Bool(x)) => Ok(x),
+            _ => Err(head.error("expected boolean literal")),
+        }
+    }
+}
+
+impl ToTokens for Str {
+    fn to_tokens(&self, xs: &mut Stream) {
+        self.repr.tok.to_tokens(xs);
+    }
+}
+impl ToTokens for ByteStr {
+    fn to_tokens(&self, xs: &mut Stream) {
+        self.repr.tok.to_tokens(xs);
+    }
+}
+impl ToTokens for Byte {
+    fn to_tokens(&self, xs: &mut Stream) {
+        self.repr.tok.to_tokens(xs);
+    }
+}
+impl ToTokens for Char {
+    fn to_tokens(&self, xs: &mut Stream) {
+        self.repr.tok.to_tokens(xs);
+    }
+}
+impl ToTokens for Int {
+    fn to_tokens(&self, xs: &mut Stream) {
+        self.repr.tok.to_tokens(xs);
+    }
+}
+impl ToTokens for Float {
+    fn to_tokens(&self, xs: &mut Stream) {
+        self.repr.tok.to_tokens(xs);
+    }
+}
+impl ToTokens for Bool {
+    fn to_tokens(&self, xs: &mut Stream) {
+        xs.append(self.token());
     }
 }
