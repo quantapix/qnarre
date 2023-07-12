@@ -8,10 +8,10 @@ struct VisRest {
     rest: pm2::Stream,
 }
 impl Parse for VisRest {
-    fn parse(input: Stream) -> Res<Self> {
+    fn parse(x: Stream) -> Res<Self> {
         Ok(VisRest {
-            vis: input.parse()?,
-            rest: input.parse()?,
+            vis: x.parse()?,
+            rest: x.parse()?,
         })
     }
 }

@@ -4,9 +4,9 @@ use syn::parse::Stream;
 use syn::{Ident, Token};
 #[test]
 fn test_peek() {
-    let _ = |input: Stream| {
-        let _ = input.peek(Ident);
-        let _ = input.peek(Ident::peek_any);
-        let _ = input.peek(Token![::]);
+    let _ = |x: Stream| {
+        let _ = x.peek(Ident);
+        let _ = x.peek(Ident::peek_any);
+        let _ = x.peek(Token![::]);
     };
 }

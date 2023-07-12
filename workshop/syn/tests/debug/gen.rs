@@ -1778,14 +1778,14 @@ impl Debug for Lite<syn::Fields> {
         match &self.value {
             syn::Fields::Named(_val) => {
                 let mut formatter = formatter.debug_struct("Fields::Named");
-                if !_val.named.is_empty() {
+                if !_val.field.is_empty() {
                     formatter.field("named", Lite(&_val.named));
                 }
                 formatter.finish()
             },
             syn::Fields::Unnamed(_val) => {
                 let mut formatter = formatter.debug_struct("Fields::Unnamed");
-                if !_val.unnamed.is_empty() {
+                if !_val.field.is_empty() {
                     formatter.field("unnamed", Lite(&_val.unnamed));
                 }
                 formatter.finish()
@@ -1797,7 +1797,7 @@ impl Debug for Lite<syn::Fields> {
 impl Debug for Lite<syn::FieldsNamed> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("FieldsNamed");
-        if !self.value.named.is_empty() {
+        if !self.value.field.is_empty() {
             formatter.field("named", Lite(&self.value.named));
         }
         formatter.finish()
@@ -1806,7 +1806,7 @@ impl Debug for Lite<syn::FieldsNamed> {
 impl Debug for Lite<syn::FieldsUnnamed> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("FieldsUnnamed");
-        if !self.value.unnamed.is_empty() {
+        if !self.value.field.is_empty() {
             formatter.field("unnamed", Lite(&self.value.unnamed));
         }
         formatter.finish()

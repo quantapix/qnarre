@@ -20,11 +20,11 @@ fn smuggled_speculative_cursor_between_sources() {
 fn smuggled_speculative_cursor_between_brackets() {
     struct BreakRules;
     impl Parse for BreakRules {
-        fn parse(input: Stream) -> Res<Self> {
+        fn parse(x: Stream) -> Res<Self> {
             let a;
             let b;
-            parenthesized!(a in input);
-            parenthesized!(b in input);
+            parenthesized!(a in x);
+            parenthesized!(b in x);
             a.advance_to(&b);
             Ok(Self)
         }
@@ -36,10 +36,10 @@ fn smuggled_speculative_cursor_between_brackets() {
 fn smuggled_speculative_cursor_into_brackets() {
     struct BreakRules;
     impl Parse for BreakRules {
-        fn parse(input: Stream) -> Res<Self> {
+        fn parse(x: Stream) -> Res<Self> {
             let a;
-            parenthesized!(a in input);
-            input.advance_to(&a);
+            parenthesized!(a in x);
+            x.advance_to(&a);
             Ok(Self)
         }
     }
@@ -47,10 +47,10 @@ fn smuggled_speculative_cursor_into_brackets() {
 }
 #[test]
 fn trailing_empty_none_group() {
-    fn parse(input: Stream) -> Res<()> {
-        input.parse::<Token![+]>()?;
+    fn parse(x: Stream) -> Res<()> {
+        x.parse::<Token![+]>()?;
         let content;
-        parenthesized!(content in input);
+        parenthesized!(content in x);
         content.parse::<Token![+]>()?;
         Ok(())
     }

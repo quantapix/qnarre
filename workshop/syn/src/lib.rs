@@ -306,16 +306,16 @@ impl Visibility {
             _ => false,
         }
     }
-    fn parse_pub(input: Stream) -> Res<Self> {
-        let pub_ = input.parse::<Token![pub]>()?;
-        if input.peek(tok::Paren) {
-            let ahead = input.fork();
-            let content;
-            let paren = parenthesized!(content in ahead);
-            if content.peek(Token![crate]) || content.peek(Token![self]) || content.peek(Token![super]) {
-                let path = content.call(Ident::parse_any)?;
-                if content.is_empty() {
-                    input.advance_to(&ahead);
+    fn parse_pub(x: Stream) -> Res<Self> {
+        let pub_ = x.parse::<Token![pub]>()?;
+        if x.peek(tok::Paren) {
+            let ahead = x.fork();
+            let y;
+            let paren = parenthesized!(y in ahead);
+            if y.peek(Token![crate]) || y.peek(Token![self]) || y.peek(Token![super]) {
+                let path = y.call(Ident::parse_any)?;
+                if y.is_empty() {
+                    x.advance_to(&ahead);
                     return Ok(Visibility::Restricted(VisRestricted {
                         pub_,
                         paren,
@@ -323,10 +323,10 @@ impl Visibility {
                         path: Box::new(Path::from(path)),
                     }));
                 }
-            } else if content.peek(Token![in]) {
-                let in_: Token![in] = content.parse()?;
-                let path = content.call(Path::parse_mod_style)?;
-                input.advance_to(&ahead);
+            } else if y.peek(Token![in]) {
+                let in_: Token![in] = y.parse()?;
+                let path = y.call(Path::parse_mod_style)?;
+                x.advance_to(&ahead);
                 return Ok(Visibility::Restricted(VisRestricted {
                     pub_,
                     paren,
@@ -345,17 +345,17 @@ impl Visibility {
     }
 }
 impl Parse for Visibility {
-    fn parse(input: Stream) -> Res<Self> {
-        if input.peek(tok::Group) {
-            let ahead = input.fork();
-            let group = super::parse_group(&ahead)?;
-            if group.content.is_empty() {
-                input.advance_to(&ahead);
+    fn parse(x: Stream) -> Res<Self> {
+        if x.peek(tok::Group) {
+            let ahead = x.fork();
+            let y = super::parse_group(&ahead)?;
+            if y.content.is_empty() {
+                x.advance_to(&ahead);
                 return Ok(Visibility::Inherited);
             }
         }
-        if input.peek(Token![pub]) {
-            Self::parse_pub(input)
+        if x.peek(Token![pub]) {
+            Self::parse_pub(x)
         } else {
             Ok(Visibility::Inherited)
         }

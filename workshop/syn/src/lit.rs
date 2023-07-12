@@ -1074,29 +1074,29 @@ fn backslash_u(mut s: &str) -> (char, &str) {
 }
 
 impl Parse for Lit {
-    fn parse(input: Stream) -> Res<Self> {
-        input.step(|cursor| {
-            if let Some((lit, rest)) = cursor.literal() {
+    fn parse(x: Stream) -> Res<Self> {
+        x.step(|c| {
+            if let Some((lit, rest)) = c.literal() {
                 return Ok((Lit::new(lit), rest));
             }
-            if let Some((ident, rest)) = cursor.ident() {
+            if let Some((ident, rest)) = c.ident() {
                 let val = ident == "true";
                 if val || ident == "false" {
-                    let lit_bool = Bool {
+                    let y = Bool {
                         val,
                         span: ident.span(),
                     };
-                    return Ok((Lit::Bool(lit_bool), rest));
+                    return Ok((Lit::Bool(y), rest));
                 }
             }
-            if let Some((punct, rest)) = cursor.punct() {
+            if let Some((punct, rest)) = c.punct() {
                 if punct.as_char() == '-' {
                     if let Some((lit, rest)) = parse_negative(punct, rest) {
                         return Ok((lit, rest));
                     }
                 }
             }
-            Err(cursor.error("expected literal"))
+            Err(c.error("expected literal"))
         })
     }
 }

@@ -24,7 +24,7 @@ impl Attr {
                 x.segs.last().unwrap().ident.span(),
                 format!(
                     "expected attribute arguments in parentheses: {}[{}(...)]",
-                    DisplayAttrStyle(&self.style),
+                    DisplayStyle(&self.style),
                     DisplayPath(x),
                 ),
             )),
@@ -32,7 +32,7 @@ impl Attr {
                 x.eq.span,
                 format_args!(
                     "expected parentheses: {}[{}(...)]",
-                    DisplayAttrStyle(&self.style),
+                    DisplayStyle(&self.style),
                     DisplayPath(&meta.path),
                 ),
             )),
@@ -61,8 +61,8 @@ impl ToTokens for Attr {
         if let Style::Inner(x) = &self.style {
             x.to_tokens(ys);
         }
-        self.bracket.surround(ys, |x| {
-            self.meta.to_tokens(x);
+        self.bracket.surround(ys, |ys| {
+            self.meta.to_tokens(ys);
         });
     }
 }
@@ -96,8 +96,8 @@ impl<'a> Filter<'a> for &'a [Attr] {
     }
 }
 
-pub struct DisplayAttrStyle<'a>(pub &'a Style);
-impl<'a> Display for DisplayAttrStyle<'a> {
+pub struct DisplayStyle<'a>(pub &'a Style);
+impl<'a> Display for DisplayStyle<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(match self.0 {
             Style::Outer => "#",

@@ -567,14 +567,14 @@ fn accept_as_ident(x: &Ident) -> bool {
         _ => true,
     }
 }
-pub fn keyword(input: Stream, token: &str) -> Res<pm2::Span> {
-    input.step(|cursor| {
-        if let Some((ident, rest)) = cursor.ident() {
-            if ident == token {
-                return Ok((ident.span(), rest));
+pub fn keyword(x: Stream, token: &str) -> Res<pm2::Span> {
+    x.step(|c| {
+        if let Some((y, rest)) = c.ident() {
+            if y == token {
+                return Ok((y.span(), rest));
             }
         }
-        Err(cursor.error(format!("expected `{}`", token)))
+        Err(c.error(format!("expected `{}`", token)))
     })
 }
 pub fn peek_keyword(cursor: Cursor, token: &str) -> bool {
@@ -584,17 +584,17 @@ pub fn peek_keyword(cursor: Cursor, token: &str) -> bool {
         false
     }
 }
-pub fn punct<const N: usize>(input: Stream, token: &str) -> Res<[pm2::Span; N]> {
-    let mut spans = [input.span(); N];
-    punct_helper(input, token, &mut spans)?;
-    Ok(spans)
+pub fn punct<const N: usize>(x: Stream, token: &str) -> Res<[pm2::Span; N]> {
+    let mut ys = [x.span(); N];
+    punct_helper(x, token, &mut ys)?;
+    Ok(ys)
 }
-fn punct_helper(input: Stream, token: &str, spans: &mut [pm2::Span]) -> Res<()> {
-    input.step(|cursor| {
-        let mut cursor = *cursor;
+fn punct_helper(x: Stream, token: &str, spans: &mut [pm2::Span]) -> Res<()> {
+    x.step(|c| {
+        let mut c = *c;
         assert_eq!(token.len(), spans.len());
         for (i, ch) in token.chars().enumerate() {
-            match cursor.punct() {
+            match c.punct() {
                 Some((punct, rest)) => {
                     spans[i] = punct.span();
                     if punct.as_char() != ch {
@@ -604,7 +604,7 @@ fn punct_helper(input: Stream, token: &str, spans: &mut [pm2::Span]) -> Res<()> 
                     } else if punct.spacing() != pm2::Spacing::Joint {
                         break;
                     }
-                    cursor = rest;
+                    c = rest;
                 },
                 None => break,
             }

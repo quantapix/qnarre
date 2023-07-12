@@ -173,8 +173,8 @@ impl Clone for SpanRange {
 impl Copy for SpanRange {}
 impl std::error::Error for Err {}
 impl From<LexError> for Err {
-    fn from(err: LexError) -> Self {
-        Err::new(err.span(), "lex error")
+    fn from(x: LexError) -> Self {
+        Err::new(x.span(), "lex error")
     }
 }
 impl IntoIterator for Err {
