@@ -74,7 +74,7 @@ impl Hash for attr::Attr {
         self.meta.hash(state);
     }
 }
-impl Hash for ty::FnArg {
+impl Hash for typ::FnArg {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -84,7 +84,7 @@ impl Hash for ty::FnArg {
         self.ty.hash(state);
     }
 }
-impl Hash for ty::Variadic {
+impl Hash for typ::Variadic {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -934,7 +934,7 @@ impl Hash for item::FnArg {
                 state.write_u8(0u8);
                 v0.hash(state);
             },
-            item::FnArg::Typed(v0) => {
+            item::FnArg::Type(v0) => {
                 state.write_u8(1u8);
                 v0.hash(state);
             },
@@ -1866,16 +1866,16 @@ impl Hash for item::Receiver {
         self.typ.hash(state);
     }
 }
-impl Hash for ty::Ret {
+impl Hash for typ::Ret {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         match self {
-            ty::Ret::Default => {
+            typ::Ret::Default => {
                 state.write_u8(0u8);
             },
-            ty::Ret::Type(_, v1) => {
+            typ::Ret::Type(_, v1) => {
                 state.write_u8(1u8);
                 v1.hash(state);
             },
@@ -1887,7 +1887,7 @@ impl Hash for item::Sig {
     where
         H: Hasher,
     {
-        self.constness.hash(state);
+        self.const_.hash(state);
         self.async_.hash(state);
         self.unsafe_.hash(state);
         self.abi.hash(state);
@@ -2050,76 +2050,76 @@ impl Hash for item::Trait::Type {
         self.default.hash(state);
     }
 }
-impl Hash for ty::Type {
+impl Hash for typ::Type {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         match self {
-            ty::Type::Array(v0) => {
+            typ::Type::Array(v0) => {
                 state.write_u8(0u8);
                 v0.hash(state);
             },
-            ty::Type::Fn(v0) => {
+            typ::Type::Fn(v0) => {
                 state.write_u8(1u8);
                 v0.hash(state);
             },
-            ty::Type::Group(v0) => {
+            typ::Type::Group(v0) => {
                 state.write_u8(2u8);
                 v0.hash(state);
             },
-            ty::Type::Impl(v0) => {
+            typ::Type::Impl(v0) => {
                 state.write_u8(3u8);
                 v0.hash(state);
             },
-            ty::Type::Infer(v0) => {
+            typ::Type::Infer(v0) => {
                 state.write_u8(4u8);
                 v0.hash(state);
             },
-            ty::Type::Mac(v0) => {
+            typ::Type::Mac(v0) => {
                 state.write_u8(5u8);
                 v0.hash(state);
             },
-            ty::Type::Never(v0) => {
+            typ::Type::Never(v0) => {
                 state.write_u8(6u8);
                 v0.hash(state);
             },
-            ty::Type::Paren(v0) => {
+            typ::Type::Paren(v0) => {
                 state.write_u8(7u8);
                 v0.hash(state);
             },
-            ty::Type::Path(v0) => {
+            typ::Type::Path(v0) => {
                 state.write_u8(8u8);
                 v0.hash(state);
             },
-            ty::Type::Ptr(v0) => {
+            typ::Type::Ptr(v0) => {
                 state.write_u8(9u8);
                 v0.hash(state);
             },
-            ty::Type::Ref(v0) => {
+            typ::Type::Ref(v0) => {
                 state.write_u8(10u8);
                 v0.hash(state);
             },
-            ty::Type::Slice(v0) => {
+            typ::Type::Slice(v0) => {
                 state.write_u8(11u8);
                 v0.hash(state);
             },
-            ty::Type::TraitObj(v0) => {
+            typ::Type::Trait(v0) => {
                 state.write_u8(12u8);
                 v0.hash(state);
             },
-            ty::Type::Tuple(v0) => {
+            typ::Type::Tuple(v0) => {
                 state.write_u8(13u8);
                 v0.hash(state);
             },
-            ty::Type::Verbatim(v0) => {
+            typ::Type::Verbatim(v0) => {
                 state.write_u8(14u8);
                 TokenStreamHelper(v0).hash(state);
             },
         }
     }
 }
-impl Hash for ty::Array {
+impl Hash for typ::Array {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -2128,7 +2128,7 @@ impl Hash for ty::Array {
         self.len.hash(state);
     }
 }
-impl Hash for ty::Fn {
+impl Hash for typ::Fn {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -2141,7 +2141,7 @@ impl Hash for ty::Fn {
         self.ret.hash(state);
     }
 }
-impl Hash for ty::Group {
+impl Hash for typ::Group {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -2149,7 +2149,7 @@ impl Hash for ty::Group {
         self.elem.hash(state);
     }
 }
-impl Hash for ty::Impl {
+impl Hash for typ::Impl {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -2157,14 +2157,14 @@ impl Hash for ty::Impl {
         self.bounds.hash(state);
     }
 }
-impl Hash for ty::Infer {
+impl Hash for typ::Infer {
     fn hash<H>(&self, _state: &mut H)
     where
         H: Hasher,
     {
     }
 }
-impl Hash for ty::Mac {
+impl Hash for typ::Mac {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -2172,7 +2172,7 @@ impl Hash for ty::Mac {
         self.mac.hash(state);
     }
 }
-impl Hash for ty::Never {
+impl Hash for typ::Never {
     fn hash<H>(&self, _state: &mut H)
     where
         H: Hasher,
@@ -2213,7 +2213,7 @@ impl Hash for gen::bound::Type {
         }
     }
 }
-impl Hash for ty::Paren {
+impl Hash for typ::Paren {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -2221,7 +2221,7 @@ impl Hash for ty::Paren {
         self.elem.hash(state);
     }
 }
-impl Hash for ty::Path {
+impl Hash for typ::Path {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -2230,7 +2230,7 @@ impl Hash for ty::Path {
         self.path.hash(state);
     }
 }
-impl Hash for ty::Ptr {
+impl Hash for typ::Ptr {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -2240,7 +2240,7 @@ impl Hash for ty::Ptr {
         self.elem.hash(state);
     }
 }
-impl Hash for ty::Ref {
+impl Hash for typ::Ref {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -2250,7 +2250,7 @@ impl Hash for ty::Ref {
         self.elem.hash(state);
     }
 }
-impl Hash for ty::Slice {
+impl Hash for typ::Slice {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -2258,7 +2258,7 @@ impl Hash for ty::Slice {
         self.elem.hash(state);
     }
 }
-impl Hash for ty::TraitObj {
+impl Hash for typ::Trait {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -2267,7 +2267,7 @@ impl Hash for ty::TraitObj {
         self.bounds.hash(state);
     }
 }
-impl Hash for ty::Tuple {
+impl Hash for typ::Tuple {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,

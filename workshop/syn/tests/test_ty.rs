@@ -4,12 +4,12 @@ mod macros;
 use syn::*;
 #[test]
 fn test_mut_self() {
-    syn::parse_str::<ty::Type>("fn(mut self)").unwrap();
-    syn::parse_str::<ty::Type>("fn(mut self,)").unwrap();
-    syn::parse_str::<ty::Type>("fn(mut self: ())").unwrap();
-    syn::parse_str::<ty::Type>("fn(mut self: ...)").unwrap_err();
-    syn::parse_str::<ty::Type>("fn(mut self: mut self)").unwrap_err();
-    syn::parse_str::<ty::Type>("fn(mut self::T)").unwrap_err();
+    syn::parse_str::<typ::Type>("fn(mut self)").unwrap();
+    syn::parse_str::<typ::Type>("fn(mut self,)").unwrap();
+    syn::parse_str::<typ::Type>("fn(mut self: ())").unwrap();
+    syn::parse_str::<typ::Type>("fn(mut self: ...)").unwrap_err();
+    syn::parse_str::<typ::Type>("fn(mut self: mut self)").unwrap_err();
+    syn::parse_str::<typ::Type>("fn(mut self::T)").unwrap_err();
 }
 #[test]
 fn test_macro_variable_type() {
@@ -19,7 +19,7 @@ fn test_macro_variable_type() {
         pm2::Tree::Ident(Ident::new("T", pm2::Span::call_site())),
         pm2::Tree::Punct(Punct::new('>', pm2::Spacing::Alone)),
     ]);
-    snapshot!(tokens as ty::Type, @r###"
+    snapshot!(tokens as typ::Type, @r###"
     Type::Path {
         path: Path {
             segments: [
@@ -51,7 +51,7 @@ fn test_macro_variable_type() {
         pm2::Tree::Ident(Ident::new("T", pm2::Span::call_site())),
         pm2::Tree::Punct(Punct::new('>', pm2::Spacing::Alone)),
     ]);
-    snapshot!(tokens as ty::Type, @r###"
+    snapshot!(tokens as typ::Type, @r###"
     Type::Path {
         path: Path {
             segments: [
@@ -85,7 +85,7 @@ fn test_group_angle_brackets() {
         pm2::Tree::Group(Group::new(pm2::Delim::None, quote! { Vec<u8> })),
         pm2::Tree::Punct(Punct::new('>', pm2::Spacing::Alone)),
     ]);
-    snapshot!(tokens as ty::Type, @r###"
+    snapshot!(tokens as typ::Type, @r###"
     Type::Path {
         path: Path {
             segments: [
@@ -133,7 +133,7 @@ fn test_group_colons() {
         pm2::Tree::Punct(Punct::new(':', pm2::Spacing::Alone)),
         pm2::Tree::Ident(Ident::new("Item", pm2::Span::call_site())),
     ]);
-    snapshot!(tokens as ty::Type, @r###"
+    snapshot!(tokens as typ::Type, @r###"
     Type::Path {
         path: Path {
             segments: [
@@ -166,7 +166,7 @@ fn test_group_colons() {
         pm2::Tree::Punct(Punct::new(':', pm2::Spacing::Alone)),
         pm2::Tree::Ident(Ident::new("Element", pm2::Span::call_site())),
     ]);
-    snapshot!(tokens as ty::Type, @r###"
+    snapshot!(tokens as typ::Type, @r###"
     Type::Path {
         qself: Some(QSelf {
             ty: Type::Slice {
@@ -196,7 +196,7 @@ fn test_group_colons() {
 #[test]
 fn test_trait_object() {
     let tokens = quote!(dyn for<'a> Trait<'a> + 'static);
-    snapshot!(tokens as ty::Type, @r###"
+    snapshot!(tokens as typ::Type, @r###"
     Type::TraitObject {
         dyn_: Some,
         bounds: [
@@ -232,7 +232,7 @@ fn test_trait_object() {
     }
     "###);
     let tokens = quote!(dyn 'a + Trait);
-    snapshot!(tokens as ty::Type, @r###"
+    snapshot!(tokens as typ::Type, @r###"
     Type::TraitObject {
         dyn_: Some,
         bounds: [
@@ -251,14 +251,14 @@ fn test_trait_object() {
         ],
     }
     "###);
-    syn::parse_str::<ty::Type>("for<'a> dyn Trait<'a>").unwrap_err();
-    syn::parse_str::<ty::Type>("dyn for<'a> 'a + Trait").unwrap_err();
+    syn::parse_str::<typ::Type>("for<'a> dyn Trait<'a>").unwrap_err();
+    syn::parse_str::<typ::Type>("dyn for<'a> 'a + Trait").unwrap_err();
 }
 #[test]
 fn test_trailing_plus() {
     #[rustfmt::skip]
     let tokens = quote!(impl Trait +);
-    snapshot!(tokens as ty::Type, @r###"
+    snapshot!(tokens as typ::Type, @r###"
     Type::ImplTrait {
         bounds: [
             gen::bound::Type::Trait(gen::bound::Trait {
@@ -275,7 +275,7 @@ fn test_trailing_plus() {
     "###);
     #[rustfmt::skip]
     let tokens = quote!(dyn Trait +);
-    snapshot!(tokens as ty::Type, @r###"
+    snapshot!(tokens as typ::Type, @r###"
     Type::TraitObject {
         dyn_: Some,
         bounds: [
@@ -293,7 +293,7 @@ fn test_trailing_plus() {
     "###);
     #[rustfmt::skip]
     let tokens = quote!(Trait +);
-    snapshot!(tokens as ty::Type, @r###"
+    snapshot!(tokens as typ::Type, @r###"
     Type::TraitObject {
         bounds: [
             gen::bound::Type::Trait(gen::bound::Trait {

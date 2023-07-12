@@ -50,14 +50,14 @@ impl PartialEq for attr::Attr {
         self.style == other.style && self.meta == other.meta
     }
 }
-impl Eq for ty::FnArg {}
-impl PartialEq for ty::FnArg {
+impl Eq for typ::FnArg {}
+impl PartialEq for typ::FnArg {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.name == other.name && self.ty == other.ty
     }
 }
-impl Eq for ty::Variadic {}
-impl PartialEq for ty::Variadic {
+impl Eq for typ::Variadic {}
+impl PartialEq for typ::Variadic {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.name == other.name && self.comma == other.comma
     }
@@ -529,7 +529,7 @@ impl PartialEq for item::FnArg {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (item::FnArg::Receiver(self0), item::FnArg::Receiver(other0)) => self0 == other0,
-            (item::FnArg::Typed(self0), item::FnArg::Typed(other0)) => self0 == other0,
+            (item::FnArg::Type(self0), item::FnArg::Type(other0)) => self0 == other0,
             _ => false,
         }
     }
@@ -1097,12 +1097,12 @@ impl PartialEq for item::Receiver {
             && self.typ == other.typ
     }
 }
-impl Eq for ty::Ret {}
-impl PartialEq for ty::Ret {
+impl Eq for typ::Ret {}
+impl PartialEq for typ::Ret {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (ty::Ret::Default, ty::Ret::Default) => true,
-            (ty::Ret::Type(_, self1), ty::Ret::Type(_, other1)) => self1 == other1,
+            (typ::Ret::Default, typ::Ret::Default) => true,
+            (typ::Ret::Type(_, self1), typ::Ret::Type(_, other1)) => self1 == other1,
             _ => false,
         }
     }
@@ -1110,7 +1110,7 @@ impl PartialEq for ty::Ret {
 impl Eq for item::Sig {}
 impl PartialEq for item::Sig {
     fn eq(&self, other: &Self) -> bool {
-        self.constness == other.constness
+        self.const_ == other.const_
             && self.async_ == other.async_
             && self.unsafe_ == other.unsafe_
             && self.abi == other.abi
@@ -1213,39 +1213,39 @@ impl PartialEq for item::Trait::Type {
             && self.default == other.default
     }
 }
-impl Eq for ty::Type {}
-impl PartialEq for ty::Type {
+impl Eq for typ::Type {}
+impl PartialEq for typ::Type {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (ty::Type::Array(self0), ty::Type::Array(other0)) => self0 == other0,
-            (ty::Type::Fn(self0), ty::Type::Fn(other0)) => self0 == other0,
-            (ty::Type::Group(self0), ty::Type::Group(other0)) => self0 == other0,
-            (ty::Type::Impl(self0), ty::Type::Impl(other0)) => self0 == other0,
-            (ty::Type::Infer(self0), ty::Type::Infer(other0)) => self0 == other0,
-            (ty::Type::Mac(self0), ty::Type::Mac(other0)) => self0 == other0,
-            (ty::Type::Never(self0), ty::Type::Never(other0)) => self0 == other0,
-            (ty::Type::Paren(self0), ty::Type::Paren(other0)) => self0 == other0,
-            (ty::Type::Path(self0), ty::Type::Path(other0)) => self0 == other0,
-            (ty::Type::Ptr(self0), ty::Type::Ptr(other0)) => self0 == other0,
-            (ty::Type::Ref(self0), ty::Type::Ref(other0)) => self0 == other0,
-            (ty::Type::Slice(self0), ty::Type::Slice(other0)) => self0 == other0,
-            (ty::Type::TraitObj(self0), ty::Type::TraitObj(other0)) => self0 == other0,
-            (ty::Type::Tuple(self0), ty::Type::Tuple(other0)) => self0 == other0,
-            (ty::Type::Verbatim(self0), ty::Type::Verbatim(other0)) => {
+            (typ::Type::Array(self0), typ::Type::Array(other0)) => self0 == other0,
+            (typ::Type::Fn(self0), typ::Type::Fn(other0)) => self0 == other0,
+            (typ::Type::Group(self0), typ::Type::Group(other0)) => self0 == other0,
+            (typ::Type::Impl(self0), typ::Type::Impl(other0)) => self0 == other0,
+            (typ::Type::Infer(self0), typ::Type::Infer(other0)) => self0 == other0,
+            (typ::Type::Mac(self0), typ::Type::Mac(other0)) => self0 == other0,
+            (typ::Type::Never(self0), typ::Type::Never(other0)) => self0 == other0,
+            (typ::Type::Paren(self0), typ::Type::Paren(other0)) => self0 == other0,
+            (typ::Type::Path(self0), typ::Type::Path(other0)) => self0 == other0,
+            (typ::Type::Ptr(self0), typ::Type::Ptr(other0)) => self0 == other0,
+            (typ::Type::Ref(self0), typ::Type::Ref(other0)) => self0 == other0,
+            (typ::Type::Slice(self0), typ::Type::Slice(other0)) => self0 == other0,
+            (typ::Type::Trait(self0), typ::Type::Trait(other0)) => self0 == other0,
+            (typ::Type::Tuple(self0), typ::Type::Tuple(other0)) => self0 == other0,
+            (typ::Type::Verbatim(self0), typ::Type::Verbatim(other0)) => {
                 TokenStreamHelper(self0) == TokenStreamHelper(other0)
             },
             _ => false,
         }
     }
 }
-impl Eq for ty::Array {}
-impl PartialEq for ty::Array {
+impl Eq for typ::Array {}
+impl PartialEq for typ::Array {
     fn eq(&self, other: &Self) -> bool {
         self.elem == other.elem && self.len == other.len
     }
 }
-impl Eq for ty::Fn {}
-impl PartialEq for ty::Fn {
+impl Eq for typ::Fn {}
+impl PartialEq for typ::Fn {
     fn eq(&self, other: &Self) -> bool {
         self.lifes == other.lifes
             && self.unsafe_ == other.unsafe_
@@ -1255,32 +1255,32 @@ impl PartialEq for ty::Fn {
             && self.ret == other.ret
     }
 }
-impl Eq for ty::Group {}
-impl PartialEq for ty::Group {
+impl Eq for typ::Group {}
+impl PartialEq for typ::Group {
     fn eq(&self, other: &Self) -> bool {
         self.elem == other.elem
     }
 }
-impl Eq for ty::Impl {}
-impl PartialEq for ty::Impl {
+impl Eq for typ::Impl {}
+impl PartialEq for typ::Impl {
     fn eq(&self, other: &Self) -> bool {
         self.bounds == other.bounds
     }
 }
-impl Eq for ty::Infer {}
-impl PartialEq for ty::Infer {
+impl Eq for typ::Infer {}
+impl PartialEq for typ::Infer {
     fn eq(&self, _other: &Self) -> bool {
         true
     }
 }
-impl Eq for ty::Mac {}
-impl PartialEq for ty::Mac {
+impl Eq for typ::Mac {}
+impl PartialEq for typ::Mac {
     fn eq(&self, other: &Self) -> bool {
         self.mac == other.mac
     }
 }
-impl Eq for ty::Never {}
-impl PartialEq for ty::Never {
+impl Eq for typ::Never {}
+impl PartialEq for typ::Never {
     fn eq(&self, _other: &Self) -> bool {
         true
     }
@@ -1309,44 +1309,44 @@ impl PartialEq for gen::bound::Type {
         }
     }
 }
-impl Eq for ty::Paren {}
-impl PartialEq for ty::Paren {
+impl Eq for typ::Paren {}
+impl PartialEq for typ::Paren {
     fn eq(&self, other: &Self) -> bool {
         self.elem == other.elem
     }
 }
-impl Eq for ty::Path {}
-impl PartialEq for ty::Path {
+impl Eq for typ::Path {}
+impl PartialEq for typ::Path {
     fn eq(&self, other: &Self) -> bool {
         self.qself == other.qself && self.path == other.path
     }
 }
-impl Eq for ty::Ptr {}
-impl PartialEq for ty::Ptr {
+impl Eq for typ::Ptr {}
+impl PartialEq for typ::Ptr {
     fn eq(&self, other: &Self) -> bool {
         self.const_ == other.const_ && self.mut_ == other.mut_ && self.elem == other.elem
     }
 }
-impl Eq for ty::Ref {}
-impl PartialEq for ty::Ref {
+impl Eq for typ::Ref {}
+impl PartialEq for typ::Ref {
     fn eq(&self, other: &Self) -> bool {
         self.life == other.life && self.mut_ == other.mut_ && self.elem == other.elem
     }
 }
-impl Eq for ty::Slice {}
-impl PartialEq for ty::Slice {
+impl Eq for typ::Slice {}
+impl PartialEq for typ::Slice {
     fn eq(&self, other: &Self) -> bool {
         self.elem == other.elem
     }
 }
-impl Eq for ty::TraitObj {}
-impl PartialEq for ty::TraitObj {
+impl Eq for typ::Trait {}
+impl PartialEq for typ::Trait {
     fn eq(&self, other: &Self) -> bool {
         self.dyn_ == other.dyn_ && self.bounds == other.bounds
     }
 }
-impl Eq for ty::Tuple {}
-impl PartialEq for ty::Tuple {
+impl Eq for typ::Tuple {}
+impl PartialEq for typ::Tuple {
     fn eq(&self, other: &Self) -> bool {
         self.elems == other.elems
     }

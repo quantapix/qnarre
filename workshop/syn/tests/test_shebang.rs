@@ -14,7 +14,7 @@ fn test_basic() {
                 sig: item::Sig {
                     ident: "main",
                     gens: gen::Gens,
-                    ret: ty::Ret::Default,
+                    ret: typ::Ret::Default,
                 },
                 block: Block,
             },
@@ -50,7 +50,7 @@ fn test_comment() {
                 sig: item::Sig {
                     ident: "main",
                     gens: gen::Gens,
-                    ret: ty::Ret::Default,
+                    ret: typ::Ret::Default,
                 },
                 block: Block,
             },

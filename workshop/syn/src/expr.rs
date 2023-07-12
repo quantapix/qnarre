@@ -97,7 +97,7 @@ pub struct Cast {
     pub attrs: Vec<attr::Attr>,
     pub expr: Box<Expr>,
     pub as_: Token![as],
-    pub typ: Box<ty::Type>,
+    pub typ: Box<typ::Type>,
 }
 pub struct Closure {
     pub attrs: Vec<attr::Attr>,
@@ -109,7 +109,7 @@ pub struct Closure {
     pub or1: Token![|],
     pub ins: Punctuated<pat::Pat, Token![,]>,
     pub or2: Token![|],
-    pub ret: ty::Ret,
+    pub ret: typ::Ret,
     pub body: Box<Expr>,
 }
 pub struct Const {

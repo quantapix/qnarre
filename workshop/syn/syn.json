@@ -186,7 +186,7 @@
       }
     },
     {
-      "ident": "ty::FnArg",
+      "ident": "typ::FnArg",
       "features": {
         "any": [
           "derive",
@@ -217,7 +217,7 @@
       }
     },
     {
-      "ident": "ty::Variadic",
+      "ident": "typ::Variadic",
       "features": {
         "any": [
           "derive",
@@ -1140,7 +1140,7 @@
           "token": "Or"
         },
         "output": {
-          "syn": "ty::Ret"
+          "syn": "typ::Ret"
         },
         "body": {
           "box": {
@@ -3663,7 +3663,7 @@
           }
         },
         "output": {
-          "syn": "ty::Ret"
+          "syn": "typ::Ret"
         }
       }
     },
@@ -4289,7 +4289,7 @@
       }
     },
     {
-      "ident": "ty::Ret",
+      "ident": "typ::Ret",
       "features": {
         "any": [
           "derive",
@@ -4364,7 +4364,7 @@
           }
         },
         "output": {
-          "syn": "ty::Ret"
+          "syn": "typ::Ret"
         }
       }
     },
@@ -4682,72 +4682,72 @@
       "variants": {
         "Array": [
           {
-            "syn": "ty::Array"
+            "syn": "typ::Array"
           }
         ],
         "Fn": [
           {
-            "syn": "ty::Fn"
+            "syn": "typ::Fn"
           }
         ],
         "Group": [
           {
-            "syn": "ty::Group"
+            "syn": "typ::Group"
           }
         ],
         "ImplTrait": [
           {
-            "syn": "ty::Impl"
+            "syn": "typ::Impl"
           }
         ],
         "Infer": [
           {
-            "syn": "ty::Infer"
+            "syn": "typ::Infer"
           }
         ],
         "Macro": [
           {
-            "syn": "ty::Mac"
+            "syn": "typ::Mac"
           }
         ],
         "Never": [
           {
-            "syn": "ty::Never"
+            "syn": "typ::Never"
           }
         ],
         "Paren": [
           {
-            "syn": "ty::Paren"
+            "syn": "typ::Paren"
           }
         ],
         "Path": [
           {
-            "syn": "ty::Path"
+            "syn": "typ::Path"
           }
         ],
         "Ptr": [
           {
-            "syn": "ty::Ptr"
+            "syn": "typ::Ptr"
           }
         ],
         "Reference": [
           {
-            "syn": "ty::Ref"
+            "syn": "typ::Ref"
           }
         ],
         "Slice": [
           {
-            "syn": "ty::Slice"
+            "syn": "typ::Slice"
           }
         ],
         "TraitObject": [
           {
-            "syn": "ty::TraitObj"
+            "syn": "typ::Trait"
           }
         ],
         "Tuple": [
           {
-            "syn": "ty::Tuple"
+            "syn": "typ::Tuple"
           }
         ],
         "Verbatim": [
@@ -4759,7 +4759,7 @@
       "exhaustive": false
     },
     {
-      "ident": "ty::Array",
+      "ident": "typ::Array",
       "features": {
         "any": [
           "derive",
@@ -4784,7 +4784,7 @@
       }
     },
     {
-      "ident": "ty::Fn",
+      "ident": "typ::Fn",
       "features": {
         "any": [
           "derive",
@@ -4816,23 +4816,23 @@
         "inputs": {
           "punctuated": {
             "element": {
-              "syn": "ty::FnArg"
+              "syn": "typ::FnArg"
             },
             "punct": "Comma"
           }
         },
         "vari": {
           "option": {
-            "syn": "ty::Variadic"
+            "syn": "typ::Variadic"
           }
         },
         "output": {
-          "syn": "ty::Ret"
+          "syn": "typ::Ret"
         }
       }
     },
     {
-      "ident": "ty::Group",
+      "ident": "typ::Group",
       "features": {
         "any": [
           "derive",
@@ -4851,7 +4851,7 @@
       }
     },
     {
-      "ident": "ty::Impl",
+      "ident": "typ::Impl",
       "features": {
         "any": [
           "derive",
@@ -4873,7 +4873,7 @@
       }
     },
     {
-      "ident": "ty::Infer",
+      "ident": "typ::Infer",
       "features": {
         "any": [
           "derive",
@@ -4887,7 +4887,7 @@
       }
     },
     {
-      "ident": "ty::Mac",
+      "ident": "typ::Mac",
       "features": {
         "any": [
           "derive",
@@ -4901,7 +4901,7 @@
       }
     },
     {
-      "ident": "ty::Never",
+      "ident": "typ::Never",
       "features": {
         "any": [
           "derive",
@@ -4984,7 +4984,7 @@
       "exhaustive": false
     },
     {
-      "ident": "ty::Paren",
+      "ident": "typ::Paren",
       "features": {
         "any": [
           "derive",
@@ -5003,7 +5003,7 @@
       }
     },
     {
-      "ident": "ty::Path",
+      "ident": "typ::Path",
       "features": {
         "any": [
           "derive",
@@ -5022,7 +5022,7 @@
       }
     },
     {
-      "ident": "ty::Ptr",
+      "ident": "typ::Ptr",
       "features": {
         "any": [
           "derive",
@@ -5051,7 +5051,7 @@
       }
     },
     {
-      "ident": "ty::Ref",
+      "ident": "typ::Ref",
       "features": {
         "any": [
           "derive",
@@ -5080,7 +5080,7 @@
       }
     },
     {
-      "ident": "ty::Slice",
+      "ident": "typ::Slice",
       "features": {
         "any": [
           "derive",
@@ -5099,7 +5099,7 @@
       }
     },
     {
-      "ident": "ty::TraitObj",
+      "ident": "typ::Trait",
       "features": {
         "any": [
           "derive",
@@ -5123,7 +5123,7 @@
       }
     },
     {
-      "ident": "ty::Tuple",
+      "ident": "typ::Tuple",
       "features": {
         "any": [
           "derive",

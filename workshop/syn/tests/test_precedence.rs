@@ -119,8 +119,8 @@ fn librustc_parse_and_rewrite(input: &str) -> Option<P<ast::Expr>> {
 }
 fn librustc_brackets(mut librustc_expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
     use rustc_ast::ast::{
-        attr::Attr, expr::Field, gen::bound::Modifier, patt::Patt, stmt::Local, stmt::Stmt, ty::Type, BinOpKind, Block,
-        BorrowKind, Expr, ExprKind, GenericArg, GenericBound, LocalKind, StmtKind, StructExpr, StructRest,
+        attr::Attr, expr::Field, gen::bound::Modifier, patt::Patt, stmt::Local, stmt::Stmt, typ::Type, BinOpKind,
+        Block, BorrowKind, Expr, ExprKind, GenericArg, GenericBound, LocalKind, StmtKind, StructExpr, StructRest,
     };
     use rustc_ast::mut_visit::{noop_visit_generic_arg, noop_visit_local, noop_visit_param_bound, MutVisitor};
     use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
@@ -232,7 +232,7 @@ fn librustc_brackets(mut librustc_expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
         fn visit_pat(&mut self, pat: &mut P<patt::Patt>) {
             let _ = pat;
         }
-        fn visit_ty(&mut self, ty: &mut P<ty::Type>) {
+        fn visit_ty(&mut self, ty: &mut P<typ::Type>) {
             let _ = ty;
         }
         fn visit_attribute(&mut self, x: &mut attr::Attr) {
@@ -249,7 +249,7 @@ fn librustc_brackets(mut librustc_expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
 }
 fn syn_brackets(syn_expr: syn::Expr) -> syn::Expr {
     use syn::fold::{fold_expr, fold_generic_argument, Fold};
-    use syn::{expr::Paren, meta::NameValue, patt::Patt, stmt::Stmt, tok, ty::Type, Arg, BinOp, Expr};
+    use syn::{expr::Paren, meta::NameValue, patt::Patt, stmt::Stmt, tok, typ::Type, Arg, BinOp, Expr};
     struct ParenthesizeEveryExpr;
     fn needs_paren(expr: &Expr) -> bool {
         match expr {
@@ -296,7 +296,7 @@ fn syn_brackets(syn_expr: syn::Expr) -> syn::Expr {
         fn fold_pat(&mut self, x: patt::Patt) -> patt::Patt {
             x
         }
-        fn fold_type(&mut self, x: ty::Type) -> ty::Type {
+        fn fold_type(&mut self, x: typ::Type) -> typ::Type {
             x
         }
     }

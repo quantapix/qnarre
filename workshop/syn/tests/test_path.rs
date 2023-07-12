@@ -24,7 +24,7 @@ fn parse_interpolated_leading_component() {
         },
     }
     "###);
-    snapshot!(tokens as ty::Type, @r###"
+    snapshot!(tokens as typ::Type, @r###"
     Type::Path {
         path: Path {
             segments: [
@@ -41,7 +41,7 @@ fn parse_interpolated_leading_component() {
 }
 #[test]
 fn print_incomplete_qpath() {
-    let mut typ: ty::Path = parse_quote!(<Self as A>::Q);
+    let mut typ: typ::Path = parse_quote!(<Self as A>::Q);
     snapshot!(typ.to_token_stream(), @r###"
     pm2::Stream(`< Self as A > :: Q`)
     "###);
@@ -54,7 +54,7 @@ fn print_incomplete_qpath() {
     pm2::Stream(`< Self >`)
     "###);
     assert!(typ.path.segs.pop().is_none());
-    let mut typ: ty::Path = parse_quote!(<Self>::A::B);
+    let mut typ: typ::Path = parse_quote!(<Self>::A::B);
     snapshot!(typ.to_token_stream(), @r###"
     pm2::Stream(`< Self > :: A :: B`)
     "###);
@@ -67,7 +67,7 @@ fn print_incomplete_qpath() {
     pm2::Stream(`< Self > ::`)
     "###);
     assert!(typ.path.segs.pop().is_none());
-    let mut typ: ty::Path = parse_quote!(Self::A::B);
+    let mut typ: typ::Path = parse_quote!(Self::A::B);
     snapshot!(typ.to_token_stream(), @r###"
     pm2::Stream(`Self :: A :: B`)
     "###);
@@ -89,7 +89,7 @@ fn print_incomplete_qpath() {
 fn parse_parenthesized_path_arguments_with_disambiguator() {
     #[rustfmt::skip]
     let tokens = quote!(dyn FnOnce::() -> !);
-    snapshot!(tokens as ty::Type, @r###"
+    snapshot!(tokens as typ::Type, @r###"
     Type::TraitObject {
         dyn_: Some,
         bounds: [
@@ -99,7 +99,7 @@ fn parse_parenthesized_path_arguments_with_disambiguator() {
                         path::Segment {
                             ident: "FnOnce",
                             arguments: path::Args::Parenthesized {
-                                ret: ty::Ret::Type(
+                                ret: typ::Ret::Type(
                                     Type::Never,
                                 ),
                             },

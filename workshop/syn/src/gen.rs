@@ -305,7 +305,7 @@ pub mod param {
         pub colon: Option<Token![:]>,
         pub bounds: Punctuated<bound::Type, Token![+]>,
         pub eq: Option<Token![=]>,
-        pub default: Option<ty::Type>,
+        pub default: Option<typ::Type>,
     }
     impl From<Ident> for Type {
         fn from(ident: Ident) -> Self {
@@ -341,7 +341,7 @@ pub mod param {
             }
             let eq: Option<Token![=]> = x.parse()?;
             let default = if eq.is_some() {
-                Some(x.parse::<ty::Type>()?)
+                Some(x.parse::<typ::Type>()?)
             } else {
                 None
             };
@@ -405,7 +405,7 @@ pub mod param {
         pub const_: Token![const],
         pub ident: Ident,
         pub colon: Token![:],
-        pub typ: ty::Type,
+        pub typ: typ::Type,
         pub eq: Option<Token![=]>,
         pub default: Option<Expr>,
     }
@@ -611,7 +611,7 @@ pub mod Where {
 
     pub struct Type {
         pub lifes: Option<bound::Lifes>,
-        pub bounded: ty::Type,
+        pub bounded: typ::Type,
         pub colon: Token![:],
         pub bounds: Punctuated<bound::Type, Token![+]>,
     }

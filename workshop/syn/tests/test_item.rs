@@ -29,7 +29,7 @@ fn test_macro_variable_attr() {
         sig: item::Sig {
             ident: "f",
             gens: gen::Gens,
-            ret: ty::Ret::Default,
+            ret: typ::Ret::Default,
         },
         block: Block,
     }
@@ -275,7 +275,7 @@ fn test_impl_trait_trailing_plus() {
         sig: item::Sig {
             ident: "f",
             gens: gen::Gens,
-            ret: ty::Ret::Type(
+            ret: typ::Ret::Type(
                 Type::ImplTrait {
                     bounds: [
                         gen::bound::Type::Trait(gen::bound::Trait {

@@ -12,7 +12,7 @@ fn test_async_fn() {
             async_: Some,
             ident: "process",
             gens: gen::Gens,
-            ret: ty::Ret::Default,
+            ret: typ::Ret::Default,
         },
         block: Block,
     }
@@ -24,7 +24,7 @@ fn test_async_closure() {
     snapshot!(input as Expr, @r###"
     Expr::Closure {
         async_: Some,
-        ret: ty::Ret::Default,
+        ret: typ::Ret::Default,
         body: Expr::Block {
             block: Block,
         },

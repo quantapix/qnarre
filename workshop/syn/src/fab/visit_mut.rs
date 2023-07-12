@@ -37,10 +37,10 @@ pub trait VisitMut {
     fn visit_attribute_mut(&mut self, i: &mut attr::Attr) {
         visit_attribute_mut(self, i);
     }
-    fn visit_bare_fn_arg_mut(&mut self, i: &mut ty::FnArg) {
+    fn visit_bare_fn_arg_mut(&mut self, i: &mut typ::FnArg) {
         visit_bare_fn_arg_mut(self, i);
     }
-    fn visit_bare_variadic_mut(&mut self, i: &mut ty::Variadic) {
+    fn visit_bare_variadic_mut(&mut self, i: &mut typ::Variadic) {
         visit_bare_variadic_mut(self, i);
     }
     fn visit_bin_op_mut(&mut self, i: &mut BinOp) {
@@ -433,7 +433,7 @@ pub trait VisitMut {
     fn visit_receiver_mut(&mut self, i: &mut item::Receiver) {
         visit_receiver_mut(self, i);
     }
-    fn visit_return_type_mut(&mut self, i: &mut ty::Ret) {
+    fn visit_return_type_mut(&mut self, i: &mut typ::Ret) {
         visit_return_type_mut(self, i);
     }
     fn visit_signature_mut(&mut self, i: &mut item::Sig) {
@@ -472,28 +472,28 @@ pub trait VisitMut {
     fn visit_trait_item_type_mut(&mut self, i: &mut item::Trait::Type) {
         visit_trait_item_type_mut(self, i);
     }
-    fn visit_type_mut(&mut self, i: &mut ty::Type) {
+    fn visit_type_mut(&mut self, i: &mut typ::Type) {
         visit_type_mut(self, i);
     }
-    fn visit_type_array_mut(&mut self, i: &mut ty::Array) {
+    fn visit_type_array_mut(&mut self, i: &mut typ::Array) {
         visit_type_array_mut(self, i);
     }
-    fn visit_type_bare_fn_mut(&mut self, i: &mut ty::Fn) {
+    fn visit_type_bare_fn_mut(&mut self, i: &mut typ::Fn) {
         visit_type_bare_fn_mut(self, i);
     }
-    fn visit_type_group_mut(&mut self, i: &mut ty::Group) {
+    fn visit_type_group_mut(&mut self, i: &mut typ::Group) {
         visit_type_group_mut(self, i);
     }
-    fn visit_type_impl_trait_mut(&mut self, i: &mut ty::Impl) {
+    fn visit_type_impl_trait_mut(&mut self, i: &mut typ::Impl) {
         visit_type_impl_trait_mut(self, i);
     }
-    fn visit_type_infer_mut(&mut self, i: &mut ty::Infer) {
+    fn visit_type_infer_mut(&mut self, i: &mut typ::Infer) {
         visit_type_infer_mut(self, i);
     }
-    fn visit_type_macro_mut(&mut self, i: &mut ty::Mac) {
+    fn visit_type_macro_mut(&mut self, i: &mut typ::Mac) {
         visit_type_macro_mut(self, i);
     }
-    fn visit_type_never_mut(&mut self, i: &mut ty::Never) {
+    fn visit_type_never_mut(&mut self, i: &mut typ::Never) {
         visit_type_never_mut(self, i);
     }
     fn visit_type_param_mut(&mut self, i: &mut gen::param::Type) {
@@ -502,25 +502,25 @@ pub trait VisitMut {
     fn visit_type_param_bound_mut(&mut self, i: &mut gen::bound::Type) {
         visit_type_param_bound_mut(self, i);
     }
-    fn visit_type_paren_mut(&mut self, i: &mut ty::Paren) {
+    fn visit_type_paren_mut(&mut self, i: &mut typ::Paren) {
         visit_type_paren_mut(self, i);
     }
-    fn visit_type_path_mut(&mut self, i: &mut ty::Path) {
+    fn visit_type_path_mut(&mut self, i: &mut typ::Path) {
         visit_type_path_mut(self, i);
     }
-    fn visit_type_ptr_mut(&mut self, i: &mut ty::Ptr) {
+    fn visit_type_ptr_mut(&mut self, i: &mut typ::Ptr) {
         visit_type_ptr_mut(self, i);
     }
-    fn visit_type_reference_mut(&mut self, i: &mut ty::Ref) {
+    fn visit_type_reference_mut(&mut self, i: &mut typ::Ref) {
         visit_type_reference_mut(self, i);
     }
-    fn visit_type_slice_mut(&mut self, i: &mut ty::Slice) {
+    fn visit_type_slice_mut(&mut self, i: &mut typ::Slice) {
         visit_type_slice_mut(self, i);
     }
-    fn visit_type_trait_object_mut(&mut self, i: &mut ty::TraitObj) {
+    fn visit_type_trait_object_mut(&mut self, i: &mut typ::Trait) {
         visit_type_trait_object_mut(self, i);
     }
-    fn visit_type_tuple_mut(&mut self, i: &mut ty::Tuple) {
+    fn visit_type_tuple_mut(&mut self, i: &mut typ::Tuple) {
         visit_type_tuple_mut(self, i);
     }
     fn visit_un_op_mut(&mut self, i: &mut UnOp) {
@@ -642,7 +642,7 @@ where
     skip!(node.bracket);
     v.visit_meta_mut(&mut node.meta);
 }
-pub fn visit_bare_fn_arg_mut<V>(v: &mut V, node: &mut ty::FnArg)
+pub fn visit_bare_fn_arg_mut<V>(v: &mut V, node: &mut typ::FnArg)
 where
     V: VisitMut + ?Sized,
 {
@@ -655,7 +655,7 @@ where
     }
     v.visit_type_mut(&mut node.ty);
 }
-pub fn visit_bare_variadic_mut<V>(v: &mut V, node: &mut ty::Variadic)
+pub fn visit_bare_variadic_mut<V>(v: &mut V, node: &mut typ::Variadic)
 where
     V: VisitMut + ?Sized,
 {
@@ -1562,7 +1562,7 @@ where
         item::FnArg::Receiver(_binding_0) => {
             v.visit_receiver_mut(_binding_0);
         },
-        item::FnArg::Typed(_binding_0) => {
+        item::FnArg::Type(_binding_0) => {
             v.visit_pat_type_mut(_binding_0);
         },
     }
@@ -2591,13 +2591,13 @@ where
     skip!(node.colon);
     v.visit_type_mut(&mut *node.typ);
 }
-pub fn visit_return_type_mut<V>(v: &mut V, node: &mut ty::Ret)
+pub fn visit_return_type_mut<V>(v: &mut V, node: &mut typ::Ret)
 where
     V: VisitMut + ?Sized,
 {
     match node {
-        ty::Ret::Default => {},
-        ty::Ret::Type(_binding_0, _binding_1) => {
+        typ::Ret::Default => {},
+        typ::Ret::Type(_binding_0, _binding_1) => {
             skip!(_binding_0);
             v.visit_type_mut(&mut **_binding_1);
         },
@@ -2778,59 +2778,59 @@ where
     }
     skip!(node.semi);
 }
-pub fn visit_type_mut<V>(v: &mut V, node: &mut ty::Type)
+pub fn visit_type_mut<V>(v: &mut V, node: &mut typ::Type)
 where
     V: VisitMut + ?Sized,
 {
     match node {
-        ty::Type::Array(_binding_0) => {
+        typ::Type::Array(_binding_0) => {
             v.visit_type_array_mut(_binding_0);
         },
-        ty::Type::Fn(_binding_0) => {
+        typ::Type::Fn(_binding_0) => {
             v.visit_type_bare_fn_mut(_binding_0);
         },
-        ty::Type::Group(_binding_0) => {
+        typ::Type::Group(_binding_0) => {
             v.visit_type_group_mut(_binding_0);
         },
-        ty::Type::Impl(_binding_0) => {
+        typ::Type::Impl(_binding_0) => {
             v.visit_type_impl_trait_mut(_binding_0);
         },
-        ty::Type::Infer(_binding_0) => {
+        typ::Type::Infer(_binding_0) => {
             v.visit_type_infer_mut(_binding_0);
         },
-        ty::Type::Mac(_binding_0) => {
+        typ::Type::Mac(_binding_0) => {
             v.visit_type_macro_mut(_binding_0);
         },
-        ty::Type::Never(_binding_0) => {
+        typ::Type::Never(_binding_0) => {
             v.visit_type_never_mut(_binding_0);
         },
-        ty::Type::Paren(_binding_0) => {
+        typ::Type::Paren(_binding_0) => {
             v.visit_type_paren_mut(_binding_0);
         },
-        ty::Type::Path(_binding_0) => {
+        typ::Type::Path(_binding_0) => {
             v.visit_type_path_mut(_binding_0);
         },
-        ty::Type::Ptr(_binding_0) => {
+        typ::Type::Ptr(_binding_0) => {
             v.visit_type_ptr_mut(_binding_0);
         },
-        ty::Type::Ref(_binding_0) => {
+        typ::Type::Ref(_binding_0) => {
             v.visit_type_reference_mut(_binding_0);
         },
-        ty::Type::Slice(_binding_0) => {
+        typ::Type::Slice(_binding_0) => {
             v.visit_type_slice_mut(_binding_0);
         },
-        ty::Type::TraitObj(_binding_0) => {
+        typ::Type::Trait(_binding_0) => {
             v.visit_type_trait_object_mut(_binding_0);
         },
-        ty::Type::Tuple(_binding_0) => {
+        typ::Type::Tuple(_binding_0) => {
             v.visit_type_tuple_mut(_binding_0);
         },
-        ty::Type::Verbatim(_binding_0) => {
+        typ::Type::Verbatim(_binding_0) => {
             skip!(_binding_0);
         },
     }
 }
-pub fn visit_type_array_mut<V>(v: &mut V, node: &mut ty::Array)
+pub fn visit_type_array_mut<V>(v: &mut V, node: &mut typ::Array)
 where
     V: VisitMut + ?Sized,
 {
@@ -2839,7 +2839,7 @@ where
     skip!(node.semi);
     v.visit_expr_mut(&mut node.len);
 }
-pub fn visit_type_bare_fn_mut<V>(v: &mut V, node: &mut ty::Fn)
+pub fn visit_type_bare_fn_mut<V>(v: &mut V, node: &mut typ::Fn)
 where
     V: VisitMut + ?Sized,
 {
@@ -2861,14 +2861,14 @@ where
     }
     v.visit_return_type_mut(&mut node.ret);
 }
-pub fn visit_type_group_mut<V>(v: &mut V, node: &mut ty::Group)
+pub fn visit_type_group_mut<V>(v: &mut V, node: &mut typ::Group)
 where
     V: VisitMut + ?Sized,
 {
     skip!(node.group);
     v.visit_type_mut(&mut *node.elem);
 }
-pub fn visit_type_impl_trait_mut<V>(v: &mut V, node: &mut ty::Impl)
+pub fn visit_type_impl_trait_mut<V>(v: &mut V, node: &mut typ::Impl)
 where
     V: VisitMut + ?Sized,
 {
@@ -2878,19 +2878,19 @@ where
         v.visit_type_param_bound_mut(it);
     }
 }
-pub fn visit_type_infer_mut<V>(v: &mut V, node: &mut ty::Infer)
+pub fn visit_type_infer_mut<V>(v: &mut V, node: &mut typ::Infer)
 where
     V: VisitMut + ?Sized,
 {
     skip!(node.underscore);
 }
-pub fn visit_type_macro_mut<V>(v: &mut V, node: &mut ty::Mac)
+pub fn visit_type_macro_mut<V>(v: &mut V, node: &mut typ::Mac)
 where
     V: VisitMut + ?Sized,
 {
     v.visit_macro_mut(&mut node.mac);
 }
-pub fn visit_type_never_mut<V>(v: &mut V, node: &mut ty::Never)
+pub fn visit_type_never_mut<V>(v: &mut V, node: &mut typ::Never)
 where
     V: VisitMut + ?Sized,
 {
@@ -2930,14 +2930,14 @@ where
         },
     }
 }
-pub fn visit_type_paren_mut<V>(v: &mut V, node: &mut ty::Paren)
+pub fn visit_type_paren_mut<V>(v: &mut V, node: &mut typ::Paren)
 where
     V: VisitMut + ?Sized,
 {
     skip!(node.paren);
     v.visit_type_mut(&mut *node.elem);
 }
-pub fn visit_type_path_mut<V>(v: &mut V, node: &mut ty::Path)
+pub fn visit_type_path_mut<V>(v: &mut V, node: &mut typ::Path)
 where
     V: VisitMut + ?Sized,
 {
@@ -2946,7 +2946,7 @@ where
     }
     v.visit_path_mut(&mut node.path);
 }
-pub fn visit_type_ptr_mut<V>(v: &mut V, node: &mut ty::Ptr)
+pub fn visit_type_ptr_mut<V>(v: &mut V, node: &mut typ::Ptr)
 where
     V: VisitMut + ?Sized,
 {
@@ -2955,7 +2955,7 @@ where
     skip!(node.mutability);
     v.visit_type_mut(&mut *node.elem);
 }
-pub fn visit_type_reference_mut<V>(v: &mut V, node: &mut ty::Ref)
+pub fn visit_type_reference_mut<V>(v: &mut V, node: &mut typ::Ref)
 where
     V: VisitMut + ?Sized,
 {
@@ -2966,14 +2966,14 @@ where
     skip!(node.mutability);
     v.visit_type_mut(&mut *node.elem);
 }
-pub fn visit_type_slice_mut<V>(v: &mut V, node: &mut ty::Slice)
+pub fn visit_type_slice_mut<V>(v: &mut V, node: &mut typ::Slice)
 where
     V: VisitMut + ?Sized,
 {
     skip!(node.bracket);
     v.visit_type_mut(&mut *node.elem);
 }
-pub fn visit_type_trait_object_mut<V>(v: &mut V, node: &mut ty::TraitObj)
+pub fn visit_type_trait_object_mut<V>(v: &mut V, node: &mut typ::Trait)
 where
     V: VisitMut + ?Sized,
 {
@@ -2983,7 +2983,7 @@ where
         v.visit_type_param_bound_mut(it);
     }
 }
-pub fn visit_type_tuple_mut<V>(v: &mut V, node: &mut ty::Tuple)
+pub fn visit_type_tuple_mut<V>(v: &mut V, node: &mut typ::Tuple)
 where
     V: VisitMut + ?Sized,
 {

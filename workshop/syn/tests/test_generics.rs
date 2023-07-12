@@ -192,7 +192,7 @@ fn test_fn_precedence_in_where_clause() {
                                             path::Segment {
                                                 ident: "FnOnce",
                                                 arguments: path::Args::Parenthesized {
-                                                    ret: ty::Ret::Type(
+                                                    ret: typ::Ret::Type(
                                                         Type::Path {
                                                             path: Path {
                                                                 segments: [
@@ -222,7 +222,7 @@ fn test_fn_precedence_in_where_clause() {
                     ],
                 }),
             },
-            ret: ty::Ret::Default,
+            ret: typ::Ret::Default,
         },
         block: Block,
     }

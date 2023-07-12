@@ -66,18 +66,18 @@ impl Clone for attr::Attr {
         }
     }
 }
-impl Clone for ty::FnArg {
+impl Clone for typ::FnArg {
     fn clone(&self) -> Self {
-        ty::FnArg {
+        typ::FnArg {
             attrs: self.attrs.clone(),
             name: self.name.clone(),
             ty: self.ty.clone(),
         }
     }
 }
-impl Clone for ty::Variadic {
+impl Clone for typ::Variadic {
     fn clone(&self) -> Self {
-        ty::Variadic {
+        typ::Variadic {
             attrs: self.attrs.clone(),
             name: self.name.clone(),
             dots: self.dots.clone(),
@@ -683,7 +683,7 @@ impl Clone for item::FnArg {
     fn clone(&self) -> Self {
         match self {
             item::FnArg::Receiver(v0) => item::FnArg::Receiver(v0.clone()),
-            item::FnArg::Typed(v0) => item::FnArg::Typed(v0.clone()),
+            item::FnArg::Type(v0) => item::FnArg::Type(v0.clone()),
         }
     }
 }
@@ -1397,18 +1397,18 @@ impl Clone for item::Receiver {
         }
     }
 }
-impl Clone for ty::Ret {
+impl Clone for typ::Ret {
     fn clone(&self) -> Self {
         match self {
-            ty::Ret::Default => ty::Ret::Default,
-            ty::Ret::Type(v0, v1) => ty::Ret::Type(v0.clone(), v1.clone()),
+            typ::Ret::Default => typ::Ret::Default,
+            typ::Ret::Type(v0, v1) => typ::Ret::Type(v0.clone(), v1.clone()),
         }
     }
 }
 impl Clone for item::Sig {
     fn clone(&self) -> Self {
         item::Sig {
-            constness: self.constness.clone(),
+            const_: self.const_.clone(),
             async_: self.async_.clone(),
             unsafe_: self.unsafe_.clone(),
             abi: self.abi.clone(),
@@ -1523,30 +1523,30 @@ impl Clone for item::Trait::Type {
         }
     }
 }
-impl Clone for ty::Type {
+impl Clone for typ::Type {
     fn clone(&self) -> Self {
         match self {
-            ty::Type::Array(v0) => ty::Type::Array(v0.clone()),
-            ty::Type::Fn(v0) => ty::Type::Fn(v0.clone()),
-            ty::Type::Group(v0) => ty::Type::Group(v0.clone()),
-            ty::Type::Impl(v0) => ty::Type::Impl(v0.clone()),
-            ty::Type::Infer(v0) => ty::Type::Infer(v0.clone()),
-            ty::Type::Mac(v0) => ty::Type::Mac(v0.clone()),
-            ty::Type::Never(v0) => ty::Type::Never(v0.clone()),
-            ty::Type::Paren(v0) => ty::Type::Paren(v0.clone()),
-            ty::Type::Path(v0) => ty::Type::Path(v0.clone()),
-            ty::Type::Ptr(v0) => ty::Type::Ptr(v0.clone()),
-            ty::Type::Ref(v0) => ty::Type::Ref(v0.clone()),
-            ty::Type::Slice(v0) => ty::Type::Slice(v0.clone()),
-            ty::Type::TraitObj(v0) => ty::Type::TraitObj(v0.clone()),
-            ty::Type::Tuple(v0) => ty::Type::Tuple(v0.clone()),
-            ty::Type::Verbatim(v0) => ty::Type::Verbatim(v0.clone()),
+            typ::Type::Array(v0) => typ::Type::Array(v0.clone()),
+            typ::Type::Fn(v0) => typ::Type::Fn(v0.clone()),
+            typ::Type::Group(v0) => typ::Type::Group(v0.clone()),
+            typ::Type::Impl(v0) => typ::Type::Impl(v0.clone()),
+            typ::Type::Infer(v0) => typ::Type::Infer(v0.clone()),
+            typ::Type::Mac(v0) => typ::Type::Mac(v0.clone()),
+            typ::Type::Never(v0) => typ::Type::Never(v0.clone()),
+            typ::Type::Paren(v0) => typ::Type::Paren(v0.clone()),
+            typ::Type::Path(v0) => typ::Type::Path(v0.clone()),
+            typ::Type::Ptr(v0) => typ::Type::Ptr(v0.clone()),
+            typ::Type::Ref(v0) => typ::Type::Ref(v0.clone()),
+            typ::Type::Slice(v0) => typ::Type::Slice(v0.clone()),
+            typ::Type::Trait(v0) => typ::Type::Trait(v0.clone()),
+            typ::Type::Tuple(v0) => typ::Type::Tuple(v0.clone()),
+            typ::Type::Verbatim(v0) => typ::Type::Verbatim(v0.clone()),
         }
     }
 }
-impl Clone for ty::Array {
+impl Clone for typ::Array {
     fn clone(&self) -> Self {
-        ty::Array {
+        typ::Array {
             bracket: self.bracket.clone(),
             elem: self.elem.clone(),
             semi: self.semi.clone(),
@@ -1554,9 +1554,9 @@ impl Clone for ty::Array {
         }
     }
 }
-impl Clone for ty::Fn {
+impl Clone for typ::Fn {
     fn clone(&self) -> Self {
-        ty::Fn {
+        typ::Fn {
             lifes: self.lifes.clone(),
             unsafe_: self.unsafe_.clone(),
             abi: self.abi.clone(),
@@ -1568,37 +1568,37 @@ impl Clone for ty::Fn {
         }
     }
 }
-impl Clone for ty::Group {
+impl Clone for typ::Group {
     fn clone(&self) -> Self {
-        ty::Group {
+        typ::Group {
             group: self.group.clone(),
             elem: self.elem.clone(),
         }
     }
 }
-impl Clone for ty::Impl {
+impl Clone for typ::Impl {
     fn clone(&self) -> Self {
-        ty::Impl {
+        typ::Impl {
             impl_: self.impl_.clone(),
             bounds: self.bounds.clone(),
         }
     }
 }
-impl Clone for ty::Infer {
+impl Clone for typ::Infer {
     fn clone(&self) -> Self {
-        ty::Infer {
+        typ::Infer {
             underscore: self.underscore.clone(),
         }
     }
 }
-impl Clone for ty::Mac {
+impl Clone for typ::Mac {
     fn clone(&self) -> Self {
-        ty::Mac { mac: self.mac.clone() }
+        typ::Mac { mac: self.mac.clone() }
     }
 }
-impl Clone for ty::Never {
+impl Clone for typ::Never {
     fn clone(&self) -> Self {
-        ty::Never {
+        typ::Never {
             bang: self.bang.clone(),
         }
     }
@@ -1624,25 +1624,25 @@ impl Clone for gen::bound::Type {
         }
     }
 }
-impl Clone for ty::Paren {
+impl Clone for typ::Paren {
     fn clone(&self) -> Self {
-        ty::Paren {
+        typ::Paren {
             paren: self.paren.clone(),
             elem: self.elem.clone(),
         }
     }
 }
-impl Clone for ty::Path {
+impl Clone for typ::Path {
     fn clone(&self) -> Self {
-        ty::Path {
+        typ::Path {
             qself: self.qself.clone(),
             path: self.path.clone(),
         }
     }
 }
-impl Clone for ty::Ptr {
+impl Clone for typ::Ptr {
     fn clone(&self) -> Self {
-        ty::Ptr {
+        typ::Ptr {
             star: self.star.clone(),
             const_: self.const_.clone(),
             mut_: self.mut_.clone(),
@@ -1650,9 +1650,9 @@ impl Clone for ty::Ptr {
         }
     }
 }
-impl Clone for ty::Ref {
+impl Clone for typ::Ref {
     fn clone(&self) -> Self {
-        ty::Ref {
+        typ::Ref {
             and: self.and.clone(),
             life: self.life.clone(),
             mut_: self.mut_.clone(),
@@ -1660,25 +1660,25 @@ impl Clone for ty::Ref {
         }
     }
 }
-impl Clone for ty::Slice {
+impl Clone for typ::Slice {
     fn clone(&self) -> Self {
-        ty::Slice {
+        typ::Slice {
             bracket: self.bracket.clone(),
             elem: self.elem.clone(),
         }
     }
 }
-impl Clone for ty::TraitObj {
+impl Clone for typ::Trait {
     fn clone(&self) -> Self {
-        ty::TraitObj {
+        typ::Trait {
             dyn_: self.dyn_.clone(),
             bounds: self.bounds.clone(),
         }
     }
 }
-impl Clone for ty::Tuple {
+impl Clone for typ::Tuple {
     fn clone(&self) -> Self {
-        ty::Tuple {
+        typ::Tuple {
             paren: self.paren.clone(),
             elems: self.elems.clone(),
         }

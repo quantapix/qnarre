@@ -63,7 +63,7 @@ fn test_none_group() {
             asyncness: Some,
             ident: "f",
             gens: gen::Gens,
-            ret: ty::Ret::Default,
+            ret: typ::Ret::Default,
         },
         block: Block,
     })
@@ -150,7 +150,7 @@ fn test_macros() {
         sig: item::Sig {
             ident: "main",
             gens: gen::Gens,
-            ret: ty::Ret::Default,
+            ret: typ::Ret::Default,
         },
         block: Block {
             stmts: [

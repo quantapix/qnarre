@@ -35,10 +35,10 @@ pub trait Fold {
     fn fold_attribute(&mut self, i: attr::Attr) -> attr::Attr {
         fold_attribute(self, i)
     }
-    fn fold_bare_fn_arg(&mut self, i: ty::FnArg) -> ty::FnArg {
+    fn fold_bare_fn_arg(&mut self, i: typ::FnArg) -> typ::FnArg {
         fold_bare_fn_arg(self, i)
     }
-    fn fold_bare_variadic(&mut self, i: ty::Variadic) -> ty::Variadic {
+    fn fold_bare_variadic(&mut self, i: typ::Variadic) -> typ::Variadic {
         fold_bare_variadic(self, i)
     }
     fn fold_bin_op(&mut self, i: BinOp) -> BinOp {
@@ -431,7 +431,7 @@ pub trait Fold {
     fn fold_receiver(&mut self, i: item::Receiver) -> item::Receiver {
         fold_receiver(self, i)
     }
-    fn fold_return_type(&mut self, i: ty::Ret) -> ty::Ret {
+    fn fold_return_type(&mut self, i: typ::Ret) -> typ::Ret {
         fold_return_type(self, i)
     }
     fn fold_signature(&mut self, i: item::Sig) -> item::Sig {
@@ -470,28 +470,28 @@ pub trait Fold {
     fn fold_trait_item_type(&mut self, i: item::Trait::Type) -> item::Trait::Type {
         fold_trait_item_type(self, i)
     }
-    fn fold_type(&mut self, i: ty::Type) -> ty::Type {
+    fn fold_type(&mut self, i: typ::Type) -> typ::Type {
         fold_type(self, i)
     }
-    fn fold_type_array(&mut self, i: ty::Array) -> ty::Array {
+    fn fold_type_array(&mut self, i: typ::Array) -> typ::Array {
         fold_type_array(self, i)
     }
-    fn fold_type_bare_fn(&mut self, i: ty::Fn) -> ty::Fn {
+    fn fold_type_bare_fn(&mut self, i: typ::Fn) -> typ::Fn {
         fold_type_bare_fn(self, i)
     }
-    fn fold_type_group(&mut self, i: ty::Group) -> ty::Group {
+    fn fold_type_group(&mut self, i: typ::Group) -> typ::Group {
         fold_type_group(self, i)
     }
-    fn fold_type_impl_trait(&mut self, i: ty::Impl) -> ty::Impl {
+    fn fold_type_impl_trait(&mut self, i: typ::Impl) -> typ::Impl {
         fold_type_impl_trait(self, i)
     }
-    fn fold_type_infer(&mut self, i: ty::Infer) -> ty::Infer {
+    fn fold_type_infer(&mut self, i: typ::Infer) -> typ::Infer {
         fold_type_infer(self, i)
     }
-    fn fold_type_macro(&mut self, i: ty::Mac) -> ty::Mac {
+    fn fold_type_macro(&mut self, i: typ::Mac) -> typ::Mac {
         fold_type_macro(self, i)
     }
-    fn fold_type_never(&mut self, i: ty::Never) -> ty::Never {
+    fn fold_type_never(&mut self, i: typ::Never) -> typ::Never {
         fold_type_never(self, i)
     }
     fn fold_type_param(&mut self, i: gen::param::Type) -> gen::param::Type {
@@ -500,25 +500,25 @@ pub trait Fold {
     fn fold_type_param_bound(&mut self, i: gen::bound::Type) -> gen::bound::Type {
         fold_type_param_bound(self, i)
     }
-    fn fold_type_paren(&mut self, i: ty::Paren) -> ty::Paren {
+    fn fold_type_paren(&mut self, i: typ::Paren) -> typ::Paren {
         fold_type_paren(self, i)
     }
-    fn fold_type_path(&mut self, i: ty::Path) -> ty::Path {
+    fn fold_type_path(&mut self, i: typ::Path) -> typ::Path {
         fold_type_path(self, i)
     }
-    fn fold_type_ptr(&mut self, i: ty::Ptr) -> ty::Ptr {
+    fn fold_type_ptr(&mut self, i: typ::Ptr) -> typ::Ptr {
         fold_type_ptr(self, i)
     }
-    fn fold_type_reference(&mut self, i: ty::Ref) -> ty::Ref {
+    fn fold_type_reference(&mut self, i: typ::Ref) -> typ::Ref {
         fold_type_reference(self, i)
     }
-    fn fold_type_slice(&mut self, i: ty::Slice) -> ty::Slice {
+    fn fold_type_slice(&mut self, i: typ::Slice) -> typ::Slice {
         fold_type_slice(self, i)
     }
-    fn fold_type_trait_object(&mut self, i: ty::TraitObj) -> ty::TraitObj {
+    fn fold_type_trait_object(&mut self, i: typ::Trait) -> typ::Trait {
         fold_type_trait_object(self, i)
     }
-    fn fold_type_tuple(&mut self, i: ty::Tuple) -> ty::Tuple {
+    fn fold_type_tuple(&mut self, i: typ::Tuple) -> typ::Tuple {
         fold_type_tuple(self, i)
     }
     fn fold_un_op(&mut self, i: UnOp) -> UnOp {
@@ -636,21 +636,21 @@ where
         meta: f.fold_meta(node.meta),
     }
 }
-pub fn fold_bare_fn_arg<F>(f: &mut F, node: ty::FnArg) -> ty::FnArg
+pub fn fold_bare_fn_arg<F>(f: &mut F, node: typ::FnArg) -> typ::FnArg
 where
     F: Fold + ?Sized,
 {
-    ty::FnArg {
+    typ::FnArg {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         name: (node.name).map(|it| (f.fold_ident((it).0), (it).1)),
         ty: f.fold_type(node.ty),
     }
 }
-pub fn fold_bare_variadic<F>(f: &mut F, node: ty::Variadic) -> ty::Variadic
+pub fn fold_bare_variadic<F>(f: &mut F, node: typ::Variadic) -> typ::Variadic
 where
     F: Fold + ?Sized,
 {
-    ty::Variadic {
+    typ::Variadic {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         name: (node.name).map(|it| (f.fold_ident((it).0), (it).1)),
         dots: node.dots,
@@ -1340,7 +1340,7 @@ where
 {
     match node {
         item::FnArg::Receiver(_binding_0) => item::FnArg::Receiver(f.fold_receiver(_binding_0)),
-        item::FnArg::Typed(_binding_0) => item::FnArg::Typed(f.fold_pat_type(_binding_0)),
+        item::FnArg::Type(_binding_0) => item::FnArg::Type(f.fold_pat_type(_binding_0)),
     }
 }
 pub fn fold_foreign_item<F>(f: &mut F, node: item::Foreign::Item) -> item::Foreign::Item
@@ -2191,13 +2191,13 @@ where
         typ: Box::new(f.fold_type(*node.typ)),
     }
 }
-pub fn fold_return_type<F>(f: &mut F, node: ty::Ret) -> ty::Ret
+pub fn fold_return_type<F>(f: &mut F, node: typ::Ret) -> typ::Ret
 where
     F: Fold + ?Sized,
 {
     match node {
-        ty::Ret::Default => ty::Ret::Default,
-        ty::Ret::Type(_binding_0, _binding_1) => ty::Ret::Type(_binding_0, Box::new(f.fold_type(*_binding_1))),
+        typ::Ret::Default => typ::Ret::Default,
+        typ::Ret::Type(_binding_0, _binding_1) => typ::Ret::Type(_binding_0, Box::new(f.fold_type(*_binding_1))),
     }
 }
 pub fn fold_signature<F>(f: &mut F, node: item::Sig) -> item::Sig
@@ -2205,7 +2205,7 @@ where
     F: Fold + ?Sized,
 {
     item::Sig {
-        constness: node.constness,
+        const_: node.const_,
         async_: node.async_,
         unsafe_: node.unsafe_,
         abi: (node.abi).map(|it| f.fold_abi(it)),
@@ -2337,44 +2337,44 @@ where
         semi: node.semi,
     }
 }
-pub fn fold_type<F>(f: &mut F, node: ty::Type) -> ty::Type
+pub fn fold_type<F>(f: &mut F, node: typ::Type) -> typ::Type
 where
     F: Fold + ?Sized,
 {
     match node {
-        ty::Type::Array(_binding_0) => ty::Type::Array(f.fold_type_array(_binding_0)),
-        ty::Type::Fn(_binding_0) => ty::Type::Fn(f.fold_type_bare_fn(_binding_0)),
-        ty::Type::Group(_binding_0) => ty::Type::Group(f.fold_type_group(_binding_0)),
-        ty::Type::Impl(_binding_0) => ty::Type::Impl(f.fold_type_impl_trait(_binding_0)),
-        ty::Type::Infer(_binding_0) => ty::Type::Infer(f.fold_type_infer(_binding_0)),
-        ty::Type::Mac(_binding_0) => ty::Type::Mac(f.fold_type_macro(_binding_0)),
-        ty::Type::Never(_binding_0) => ty::Type::Never(f.fold_type_never(_binding_0)),
-        ty::Type::Paren(_binding_0) => ty::Type::Paren(f.fold_type_paren(_binding_0)),
-        ty::Type::Path(_binding_0) => ty::Type::Path(f.fold_type_path(_binding_0)),
-        ty::Type::Ptr(_binding_0) => ty::Type::Ptr(f.fold_type_ptr(_binding_0)),
-        ty::Type::Ref(_binding_0) => ty::Type::Ref(f.fold_type_reference(_binding_0)),
-        ty::Type::Slice(_binding_0) => ty::Type::Slice(f.fold_type_slice(_binding_0)),
-        ty::Type::TraitObj(_binding_0) => ty::Type::TraitObj(f.fold_type_trait_object(_binding_0)),
-        ty::Type::Tuple(_binding_0) => ty::Type::Tuple(f.fold_type_tuple(_binding_0)),
-        ty::Type::Verbatim(_binding_0) => ty::Type::Verbatim(_binding_0),
+        typ::Type::Array(_binding_0) => typ::Type::Array(f.fold_type_array(_binding_0)),
+        typ::Type::Fn(_binding_0) => typ::Type::Fn(f.fold_type_bare_fn(_binding_0)),
+        typ::Type::Group(_binding_0) => typ::Type::Group(f.fold_type_group(_binding_0)),
+        typ::Type::Impl(_binding_0) => typ::Type::Impl(f.fold_type_impl_trait(_binding_0)),
+        typ::Type::Infer(_binding_0) => typ::Type::Infer(f.fold_type_infer(_binding_0)),
+        typ::Type::Mac(_binding_0) => typ::Type::Mac(f.fold_type_macro(_binding_0)),
+        typ::Type::Never(_binding_0) => typ::Type::Never(f.fold_type_never(_binding_0)),
+        typ::Type::Paren(_binding_0) => typ::Type::Paren(f.fold_type_paren(_binding_0)),
+        typ::Type::Path(_binding_0) => typ::Type::Path(f.fold_type_path(_binding_0)),
+        typ::Type::Ptr(_binding_0) => typ::Type::Ptr(f.fold_type_ptr(_binding_0)),
+        typ::Type::Ref(_binding_0) => typ::Type::Ref(f.fold_type_reference(_binding_0)),
+        typ::Type::Slice(_binding_0) => typ::Type::Slice(f.fold_type_slice(_binding_0)),
+        typ::Type::Trait(_binding_0) => typ::Type::Trait(f.fold_type_trait_object(_binding_0)),
+        typ::Type::Tuple(_binding_0) => typ::Type::Tuple(f.fold_type_tuple(_binding_0)),
+        typ::Type::Verbatim(_binding_0) => typ::Type::Verbatim(_binding_0),
     }
 }
-pub fn fold_type_array<F>(f: &mut F, node: ty::Array) -> ty::Array
+pub fn fold_type_array<F>(f: &mut F, node: typ::Array) -> typ::Array
 where
     F: Fold + ?Sized,
 {
-    ty::Array {
+    typ::Array {
         bracket: node.bracket,
         elem: Box::new(f.fold_type(*node.elem)),
         semi: node.semi,
         len: f.fold_expr(node.len),
     }
 }
-pub fn fold_type_bare_fn<F>(f: &mut F, node: ty::Fn) -> ty::Fn
+pub fn fold_type_bare_fn<F>(f: &mut F, node: typ::Fn) -> typ::Fn
 where
     F: Fold + ?Sized,
 {
-    ty::Fn {
+    typ::Fn {
         lifes: (node.lifes).map(|it| f.fold_bound_lifetimes(it)),
         unsafe_: node.unsafe_,
         abi: (node.abi).map(|it| f.fold_abi(it)),
@@ -2385,45 +2385,45 @@ where
         ret: f.fold_return_type(node.ret),
     }
 }
-pub fn fold_type_group<F>(f: &mut F, node: ty::Group) -> ty::Group
+pub fn fold_type_group<F>(f: &mut F, node: typ::Group) -> typ::Group
 where
     F: Fold + ?Sized,
 {
-    ty::Group {
+    typ::Group {
         group: node.group,
         elem: Box::new(f.fold_type(*node.elem)),
     }
 }
-pub fn fold_type_impl_trait<F>(f: &mut F, node: ty::Impl) -> ty::Impl
+pub fn fold_type_impl_trait<F>(f: &mut F, node: typ::Impl) -> typ::Impl
 where
     F: Fold + ?Sized,
 {
-    ty::Impl {
+    typ::Impl {
         impl_: node.impl_,
         bounds: FoldHelper::lift(node.bounds, |it| f.fold_type_param_bound(it)),
     }
 }
-pub fn fold_type_infer<F>(f: &mut F, node: ty::Infer) -> ty::Infer
+pub fn fold_type_infer<F>(f: &mut F, node: typ::Infer) -> typ::Infer
 where
     F: Fold + ?Sized,
 {
-    ty::Infer {
+    typ::Infer {
         underscore: node.underscore,
     }
 }
-pub fn fold_type_macro<F>(f: &mut F, node: ty::Mac) -> ty::Mac
+pub fn fold_type_macro<F>(f: &mut F, node: typ::Mac) -> typ::Mac
 where
     F: Fold + ?Sized,
 {
-    ty::Mac {
+    typ::Mac {
         mac: f.fold_macro(node.mac),
     }
 }
-pub fn fold_type_never<F>(f: &mut F, node: ty::Never) -> ty::Never
+pub fn fold_type_never<F>(f: &mut F, node: typ::Never) -> typ::Never
 where
     F: Fold + ?Sized,
 {
-    ty::Never { bang: node.bang }
+    typ::Never { bang: node.bang }
 }
 pub fn fold_type_param<F>(f: &mut F, node: gen::param::Type) -> gen::param::Type
 where
@@ -2448,69 +2448,69 @@ where
         gen::bound::Type::Verbatim(_binding_0) => gen::bound::Type::Verbatim(_binding_0),
     }
 }
-pub fn fold_type_paren<F>(f: &mut F, node: ty::Paren) -> ty::Paren
+pub fn fold_type_paren<F>(f: &mut F, node: typ::Paren) -> typ::Paren
 where
     F: Fold + ?Sized,
 {
-    ty::Paren {
+    typ::Paren {
         paren: node.paren,
         elem: Box::new(f.fold_type(*node.elem)),
     }
 }
-pub fn fold_type_path<F>(f: &mut F, node: ty::Path) -> ty::Path
+pub fn fold_type_path<F>(f: &mut F, node: typ::Path) -> typ::Path
 where
     F: Fold + ?Sized,
 {
-    ty::Path {
+    typ::Path {
         qself: (node.qself).map(|it| f.fold_qself(it)),
         path: f.fold_path(node.path),
     }
 }
-pub fn fold_type_ptr<F>(f: &mut F, node: ty::Ptr) -> ty::Ptr
+pub fn fold_type_ptr<F>(f: &mut F, node: typ::Ptr) -> typ::Ptr
 where
     F: Fold + ?Sized,
 {
-    ty::Ptr {
+    typ::Ptr {
         star: node.star,
         const_: node.const_,
         mut_: node.mut_,
         elem: Box::new(f.fold_type(*node.elem)),
     }
 }
-pub fn fold_type_reference<F>(f: &mut F, node: ty::Ref) -> ty::Ref
+pub fn fold_type_reference<F>(f: &mut F, node: typ::Ref) -> typ::Ref
 where
     F: Fold + ?Sized,
 {
-    ty::Ref {
+    typ::Ref {
         and: node.and,
         life: (node.life).map(|it| f.fold_lifetime(it)),
         mut_: node.mut_,
         elem: Box::new(f.fold_type(*node.elem)),
     }
 }
-pub fn fold_type_slice<F>(f: &mut F, node: ty::Slice) -> ty::Slice
+pub fn fold_type_slice<F>(f: &mut F, node: typ::Slice) -> typ::Slice
 where
     F: Fold + ?Sized,
 {
-    ty::Slice {
+    typ::Slice {
         bracket: node.bracket,
         elem: Box::new(f.fold_type(*node.elem)),
     }
 }
-pub fn fold_type_trait_object<F>(f: &mut F, node: ty::TraitObj) -> ty::TraitObj
+pub fn fold_type_trait_object<F>(f: &mut F, node: typ::Trait) -> typ::Trait
 where
     F: Fold + ?Sized,
 {
-    ty::TraitObj {
+    typ::Trait {
         dyn_: node.dyn_,
         bounds: FoldHelper::lift(node.bounds, |it| f.fold_type_param_bound(it)),
     }
 }
-pub fn fold_type_tuple<F>(f: &mut F, node: ty::Tuple) -> ty::Tuple
+pub fn fold_type_tuple<F>(f: &mut F, node: typ::Tuple) -> typ::Tuple
 where
     F: Fold + ?Sized,
 {
-    ty::Tuple {
+    typ::Tuple {
         paren: node.paren,
         elems: FoldHelper::lift(node.elems, |it| f.fold_type(it)),
     }

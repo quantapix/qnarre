@@ -847,14 +847,14 @@ impl ToTokens for item::Receiver {
             self.typ.to_tokens(xs);
         } else {
             let consistent = match (&self.reference, &self.mut_, &*self.typ) {
-                (Some(_), mutability, ty::Type::Ref(ty)) => {
+                (Some(_), mutability, typ::Type::Ref(ty)) => {
                     mutability.is_some() == ty.mut_.is_some()
                         && match &*ty.elem {
-                            ty::Type::Path(ty) => ty.qself.is_none() && ty.path.is_ident("Self"),
+                            typ::Type::Path(ty) => ty.qself.is_none() && ty.path.is_ident("Self"),
                             _ => false,
                         }
                 },
-                (None, _, ty::Type::Path(ty)) => ty.qself.is_none() && ty.path.is_ident("Self"),
+                (None, _, typ::Type::Path(ty)) => ty.qself.is_none() && ty.path.is_ident("Self"),
                 _ => false,
             };
             if !consistent {
@@ -1428,7 +1428,7 @@ pub fn delim(d: pm2::Delim, s: pm2::Span, xs: &mut pm2::Stream, inner: pm2::Stre
 }
 
 mod ty {
-    use crate::ty::*;
+    use crate::typ::*;
     use proc_macro2::pm2::Stream;
     use quote::ToTokens;
 
@@ -1507,7 +1507,7 @@ mod ty {
             print_path(xs, &self.qself, &self.path);
         }
     }
-    impl ToTokens for TraitObj {
+    impl ToTokens for Trait {
         fn to_tokens(&self, xs: &mut pm2::Stream) {
             self.dyn_.to_tokens(xs);
             self.bounds.to_tokens(xs);
