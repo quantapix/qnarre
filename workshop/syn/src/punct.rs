@@ -335,6 +335,15 @@ impl<T, P> IndexMut<usize> for Punctuated<T, P> {
         }
     }
 }
+impl<T, P> ToTokens for Punctuated<T, P>
+where
+    T: ToTokens,
+    P: ToTokens,
+{
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
+        tokens.append_all(self.pairs());
+    }
+}
 
 fn do_extend<T, P, I>(punctuated: &mut Punctuated<T, P>, i: I)
 where
@@ -721,6 +730,21 @@ where
     T: Copy,
     P: Copy,
 {
+}
+impl<T, P> ToTokens for Pair<T, P>
+where
+    T: ToTokens,
+    P: ToTokens,
+{
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
+        match self {
+            Pair::Punctuated(a, b) => {
+                a.to_tokens(tokens);
+                b.to_tokens(tokens);
+            },
+            Pair::End(a) => a.to_tokens(tokens),
+        }
+    }
 }
 
 #[repr(transparent)]

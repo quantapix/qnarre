@@ -57,6 +57,19 @@ impl_low_level!("punctuation token" Punct punct);
 impl_low_level!("literal" pm2::Lit literal);
 impl_low_level!("token" pm2::Tree token_tree);
 
+impl Token for Ident {
+    fn peek(x: Cursor) -> bool {
+        if let Some((ident, _)) = x.ident() {
+            accept_as_ident(&ident)
+        } else {
+            false
+        }
+    }
+    fn display() -> &'static str {
+        "identifier"
+    }
+}
+
 pub trait Custom {
     fn peek(x: Cursor) -> bool;
     fn display() -> &'static str;
@@ -464,6 +477,20 @@ impl Delim {
             Bracket(x) => &x.span,
         }
     }
+    pub fn surround(&self, xs: &mut pm2::Stream, inner: pm2::Stream) {
+        let (delim, span) = match self {
+            tok::Delim::Paren(x) => (pm2::Delim::Parenthesis, x.span),
+            tok::Delim::Brace(x) => (pm2::Delim::Brace, x.span),
+            tok::Delim::Bracket(x) => (pm2::Delim::Bracket, x.span),
+        };
+        delim(delim, span.join(), xs, inner);
+    }
+    pub fn is_brace(&self) -> bool {
+        match self {
+            tok::Delim::Brace(_) => true,
+            tok::Delim::Paren(_) | tok::Delim::Bracket(_) => false,
+        }
+    }
 }
 
 pub struct Group {
@@ -529,3 +556,77 @@ mod private {
     }
 }
 impl private::Sealed for Ident {}
+
+fn accept_as_ident(x: &Ident) -> bool {
+    match x.to_string().as_str() {
+        "_" | "abstract" | "as" | "async" | "await" | "become" | "box" | "break" | "const" | "continue" | "crate"
+        | "do" | "dyn" | "else" | "enum" | "extern" | "false" | "final" | "fn" | "for" | "if" | "impl" | "in"
+        | "let" | "loop" | "macro" | "match" | "mod" | "move" | "mut" | "override" | "priv" | "pub" | "ref"
+        | "return" | "Self" | "self" | "static" | "struct" | "super" | "trait" | "true" | "try" | "type" | "typeof"
+        | "unsafe" | "unsized" | "use" | "virtual" | "where" | "while" | "yield" => false,
+        _ => true,
+    }
+}
+pub fn keyword(input: Stream, token: &str) -> Res<pm2::Span> {
+    input.step(|cursor| {
+        if let Some((ident, rest)) = cursor.ident() {
+            if ident == token {
+                return Ok((ident.span(), rest));
+            }
+        }
+        Err(cursor.error(format!("expected `{}`", token)))
+    })
+}
+pub fn peek_keyword(cursor: Cursor, token: &str) -> bool {
+    if let Some((ident, _rest)) = cursor.ident() {
+        ident == token
+    } else {
+        false
+    }
+}
+pub fn punct<const N: usize>(input: Stream, token: &str) -> Res<[pm2::Span; N]> {
+    let mut spans = [input.span(); N];
+    punct_helper(input, token, &mut spans)?;
+    Ok(spans)
+}
+fn punct_helper(input: Stream, token: &str, spans: &mut [pm2::Span]) -> Res<()> {
+    input.step(|cursor| {
+        let mut cursor = *cursor;
+        assert_eq!(token.len(), spans.len());
+        for (i, ch) in token.chars().enumerate() {
+            match cursor.punct() {
+                Some((punct, rest)) => {
+                    spans[i] = punct.span();
+                    if punct.as_char() != ch {
+                        break;
+                    } else if i == token.len() - 1 {
+                        return Ok(((), rest));
+                    } else if punct.spacing() != pm2::Spacing::Joint {
+                        break;
+                    }
+                    cursor = rest;
+                },
+                None => break,
+            }
+        }
+        Err(Err::new(spans[0], format!("expected `{}`", token)))
+    })
+}
+pub fn peek_punct(mut cursor: Cursor, token: &str) -> bool {
+    for (i, ch) in token.chars().enumerate() {
+        match cursor.punct() {
+            Some((punct, rest)) => {
+                if punct.as_char() != ch {
+                    break;
+                } else if i == token.len() - 1 {
+                    return true;
+                } else if punct.spacing() != pm2::Spacing::Joint {
+                    break;
+                }
+                cursor = rest;
+            },
+            None => break,
+        }
+    }
+    false
+}

@@ -13,6 +13,29 @@ impl Mac {
         parse::parse_scoped(parser, scope, self.toks.clone())
     }
 }
+impl Parse for Mac {
+    fn parse(x: Stream) -> Res<Self> {
+        let toks;
+        Ok(Mac {
+            path: x.call(Path::parse_mod_style)?,
+            bang: x.parse()?,
+            delim: {
+                let (y, x) = parse_delim(x)?;
+                toks = x;
+                y
+            },
+            toks,
+        })
+    }
+}
+impl ToTokens for Mac {
+    fn to_tokens(&self, ys: &mut pm2::Stream) {
+        self.path.to_tokens(ys);
+        self.bang.to_tokens(ys);
+        self.delim.surround(ys, self.toks.clone());
+    }
+}
+
 pub fn parse_delim(x: parse::Stream) -> Res<(tok::Delim, pm2::Stream)> {
     x.step(|c| {
         if let Some((pm2::Tree::Group(g), rest)) = c.token_tree() {

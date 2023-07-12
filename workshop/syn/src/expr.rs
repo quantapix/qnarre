@@ -1,6 +1,5 @@
-use quote::IdentFragment;
-
 pub use pm2::Stream;
+use quote::IdentFragment;
 
 ast_enum_of_structs! {
     pub enum Expr {
@@ -45,238 +44,6 @@ ast_enum_of_structs! {
         Yield(Yield),
     }
 }
-
-pub struct Array {
-    pub attrs: Vec<attr::Attr>,
-    pub bracket: tok::Bracket,
-    pub elems: Punctuated<Expr, Token![,]>,
-}
-
-pub struct Assign {
-    pub attrs: Vec<attr::Attr>,
-    pub left: Box<Expr>,
-    pub eq: Token![=],
-    pub right: Box<Expr>,
-}
-pub struct Async {
-    pub attrs: Vec<attr::Attr>,
-    pub async_: Token![async],
-    pub move_: Option<Token![move]>,
-    pub block: stmt::Block,
-}
-pub struct Await {
-    pub attrs: Vec<attr::Attr>,
-    pub expr: Box<Expr>,
-    pub dot: Token![.],
-    pub await_: Token![await],
-}
-pub struct Binary {
-    pub attrs: Vec<attr::Attr>,
-    pub left: Box<Expr>,
-    pub op: BinOp,
-    pub right: Box<Expr>,
-}
-pub struct Block {
-    pub attrs: Vec<attr::Attr>,
-    pub label: Option<Label>,
-    pub block: stmt::Block,
-}
-pub struct Break {
-    pub attrs: Vec<attr::Attr>,
-    pub break_: Token![break],
-    pub label: Option<Lifetime>,
-    pub expr: Option<Box<Expr>>,
-}
-pub struct Call {
-    pub attrs: Vec<attr::Attr>,
-    pub func: Box<Expr>,
-    pub paren: tok::Paren,
-    pub args: Punctuated<Expr, Token![,]>,
-}
-pub struct Cast {
-    pub attrs: Vec<attr::Attr>,
-    pub expr: Box<Expr>,
-    pub as_: Token![as],
-    pub typ: Box<typ::Type>,
-}
-pub struct Closure {
-    pub attrs: Vec<attr::Attr>,
-    pub lifes: Option<Bgen::bound::Lifes>,
-    pub const_: Option<Token![const]>,
-    pub static_: Option<Token![static]>,
-    pub async_: Option<Token![async]>,
-    pub move_: Option<Token![move]>,
-    pub or1: Token![|],
-    pub ins: Punctuated<pat::Pat, Token![,]>,
-    pub or2: Token![|],
-    pub ret: typ::Ret,
-    pub body: Box<Expr>,
-}
-pub struct Const {
-    pub attrs: Vec<attr::Attr>,
-    pub const_: Token![const],
-    pub block: stmt::Block,
-}
-pub struct Continue {
-    pub attrs: Vec<attr::Attr>,
-    pub continue_: Token![continue],
-    pub label: Option<Lifetime>,
-}
-pub struct Field {
-    pub attrs: Vec<attr::Attr>,
-    pub expr: Box<Expr>,
-    pub dot: Token![.],
-    pub memb: Member,
-}
-pub struct ForLoop {
-    pub attrs: Vec<attr::Attr>,
-    pub label: Option<Label>,
-    pub for_: Token![for],
-    pub pat: Box<pat::Pat>,
-    pub in_: Token![in],
-    pub expr: Box<Expr>,
-    pub body: stmt::Block,
-}
-pub struct Group {
-    pub attrs: Vec<attr::Attr>,
-    pub group: tok::Group,
-    pub expr: Box<Expr>,
-}
-pub struct If {
-    pub attrs: Vec<attr::Attr>,
-    pub if_: Token![if],
-    pub cond: Box<Expr>,
-    pub then_: stmt::Block,
-    pub else_: Option<(Token![else], Box<Expr>)>,
-}
-pub struct Index {
-    pub attrs: Vec<attr::Attr>,
-    pub expr: Box<Expr>,
-    pub bracket: tok::Bracket,
-    pub idx: Box<Expr>,
-}
-pub struct Infer {
-    pub attrs: Vec<attr::Attr>,
-    pub underscore: Token![_],
-}
-pub struct Let {
-    pub attrs: Vec<attr::Attr>,
-    pub let_: Token![let],
-    pub pat: Box<pat::Pat>,
-    pub eq: Token![=],
-    pub expr: Box<Expr>,
-}
-pub struct Lit {
-    pub attrs: Vec<attr::Attr>,
-    pub lit: lit::Lit,
-}
-pub struct Loop {
-    pub attrs: Vec<attr::Attr>,
-    pub label: Option<Label>,
-    pub loop_: Token![loop],
-    pub body: stmt::Block,
-}
-pub struct Mac {
-    pub attrs: Vec<attr::Attr>,
-    pub mac: mac::Mac,
-}
-pub struct Match {
-    pub attrs: Vec<attr::Attr>,
-    pub match_: Token![match],
-    pub expr: Box<Expr>,
-    pub brace: tok::Brace,
-    pub arms: Vec<Arm>,
-}
-pub struct MethodCall {
-    pub attrs: Vec<attr::Attr>,
-    pub expr: Box<Expr>,
-    pub dot: Token![.],
-    pub method: Ident,
-    pub turbofish: Option<AngledArgs>,
-    pub paren: tok::Paren,
-    pub args: Punctuated<Expr, Token![,]>,
-}
-pub struct Paren {
-    pub attrs: Vec<attr::Attr>,
-    pub paren: tok::Paren,
-    pub expr: Box<Expr>,
-}
-pub struct Path {
-    pub attrs: Vec<attr::Attr>,
-    pub qself: Option<QSelf>,
-    pub path: path::Path,
-}
-pub struct Range {
-    pub attrs: Vec<attr::Attr>,
-    pub beg: Option<Box<Expr>>,
-    pub limits: RangeLimits,
-    pub end: Option<Box<Expr>>,
-}
-pub struct Ref {
-    pub attrs: Vec<attr::Attr>,
-    pub and: Token![&],
-    pub mut_: Option<Token![mut]>,
-    pub expr: Box<Expr>,
-}
-pub struct Repeat {
-    pub attrs: Vec<attr::Attr>,
-    pub bracket: tok::Bracket,
-    pub expr: Box<Expr>,
-    pub semi: Token![;],
-    pub len: Box<Expr>,
-}
-pub struct Return {
-    pub attrs: Vec<attr::Attr>,
-    pub return_: Token![return],
-    pub expr: Option<Box<Expr>>,
-}
-pub struct Struct {
-    pub attrs: Vec<attr::Attr>,
-    pub qself: Option<QSelf>,
-    pub path: path::Path,
-    pub brace: tok::Brace,
-    pub fields: Punctuated<FieldValue, Token![,]>,
-    pub dot2: Option<Token![..]>,
-    pub rest: Option<Box<Expr>>,
-}
-pub struct Try {
-    pub attrs: Vec<attr::Attr>,
-    pub expr: Box<Expr>,
-    pub question: Token![?],
-}
-pub struct TryBlock {
-    pub attrs: Vec<attr::Attr>,
-    pub try_: Token![try],
-    pub block: stmt::Block,
-}
-pub struct Tuple {
-    pub attrs: Vec<attr::Attr>,
-    pub paren: tok::Paren,
-    pub elems: Punctuated<Expr, Token![,]>,
-}
-pub struct Unary {
-    pub attrs: Vec<attr::Attr>,
-    pub op: UnOp,
-    pub expr: Box<Expr>,
-}
-pub struct Unsafe {
-    pub attrs: Vec<attr::Attr>,
-    pub unsafe_: Token![unsafe],
-    pub block: stmt::Block,
-}
-pub struct While {
-    pub attrs: Vec<attr::Attr>,
-    pub label: Option<Label>,
-    pub while_: Token![while],
-    pub cond: Box<Expr>,
-    pub block: stmt::Block,
-}
-pub struct Yield {
-    pub attrs: Vec<attr::Attr>,
-    pub yield_: Token![yield],
-    pub expr: Option<Box<Expr>>,
-}
-
 impl Expr {
     pub const DUMMY: Self = Expr::Path(Path {
         attrs: Vec::new(),
@@ -330,11 +97,1005 @@ impl Expr {
             Verbatim(_) => Vec::new(),
         }
     }
+    pub fn parse_without_eager_brace(x: Stream) -> Res<Expr> {
+        ambiguous_expr(x, AllowStruct(false))
+    }
+}
+impl Parse for Expr {
+    fn parse(x: Stream) -> Res<Self> {
+        ambiguous_expr(x, AllowStruct(true))
+    }
+}
+
+macro_rules! impl_by_parsing_expr {
+        (
+            $(
+                $expr_type:ty, $variant:ident, $msg:expr,
+            )*
+        ) => {
+            $(
+                impl Parse for $expr_type {
+                    fn parse(input: Stream) -> Res<Self> {
+                        let mut expr: Expr = input.parse()?;
+                        loop {
+                            match expr {
+                                Expr::$variant(inner) => return Ok(inner),
+                                Expr::Group(next) => expr = *next.expr,
+                                _ => return Err(Error::new_spanned(expr, $msg)),
+                            }
+                        }
+                    }
+                }
+            )*
+        };
+    }
+impl_by_parsing_expr! {
+    expr::Assign, Assign, "expected assignment expression",
+    expr::Await, Await, "expected await expression",
+    expr::Binary, Binary, "expected binary operation",
+    expr::Call, Call, "expected function call expression",
+    expr::Cast, Cast, "expected cast expression",
+    expr::Field, Field, "expected struct field access",
+    expr::Index, Index, "expected indexing expression",
+    expr::MethodCall, MethodCall, "expected method call expression",
+    expr::Range, Range, "expected range expression",
+    expr::Try, Try, "expected try expression",
+    expr::Tuple, Tuple, "expected tuple expression",
+}
+pub struct Array {
+    pub attrs: Vec<attr::Attr>,
+    pub bracket: tok::Bracket,
+    pub elems: Punctuated<Expr, Token![,]>,
+}
+impl Parse for expr::Array {
+    fn parse(x: Stream) -> Res<Self> {
+        let content;
+        let bracket = bracketed!(content in x);
+        let mut elems = Punctuated::new();
+        while !content.is_empty() {
+            let first: Expr = content.parse()?;
+            elems.push_value(first);
+            if content.is_empty() {
+                break;
+            }
+            let punct = content.parse()?;
+            elems.push_punct(punct);
+        }
+        Ok(expr::Array {
+            attrs: Vec::new(),
+            bracket,
+            elems,
+        })
+    }
+}
+impl ToTokens for expr::Array {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.bracket.surround(tokens, |tokens| {
+            self.elems.to_tokens(tokens);
+        });
+    }
+}
+
+pub struct Assign {
+    pub attrs: Vec<attr::Attr>,
+    pub left: Box<Expr>,
+    pub eq: Token![=],
+    pub right: Box<Expr>,
+}
+impl ToTokens for expr::Assign {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.left.to_tokens(tokens);
+        self.eq.to_tokens(tokens);
+        self.right.to_tokens(tokens);
+    }
+}
+
+pub struct Async {
+    pub attrs: Vec<attr::Attr>,
+    pub async_: Token![async],
+    pub move_: Option<Token![move]>,
+    pub block: stmt::Block,
+}
+impl Parse for expr::Async {
+    fn parse(input: Stream) -> Res<Self> {
+        Ok(expr::Async {
+            attrs: Vec::new(),
+            async_: input.parse()?,
+            move_: input.parse()?,
+            block: input.parse()?,
+        })
+    }
+}
+impl ToTokens for expr::Async {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.async_.to_tokens(tokens);
+        self.move_.to_tokens(tokens);
+        self.block.to_tokens(tokens);
+    }
+}
+
+pub struct Await {
+    pub attrs: Vec<attr::Attr>,
+    pub expr: Box<Expr>,
+    pub dot: Token![.],
+    pub await_: Token![await],
+}
+impl ToTokens for expr::Await {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.expr.to_tokens(tokens);
+        self.dot.to_tokens(tokens);
+        self.await_.to_tokens(tokens);
+    }
+}
+
+pub struct Binary {
+    pub attrs: Vec<attr::Attr>,
+    pub left: Box<Expr>,
+    pub op: BinOp,
+    pub right: Box<Expr>,
+}
+impl ToTokens for expr::Binary {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.left.to_tokens(tokens);
+        self.op.to_tokens(tokens);
+        self.right.to_tokens(tokens);
+    }
+}
+
+pub struct Block {
+    pub attrs: Vec<attr::Attr>,
+    pub label: Option<Label>,
+    pub block: stmt::Block,
+}
+impl Parse for expr::Block {
+    fn parse(input: Stream) -> Res<Self> {
+        let mut attrs = input.call(attr::Attr::parse_outer)?;
+        let label: Option<Label> = input.parse()?;
+        let content;
+        let brace = braced!(content in input);
+        attr::inner(&content, &mut attrs)?;
+        let stmts = content.call(Block::parse_within)?;
+        Ok(expr::Block {
+            attrs,
+            label,
+            block: Block { brace, stmts },
+        })
+    }
+}
+impl ToTokens for expr::Block {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.label.to_tokens(tokens);
+        self.block.brace.surround(tokens, |tokens| {
+            inner_attrs_to_tokens(&self.attrs, tokens);
+            tokens.append_all(&self.block.stmts);
+        });
+    }
+}
+
+pub struct Break {
+    pub attrs: Vec<attr::Attr>,
+    pub break_: Token![break],
+    pub label: Option<Lifetime>,
+    pub expr: Option<Box<Expr>>,
+}
+impl Parse for expr::Break {
+    fn parse(input: Stream) -> Res<Self> {
+        let allow_struct = AllowStruct(true);
+        expr_break(input, allow_struct)
+    }
+}
+impl ToTokens for expr::Break {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.break_.to_tokens(tokens);
+        self.label.to_tokens(tokens);
+        self.expr.to_tokens(tokens);
+    }
+}
+
+pub struct Call {
+    pub attrs: Vec<attr::Attr>,
+    pub func: Box<Expr>,
+    pub paren: tok::Paren,
+    pub args: Punctuated<Expr, Token![,]>,
+}
+impl ToTokens for expr::Call {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.func.to_tokens(tokens);
+        self.paren.surround(tokens, |tokens| {
+            self.args.to_tokens(tokens);
+        });
+    }
+}
+
+pub struct Cast {
+    pub attrs: Vec<attr::Attr>,
+    pub expr: Box<Expr>,
+    pub as_: Token![as],
+    pub typ: Box<typ::Type>,
+}
+impl ToTokens for expr::Cast {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.expr.to_tokens(tokens);
+        self.as_.to_tokens(tokens);
+        self.typ.to_tokens(tokens);
+    }
+}
+
+pub struct Closure {
+    pub attrs: Vec<attr::Attr>,
+    pub lifes: Option<Bgen::bound::Lifes>,
+    pub const_: Option<Token![const]>,
+    pub static_: Option<Token![static]>,
+    pub async_: Option<Token![async]>,
+    pub move_: Option<Token![move]>,
+    pub or1: Token![|],
+    pub ins: Punctuated<pat::Pat, Token![,]>,
+    pub or2: Token![|],
+    pub ret: typ::Ret,
+    pub body: Box<Expr>,
+}
+impl Parse for expr::Closure {
+    fn parse(x: Stream) -> Res<Self> {
+        let allow_struct = AllowStruct(true);
+        expr_closure(x, allow_struct)
+    }
+}
+impl ToTokens for expr::Closure {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.lifes.to_tokens(tokens);
+        self.const_.to_tokens(tokens);
+        self.static_.to_tokens(tokens);
+        self.async_.to_tokens(tokens);
+        self.move_.to_tokens(tokens);
+        self.or1.to_tokens(tokens);
+        self.inputs.to_tokens(tokens);
+        self.or2.to_tokens(tokens);
+        self.ret.to_tokens(tokens);
+        self.body.to_tokens(tokens);
+    }
+}
+
+pub struct Const {
+    pub attrs: Vec<attr::Attr>,
+    pub const_: Token![const],
+    pub block: stmt::Block,
+}
+impl Parse for expr::Const {
+    fn parse(input: Stream) -> Res<Self> {
+        let const_: Token![const] = input.parse()?;
+        let content;
+        let brace = braced!(content in input);
+        let inner_attrs = content.call(attr::Attr::parse_inner)?;
+        let stmts = content.call(Block::parse_within)?;
+        Ok(expr::Const {
+            attrs: inner_attrs,
+            const_,
+            block: Block { brace, stmts },
+        })
+    }
+}
+impl ToTokens for expr::Const {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.const_.to_tokens(tokens);
+        self.block.brace.surround(tokens, |tokens| {
+            inner_attrs_to_tokens(&self.attrs, tokens);
+            tokens.append_all(&self.block.stmts);
+        });
+    }
+}
+
+pub struct Continue {
+    pub attrs: Vec<attr::Attr>,
+    pub continue_: Token![continue],
+    pub label: Option<Lifetime>,
+}
+impl Parse for expr::Continue {
+    fn parse(input: Stream) -> Res<Self> {
+        Ok(expr::Continue {
+            attrs: Vec::new(),
+            continue_: input.parse()?,
+            label: input.parse()?,
+        })
+    }
+}
+impl ToTokens for expr::Continue {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.continue_.to_tokens(tokens);
+        self.label.to_tokens(tokens);
+    }
+}
+
+pub struct Field {
+    pub attrs: Vec<attr::Attr>,
+    pub expr: Box<Expr>,
+    pub dot: Token![.],
+    pub memb: Member,
+}
+impl ToTokens for expr::Field {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.base.to_tokens(tokens);
+        self.dot.to_tokens(tokens);
+        self.memb.to_tokens(tokens);
+    }
+}
+
+pub struct ForLoop {
+    pub attrs: Vec<attr::Attr>,
+    pub label: Option<Label>,
+    pub for_: Token![for],
+    pub pat: Box<pat::Pat>,
+    pub in_: Token![in],
+    pub expr: Box<Expr>,
+    pub body: stmt::Block,
+}
+impl Parse for expr::ForLoop {
+    fn parse(x: Stream) -> Res<Self> {
+        let mut attrs = x.call(attr::Attr::parse_outer)?;
+        let label: Option<Label> = x.parse()?;
+        let for_: Token![for] = x.parse()?;
+        let pat = pat::Pat::parse_multi(x)?;
+        let in_: Token![in] = x.parse()?;
+        let expr: Expr = x.call(Expr::parse_without_eager_brace)?;
+        let content;
+        let brace = braced!(content in x);
+        attr::inner(&content, &mut attrs)?;
+        let stmts = content.call(Block::parse_within)?;
+        Ok(expr::ForLoop {
+            attrs,
+            label,
+            for_,
+            pat: Box::new(pat),
+            in_,
+            expr: Box::new(expr),
+            body: Block { brace, stmts },
+        })
+    }
+}
+impl ToTokens for expr::ForLoop {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.label.to_tokens(tokens);
+        self.for_.to_tokens(tokens);
+        self.pat.to_tokens(tokens);
+        self.in_.to_tokens(tokens);
+        wrap_bare_struct(tokens, &self.expr);
+        self.body.brace.surround(tokens, |tokens| {
+            inner_attrs_to_tokens(&self.attrs, tokens);
+            tokens.append_all(&self.body.stmts);
+        });
+    }
+}
+
+pub struct Group {
+    pub attrs: Vec<attr::Attr>,
+    pub group: tok::Group,
+    pub expr: Box<Expr>,
+}
+impl ToTokens for expr::Group {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.group.surround(tokens, |tokens| {
+            self.expr.to_tokens(tokens);
+        });
+    }
+}
+
+pub struct If {
+    pub attrs: Vec<attr::Attr>,
+    pub if_: Token![if],
+    pub cond: Box<Expr>,
+    pub then_: stmt::Block,
+    pub else_: Option<(Token![else], Box<Expr>)>,
+}
+impl Parse for expr::If {
+    fn parse(x: Stream) -> Res<Self> {
+        let attrs = x.call(attr::Attr::parse_outer)?;
+        Ok(expr::If {
+            attrs,
+            if_: x.parse()?,
+            cond: Box::new(x.call(Expr::parse_without_eager_brace)?),
+            then_branch: x.parse()?,
+            else_branch: {
+                if x.peek(Token![else]) {
+                    Some(x.call(else_block)?)
+                } else {
+                    None
+                }
+            },
+        })
+    }
+}
+impl ToTokens for expr::If {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.if_.to_tokens(tokens);
+        wrap_bare_struct(tokens, &self.cond);
+        self.then_branch.to_tokens(tokens);
+        if let Some((else_token, else_)) = &self.else_branch {
+            else_token.to_tokens(tokens);
+            match **else_ {
+                Expr::If(_) | Expr::Block(_) => else_.to_tokens(tokens),
+                _ => tok::Brace::default().surround(tokens, |tokens| else_.to_tokens(tokens)),
+            }
+        }
+    }
+}
+
+pub struct Index {
+    pub attrs: Vec<attr::Attr>,
+    pub expr: Box<Expr>,
+    pub bracket: tok::Bracket,
+    pub idx: Box<Expr>,
+}
+impl Parse for Index {
+    fn parse(input: Stream) -> Res<Self> {
+        let lit: lit::Int = input.parse()?;
+        if lit.suffix().is_empty() {
+            Ok(Index {
+                index: lit.base10_digits().parse().map_err(|err| Err::new(lit.span(), err))?,
+                span: lit.span(),
+            })
+        } else {
+            Err(Err::new(lit.span(), "expected unsuffixed integer"))
+        }
+    }
+}
+impl ToTokens for expr::Index {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.expr.to_tokens(tokens);
+        self.bracket.surround(tokens, |tokens| {
+            self.index.to_tokens(tokens);
+        });
+    }
+}
+
+pub struct Infer {
+    pub attrs: Vec<attr::Attr>,
+    pub underscore: Token![_],
+}
+impl Parse for expr::Infer {
+    fn parse(x: Stream) -> Res<Self> {
+        Ok(expr::Infer {
+            attrs: x.call(attr::Attr::parse_outer)?,
+            underscore: x.parse()?,
+        })
+    }
+}
+impl ToTokens for expr::Infer {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.underscore.to_tokens(tokens);
+    }
+}
+
+pub struct Let {
+    pub attrs: Vec<attr::Attr>,
+    pub let_: Token![let],
+    pub pat: Box<pat::Pat>,
+    pub eq: Token![=],
+    pub expr: Box<Expr>,
+}
+impl Parse for expr::Let {
+    fn parse(x: Stream) -> Res<Self> {
+        Ok(expr::Let {
+            attrs: Vec::new(),
+            let_: x.parse()?,
+            pat: Box::new(pat::Pat::parse_multi(x)?),
+            eq: x.parse()?,
+            expr: Box::new({
+                let allow_struct = AllowStruct(false);
+                let lhs = unary_expr(x, allow_struct)?;
+                parse_expr(x, lhs, allow_struct, Precedence::Compare)?
+            }),
+        })
+    }
+}
+impl ToTokens for expr::Let {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.let_.to_tokens(tokens);
+        self.pat.to_tokens(tokens);
+        self.eq.to_tokens(tokens);
+        wrap_bare_struct(tokens, &self.expr);
+    }
+}
+
+pub struct Lit {
+    pub attrs: Vec<attr::Attr>,
+    pub lit: lit::Lit,
+}
+impl Parse for expr::Lit {
+    fn parse(x: Stream) -> Res<Self> {
+        Ok(expr::Lit {
+            attrs: Vec::new(),
+            lit: x.parse()?,
+        })
+    }
+}
+impl ToTokens for expr::Lit {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.lit.to_tokens(tokens);
+    }
+}
+
+pub struct Loop {
+    pub attrs: Vec<attr::Attr>,
+    pub label: Option<Label>,
+    pub loop_: Token![loop],
+    pub body: stmt::Block,
+}
+impl Parse for expr::Loop {
+    fn parse(x: Stream) -> Res<Self> {
+        let mut attrs = x.call(attr::Attr::parse_outer)?;
+        let label: Option<Label> = x.parse()?;
+        let loop_: Token![loop] = x.parse()?;
+        let content;
+        let brace = braced!(content in x);
+        attr::inner(&content, &mut attrs)?;
+        let stmts = content.call(Block::parse_within)?;
+        Ok(expr::Loop {
+            attrs,
+            label,
+            loop_,
+            body: Block { brace, stmts },
+        })
+    }
+}
+impl ToTokens for expr::Loop {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.label.to_tokens(tokens);
+        self.loop_.to_tokens(tokens);
+        self.body.brace.surround(tokens, |tokens| {
+            inner_attrs_to_tokens(&self.attrs, tokens);
+            tokens.append_all(&self.body.stmts);
+        });
+    }
+}
+
+pub struct Mac {
+    pub attrs: Vec<attr::Attr>,
+    pub mac: mac::Mac,
+}
+impl Parse for expr::Mac {
+    fn parse(x: Stream) -> Res<Self> {
+        Ok(expr::Mac {
+            attrs: Vec::new(),
+            mac: x.parse()?,
+        })
+    }
+}
+impl ToTokens for expr::Mac {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.mac.to_tokens(tokens);
+    }
+}
+
+pub struct Match {
+    pub attrs: Vec<attr::Attr>,
+    pub match_: Token![match],
+    pub expr: Box<Expr>,
+    pub brace: tok::Brace,
+    pub arms: Vec<Arm>,
+}
+impl Parse for expr::Match {
+    fn parse(x: Stream) -> Res<Self> {
+        let mut attrs = x.call(attr::Attr::parse_outer)?;
+        let match_: Token![match] = x.parse()?;
+        let expr = Expr::parse_without_eager_brace(x)?;
+        let content;
+        let brace = braced!(content in x);
+        attr::inner(&content, &mut attrs)?;
+        let mut arms = Vec::new();
+        while !content.is_empty() {
+            arms.push(content.call(Arm::parse)?);
+        }
+        Ok(expr::Match {
+            attrs,
+            match_,
+            expr: Box::new(expr),
+            brace,
+            arms,
+        })
+    }
+}
+impl ToTokens for expr::Match {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.match_.to_tokens(tokens);
+        wrap_bare_struct(tokens, &self.expr);
+        self.brace.surround(tokens, |tokens| {
+            inner_attrs_to_tokens(&self.attrs, tokens);
+            for (i, arm) in self.arms.iter().enumerate() {
+                arm.to_tokens(tokens);
+                let is_last = i == self.arms.len() - 1;
+                if !is_last && requires_terminator(&arm.body) && arm.comma.is_none() {
+                    <Token![,]>::default().to_tokens(tokens);
+                }
+            }
+        });
+    }
+}
+
+pub struct MethodCall {
+    pub attrs: Vec<attr::Attr>,
+    pub expr: Box<Expr>,
+    pub dot: Token![.],
+    pub method: Ident,
+    pub turbofish: Option<AngledArgs>,
+    pub paren: tok::Paren,
+    pub args: Punctuated<Expr, Token![,]>,
+}
+impl ToTokens for expr::MethodCall {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.expr.to_tokens(tokens);
+        self.dot.to_tokens(tokens);
+        self.method.to_tokens(tokens);
+        self.turbofish.to_tokens(tokens);
+        self.paren.surround(tokens, |tokens| {
+            self.args.to_tokens(tokens);
+        });
+    }
+}
+
+pub struct Paren {
+    pub attrs: Vec<attr::Attr>,
+    pub paren: tok::Paren,
+    pub expr: Box<Expr>,
+}
+impl Parse for expr::Paren {
+    fn parse(x: Stream) -> Res<Self> {
+        expr_paren(x)
+    }
+}
+impl ToTokens for expr::Paren {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.paren.surround(tokens, |tokens| {
+            self.expr.to_tokens(tokens);
+        });
+    }
+}
+
+pub struct Path {
+    pub attrs: Vec<attr::Attr>,
+    pub qself: Option<QSelf>,
+    pub path: path::Path,
+}
+impl Parse for expr::Path {
+    fn parse(input: Stream) -> Res<Self> {
+        #[cfg(not(feature = "full"))]
+        let attrs = Vec::new();
+        let attrs = input.call(attr::Attr::parse_outer)?;
+        let (qself, path) = qpath(input, true)?;
+        Ok(expr::Path { attrs, qself, path })
+    }
+}
+impl ToTokens for expr::Path {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        print_path(tokens, &self.qself, &self.path);
+    }
+}
+
+pub struct Range {
+    pub attrs: Vec<attr::Attr>,
+    pub beg: Option<Box<Expr>>,
+    pub limits: RangeLimits,
+    pub end: Option<Box<Expr>>,
+}
+impl ToTokens for expr::Range {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.beg.to_tokens(tokens);
+        self.limits.to_tokens(tokens);
+        self.end.to_tokens(tokens);
+    }
+}
+
+pub struct Ref {
+    pub attrs: Vec<attr::Attr>,
+    pub and: Token![&],
+    pub mut_: Option<Token![mut]>,
+    pub expr: Box<Expr>,
+}
+impl Parse for expr::Ref {
+    fn parse(x: Stream) -> Res<Self> {
+        let allow_struct = AllowStruct(true);
+        Ok(expr::Ref {
+            attrs: Vec::new(),
+            and: x.parse()?,
+            mut_: x.parse()?,
+            expr: Box::new(unary_expr(x, allow_struct)?),
+        })
+    }
+}
+impl ToTokens for expr::Ref {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.and.to_tokens(tokens);
+        self.mut_.to_tokens(tokens);
+        self.expr.to_tokens(tokens);
+    }
+}
+
+pub struct Repeat {
+    pub attrs: Vec<attr::Attr>,
+    pub bracket: tok::Bracket,
+    pub expr: Box<Expr>,
+    pub semi: Token![;],
+    pub len: Box<Expr>,
+}
+impl Parse for expr::Repeat {
+    fn parse(x: Stream) -> Res<Self> {
+        let content;
+        Ok(expr::Repeat {
+            bracket: bracketed!(content in x),
+            attrs: Vec::new(),
+            expr: content.parse()?,
+            semi: content.parse()?,
+            len: content.parse()?,
+        })
+    }
+}
+impl ToTokens for expr::Repeat {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.bracket.surround(tokens, |tokens| {
+            self.expr.to_tokens(tokens);
+            self.semi.to_tokens(tokens);
+            self.len.to_tokens(tokens);
+        });
+    }
+}
+
+pub struct Return {
+    pub attrs: Vec<attr::Attr>,
+    pub return_: Token![return],
+    pub expr: Option<Box<Expr>>,
+}
+impl Parse for expr::Return {
+    fn parse(input: Stream) -> Res<Self> {
+        let allow_struct = AllowStruct(true);
+        expr_ret(input, allow_struct)
+    }
+}
+impl ToTokens for expr::Return {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.return_.to_tokens(tokens);
+        self.expr.to_tokens(tokens);
+    }
+}
+
+pub struct Struct {
+    pub attrs: Vec<attr::Attr>,
+    pub qself: Option<QSelf>,
+    pub path: path::Path,
+    pub brace: tok::Brace,
+    pub fields: Punctuated<FieldValue, Token![,]>,
+    pub dot2: Option<Token![..]>,
+    pub rest: Option<Box<Expr>>,
+}
+impl Parse for expr::Struct {
+    fn parse(input: Stream) -> Res<Self> {
+        let (qself, path) = qpath(input, true)?;
+        expr_struct_helper(input, qself, path)
+    }
+}
+impl ToTokens for expr::Struct {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        print_path(tokens, &self.qself, &self.path);
+        self.brace.surround(tokens, |tokens| {
+            self.fields.to_tokens(tokens);
+            if let Some(dot2) = &self.dot2 {
+                dot2.to_tokens(tokens);
+            } else if self.rest.is_some() {
+                Token![..](pm2::Span::call_site()).to_tokens(tokens);
+            }
+            self.rest.to_tokens(tokens);
+        });
+    }
+}
+
+pub struct Try {
+    pub attrs: Vec<attr::Attr>,
+    pub expr: Box<Expr>,
+    pub question: Token![?],
+}
+impl ToTokens for expr::Try {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.expr.to_tokens(tokens);
+        self.question.to_tokens(tokens);
+    }
+}
+
+pub struct TryBlock {
+    pub attrs: Vec<attr::Attr>,
+    pub try_: Token![try],
+    pub block: stmt::Block,
+}
+impl Parse for expr::TryBlock {
+    fn parse(input: Stream) -> Res<Self> {
+        Ok(expr::TryBlock {
+            attrs: Vec::new(),
+            try_: input.parse()?,
+            block: input.parse()?,
+        })
+    }
+}
+impl ToTokens for expr::TryBlock {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.try_.to_tokens(tokens);
+        self.block.to_tokens(tokens);
+    }
+}
+
+pub struct Tuple {
+    pub attrs: Vec<attr::Attr>,
+    pub paren: tok::Paren,
+    pub elems: Punctuated<Expr, Token![,]>,
+}
+impl ToTokens for expr::Tuple {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.paren.surround(tokens, |tokens| {
+            self.elems.to_tokens(tokens);
+            if self.elems.len() == 1 && !self.elems.trailing_punct() {
+                <Token![,]>::default().to_tokens(tokens);
+            }
+        });
+    }
+}
+
+pub struct Unary {
+    pub attrs: Vec<attr::Attr>,
+    pub op: UnOp,
+    pub expr: Box<Expr>,
+}
+impl Parse for expr::Unary {
+    fn parse(x: Stream) -> Res<Self> {
+        let attrs = Vec::new();
+        let allow_struct = AllowStruct(true);
+        expr_unary(x, attrs, allow_struct)
+    }
+}
+impl ToTokens for expr::Unary {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.op.to_tokens(tokens);
+        self.expr.to_tokens(tokens);
+    }
+}
+
+pub struct Unsafe {
+    pub attrs: Vec<attr::Attr>,
+    pub unsafe_: Token![unsafe],
+    pub block: stmt::Block,
+}
+impl Parse for expr::Unsafe {
+    fn parse(input: Stream) -> Res<Self> {
+        let unsafe_: Token![unsafe] = input.parse()?;
+        let content;
+        let brace = braced!(content in input);
+        let inner_attrs = content.call(attr::Attr::parse_inner)?;
+        let stmts = content.call(Block::parse_within)?;
+        Ok(expr::Unsafe {
+            attrs: inner_attrs,
+            unsafe_,
+            block: Block { brace, stmts },
+        })
+    }
+}
+impl ToTokens for expr::Unsafe {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.unsafe_.to_tokens(tokens);
+        self.block.brace.surround(tokens, |tokens| {
+            inner_attrs_to_tokens(&self.attrs, tokens);
+            tokens.append_all(&self.block.stmts);
+        });
+    }
+}
+
+pub struct While {
+    pub attrs: Vec<attr::Attr>,
+    pub label: Option<Label>,
+    pub while_: Token![while],
+    pub cond: Box<Expr>,
+    pub block: stmt::Block,
+}
+impl Parse for expr::While {
+    fn parse(input: Stream) -> Res<Self> {
+        let mut attrs = input.call(attr::Attr::parse_outer)?;
+        let label: Option<Label> = input.parse()?;
+        let while_: Token![while] = input.parse()?;
+        let cond = Expr::parse_without_eager_brace(input)?;
+        let content;
+        let brace = braced!(content in input);
+        attr::inner(&content, &mut attrs)?;
+        let stmts = content.call(Block::parse_within)?;
+        Ok(expr::While {
+            attrs,
+            label,
+            while_,
+            cond: Box::new(cond),
+            body: Block { brace, stmts },
+        })
+    }
+}
+impl ToTokens for expr::While {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.label.to_tokens(tokens);
+        self.while_.to_tokens(tokens);
+        wrap_bare_struct(tokens, &self.cond);
+        self.body.brace.surround(tokens, |tokens| {
+            inner_attrs_to_tokens(&self.attrs, tokens);
+            tokens.append_all(&self.body.stmts);
+        });
+    }
+}
+
+pub struct Yield {
+    pub attrs: Vec<attr::Attr>,
+    pub yield_: Token![yield],
+    pub expr: Option<Box<Expr>>,
+}
+impl Parse for expr::Yield {
+    fn parse(input: Stream) -> Res<Self> {
+        Ok(expr::Yield {
+            attrs: Vec::new(),
+            yield_: input.parse()?,
+            expr: {
+                if !input.is_empty() && !input.peek(Token![,]) && !input.peek(Token![;]) {
+                    Some(input.parse()?)
+                } else {
+                    None
+                }
+            },
+        })
+    }
+}
+impl ToTokens for expr::Yield {
+    fn to_tokens(&self, tokens: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.yield_.to_tokens(tokens);
+        self.expr.to_tokens(tokens);
+    }
 }
 
 pub enum Member {
     Named(Ident),
     Unnamed(Idx),
+}
+impl Member {
+    fn is_named(&self) -> bool {
+        match self {
+            Member::Named(_) => true,
+            Member::Unnamed(_) => false,
+        }
+    }
 }
 impl From<Ident> for Member {
     fn from(x: Ident) -> Member {
@@ -387,6 +1148,25 @@ impl IdentFragment for Member {
         }
     }
 }
+impl Parse for Member {
+    fn parse(input: Stream) -> Res<Self> {
+        if input.peek(Ident) {
+            input.parse().map(Member::Named)
+        } else if input.peek(lit::Int) {
+            input.parse().map(Member::Unnamed)
+        } else {
+            Err(input.error("expected identifier or integer"))
+        }
+    }
+}
+impl ToTokens for Member {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
+        match self {
+            Member::Named(ident) => ident.to_tokens(tokens),
+            Member::Unnamed(index) => index.to_tokens(tokens),
+        }
+    }
+}
 
 pub struct Idx {
     pub idx: u32,
@@ -420,6 +1200,13 @@ impl IdentFragment for Idx {
         Some(self.span)
     }
 }
+impl ToTokens for Idx {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
+        let mut lit = pm2::Lit::i64_unsuffixed(i64::from(self.index));
+        lit.set_span(self.span);
+        tokens.append(lit);
+    }
+}
 
 pub enum BinOp {
     Add(Token![+]),
@@ -451,10 +1238,96 @@ pub enum BinOp {
     ShlAssign(Token![<<=]),
     ShrAssign(Token![>>=]),
 }
+impl Parse for BinOp {
+    fn parse(x: Stream) -> Res<Self> {
+        if x.peek(Token![+=]) {
+            x.parse().map(BinOp::AddAssign)
+        } else if x.peek(Token![-=]) {
+            x.parse().map(BinOp::SubAssign)
+        } else if x.peek(Token![*=]) {
+            x.parse().map(BinOp::MulAssign)
+        } else if x.peek(Token![/=]) {
+            x.parse().map(BinOp::DivAssign)
+        } else if x.peek(Token![%=]) {
+            x.parse().map(BinOp::RemAssign)
+        } else if x.peek(Token![^=]) {
+            x.parse().map(BinOp::BitXorAssign)
+        } else if x.peek(Token![&=]) {
+            x.parse().map(BinOp::BitAndAssign)
+        } else if x.peek(Token![|=]) {
+            x.parse().map(BinOp::BitOrAssign)
+        } else if x.peek(Token![<<=]) {
+            x.parse().map(BinOp::ShlAssign)
+        } else if x.peek(Token![>>=]) {
+            x.parse().map(BinOp::ShrAssign)
+        } else {
+            parse_binop(x)
+        }
+    }
+}
+impl ToTokens for BinOp {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
+        use BinOp::*;
+        match self {
+            Add(x) => x.to_tokens(xs),
+            Sub(x) => x.to_tokens(xs),
+            Mul(x) => x.to_tokens(xs),
+            Div(x) => x.to_tokens(xs),
+            Rem(x) => x.to_tokens(xs),
+            And(x) => x.to_tokens(xs),
+            Or(x) => x.to_tokens(xs),
+            BitXor(x) => x.to_tokens(xs),
+            BitAnd(x) => x.to_tokens(xs),
+            BitOr(x) => x.to_tokens(xs),
+            Shl(x) => x.to_tokens(xs),
+            Shr(x) => x.to_tokens(xs),
+            Eq(x) => x.to_tokens(xs),
+            Lt(x) => x.to_tokens(xs),
+            Le(x) => x.to_tokens(xs),
+            Ne(x) => x.to_tokens(xs),
+            Ge(x) => x.to_tokens(xs),
+            Gt(x) => x.to_tokens(xs),
+            AddAssign(x) => x.to_tokens(xs),
+            SubAssign(x) => x.to_tokens(xs),
+            MulAssign(x) => x.to_tokens(xs),
+            DivAssign(x) => x.to_tokens(xs),
+            RemAssign(x) => x.to_tokens(xs),
+            BitXorAssign(x) => x.to_tokens(xs),
+            BitAndAssign(x) => x.to_tokens(xs),
+            BitOrAssign(x) => x.to_tokens(xs),
+            ShlAssign(x) => x.to_tokens(xs),
+            ShrAssign(x) => x.to_tokens(xs),
+        }
+    }
+}
+
 pub enum UnOp {
     Deref(Token![*]),
     Not(Token![!]),
     Neg(Token![-]),
+}
+impl Parse for UnOp {
+    fn parse(x: Stream) -> Res<Self> {
+        let look = x.lookahead1();
+        if look.peek(Token![*]) {
+            x.parse().map(UnOp::Deref)
+        } else if look.peek(Token![!]) {
+            x.parse().map(UnOp::Not)
+        } else if look.peek(Token![-]) {
+            x.parse().map(UnOp::Neg)
+        } else {
+            Err(look.error())
+        }
+    }
+}
+impl ToTokens for UnOp {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
+        match self {
+            UnOp::Deref(x) => x.to_tokens(xs),
+            UnOp::Not(x) => x.to_tokens(xs),
+            UnOp::Neg(x) => x.to_tokens(xs),
+        }
+    }
 }
 
 pub struct FieldValue {
@@ -463,10 +1336,71 @@ pub struct FieldValue {
     pub colon: Option<Token![:]>,
     pub expr: Expr,
 }
+impl Parse for FieldValue {
+    fn parse(input: Stream) -> Res<Self> {
+        let attrs = input.call(attr::Attr::parse_outer)?;
+        let member: Member = input.parse()?;
+        let (colon, value) = if input.peek(Token![:]) || !member.is_named() {
+            let colon: Token![:] = input.parse()?;
+            let value: Expr = input.parse()?;
+            (Some(colon), value)
+        } else if let Member::Named(ident) = &member {
+            let value = Expr::Path(expr::Path {
+                attrs: Vec::new(),
+                qself: None,
+                path: Path::from(ident.clone()),
+            });
+            (None, value)
+        } else {
+            unreachable!()
+        };
+        Ok(FieldValue {
+            attrs,
+            member,
+            colon,
+            expr: value,
+        })
+    }
+}
+impl ToTokens for FieldValue {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
+        outer_attrs_to_tokens(&self.attrs, tokens);
+        self.member.to_tokens(tokens);
+        if let Some(colon) = &self.colon {
+            colon.to_tokens(tokens);
+            self.expr.to_tokens(tokens);
+        }
+    }
+}
+
 pub struct Label {
     pub name: Lifetime,
     pub colon: Token![:],
 }
+impl Parse for Label {
+    fn parse(input: Stream) -> Res<Self> {
+        Ok(Label {
+            name: input.parse()?,
+            colon: input.parse()?,
+        })
+    }
+}
+impl Parse for Option<Label> {
+    fn parse(input: Stream) -> Res<Self> {
+        if input.peek(Lifetime) {
+            input.parse().map(Some)
+        } else {
+            Ok(None)
+        }
+    }
+}
+impl ToTokens for Label {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
+        self.name.to_tokens(tokens);
+        self.colon.to_tokens(tokens);
+    }
+}
+
 pub struct Arm {
     pub attrs: Vec<attr::Attr>,
     pub pat: pat::Pat,
@@ -475,10 +1409,169 @@ pub struct Arm {
     pub body: Box<Expr>,
     pub comma: Option<Token![,]>,
 }
+impl Parse for Arm {
+    fn parse(input: Stream) -> Res<Arm> {
+        let requires_comma;
+        Ok(Arm {
+            attrs: input.call(attr::Attr::parse_outer)?,
+            pat: pat::Pat::parse_multi(input)?,
+            guard: {
+                if input.peek(Token![if]) {
+                    let if_: Token![if] = input.parse()?;
+                    let guard: Expr = input.parse()?;
+                    Some((if_, Box::new(guard)))
+                } else {
+                    None
+                }
+            },
+            fat_arrow: input.parse()?,
+            body: {
+                let body = input.call(expr_early)?;
+                requires_comma = requires_terminator(&body);
+                Box::new(body)
+            },
+            comma: {
+                if requires_comma && !input.is_empty() {
+                    Some(input.parse()?)
+                } else {
+                    input.parse()?
+                }
+            },
+        })
+    }
+}
+impl ToTokens for Arm {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
+        tokens.append_all(&self.attrs);
+        self.pat.to_tokens(tokens);
+        if let Some((if_, guard)) = &self.guard {
+            if_.to_tokens(tokens);
+            guard.to_tokens(tokens);
+        }
+        self.fat_arrow.to_tokens(tokens);
+        self.body.to_tokens(tokens);
+        self.comma.to_tokens(tokens);
+    }
+}
 
 pub enum RangeLimits {
     HalfOpen(Token![..]),
     Closed(Token![..=]),
+}
+impl RangeLimits {
+    pub fn parse_obsolete(input: Stream) -> Res<Self> {
+        let lookahead = input.lookahead1();
+        let dot_dot = lookahead.peek(Token![..]);
+        let dot_dot_eq = dot_dot && lookahead.peek(Token![..=]);
+        let dot_dot_dot = dot_dot && input.peek(Token![...]);
+        if dot_dot_eq {
+            input.parse().map(RangeLimits::Closed)
+        } else if dot_dot_dot {
+            let dot3: Token![...] = input.parse()?;
+            Ok(RangeLimits::Closed(Token![..=](dot3.spans)))
+        } else if dot_dot {
+            input.parse().map(RangeLimits::HalfOpen)
+        } else {
+            Err(lookahead.error())
+        }
+    }
+}
+impl Parse for RangeLimits {
+    fn parse(input: Stream) -> Res<Self> {
+        let lookahead = input.lookahead1();
+        let dot_dot = lookahead.peek(Token![..]);
+        let dot_dot_eq = dot_dot && lookahead.peek(Token![..=]);
+        let dot_dot_dot = dot_dot && input.peek(Token![...]);
+        if dot_dot_eq {
+            input.parse().map(RangeLimits::Closed)
+        } else if dot_dot && !dot_dot_dot {
+            input.parse().map(RangeLimits::HalfOpen)
+        } else {
+            Err(lookahead.error())
+        }
+    }
+}
+impl ToTokens for RangeLimits {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
+        match self {
+            RangeLimits::HalfOpen(x) => x.to_tokens(xs),
+            RangeLimits::Closed(x) => x.to_tokens(xs),
+        }
+    }
+}
+
+enum Precedence {
+    Any,
+    Assign,
+    Range,
+    Or,
+    And,
+    Compare,
+    BitOr,
+    BitXor,
+    BitAnd,
+    Shift,
+    Arithmetic,
+    Term,
+    Cast,
+}
+impl Precedence {
+    fn of(op: &BinOp) -> Self {
+        match op {
+            BinOp::Add(_) | BinOp::Sub(_) => Precedence::Arithmetic,
+            BinOp::Mul(_) | BinOp::Div(_) | BinOp::Rem(_) => Precedence::Term,
+            BinOp::And(_) => Precedence::And,
+            BinOp::Or(_) => Precedence::Or,
+            BinOp::BitXor(_) => Precedence::BitXor,
+            BinOp::BitAnd(_) => Precedence::BitAnd,
+            BinOp::BitOr(_) => Precedence::BitOr,
+            BinOp::Shl(_) | BinOp::Shr(_) => Precedence::Shift,
+            BinOp::Eq(_) | BinOp::Lt(_) | BinOp::Le(_) | BinOp::Ne(_) | BinOp::Ge(_) | BinOp::Gt(_) => {
+                Precedence::Compare
+            },
+            BinOp::AddAssign(_)
+            | BinOp::SubAssign(_)
+            | BinOp::MulAssign(_)
+            | BinOp::DivAssign(_)
+            | BinOp::RemAssign(_)
+            | BinOp::BitXorAssign(_)
+            | BinOp::BitAndAssign(_)
+            | BinOp::BitOrAssign(_)
+            | BinOp::ShlAssign(_)
+            | BinOp::ShrAssign(_) => Precedence::Assign,
+        }
+    }
+}
+impl Copy for Precedence {}
+impl Clone for Precedence {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+impl PartialEq for Precedence {
+    fn eq(&self, other: &Self) -> bool {
+        *self as u8 == *other as u8
+    }
+}
+impl PartialOrd for Precedence {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        let this = *self as u8;
+        let other = *other as u8;
+        Some(this.cmp(&other))
+    }
+}
+
+pub struct AllowStruct(bool);
+impl Copy for AllowStruct {}
+impl Clone for AllowStruct {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+mod kw {
+    crate::custom_keyword!(builtin);
+    crate::custom_keyword!(raw);
 }
 
 pub fn requires_terminator(x: &Expr) -> bool {
@@ -523,7 +1616,6 @@ pub fn requires_terminator(x: &Expr) -> bool {
         | Expr::Verbatim(_) => true
     }
 }
-
 fn parse_expr(x: Stream, mut lhs: Expr, allow_struct: AllowStruct, base: Precedence) -> Res<Expr> {
     loop {
         let ahead = x.fork();
@@ -896,14 +1988,6 @@ fn path_or_macro_or_struct(x: Stream, #[cfg(feature = "full")] allow_struct: All
         path,
     }))
 }
-impl Parse for expr::Mac {
-    fn parse(x: Stream) -> Res<Self> {
-        Ok(expr::Mac {
-            attrs: Vec::new(),
-            mac: x.parse()?,
-        })
-    }
-}
 fn paren_or_tuple(x: Stream) -> Res<Expr> {
     let content;
     let paren = parenthesized!(content in x);
@@ -981,39 +2065,6 @@ fn array_or_repeat(x: Stream) -> Res<Expr> {
         Err(content.error("expected `,` or `;`"))
     }
 }
-impl Parse for expr::Array {
-    fn parse(x: Stream) -> Res<Self> {
-        let content;
-        let bracket = bracketed!(content in x);
-        let mut elems = Punctuated::new();
-        while !content.is_empty() {
-            let first: Expr = content.parse()?;
-            elems.push_value(first);
-            if content.is_empty() {
-                break;
-            }
-            let punct = content.parse()?;
-            elems.push_punct(punct);
-        }
-        Ok(expr::Array {
-            attrs: Vec::new(),
-            bracket,
-            elems,
-        })
-    }
-}
-impl Parse for expr::Repeat {
-    fn parse(x: Stream) -> Res<Self> {
-        let content;
-        Ok(expr::Repeat {
-            bracket: bracketed!(content in x),
-            attrs: Vec::new(),
-            expr: content.parse()?,
-            semi: content.parse()?,
-            len: content.parse()?,
-        })
-    }
-}
 pub fn expr_early(x: Stream) -> Res<Expr> {
     let mut attrs = x.call(expr_attrs)?;
     let mut expr = if x.peek(Token![if]) {
@@ -1052,14 +2103,6 @@ pub fn expr_early(x: Stream) -> Res<Expr> {
     expr.replace_attrs(attrs);
     Ok(expr)
 }
-impl Parse for expr::Lit {
-    fn parse(x: Stream) -> Res<Self> {
-        Ok(expr::Lit {
-            attrs: Vec::new(),
-            lit: x.parse()?,
-        })
-    }
-}
 fn expr_group(x: Stream) -> Res<expr::Group> {
     let group = super::parse_group(x)?;
     Ok(expr::Group {
@@ -1068,11 +2111,6 @@ fn expr_group(x: Stream) -> Res<expr::Group> {
         expr: group.buf.parse()?,
     })
 }
-impl Parse for expr::Paren {
-    fn parse(x: Stream) -> Res<Self> {
-        expr_paren(x)
-    }
-}
 fn expr_paren(x: Stream) -> Res<expr::Paren> {
     let content;
     Ok(expr::Paren {
@@ -1080,39 +2118,6 @@ fn expr_paren(x: Stream) -> Res<expr::Paren> {
         paren: parenthesized!(content in x),
         expr: content.parse()?,
     })
-}
-impl Parse for expr::Let {
-    fn parse(x: Stream) -> Res<Self> {
-        Ok(expr::Let {
-            attrs: Vec::new(),
-            let_: x.parse()?,
-            pat: Box::new(pat::Pat::parse_multi(x)?),
-            eq: x.parse()?,
-            expr: Box::new({
-                let allow_struct = AllowStruct(false);
-                let lhs = unary_expr(x, allow_struct)?;
-                parse_expr(x, lhs, allow_struct, Precedence::Compare)?
-            }),
-        })
-    }
-}
-impl Parse for expr::If {
-    fn parse(x: Stream) -> Res<Self> {
-        let attrs = x.call(attr::Attr::parse_outer)?;
-        Ok(expr::If {
-            attrs,
-            if_: x.parse()?,
-            cond: Box::new(x.call(Expr::parse_without_eager_brace)?),
-            then_branch: x.parse()?,
-            else_branch: {
-                if x.peek(Token![else]) {
-                    Some(x.call(else_block)?)
-                } else {
-                    None
-                }
-            },
-        })
-    }
 }
 fn else_block(x: Stream) -> Res<(Token![else], Box<Expr>)> {
     let else_token: Token![else] = x.parse()?;
@@ -1130,176 +2135,12 @@ fn else_block(x: Stream) -> Res<(Token![else], Box<Expr>)> {
     };
     Ok((else_token, Box::new(else_branch)))
 }
-impl Parse for expr::Infer {
-    fn parse(x: Stream) -> Res<Self> {
-        Ok(expr::Infer {
-            attrs: x.call(attr::Attr::parse_outer)?,
-            underscore: x.parse()?,
-        })
-    }
-}
-impl Parse for expr::ForLoop {
-    fn parse(x: Stream) -> Res<Self> {
-        let mut attrs = x.call(attr::Attr::parse_outer)?;
-        let label: Option<Label> = x.parse()?;
-        let for_: Token![for] = x.parse()?;
-        let pat = pat::Pat::parse_multi(x)?;
-        let in_: Token![in] = x.parse()?;
-        let expr: Expr = x.call(Expr::parse_without_eager_brace)?;
-        let content;
-        let brace = braced!(content in x);
-        attr::inner(&content, &mut attrs)?;
-        let stmts = content.call(Block::parse_within)?;
-        Ok(expr::ForLoop {
-            attrs,
-            label,
-            for_,
-            pat: Box::new(pat),
-            in_,
-            expr: Box::new(expr),
-            body: Block { brace, stmts },
-        })
-    }
-}
-impl Parse for expr::Loop {
-    fn parse(x: Stream) -> Res<Self> {
-        let mut attrs = x.call(attr::Attr::parse_outer)?;
-        let label: Option<Label> = x.parse()?;
-        let loop_: Token![loop] = x.parse()?;
-        let content;
-        let brace = braced!(content in x);
-        attr::inner(&content, &mut attrs)?;
-        let stmts = content.call(Block::parse_within)?;
-        Ok(expr::Loop {
-            attrs,
-            label,
-            loop_,
-            body: Block { brace, stmts },
-        })
-    }
-}
-impl Parse for expr::Match {
-    fn parse(x: Stream) -> Res<Self> {
-        let mut attrs = x.call(attr::Attr::parse_outer)?;
-        let match_: Token![match] = x.parse()?;
-        let expr = Expr::parse_without_eager_brace(x)?;
-        let content;
-        let brace = braced!(content in x);
-        attr::inner(&content, &mut attrs)?;
-        let mut arms = Vec::new();
-        while !content.is_empty() {
-            arms.push(content.call(Arm::parse)?);
-        }
-        Ok(expr::Match {
-            attrs,
-            match_,
-            expr: Box::new(expr),
-            brace,
-            arms,
-        })
-    }
-}
-macro_rules! impl_by_parsing_expr {
-        (
-            $(
-                $expr_type:ty, $variant:ident, $msg:expr,
-            )*
-        ) => {
-            $(
-                impl Parse for $expr_type {
-                    fn parse(input: Stream) -> Res<Self> {
-                        let mut expr: Expr = input.parse()?;
-                        loop {
-                            match expr {
-                                Expr::$variant(inner) => return Ok(inner),
-                                Expr::Group(next) => expr = *next.expr,
-                                _ => return Err(Error::new_spanned(expr, $msg)),
-                            }
-                        }
-                    }
-                }
-            )*
-        };
-    }
-impl_by_parsing_expr! {
-    expr::Assign, Assign, "expected assignment expression",
-    expr::Await, Await, "expected await expression",
-    expr::Binary, Binary, "expected binary operation",
-    expr::Call, Call, "expected function call expression",
-    expr::Cast, Cast, "expected cast expression",
-    expr::Field, Field, "expected struct field access",
-    expr::Index, Index, "expected indexing expression",
-    expr::MethodCall, MethodCall, "expected method call expression",
-    expr::Range, Range, "expected range expression",
-    expr::Try, Try, "expected try expression",
-    expr::Tuple, Tuple, "expected tuple expression",
-}
-impl Parse for expr::Unary {
-    fn parse(x: Stream) -> Res<Self> {
-        let attrs = Vec::new();
-        let allow_struct = AllowStruct(true);
-        expr_unary(x, attrs, allow_struct)
-    }
-}
 fn expr_unary(x: Stream, attrs: Vec<attr::Attr>, allow_struct: AllowStruct) -> Res<expr::Unary> {
     Ok(expr::Unary {
         attrs,
         op: x.parse()?,
         expr: Box::new(unary_expr(x, allow_struct)?),
     })
-}
-impl Parse for expr::Closure {
-    fn parse(x: Stream) -> Res<Self> {
-        let allow_struct = AllowStruct(true);
-        expr_closure(x, allow_struct)
-    }
-}
-impl Parse for expr::Ref {
-    fn parse(x: Stream) -> Res<Self> {
-        let allow_struct = AllowStruct(true);
-        Ok(expr::Ref {
-            attrs: Vec::new(),
-            and: x.parse()?,
-            mut_: x.parse()?,
-            expr: Box::new(unary_expr(x, allow_struct)?),
-        })
-    }
-}
-impl Parse for expr::Break {
-    fn parse(input: Stream) -> Res<Self> {
-        let allow_struct = AllowStruct(true);
-        expr_break(input, allow_struct)
-    }
-}
-impl Parse for expr::Return {
-    fn parse(input: Stream) -> Res<Self> {
-        let allow_struct = AllowStruct(true);
-        expr_ret(input, allow_struct)
-    }
-}
-impl Parse for expr::TryBlock {
-    fn parse(input: Stream) -> Res<Self> {
-        Ok(expr::TryBlock {
-            attrs: Vec::new(),
-            try_: input.parse()?,
-            block: input.parse()?,
-        })
-    }
-}
-impl Parse for expr::Yield {
-    fn parse(input: Stream) -> Res<Self> {
-        Ok(expr::Yield {
-            attrs: Vec::new(),
-            yield_: input.parse()?,
-            expr: {
-                if !input.is_empty() && !input.peek(Token![,]) && !input.peek(Token![;]) {
-                    Some(input.parse()?)
-                } else {
-                    None
-                }
-            },
-        })
-    }
 }
 fn expr_closure(input: Stream, allow_struct: AllowStruct) -> Res<expr::Closure> {
     let lifetimes: Option<Bgen::bound::Lifes> = input.parse()?;
@@ -1351,16 +2192,6 @@ fn expr_closure(input: Stream, allow_struct: AllowStruct) -> Res<expr::Closure> 
         body: Box::new(body),
     })
 }
-impl Parse for expr::Async {
-    fn parse(input: Stream) -> Res<Self> {
-        Ok(expr::Async {
-            attrs: Vec::new(),
-            async_: input.parse()?,
-            move_: input.parse()?,
-            block: input.parse()?,
-        })
-    }
-}
 fn closure_arg(input: Stream) -> Res<pat::Pat> {
     let attrs = input.call(attr::Attr::parse_outer)?;
     let mut pat = pat::Pat::parse_single(input)?;
@@ -1392,65 +2223,6 @@ fn closure_arg(input: Stream) -> Res<pat::Pat> {
             pat::Pat::Wild(pat) => pat.attrs = attrs,
         }
         Ok(pat)
-    }
-}
-impl Parse for expr::While {
-    fn parse(input: Stream) -> Res<Self> {
-        let mut attrs = input.call(attr::Attr::parse_outer)?;
-        let label: Option<Label> = input.parse()?;
-        let while_: Token![while] = input.parse()?;
-        let cond = Expr::parse_without_eager_brace(input)?;
-        let content;
-        let brace = braced!(content in input);
-        attr::inner(&content, &mut attrs)?;
-        let stmts = content.call(Block::parse_within)?;
-        Ok(expr::While {
-            attrs,
-            label,
-            while_,
-            cond: Box::new(cond),
-            body: Block { brace, stmts },
-        })
-    }
-}
-impl Parse for expr::Const {
-    fn parse(input: Stream) -> Res<Self> {
-        let const_: Token![const] = input.parse()?;
-        let content;
-        let brace = braced!(content in input);
-        let inner_attrs = content.call(attr::Attr::parse_inner)?;
-        let stmts = content.call(Block::parse_within)?;
-        Ok(expr::Const {
-            attrs: inner_attrs,
-            const_,
-            block: Block { brace, stmts },
-        })
-    }
-}
-impl Parse for Label {
-    fn parse(input: Stream) -> Res<Self> {
-        Ok(Label {
-            name: input.parse()?,
-            colon: input.parse()?,
-        })
-    }
-}
-impl Parse for Option<Label> {
-    fn parse(input: Stream) -> Res<Self> {
-        if input.peek(Lifetime) {
-            input.parse().map(Some)
-        } else {
-            Ok(None)
-        }
-    }
-}
-impl Parse for expr::Continue {
-    fn parse(input: Stream) -> Res<Self> {
-        Ok(expr::Continue {
-            attrs: Vec::new(),
-            continue_: input.parse()?,
-            label: input.parse()?,
-        })
     }
 }
 fn expr_break(input: Stream, allow_struct: AllowStruct) -> Res<expr::Break> {
@@ -1485,38 +2257,6 @@ fn expr_ret(input: Stream, allow_struct: AllowStruct) -> Res<expr::Return> {
             }
         },
     })
-}
-impl Parse for FieldValue {
-    fn parse(input: Stream) -> Res<Self> {
-        let attrs = input.call(attr::Attr::parse_outer)?;
-        let member: Member = input.parse()?;
-        let (colon, value) = if input.peek(Token![:]) || !member.is_named() {
-            let colon: Token![:] = input.parse()?;
-            let value: Expr = input.parse()?;
-            (Some(colon), value)
-        } else if let Member::Named(ident) = &member {
-            let value = Expr::Path(expr::Path {
-                attrs: Vec::new(),
-                qself: None,
-                path: Path::from(ident.clone()),
-            });
-            (None, value)
-        } else {
-            unreachable!()
-        };
-        Ok(FieldValue {
-            attrs,
-            member,
-            colon,
-            expr: value,
-        })
-    }
-}
-impl Parse for expr::Struct {
-    fn parse(input: Stream) -> Res<Self> {
-        let (qself, path) = qpath(input, true)?;
-        expr_struct_helper(input, qself, path)
-    }
 }
 fn expr_struct_helper(input: Stream, qself: Option<QSelf>, path: Path) -> Res<expr::Struct> {
     let content;
@@ -1555,35 +2295,6 @@ fn expr_struct_helper(input: Stream, qself: Option<QSelf>, path: Path) -> Res<ex
         rest: None,
     })
 }
-impl Parse for expr::Unsafe {
-    fn parse(input: Stream) -> Res<Self> {
-        let unsafe_: Token![unsafe] = input.parse()?;
-        let content;
-        let brace = braced!(content in input);
-        let inner_attrs = content.call(attr::Attr::parse_inner)?;
-        let stmts = content.call(Block::parse_within)?;
-        Ok(expr::Unsafe {
-            attrs: inner_attrs,
-            unsafe_,
-            block: Block { brace, stmts },
-        })
-    }
-}
-impl Parse for expr::Block {
-    fn parse(input: Stream) -> Res<Self> {
-        let mut attrs = input.call(attr::Attr::parse_outer)?;
-        let label: Option<Label> = input.parse()?;
-        let content;
-        let brace = braced!(content in input);
-        attr::inner(&content, &mut attrs)?;
-        let stmts = content.call(Block::parse_within)?;
-        Ok(expr::Block {
-            attrs,
-            label,
-            block: Block { brace, stmts },
-        })
-    }
-}
 fn expr_range(input: Stream, allow_struct: AllowStruct) -> Res<expr::Range> {
     let limits: RangeLimits = input.parse()?;
     let end = if matches!(limits, RangeLimits::HalfOpen(_))
@@ -1604,103 +2315,6 @@ fn expr_range(input: Stream, allow_struct: AllowStruct) -> Res<expr::Range> {
         limits,
         end,
     })
-}
-impl Parse for RangeLimits {
-    fn parse(input: Stream) -> Res<Self> {
-        let lookahead = input.lookahead1();
-        let dot_dot = lookahead.peek(Token![..]);
-        let dot_dot_eq = dot_dot && lookahead.peek(Token![..=]);
-        let dot_dot_dot = dot_dot && input.peek(Token![...]);
-        if dot_dot_eq {
-            input.parse().map(RangeLimits::Closed)
-        } else if dot_dot && !dot_dot_dot {
-            input.parse().map(RangeLimits::HalfOpen)
-        } else {
-            Err(lookahead.error())
-        }
-    }
-}
-impl RangeLimits {
-    pub fn parse_obsolete(input: Stream) -> Res<Self> {
-        let lookahead = input.lookahead1();
-        let dot_dot = lookahead.peek(Token![..]);
-        let dot_dot_eq = dot_dot && lookahead.peek(Token![..=]);
-        let dot_dot_dot = dot_dot && input.peek(Token![...]);
-        if dot_dot_eq {
-            input.parse().map(RangeLimits::Closed)
-        } else if dot_dot_dot {
-            let dot3: Token![...] = input.parse()?;
-            Ok(RangeLimits::Closed(Token![..=](dot3.spans)))
-        } else if dot_dot {
-            input.parse().map(RangeLimits::HalfOpen)
-        } else {
-            Err(lookahead.error())
-        }
-    }
-}
-impl Parse for expr::Path {
-    fn parse(input: Stream) -> Res<Self> {
-        #[cfg(not(feature = "full"))]
-        let attrs = Vec::new();
-        let attrs = input.call(attr::Attr::parse_outer)?;
-        let (qself, path) = qpath(input, true)?;
-        Ok(expr::Path { attrs, qself, path })
-    }
-}
-impl Parse for Member {
-    fn parse(input: Stream) -> Res<Self> {
-        if input.peek(Ident) {
-            input.parse().map(Member::Named)
-        } else if input.peek(lit::Int) {
-            input.parse().map(Member::Unnamed)
-        } else {
-            Err(input.error("expected identifier or integer"))
-        }
-    }
-}
-impl Parse for Arm {
-    fn parse(input: Stream) -> Res<Arm> {
-        let requires_comma;
-        Ok(Arm {
-            attrs: input.call(attr::Attr::parse_outer)?,
-            pat: pat::Pat::parse_multi(input)?,
-            guard: {
-                if input.peek(Token![if]) {
-                    let if_: Token![if] = input.parse()?;
-                    let guard: Expr = input.parse()?;
-                    Some((if_, Box::new(guard)))
-                } else {
-                    None
-                }
-            },
-            fat_arrow: input.parse()?,
-            body: {
-                let body = input.call(expr_early)?;
-                requires_comma = requires_terminator(&body);
-                Box::new(body)
-            },
-            comma: {
-                if requires_comma && !input.is_empty() {
-                    Some(input.parse()?)
-                } else {
-                    input.parse()?
-                }
-            },
-        })
-    }
-}
-impl Parse for Index {
-    fn parse(input: Stream) -> Res<Self> {
-        let lit: lit::Int = input.parse()?;
-        if lit.suffix().is_empty() {
-            Ok(Index {
-                index: lit.base10_digits().parse().map_err(|err| Err::new(lit.span(), err))?,
-                span: lit.span(),
-            })
-        } else {
-            Err(Err::new(lit.span(), "expected unsuffixed integer"))
-        }
-    }
 }
 fn multi_index(e: &mut Expr, dot: &mut Token![.], float: lit::Float) -> Res<bool> {
     let float_token = float.token();
@@ -1728,14 +2342,6 @@ fn multi_index(e: &mut Expr, dot: &mut Token![.], float: lit::Float) -> Res<bool
     }
     Ok(!trailing_dot)
 }
-impl Member {
-    fn is_named(&self) -> bool {
-        match self {
-            Member::Named(_) => true,
-            Member::Unnamed(_) => false,
-        }
-    }
-}
 fn check_cast(input: Stream) -> Res<()> {
     let kind = if input.peek(Token![.]) && !input.peek(Token![..]) {
         if input.peek2(Token![await]) {
@@ -1758,354 +2364,44 @@ fn check_cast(input: Stream) -> Res<()> {
     Err(input.error(msg))
 }
 
-impl ToTokens for expr::Array {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        self.bracket.surround(tokens, |tokens| {
-            self.elems.to_tokens(tokens);
-        });
-    }
-}
-impl ToTokens for expr::Assign {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        self.left.to_tokens(tokens);
-        self.eq.to_tokens(tokens);
-        self.right.to_tokens(tokens);
-    }
-}
-impl ToTokens for expr::Async {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        self.async_.to_tokens(tokens);
-        self.move_.to_tokens(tokens);
-        self.block.to_tokens(tokens);
-    }
-}
-impl ToTokens for expr::Await {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        self.expr.to_tokens(tokens);
-        self.dot.to_tokens(tokens);
-        self.await_.to_tokens(tokens);
-    }
-}
-impl ToTokens for expr::Binary {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        self.left.to_tokens(tokens);
-        self.op.to_tokens(tokens);
-        self.right.to_tokens(tokens);
-    }
-}
-impl ToTokens for expr::Block {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        self.label.to_tokens(tokens);
-        self.block.brace.surround(tokens, |tokens| {
-            inner_attrs_to_tokens(&self.attrs, tokens);
-            tokens.append_all(&self.block.stmts);
-        });
-    }
-}
-impl ToTokens for expr::Break {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        self.break_.to_tokens(tokens);
-        self.label.to_tokens(tokens);
-        self.expr.to_tokens(tokens);
-    }
-}
-impl ToTokens for expr::Call {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        self.func.to_tokens(tokens);
-        self.paren.surround(tokens, |tokens| {
-            self.args.to_tokens(tokens);
-        });
-    }
-}
-impl ToTokens for expr::Cast {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        self.expr.to_tokens(tokens);
-        self.as_.to_tokens(tokens);
-        self.typ.to_tokens(tokens);
-    }
-}
-impl ToTokens for expr::Closure {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        self.lifes.to_tokens(tokens);
-        self.const_.to_tokens(tokens);
-        self.static_.to_tokens(tokens);
-        self.async_.to_tokens(tokens);
-        self.move_.to_tokens(tokens);
-        self.or1.to_tokens(tokens);
-        self.inputs.to_tokens(tokens);
-        self.or2.to_tokens(tokens);
-        self.ret.to_tokens(tokens);
-        self.body.to_tokens(tokens);
-    }
-}
-impl ToTokens for expr::Const {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        self.const_.to_tokens(tokens);
-        self.block.brace.surround(tokens, |tokens| {
-            inner_attrs_to_tokens(&self.attrs, tokens);
-            tokens.append_all(&self.block.stmts);
-        });
-    }
-}
-impl ToTokens for expr::Continue {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        self.continue_.to_tokens(tokens);
-        self.label.to_tokens(tokens);
-    }
-}
-impl ToTokens for expr::Field {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        self.base.to_tokens(tokens);
-        self.dot.to_tokens(tokens);
-        self.memb.to_tokens(tokens);
-    }
-}
-impl ToTokens for expr::ForLoop {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        self.label.to_tokens(tokens);
-        self.for_.to_tokens(tokens);
-        self.pat.to_tokens(tokens);
-        self.in_.to_tokens(tokens);
-        wrap_bare_struct(tokens, &self.expr);
-        self.body.brace.surround(tokens, |tokens| {
-            inner_attrs_to_tokens(&self.attrs, tokens);
-            tokens.append_all(&self.body.stmts);
-        });
-    }
-}
-impl ToTokens for expr::Group {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        self.group.surround(tokens, |tokens| {
-            self.expr.to_tokens(tokens);
-        });
-    }
-}
-impl ToTokens for expr::If {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        self.if_.to_tokens(tokens);
-        wrap_bare_struct(tokens, &self.cond);
-        self.then_branch.to_tokens(tokens);
-        if let Some((else_token, else_)) = &self.else_branch {
-            else_token.to_tokens(tokens);
-            match **else_ {
-                Expr::If(_) | Expr::Block(_) => else_.to_tokens(tokens),
-                _ => tok::Brace::default().surround(tokens, |tokens| else_.to_tokens(tokens)),
-            }
-        }
-    }
-}
-impl ToTokens for expr::Index {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        self.expr.to_tokens(tokens);
-        self.bracket.surround(tokens, |tokens| {
-            self.index.to_tokens(tokens);
-        });
-    }
-}
-impl ToTokens for expr::Infer {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        self.underscore.to_tokens(tokens);
-    }
-}
-impl ToTokens for expr::Let {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        self.let_.to_tokens(tokens);
-        self.pat.to_tokens(tokens);
-        self.eq.to_tokens(tokens);
-        wrap_bare_struct(tokens, &self.expr);
-    }
-}
-impl ToTokens for expr::Lit {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        self.lit.to_tokens(tokens);
-    }
-}
-impl ToTokens for expr::Loop {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        self.label.to_tokens(tokens);
-        self.loop_.to_tokens(tokens);
-        self.body.brace.surround(tokens, |tokens| {
-            inner_attrs_to_tokens(&self.attrs, tokens);
-            tokens.append_all(&self.body.stmts);
-        });
-    }
-}
-impl ToTokens for expr::Mac {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        self.mac.to_tokens(tokens);
-    }
-}
-impl ToTokens for expr::Match {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        self.match_.to_tokens(tokens);
-        wrap_bare_struct(tokens, &self.expr);
-        self.brace.surround(tokens, |tokens| {
-            inner_attrs_to_tokens(&self.attrs, tokens);
-            for (i, arm) in self.arms.iter().enumerate() {
-                arm.to_tokens(tokens);
-                let is_last = i == self.arms.len() - 1;
-                if !is_last && requires_terminator(&arm.body) && arm.comma.is_none() {
-                    <Token![,]>::default().to_tokens(tokens);
-                }
-            }
-        });
-    }
-}
-impl ToTokens for expr::MethodCall {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        self.expr.to_tokens(tokens);
-        self.dot.to_tokens(tokens);
-        self.method.to_tokens(tokens);
-        self.turbofish.to_tokens(tokens);
-        self.paren.surround(tokens, |tokens| {
-            self.args.to_tokens(tokens);
-        });
-    }
-}
-impl ToTokens for expr::Paren {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        self.paren.surround(tokens, |tokens| {
-            self.expr.to_tokens(tokens);
-        });
-    }
-}
-impl ToTokens for expr::Path {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        print_path(tokens, &self.qself, &self.path);
-    }
-}
-impl ToTokens for expr::Range {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        self.beg.to_tokens(tokens);
-        self.limits.to_tokens(tokens);
-        self.end.to_tokens(tokens);
-    }
-}
-impl ToTokens for expr::Ref {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        self.and.to_tokens(tokens);
-        self.mut_.to_tokens(tokens);
-        self.expr.to_tokens(tokens);
-    }
-}
-impl ToTokens for expr::Repeat {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        self.bracket.surround(tokens, |tokens| {
-            self.expr.to_tokens(tokens);
-            self.semi.to_tokens(tokens);
-            self.len.to_tokens(tokens);
-        });
-    }
-}
-impl ToTokens for expr::Return {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        self.return_.to_tokens(tokens);
-        self.expr.to_tokens(tokens);
-    }
-}
-impl ToTokens for expr::Struct {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        print_path(tokens, &self.qself, &self.path);
-        self.brace.surround(tokens, |tokens| {
-            self.fields.to_tokens(tokens);
-            if let Some(dot2) = &self.dot2 {
-                dot2.to_tokens(tokens);
-            } else if self.rest.is_some() {
-                Token![..](pm2::Span::call_site()).to_tokens(tokens);
-            }
-            self.rest.to_tokens(tokens);
-        });
-    }
-}
-impl ToTokens for expr::Try {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        self.expr.to_tokens(tokens);
-        self.question.to_tokens(tokens);
-    }
-}
-impl ToTokens for expr::TryBlock {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        self.try_.to_tokens(tokens);
-        self.block.to_tokens(tokens);
-    }
-}
-impl ToTokens for expr::Tuple {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        self.paren.surround(tokens, |tokens| {
-            self.elems.to_tokens(tokens);
-            if self.elems.len() == 1 && !self.elems.trailing_punct() {
-                <Token![,]>::default().to_tokens(tokens);
-            }
-        });
-    }
-}
-impl ToTokens for expr::Unary {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        self.op.to_tokens(tokens);
-        self.expr.to_tokens(tokens);
-    }
-}
-impl ToTokens for expr::Unsafe {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        self.unsafe_.to_tokens(tokens);
-        self.block.brace.surround(tokens, |tokens| {
-            inner_attrs_to_tokens(&self.attrs, tokens);
-            tokens.append_all(&self.block.stmts);
-        });
-    }
-}
-impl ToTokens for expr::While {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        self.label.to_tokens(tokens);
-        self.while_.to_tokens(tokens);
-        wrap_bare_struct(tokens, &self.cond);
-        self.body.brace.surround(tokens, |tokens| {
-            inner_attrs_to_tokens(&self.attrs, tokens);
-            tokens.append_all(&self.body.stmts);
-        });
-    }
-}
-impl ToTokens for expr::Yield {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, tokens);
-        self.yield_.to_tokens(tokens);
-        self.expr.to_tokens(tokens);
+fn parse_binop(x: Stream) -> Res<BinOp> {
+    if x.peek(Token![&&]) {
+        x.parse().map(BinOp::And)
+    } else if x.peek(Token![||]) {
+        x.parse().map(BinOp::Or)
+    } else if x.peek(Token![<<]) {
+        x.parse().map(BinOp::Shl)
+    } else if x.peek(Token![>>]) {
+        x.parse().map(BinOp::Shr)
+    } else if x.peek(Token![==]) {
+        x.parse().map(BinOp::Eq)
+    } else if x.peek(Token![<=]) {
+        x.parse().map(BinOp::Le)
+    } else if x.peek(Token![!=]) {
+        x.parse().map(BinOp::Ne)
+    } else if x.peek(Token![>=]) {
+        x.parse().map(BinOp::Ge)
+    } else if x.peek(Token![+]) {
+        x.parse().map(BinOp::Add)
+    } else if x.peek(Token![-]) {
+        x.parse().map(BinOp::Sub)
+    } else if x.peek(Token![*]) {
+        x.parse().map(BinOp::Mul)
+    } else if x.peek(Token![/]) {
+        x.parse().map(BinOp::Div)
+    } else if x.peek(Token![%]) {
+        x.parse().map(BinOp::Rem)
+    } else if x.peek(Token![^]) {
+        x.parse().map(BinOp::BitXor)
+    } else if x.peek(Token![&]) {
+        x.parse().map(BinOp::BitAnd)
+    } else if x.peek(Token![|]) {
+        x.parse().map(BinOp::BitOr)
+    } else if x.peek(Token![<]) {
+        x.parse().map(BinOp::Lt)
+    } else if x.peek(Token![>]) {
+        x.parse().map(BinOp::Gt)
+    } else {
+        Err(x.error("expected binary operator"))
     }
 }

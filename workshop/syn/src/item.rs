@@ -1000,6 +1000,12 @@ pub enum StaticMut {
     Mut(Token![mut]),
     None,
 }
+impl Parse for StaticMut {
+    fn parse(x: Stream) -> Res<Self> {
+        let mut_: Option<Token![mut]> = x.parse()?;
+        Ok(mut_.map_or(StaticMut::None, StaticMut::Mut))
+    }
+}
 impl ToTokens for StaticMut {
     fn to_tokens(&self, ys: &mut Stream) {
         match self {

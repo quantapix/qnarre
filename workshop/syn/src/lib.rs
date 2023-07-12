@@ -70,567 +70,29 @@ mod mac;
 
 mod attr;
 mod cur;
+mod data;
+mod err;
 mod expr;
 mod gen;
+mod ident;
 mod item;
 mod lit;
 mod meta;
 mod parse;
 mod pat;
 mod path;
+mod punct;
+mod stmt;
 mod tok;
 mod typ;
 
 use cur::Cursor;
+use data::DeriveInput;
+use err::{Err, Res};
+use ident::Lifetime;
 use parse::{Parse, Stream};
 use path::Path;
-
-mod ident {
-    macro_rules! ident_from_tok {
-        ($x:ident) => {
-            impl From<Token![$x]> for Ident {
-                fn from(x: Token![$x]) -> Ident {
-                    Ident::new(stringify!($x), x.span)
-                }
-            }
-        };
-    }
-    ident_from_tok!(self);
-    ident_from_tok!(Self);
-    ident_from_tok!(super);
-    ident_from_tok!(crate);
-    ident_from_tok!(extern);
-    impl From<Token![_]> for Ident {
-        fn from(x: Token![_]) -> Ident {
-            Ident::new("_", x.span)
-        }
-    }
-    pub fn xid_ok(x: &str) -> bool {
-        let mut ys = x.chars();
-        let first = ys.next().unwrap();
-        if !(first == '_' || unicode_ident::is_xid_start(first)) {
-            return false;
-        }
-        for y in ys {
-            if !unicode_ident::is_xid_continue(y) {
-                return false;
-            }
-        }
-        true
-    }
-
-    pub struct Lifetime {
-        pub apos: pm2::Span,
-        pub ident: Ident,
-    }
-    impl Lifetime {
-        pub fn new(x: &str, s: pm2::Span) -> Self {
-            if !x.starts_with('\'') {
-                panic!("lifetime name must start with apostrophe as in \"'a\", got {:?}", x);
-            }
-            if x == "'" {
-                panic!("lifetime name must not be empty");
-            }
-            if !ident::xid_ok(&x[1..]) {
-                panic!("{:?} is not a valid lifetime name", x);
-            }
-            Lifetime {
-                apos: s,
-                ident: Ident::new(&x[1..], s),
-            }
-        }
-        pub fn span(&self) -> pm2::Span {
-            self.apos.join(self.ident.span()).unwrap_or(self.apos)
-        }
-        pub fn set_span(&mut self, s: pm2::Span) {
-            self.apos = s;
-            self.ident.set_span(s);
-        }
-    }
-    impl Display for Lifetime {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            "'".fmt(f)?;
-            self.ident.fmt(f)
-        }
-    }
-    impl Clone for Lifetime {
-        fn clone(&self) -> Self {
-            Lifetime {
-                apos: self.apos,
-                ident: self.ident.clone(),
-            }
-        }
-    }
-    impl PartialEq for Lifetime {
-        fn eq(&self, x: &Lifetime) -> bool {
-            self.ident.eq(&x.ident)
-        }
-    }
-    impl Eq for Lifetime {}
-    impl PartialOrd for Lifetime {
-        fn partial_cmp(&self, x: &Lifetime) -> Option<Ordering> {
-            Some(self.cmp(x))
-        }
-    }
-    impl Ord for Lifetime {
-        fn cmp(&self, x: &Lifetime) -> Ordering {
-            self.ident.cmp(&x.ident)
-        }
-    }
-    impl Hash for Lifetime {
-        fn hash<H: Hasher>(&self, x: &mut H) {
-            self.ident.hash(x);
-        }
-    }
-
-    #[allow(non_snake_case)]
-    pub fn Ident(x: look::TokenMarker) -> Ident {
-        match x {}
-    }
-    #[allow(non_snake_case)]
-    pub fn Lifetime(x: look::TokenMarker) -> Lifetime {
-        match x {}
-    }
-}
-use ident::Lifetime;
-pub mod ext {
-    use super::{
-        parse::{Peek, Stream},
-        sealed::look,
-        tok::Custom,
-    };
-    pub trait IdentExt: Sized + private::Sealed {
-        #[allow(non_upper_case_globals)]
-        const peek_any: private::PeekFn = private::PeekFn;
-        fn parse_any(x: Stream) -> Res<Self>;
-        fn unraw(&self) -> Ident;
-    }
-    impl IdentExt for Ident {
-        fn parse_any(x: Stream) -> Res<Self> {
-            x.step(|c| match c.ident() {
-                Some((ident, rest)) => Ok((ident, rest)),
-                None => Err(c.error("expected ident")),
-            })
-        }
-        fn unraw(&self) -> Ident {
-            let y = self.to_string();
-            if let Some(x) = y.strip_prefix("r#") {
-                Ident::new(x, self.span())
-            } else {
-                self.clone()
-            }
-        }
-    }
-    impl Peek for private::PeekFn {
-        type Token = private::IdentAny;
-    }
-    impl Custom for private::IdentAny {
-        fn peek(x: Cursor) -> bool {
-            x.ident().is_some()
-        }
-        fn display() -> &'static str {
-            "identifier"
-        }
-    }
-    impl look::Sealed for private::PeekFn {}
-    mod private {
-        pub trait Sealed {}
-        impl Sealed for Ident {}
-        pub struct PeekFn;
-        pub struct IdentAny;
-        impl Copy for PeekFn {}
-        impl Clone for PeekFn {
-            fn clone(&self) -> Self {
-                *self
-            }
-        }
-    }
-}
-
-pub mod punct;
 use punct::Punctuated;
-
-mod stmt {
-    pub struct Block {
-        pub brace: tok::Brace,
-        pub stmts: Vec<Stmt>,
-    }
-    pub enum Stmt {
-        Local(Local),
-        Item(Item),
-        Expr(Expr, Option<Token![;]>),
-        Mac(Mac),
-    }
-    pub struct Local {
-        pub attrs: Vec<attr::Attr>,
-        pub let_: Token![let],
-        pub pat: pat::Pat,
-        pub init: Option<LocalInit>,
-        pub semi: Token![;],
-    }
-    pub struct LocalInit {
-        pub eq: Token![=],
-        pub expr: Box<Expr>,
-        pub diverge: Option<(Token![else], Box<Expr>)>,
-    }
-    pub struct Mac {
-        pub attrs: Vec<attr::Attr>,
-        pub mac: Macro,
-        pub semi: Option<Token![;]>,
-    }
-}
-
-pub mod data {
-    pub struct DeriveInput {
-        pub attrs: Vec<attr::Attr>,
-        pub vis: Visibility,
-        pub ident: Ident,
-        pub gens: gen::Gens,
-        pub data: Data,
-    }
-    pub enum Data {
-        Enum(Enum),
-        Struct(Struct),
-        Union(Union),
-    }
-    pub struct Enum {
-        pub enum_: Token![enum],
-        pub brace: tok::Brace,
-        pub variants: Punctuated<Variant, Token![,]>,
-    }
-    pub struct Struct {
-        pub struct_: Token![struct],
-        pub fields: Fields,
-        pub semi: Option<Token![;]>,
-    }
-    pub struct Union {
-        pub union_: Token![union],
-        pub named: Named,
-    }
-    pub struct Variant {
-        pub attrs: Vec<attr::Attr>,
-        pub ident: Ident,
-        pub fields: Fields,
-        pub discriminant: Option<(Token![=], Expr)>,
-    }
-    ast_enum_of_structs! {
-        pub enum Fields {
-            Named(Named),
-            Unnamed(Unnamed),
-            Unit,
-        }
-    }
-    impl Fields {
-        pub fn iter(&self) -> punct::Iter<Field> {
-            use Fields::*;
-            match self {
-                Named(x) => x.field.iter(),
-                Unnamed(x) => x.field.iter(),
-                Unit => punct::empty_punctuated_iter(),
-            }
-        }
-        pub fn iter_mut(&mut self) -> punct::IterMut<Field> {
-            use Fields::*;
-            match self {
-                Named(x) => x.field.iter_mut(),
-                Unnamed(x) => x.field.iter_mut(),
-                Unit => punct::empty_punctuated_iter_mut(),
-            }
-        }
-        pub fn len(&self) -> usize {
-            use Fields::*;
-            match self {
-                Named(x) => x.field.len(),
-                Unnamed(x) => x.field.len(),
-                Unit => 0,
-            }
-        }
-        pub fn is_empty(&self) -> bool {
-            use Fields::*;
-            match self {
-                Named(x) => x.field.is_empty(),
-                Unnamed(x) => x.field.is_empty(),
-                Unit => true,
-            }
-        }
-    }
-    impl IntoIterator for Fields {
-        type Item = Field;
-        type IntoIter = punct::IntoIter<Field>;
-        fn into_iter(self) -> Self::IntoIter {
-            use Fields::*;
-            match self {
-                Named(x) => x.field.into_iter(),
-                Unnamed(x) => x.field.into_iter(),
-                Unit => Punctuated::<Field, ()>::new().into_iter(),
-            }
-        }
-    }
-    impl<'a> IntoIterator for &'a Fields {
-        type Item = &'a Field;
-        type IntoIter = punct::Iter<'a, Field>;
-        fn into_iter(self) -> Self::IntoIter {
-            self.iter()
-        }
-    }
-    impl<'a> IntoIterator for &'a mut Fields {
-        type Item = &'a mut Field;
-        type IntoIter = punct::IterMut<'a, Field>;
-        fn into_iter(self) -> Self::IntoIter {
-            self.iter_mut()
-        }
-    }
-    pub struct Named {
-        pub brace: tok::Brace,
-        pub field: Punctuated<Field, Token![,]>,
-    }
-    pub struct Unnamed {
-        pub paren: tok::Paren,
-        pub field: Punctuated<Field, Token![,]>,
-    }
-    pub struct Field {
-        pub attrs: Vec<attr::Attr>,
-        pub vis: Visibility,
-        pub mut_: Mut,
-        pub ident: Option<Ident>,
-        pub colon: Option<Token![:]>,
-        pub typ: typ::Type,
-    }
-    pub enum Mut {
-        None,
-    }
-}
-use data::DeriveInput;
-
-mod err {
-    use proc_macro2::{LexError, Punct};
-    use quote::ToTokens;
-    use std::{
-        fmt::{self, Debug, Display},
-        slice, vec,
-    };
-    pub struct Err {
-        msgs: Vec<ErrMsg>,
-    }
-    pub type Res<T> = std::result::Result<T, Err>;
-    struct ErrMsg {
-        span: ThreadBound<SpanRange>,
-        message: String,
-    }
-    struct SpanRange {
-        start: pm2::Span,
-        end: pm2::Span,
-    }
-    #[cfg(test)]
-    struct _Test
-    where
-        Err: Send + Sync;
-    impl Err {
-        pub fn new<T: Display>(span: pm2::Span, message: T) -> Self {
-            return new(span, message.to_string());
-            fn new(span: pm2::Span, message: String) -> Err {
-                Err {
-                    msgs: vec![ErrMsg {
-                        span: ThreadBound::new(SpanRange { start: span, end: span }),
-                        message,
-                    }],
-                }
-            }
-        }
-        pub fn new_spanned<T: ToTokens, U: Display>(tokens: T, message: U) -> Self {
-            return new_spanned(tokens.into_token_stream(), message.to_string());
-            fn new_spanned(tokens: pm2::Stream, message: String) -> Err {
-                let mut iter = tokens.into_iter();
-                let start = iter.next().map_or_else(pm2::Span::call_site, |t| t.span());
-                let end = iter.last().map_or(start, |t| t.span());
-                Err {
-                    msgs: vec![ErrMsg {
-                        span: ThreadBound::new(SpanRange { start, end }),
-                        message,
-                    }],
-                }
-            }
-        }
-        pub fn span(&self) -> pm2::Span {
-            let SpanRange { start, end } = match self.msgs[0].span.get() {
-                Some(span) => *span,
-                None => return pm2::Span::call_site(),
-            };
-            start.join(end).unwrap_or(start)
-        }
-        pub fn to_compile_error(&self) -> pm2::Stream {
-            self.msgs.iter().map(ErrMsg::to_compile_error).collect()
-        }
-        pub fn into_compile_error(self) -> pm2::Stream {
-            self.to_compile_error()
-        }
-        pub fn combine(&mut self, another: Err) {
-            self.msgs.extend(another.msgs);
-        }
-    }
-    impl ErrMsg {
-        fn to_compile_error(&self) -> pm2::Stream {
-            let (start, end) = match self.span.get() {
-                Some(range) => (range.start, range.end),
-                None => (pm2::Span::call_site(), pm2::Span::call_site()),
-            };
-            use pm2::{Spacing::*, Tree::*};
-            pm2::Stream::from_iter(vec![
-                pm2::Tree::Punct({
-                    let y = Punct::new(':', Joint);
-                    y.set_span(start);
-                    y
-                }),
-                pm2::Tree::Punct({
-                    let y = Punct::new(':', Alone);
-                    y.set_span(start);
-                    y
-                }),
-                pm2::Tree::Ident(Ident::new("core", start)),
-                pm2::Tree::Punct({
-                    let y = Punct::new(':', Joint);
-                    y.set_span(start);
-                    y
-                }),
-                pm2::Tree::Punct({
-                    let y = Punct::new(':', Alone);
-                    y.set_span(start);
-                    y
-                }),
-                pm2::Tree::Ident(Ident::new("compile_error", start)),
-                pm2::Tree::Punct({
-                    let y = Punct::new('!', Alone);
-                    y.set_span(start);
-                    y
-                }),
-                pm2::Tree::Group({
-                    let y = Group::new(pm2::Delim::Brace, {
-                        pm2::Stream::from_iter(vec![pm2::Tree::Literal({
-                            let y = pm2::Lit::string(&self.message);
-                            y.set_span(end);
-                            y
-                        })])
-                    });
-                    y.set_span(end);
-                    y
-                }),
-            ])
-        }
-    }
-    pub fn new_at<T: Display>(scope: pm2::Span, cursor: Cursor, message: T) -> Err {
-        if cursor.eof() {
-            Err::new(scope, format!("unexpected end of input, {}", message))
-        } else {
-            let span = super::open_span_of_group(cursor);
-            Err::new(span, message)
-        }
-    }
-    pub fn new2<T: Display>(start: pm2::Span, end: pm2::Span, message: T) -> Err {
-        return new2(start, end, message.to_string());
-        fn new2(start: pm2::Span, end: pm2::Span, message: String) -> Err {
-            Err {
-                msgs: vec![ErrMsg {
-                    span: ThreadBound::new(SpanRange { start, end }),
-                    message,
-                }],
-            }
-        }
-    }
-    impl Debug for Err {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            if self.msgs.len() == 1 {
-                f.debug_tuple("Error").field(&self.msgs[0]).finish()
-            } else {
-                f.debug_tuple("Error").field(&self.msgs).finish()
-            }
-        }
-    }
-    impl Debug for ErrMsg {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            Debug::fmt(&self.message, f)
-        }
-    }
-    impl Display for Err {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            f.write_str(&self.msgs[0].message)
-        }
-    }
-    impl Clone for Err {
-        fn clone(&self) -> Self {
-            Err {
-                msgs: self.msgs.clone(),
-            }
-        }
-    }
-    impl Clone for ErrMsg {
-        fn clone(&self) -> Self {
-            ErrMsg {
-                span: self.span,
-                message: self.message.clone(),
-            }
-        }
-    }
-    impl Clone for SpanRange {
-        fn clone(&self) -> Self {
-            *self
-        }
-    }
-    impl Copy for SpanRange {}
-    impl std::error::Error for Err {}
-    impl From<LexError> for Err {
-        fn from(err: LexError) -> Self {
-            Err::new(err.span(), "lex error")
-        }
-    }
-    impl IntoIterator for Err {
-        type Item = Err;
-        type IntoIter = IntoIter;
-        fn into_iter(self) -> Self::IntoIter {
-            IntoIter {
-                messages: self.msgs.into_iter(),
-            }
-        }
-    }
-    pub struct IntoIter {
-        messages: vec::IntoIter<ErrMsg>,
-    }
-    impl Iterator for IntoIter {
-        type Item = Err;
-        fn next(&mut self) -> Option<Self::Item> {
-            Some(Err {
-                msgs: vec![self.messages.next()?],
-            })
-        }
-    }
-    impl<'a> IntoIterator for &'a Err {
-        type Item = Err;
-        type IntoIter = Iter<'a>;
-        fn into_iter(self) -> Self::IntoIter {
-            Iter {
-                messages: self.msgs.iter(),
-            }
-        }
-    }
-    pub struct Iter<'a> {
-        messages: slice::Iter<'a, ErrMsg>,
-    }
-    impl<'a> Iterator for Iter<'a> {
-        type Item = Err;
-        fn next(&mut self) -> Option<Self::Item> {
-            Some(Err {
-                msgs: vec![self.messages.next()?.clone()],
-            })
-        }
-    }
-    impl Extend<Err> for Err {
-        fn extend<T: IntoIterator<Item = Err>>(&mut self, iter: T) {
-            for err in iter {
-                self.combine(err);
-            }
-        }
-    }
-}
-pub use err::{Err, Res};
 
 mod look {
     use super::{
@@ -837,12 +299,92 @@ pub enum Visibility {
     Restricted(VisRestricted),
     Inherited,
 }
+impl Visibility {
+    fn is_inherited(&self) -> bool {
+        match self {
+            Visibility::Inherited => true,
+            _ => false,
+        }
+    }
+    fn parse_pub(input: Stream) -> Res<Self> {
+        let pub_ = input.parse::<Token![pub]>()?;
+        if input.peek(tok::Paren) {
+            let ahead = input.fork();
+            let content;
+            let paren = parenthesized!(content in ahead);
+            if content.peek(Token![crate]) || content.peek(Token![self]) || content.peek(Token![super]) {
+                let path = content.call(Ident::parse_any)?;
+                if content.is_empty() {
+                    input.advance_to(&ahead);
+                    return Ok(Visibility::Restricted(VisRestricted {
+                        pub_,
+                        paren,
+                        in_: None,
+                        path: Box::new(Path::from(path)),
+                    }));
+                }
+            } else if content.peek(Token![in]) {
+                let in_: Token![in] = content.parse()?;
+                let path = content.call(Path::parse_mod_style)?;
+                input.advance_to(&ahead);
+                return Ok(Visibility::Restricted(VisRestricted {
+                    pub_,
+                    paren,
+                    in_: Some(in_),
+                    path: Box::new(path),
+                }));
+            }
+        }
+        Ok(Visibility::Public(pub_))
+    }
+    pub fn is_some(&self) -> bool {
+        match self {
+            Visibility::Inherited => false,
+            _ => true,
+        }
+    }
+}
+impl Parse for Visibility {
+    fn parse(input: Stream) -> Res<Self> {
+        if input.peek(tok::Group) {
+            let ahead = input.fork();
+            let group = super::parse_group(&ahead)?;
+            if group.content.is_empty() {
+                input.advance_to(&ahead);
+                return Ok(Visibility::Inherited);
+            }
+        }
+        if input.peek(Token![pub]) {
+            Self::parse_pub(input)
+        } else {
+            Ok(Visibility::Inherited)
+        }
+    }
+}
+impl ToTokens for Visibility {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
+        match self {
+            Visibility::Public(x) => x.to_tokens(xs),
+            Visibility::Restricted(x) => x.to_tokens(xs),
+            Visibility::Inherited => {},
+        }
+    }
+}
 
 pub struct VisRestricted {
     pub pub_: Token![pub],
     pub paren: tok::Paren,
     pub in_: Option<Token![in]>,
     pub path: Box<Path>,
+}
+impl ToTokens for VisRestricted {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
+        self.pub_.to_tokens(xs);
+        self.paren.surround(xs, |ys| {
+            self.in_.to_tokens(ys);
+            self.path.to_tokens(ys);
+        });
+    }
 }
 
 mod sealed {
@@ -1045,6 +587,154 @@ impl<'a> Hash for TokenStreamHelper<'a> {
     }
 }
 
+mod fab {
+    #[rustfmt::skip]
+    pub mod fold;
+    #[rustfmt::skip]
+    pub mod visit;
+    #[rustfmt::skip]
+    pub mod visit_mut;
+        #[rustfmt::skip]
+    mod clone;
+        #[rustfmt::skip]
+    mod debug;
+        #[rustfmt::skip]
+    mod eq;
+        #[rustfmt::skip]
+    mod hash;
+    mod helper {
+        pub mod fold {
+            use crate::punct::{Pair, Punctuated};
+            pub trait FoldHelper {
+                type Item;
+                fn lift<F>(self, f: F) -> Self
+                where
+                    F: FnMut(Self::Item) -> Self::Item;
+            }
+            impl<T> FoldHelper for Vec<T> {
+                type Item = T;
+                fn lift<F>(self, f: F) -> Self
+                where
+                    F: FnMut(Self::Item) -> Self::Item,
+                {
+                    self.into_iter().map(f).collect()
+                }
+            }
+            impl<T, U> FoldHelper for Punctuated<T, U> {
+                type Item = T;
+                fn lift<F>(self, mut f: F) -> Self
+                where
+                    F: FnMut(Self::Item) -> Self::Item,
+                {
+                    self.into_pairs()
+                        .map(Pair::into_tuple)
+                        .map(|(t, u)| Pair::new(f(t), u))
+                        .collect()
+                }
+            }
+        }
+    }
+}
+pub use fab::*;
+pub mod __private {
+    pub use super::{
+        lower::punct as print_punct,
+        parse_quote_fn,
+        parsing::{peek_punct, punct as parse_punct},
+    };
+    pub use proc_macro::pm2::Stream;
+    pub use proc_macro2::pm2::Stream as TokenStream2;
+    pub use quote::{self, ToTokens, TokenStreamExt};
+    pub use std::{
+        clone::Clone,
+        cmp::{Eq, PartialEq},
+        concat,
+        default::Default,
+        fmt::{self, Debug, Formatter},
+        hash::{Hash, Hasher},
+        marker::Copy,
+        option::Option::{None, Some},
+        result::Result::{Err, Ok},
+        stringify,
+    };
+    pub type bool = help::Bool;
+    pub type str = help::Str;
+    mod help {
+        pub type Bool = bool;
+        pub type Str = str;
+    }
+    pub struct private(pub ());
+}
+
+pub struct File {
+    pub shebang: Option<String>,
+    pub attrs: Vec<attr::Attr>,
+    pub items: Vec<Item>,
+}
+impl Parse for File {
+    fn parse(x: Stream) -> Res<Self> {
+        Ok(File {
+            shebang: None,
+            attrs: x.call(attr::Attr::parse_inner)?,
+            items: {
+                let mut ys = Vec::new();
+                while !x.is_empty() {
+                    ys.push(x.parse()?);
+                }
+                ys
+            },
+        })
+    }
+}
+impl ToTokens for File {
+    fn to_tokens(&self, xs: &mut pm2::Stream) {
+        xs.append_all(self.attrs.inner());
+        xs.append_all(&self.items);
+    }
+}
+
+pub fn parse_file(mut x: &str) -> Res<File> {
+    const BOM: &str = "\u{feff}";
+    if x.starts_with(BOM) {
+        x = &x[BOM.len()..];
+    }
+    let mut shebang = None;
+    if x.starts_with("#!") {
+        let rest = whitespace::ws_skip(&x[2..]);
+        if !rest.starts_with('[') {
+            if let Some(i) = x.find('\n') {
+                shebang = Some(x[..i].to_string());
+                x = &x[i..];
+            } else {
+                shebang = Some(x.to_string());
+                x = "";
+            }
+        }
+    }
+    let mut y: File = parse_str(x)?;
+    y.shebang = shebang;
+    Ok(y)
+}
+pub fn parse_str<T: parse::Parse>(s: &str) -> Res<T> {
+    parse::Parser::parse_str(T::parse, s)
+}
+
+pub fn parse<T: parse::Parse>(tokens: proc_macro::pm2::Stream) -> Res<T> {
+    parse::Parser::parse(T::parse, tokens)
+}
+pub fn parse2<T: parse::Parse>(tokens: proc_macro2::pm2::Stream) -> Res<T> {
+    parse::Parser::parse2(T::parse, tokens)
+}
+
+fn wrap_bare_struct(tokens: &mut pm2::Stream, e: &Expr) {
+    if let Expr::Struct(_) = *e {
+        tok::Paren::default().surround(tokens, |tokens| {
+            e.to_tokens(tokens);
+        });
+    } else {
+        e.to_tokens(tokens);
+    }
+}
 pub fn verbatim_between<'a>(begin: parse::Stream<'a>, end: parse::Stream<'a>) -> pm2::Stream {
     let end = end.cursor();
     let mut cursor = begin.cursor();
@@ -1125,118 +815,26 @@ fn is_whitespace(x: char) -> bool {
     x.is_whitespace() || x == '\u{200e}' || x == '\u{200f}'
 }
 
-mod fab {
-    #[rustfmt::skip]
-    pub mod fold;
-    #[rustfmt::skip]
-    pub mod visit;
-    #[rustfmt::skip]
-    pub mod visit_mut;
-        #[rustfmt::skip]
-    mod clone;
-        #[rustfmt::skip]
-    mod debug;
-        #[rustfmt::skip]
-    mod eq;
-        #[rustfmt::skip]
-    mod hash;
-    mod helper {
-        pub mod fold {
-            use crate::punct::{Pair, Punctuated};
-            pub trait FoldHelper {
-                type Item;
-                fn lift<F>(self, f: F) -> Self
-                where
-                    F: FnMut(Self::Item) -> Self::Item;
-            }
-            impl<T> FoldHelper for Vec<T> {
-                type Item = T;
-                fn lift<F>(self, f: F) -> Self
-                where
-                    F: FnMut(Self::Item) -> Self::Item,
-                {
-                    self.into_iter().map(f).collect()
-                }
-            }
-            impl<T, U> FoldHelper for Punctuated<T, U> {
-                type Item = T;
-                fn lift<F>(self, mut f: F) -> Self
-                where
-                    F: FnMut(Self::Item) -> Self::Item,
-                {
-                    self.into_pairs()
-                        .map(Pair::into_tuple)
-                        .map(|(t, u)| Pair::new(f(t), u))
-                        .collect()
-                }
-            }
-        }
+pub fn punct(s: &str, spans: &[pm2::Span], xs: &mut pm2::Stream) {
+    assert_eq!(s.len(), spans.len());
+    let mut chars = s.chars();
+    let mut spans = spans.iter();
+    let ch = chars.next_back().unwrap();
+    let span = spans.next_back().unwrap();
+    for (ch, span) in chars.zip(spans) {
+        let mut op = Punct::new(ch, pm2::Spacing::Joint);
+        op.set_span(*span);
+        xs.append(op);
     }
+    let mut op = Punct::new(ch, pm2::Spacing::Alone);
+    op.set_span(*span);
+    xs.append(op);
 }
-pub use fab::*;
-pub mod __private {
-    pub use super::{
-        lower::punct as print_punct,
-        parse_quote_fn,
-        parsing::{peek_punct, punct as parse_punct},
-    };
-    pub use proc_macro::pm2::Stream;
-    pub use proc_macro2::pm2::Stream as TokenStream2;
-    pub use quote::{self, ToTokens, TokenStreamExt};
-    pub use std::{
-        clone::Clone,
-        cmp::{Eq, PartialEq},
-        concat,
-        default::Default,
-        fmt::{self, Debug, Formatter},
-        hash::{Hash, Hasher},
-        marker::Copy,
-        option::Option::{None, Some},
-        result::Result::{Err, Ok},
-        stringify,
-    };
-    pub type bool = help::Bool;
-    pub type str = help::Str;
-    mod help {
-        pub type Bool = bool;
-        pub type Str = str;
-    }
-    pub struct private(pub ());
+pub fn keyword(x: &str, s: pm2::Span, xs: &mut pm2::Stream) {
+    xs.append(Ident::new(x, s));
 }
-pub fn parse<T: parse::Parse>(tokens: proc_macro::pm2::Stream) -> Res<T> {
-    parse::Parser::parse(T::parse, tokens)
-}
-pub fn parse2<T: parse::Parse>(tokens: proc_macro2::pm2::Stream) -> Res<T> {
-    parse::Parser::parse2(T::parse, tokens)
-}
-
-pub struct File {
-    pub shebang: Option<String>,
-    pub attrs: Vec<attr::Attr>,
-    pub items: Vec<Item>,
-}
-pub fn parse_file(mut x: &str) -> Res<File> {
-    const BOM: &str = "\u{feff}";
-    if x.starts_with(BOM) {
-        x = &x[BOM.len()..];
-    }
-    let mut shebang = None;
-    if x.starts_with("#!") {
-        let rest = whitespace::ws_skip(&x[2..]);
-        if !rest.starts_with('[') {
-            if let Some(i) = x.find('\n') {
-                shebang = Some(x[..i].to_string());
-                x = &x[i..];
-            } else {
-                shebang = Some(x.to_string());
-                x = "";
-            }
-        }
-    }
-    let mut y: File = parse_str(x)?;
-    y.shebang = shebang;
-    Ok(y)
-}
-pub fn parse_str<T: parse::Parse>(s: &str) -> Res<T> {
-    parse::Parser::parse_str(T::parse, s)
+pub fn delim(d: pm2::Delim, s: pm2::Span, xs: &mut pm2::Stream, inner: pm2::Stream) {
+    let mut g = Group::new(d, inner);
+    g.set_span(s);
+    xs.append(g);
 }
