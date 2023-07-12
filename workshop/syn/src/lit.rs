@@ -1191,37 +1191,37 @@ impl Parse for Bool {
 }
 
 impl ToTokens for Str {
-    fn to_tokens(&self, xs: &mut Stream) {
-        self.repr.tok.to_tokens(xs);
+    fn to_tokens(&self, ys: &mut Stream) {
+        self.repr.tok.to_tokens(ys);
     }
 }
 impl ToTokens for ByteStr {
-    fn to_tokens(&self, xs: &mut Stream) {
-        self.repr.tok.to_tokens(xs);
+    fn to_tokens(&self, ys: &mut Stream) {
+        self.repr.tok.to_tokens(ys);
     }
 }
 impl ToTokens for Byte {
-    fn to_tokens(&self, xs: &mut Stream) {
-        self.repr.tok.to_tokens(xs);
+    fn to_tokens(&self, ys: &mut Stream) {
+        self.repr.tok.to_tokens(ys);
     }
 }
 impl ToTokens for Char {
-    fn to_tokens(&self, xs: &mut Stream) {
-        self.repr.tok.to_tokens(xs);
+    fn to_tokens(&self, ys: &mut Stream) {
+        self.repr.tok.to_tokens(ys);
     }
 }
 impl ToTokens for Int {
-    fn to_tokens(&self, xs: &mut Stream) {
-        self.repr.tok.to_tokens(xs);
+    fn to_tokens(&self, ys: &mut Stream) {
+        self.repr.tok.to_tokens(ys);
     }
 }
 impl ToTokens for Float {
-    fn to_tokens(&self, xs: &mut Stream) {
-        self.repr.tok.to_tokens(xs);
+    fn to_tokens(&self, ys: &mut Stream) {
+        self.repr.tok.to_tokens(ys);
     }
 }
 impl ToTokens for Bool {
-    fn to_tokens(&self, xs: &mut Stream) {
-        xs.append(self.token());
+    fn to_tokens(&self, ys: &mut Stream) {
+        ys.append(self.token());
     }
 }

@@ -85,7 +85,7 @@ impl Parse for List {
     }
 }
 impl ToTokens for List {
-    fn to_tokens(&self, ys: &mut pm2::Stream) {
+    fn to_tokens(&self, ys: &mut Stream) {
         self.path.to_tokens(ys);
         self.delim.surround(ys, self.toks.clone());
     }
@@ -103,7 +103,7 @@ impl Parse for NameValue {
     }
 }
 impl ToTokens for NameValue {
-    fn to_tokens(&self, ys: &mut pm2::Stream) {
+    fn to_tokens(&self, ys: &mut Stream) {
         self.path.to_tokens(ys);
         self.eq.to_tokens(ys);
         self.expr.to_tokens(ys);

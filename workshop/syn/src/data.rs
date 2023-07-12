@@ -117,7 +117,7 @@ pub enum Mut {
     None,
 }
 
-impl Parse for data::Variant {
+impl Parse for Variant {
     fn parse(input: Stream) -> Res<Self> {
         let attrs = input.call(attr::Attr::parse_outer)?;
         let _visibility: Visibility = input.parse()?;
@@ -144,7 +144,7 @@ impl Parse for data::Variant {
         })
     }
 }
-impl Parse for data::Named {
+impl Parse for Named {
     fn parse(input: Stream) -> Res<Self> {
         let content;
         Ok(data::Named {
@@ -153,7 +153,7 @@ impl Parse for data::Named {
         })
     }
 }
-impl Parse for data::Unnamed {
+impl Parse for Unnamed {
     fn parse(input: Stream) -> Res<Self> {
         let content;
         Ok(data::Unnamed {
@@ -235,34 +235,34 @@ impl Parse for DeriveInput {
         }
     }
 }
-pub fn data_struct(input: Stream) -> Res<(Option<gen::Where>, data::Fields, Option<Token![;]>)> {
-    let mut lookahead = input.lookahead1();
+pub fn data_struct(x: Stream) -> Res<(Option<gen::Where>, data::Fields, Option<Token![;]>)> {
+    let mut look = x.lookahead1();
     let mut where_clause = None;
-    if lookahead.peek(Token![where]) {
-        where_clause = Some(input.parse()?);
-        lookahead = input.lookahead1();
+    if look.peek(Token![where]) {
+        where_clause = Some(x.parse()?);
+        look = x.lookahead1();
     }
-    if where_clause.is_none() && lookahead.peek(tok::Paren) {
-        let fields = input.parse()?;
-        lookahead = input.lookahead1();
-        if lookahead.peek(Token![where]) {
-            where_clause = Some(input.parse()?);
-            lookahead = input.lookahead1();
+    if where_clause.is_none() && look.peek(tok::Paren) {
+        let fields = x.parse()?;
+        look = x.lookahead1();
+        if look.peek(Token![where]) {
+            where_clause = Some(x.parse()?);
+            look = x.lookahead1();
         }
-        if lookahead.peek(Token![;]) {
-            let semi = input.parse()?;
+        if look.peek(Token![;]) {
+            let semi = x.parse()?;
             Ok((where_clause, data::Fields::Unnamed(fields), Some(semi)))
         } else {
-            Err(lookahead.error())
+            Err(look.error())
         }
-    } else if lookahead.peek(tok::Brace) {
-        let fields = input.parse()?;
+    } else if look.peek(tok::Brace) {
+        let fields = x.parse()?;
         Ok((where_clause, data::Fields::Named(fields), None))
-    } else if lookahead.peek(Token![;]) {
-        let semi = input.parse()?;
+    } else if look.peek(Token![;]) {
+        let semi = x.parse()?;
         Ok((where_clause, data::Fields::Unit, Some(semi)))
     } else {
-        Err(lookahead.error())
+        Err(look.error())
     }
 }
 pub fn data_enum(input: Stream) -> Res<(Option<gen::Where>, tok::Brace, Punctuated<data::Variant, Token![,]>)> {
@@ -278,81 +278,81 @@ pub fn data_union(input: Stream) -> Res<(Option<gen::Where>, data::Named)> {
     Ok((where_clause, fields))
 }
 
-impl ToTokens for data::Variant {
-    fn to_tokens(&self, xs: &mut pm2::Stream) {
-        xs.append_all(&self.attrs);
-        self.ident.to_tokens(xs);
-        self.fields.to_tokens(xs);
+impl ToTokens for Variant {
+    fn to_tokens(&self, ys: &mut Stream) {
+        ys.append_all(&self.attrs);
+        self.ident.to_tokens(ys);
+        self.fields.to_tokens(ys);
         if let Some((eq, disc)) = &self.discriminant {
-            eq.to_tokens(xs);
-            disc.to_tokens(xs);
+            eq.to_tokens(ys);
+            disc.to_tokens(ys);
         }
     }
 }
-impl ToTokens for data::Named {
-    fn to_tokens(&self, xs: &mut pm2::Stream) {
-        self.brace.surround(xs, |ys| {
+impl ToTokens for Named {
+    fn to_tokens(&self, ys: &mut Stream) {
+        self.brace.surround(ys, |ys| {
             self.named.to_tokens(ys);
         });
     }
 }
-impl ToTokens for data::Unnamed {
-    fn to_tokens(&self, xs: &mut pm2::Stream) {
-        self.paren.surround(xs, |ys| {
+impl ToTokens for Unnamed {
+    fn to_tokens(&self, ys: &mut Stream) {
+        self.paren.surround(ys, |ys| {
             self.unnamed.to_tokens(ys);
         });
     }
 }
-impl ToTokens for data::Field {
-    fn to_tokens(&self, xs: &mut pm2::Stream) {
-        xs.append_all(&self.attrs);
-        self.vis.to_tokens(xs);
+impl ToTokens for Field {
+    fn to_tokens(&self, ys: &mut Stream) {
+        ys.append_all(&self.attrs);
+        self.vis.to_tokens(ys);
         if let Some(x) = &self.ident {
-            x.to_tokens(xs);
-            TokensOrDefault(&self.colon).to_tokens(xs);
+            x.to_tokens(ys);
+            TokensOrDefault(&self.colon).to_tokens(ys);
         }
-        self.typ.to_tokens(xs);
+        self.typ.to_tokens(ys);
     }
 }
 
 impl ToTokens for DeriveInput {
-    fn to_tokens(&self, xs: &mut pm2::Stream) {
+    fn to_tokens(&self, ys: &mut Stream) {
         for x in self.attrs.outer() {
-            x.to_tokens(xs);
+            x.to_tokens(ys);
         }
-        self.vis.to_tokens(xs);
+        self.vis.to_tokens(ys);
         match &self.data {
-            Data::Struct(x) => x.struct_.to_tokens(xs),
-            Data::Enum(x) => x.enum_.to_tokens(xs),
-            Data::Union(x) => x.union_.to_tokens(xs),
+            Data::Struct(x) => x.struct_.to_tokens(ys),
+            Data::Enum(x) => x.enum_.to_tokens(ys),
+            Data::Union(x) => x.union_.to_tokens(ys),
         }
-        self.ident.to_tokens(xs);
-        self.gens.to_tokens(xs);
+        self.ident.to_tokens(ys);
+        self.gens.to_tokens(ys);
         match &self.data {
             Data::Struct(data) => match &data.fields {
                 data::Fields::Named(x) => {
-                    self.gens.where_.to_tokens(xs);
-                    x.to_tokens(xs);
+                    self.gens.where_.to_tokens(ys);
+                    x.to_tokens(ys);
                 },
                 data::Fields::Unnamed(x) => {
-                    x.to_tokens(xs);
-                    self.gens.where_.to_tokens(xs);
-                    TokensOrDefault(&data.semi).to_tokens(xs);
+                    x.to_tokens(ys);
+                    self.gens.where_.to_tokens(ys);
+                    TokensOrDefault(&data.semi).to_tokens(ys);
                 },
                 data::Fields::Unit => {
-                    self.gens.where_.to_tokens(xs);
-                    TokensOrDefault(&data.semi).to_tokens(xs);
+                    self.gens.where_.to_tokens(ys);
+                    TokensOrDefault(&data.semi).to_tokens(ys);
                 },
             },
             Data::Enum(x) => {
-                self.gens.where_.to_tokens(xs);
-                x.brace.surround(xs, |tokens| {
-                    x.variants.to_tokens(tokens);
+                self.gens.where_.to_tokens(ys);
+                x.brace.surround(ys, |ys| {
+                    x.variants.to_tokens(ys);
                 });
             },
             Data::Union(x) => {
-                self.gens.where_.to_tokens(xs);
-                x.fields.to_tokens(xs);
+                self.gens.where_.to_tokens(ys);
+                x.fields.to_tokens(ys);
             },
         }
     }

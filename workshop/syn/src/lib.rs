@@ -286,7 +286,7 @@ impl<'a, T> ToTokens for TokensOrDefault<'a, T>
 where
     T: ToTokens + Default,
 {
-    fn to_tokens(&self, ys: &mut pm2::Stream) {
+    fn to_tokens(&self, ys: &mut Stream) {
         match self.0 {
             Some(x) => x.to_tokens(ys),
             None => T::default().to_tokens(ys),
@@ -362,10 +362,10 @@ impl Parse for Visibility {
     }
 }
 impl ToTokens for Visibility {
-    fn to_tokens(&self, xs: &mut pm2::Stream) {
+    fn to_tokens(&self, ys: &mut Stream) {
         match self {
-            Visibility::Public(x) => x.to_tokens(xs),
-            Visibility::Restricted(x) => x.to_tokens(xs),
+            Visibility::Public(x) => x.to_tokens(ys),
+            Visibility::Restricted(x) => x.to_tokens(ys),
             Visibility::Inherited => {},
         }
     }
@@ -378,9 +378,9 @@ pub struct VisRestricted {
     pub path: Box<Path>,
 }
 impl ToTokens for VisRestricted {
-    fn to_tokens(&self, xs: &mut pm2::Stream) {
-        self.pub_.to_tokens(xs);
-        self.paren.surround(xs, |ys| {
+    fn to_tokens(&self, ys: &mut Stream) {
+        self.pub_.to_tokens(ys);
+        self.paren.surround(ys, |ys| {
             self.in_.to_tokens(ys);
             self.path.to_tokens(ys);
         });
@@ -687,9 +687,9 @@ impl Parse for File {
     }
 }
 impl ToTokens for File {
-    fn to_tokens(&self, xs: &mut pm2::Stream) {
-        xs.append_all(self.attrs.inner());
-        xs.append_all(&self.items);
+    fn to_tokens(&self, ys: &mut Stream) {
+        ys.append_all(self.attrs.inner());
+        ys.append_all(&self.items);
     }
 }
 
@@ -719,20 +719,20 @@ pub fn parse_str<T: parse::Parse>(s: &str) -> Res<T> {
     parse::Parser::parse_str(T::parse, s)
 }
 
-pub fn parse<T: parse::Parse>(tokens: proc_macro::pm2::Stream) -> Res<T> {
-    parse::Parser::parse(T::parse, tokens)
+pub fn parse<T: parse::Parse>(ys: Stream) -> Res<T> {
+    parse::Parser::parse(T::parse, ys)
 }
-pub fn parse2<T: parse::Parse>(tokens: proc_macro2::pm2::Stream) -> Res<T> {
-    parse::Parser::parse2(T::parse, tokens)
+pub fn parse2<T: parse::Parse>(ys: Stream) -> Res<T> {
+    parse::Parser::parse2(T::parse, ys)
 }
 
-fn wrap_bare_struct(tokens: &mut pm2::Stream, e: &Expr) {
+fn wrap_bare_struct(ys: &mut Stream, e: &Expr) {
     if let Expr::Struct(_) = *e {
-        tok::Paren::default().surround(tokens, |tokens| {
-            e.to_tokens(tokens);
+        tok::Paren::default().surround(ys, |ys| {
+            e.to_tokens(ys);
         });
     } else {
-        e.to_tokens(tokens);
+        e.to_tokens(ys);
     }
 }
 pub fn verbatim_between<'a>(begin: parse::Stream<'a>, end: parse::Stream<'a>) -> pm2::Stream {
@@ -815,7 +815,7 @@ fn is_whitespace(x: char) -> bool {
     x.is_whitespace() || x == '\u{200e}' || x == '\u{200f}'
 }
 
-pub fn punct(s: &str, spans: &[pm2::Span], xs: &mut pm2::Stream) {
+pub fn punct(s: &str, spans: &[pm2::Span], ys: &mut Stream) {
     assert_eq!(s.len(), spans.len());
     let mut chars = s.chars();
     let mut spans = spans.iter();
@@ -824,17 +824,17 @@ pub fn punct(s: &str, spans: &[pm2::Span], xs: &mut pm2::Stream) {
     for (ch, span) in chars.zip(spans) {
         let mut op = Punct::new(ch, pm2::Spacing::Joint);
         op.set_span(*span);
-        xs.append(op);
+        ys.append(op);
     }
     let mut op = Punct::new(ch, pm2::Spacing::Alone);
     op.set_span(*span);
-    xs.append(op);
+    ys.append(op);
 }
-pub fn keyword(x: &str, s: pm2::Span, xs: &mut pm2::Stream) {
-    xs.append(Ident::new(x, s));
+pub fn keyword(x: &str, s: pm2::Span, ys: &mut Stream) {
+    ys.append(Ident::new(x, s));
 }
-pub fn delim(d: pm2::Delim, s: pm2::Span, xs: &mut pm2::Stream, inner: pm2::Stream) {
+pub fn delim(d: pm2::Delim, s: pm2::Span, ys: &mut Stream, inner: pm2::Stream) {
     let mut g = Group::new(d, inner);
     g.set_span(s);
-    xs.append(g);
+    ys.append(g);
 }

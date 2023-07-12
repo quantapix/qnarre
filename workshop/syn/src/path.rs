@@ -427,59 +427,59 @@ impl<'a> Display for DisplayPath<'a> {
 }
 
 impl ToTokens for Path {
-    fn to_tokens(&self, xs: &mut Stream) {
-        self.colon.to_tokens(xs);
-        self.segs.to_tokens(xs);
+    fn to_tokens(&self, ys: &mut Stream) {
+        self.colon.to_tokens(ys);
+        self.segs.to_tokens(ys);
     }
 }
 impl ToTokens for Segment {
-    fn to_tokens(&self, xs: &mut Stream) {
-        self.ident.to_tokens(xs);
-        self.args.to_tokens(xs);
+    fn to_tokens(&self, ys: &mut Stream) {
+        self.ident.to_tokens(ys);
+        self.args.to_tokens(ys);
     }
 }
 impl ToTokens for Args {
-    fn to_tokens(&self, xs: &mut Stream) {
+    fn to_tokens(&self, ys: &mut Stream) {
         match self {
             Args::None => {},
-            Args::Angled(args) => {
-                args.to_tokens(xs);
+            Args::Angled(x) => {
+                x.to_tokens(ys);
             },
-            Args::Parenthesized(args) => {
-                args.to_tokens(xs);
+            Args::Parenthesized(x) => {
+                x.to_tokens(ys);
             },
         }
     }
 }
 impl ToTokens for Arg {
     #[allow(clippy::match_same_arms)]
-    fn to_tokens(&self, xs: &mut Stream) {
+    fn to_tokens(&self, ys: &mut Stream) {
         use Arg::*;
         match self {
-            Lifetime(x) => x.to_tokens(xs),
-            Type(x) => x.to_tokens(xs),
+            Lifetime(x) => x.to_tokens(ys),
+            Type(x) => x.to_tokens(ys),
             Const(x) => match x {
-                Expr::Lit(_) => x.to_tokens(xs),
-                Expr::Block(_) => x.to_tokens(xs),
-                _ => tok::Brace::default().surround(xs, |xs| {
-                    x.to_tokens(xs);
+                Expr::Lit(_) => x.to_tokens(ys),
+                Expr::Block(_) => x.to_tokens(ys),
+                _ => tok::Brace::default().surround(ys, |ys| {
+                    x.to_tokens(ys);
                 }),
             },
-            AssocType(x) => x.to_tokens(xs),
-            AssocConst(x) => x.to_tokens(xs),
-            Constraint(x) => x.to_tokens(xs),
+            AssocType(x) => x.to_tokens(ys),
+            AssocConst(x) => x.to_tokens(ys),
+            Constraint(x) => x.to_tokens(ys),
         }
     }
 }
 impl ToTokens for AngledArgs {
-    fn to_tokens(&self, xs: &mut Stream) {
-        self.colon2.to_tokens(xs);
-        self.lt.to_tokens(xs);
+    fn to_tokens(&self, ys: &mut Stream) {
+        self.colon2.to_tokens(ys);
+        self.lt.to_tokens(ys);
         let mut trailing_or_empty = true;
         for x in self.args.pairs() {
             match x.value() {
                 Arg::Lifetime(_) => {
-                    x.to_tokens(xs);
+                    x.to_tokens(ys);
                     trailing_or_empty = x.punct().is_some();
                 },
                 Arg::Type(_) | Arg::Const(_) | Arg::AssocType(_) | Arg::AssocConst(_) | Arg::Constraint(_) => {},
@@ -489,78 +489,78 @@ impl ToTokens for AngledArgs {
             match x.value() {
                 Arg::Type(_) | Arg::Const(_) | Arg::AssocType(_) | Arg::AssocConst(_) | Arg::Constraint(_) => {
                     if !trailing_or_empty {
-                        <Token![,]>::default().to_tokens(xs);
+                        <Token![,]>::default().to_tokens(ys);
                     }
-                    x.to_tokens(xs);
+                    x.to_tokens(ys);
                     trailing_or_empty = x.punct().is_some();
                 },
                 Arg::Lifetime(_) => {},
             }
         }
-        self.gt.to_tokens(xs);
+        self.gt.to_tokens(ys);
     }
 }
 impl ToTokens for AssocType {
-    fn to_tokens(&self, xs: &mut Stream) {
-        self.ident.to_tokens(xs);
-        self.args.to_tokens(xs);
-        self.eq.to_tokens(xs);
-        self.typ.to_tokens(xs);
+    fn to_tokens(&self, ys: &mut Stream) {
+        self.ident.to_tokens(ys);
+        self.args.to_tokens(ys);
+        self.eq.to_tokens(ys);
+        self.typ.to_tokens(ys);
     }
 }
 impl ToTokens for AssocConst {
-    fn to_tokens(&self, xs: &mut Stream) {
-        self.ident.to_tokens(xs);
-        self.args.to_tokens(xs);
-        self.eq.to_tokens(xs);
-        self.val.to_tokens(xs);
+    fn to_tokens(&self, ys: &mut Stream) {
+        self.ident.to_tokens(ys);
+        self.args.to_tokens(ys);
+        self.eq.to_tokens(ys);
+        self.val.to_tokens(ys);
     }
 }
 impl ToTokens for Constraint {
-    fn to_tokens(&self, xs: &mut Stream) {
-        self.ident.to_tokens(xs);
-        self.args.to_tokens(xs);
-        self.colon.to_tokens(xs);
-        self.bounds.to_tokens(xs);
+    fn to_tokens(&self, ys: &mut Stream) {
+        self.ident.to_tokens(ys);
+        self.args.to_tokens(ys);
+        self.colon.to_tokens(ys);
+        self.bounds.to_tokens(ys);
     }
 }
 impl ToTokens for ParenthesizedArgs {
-    fn to_tokens(&self, xs: &mut Stream) {
-        self.paren.surround(xs, |ys| {
+    fn to_tokens(&self, ys: &mut Stream) {
+        self.paren.surround(ys, |ys| {
             self.args.to_tokens(ys);
         });
-        self.ret.to_tokens(xs);
+        self.ret.to_tokens(ys);
     }
 }
-pub(crate) fn print_path(xs: &mut Stream, qself: &Option<QSelf>, path: &Path) {
+pub(crate) fn print_path(ys: &mut Stream, qself: &Option<QSelf>, path: &Path) {
     let qself = match qself {
         Some(qself) => qself,
         None => {
-            path.to_tokens(xs);
+            path.to_tokens(ys);
             return;
         },
     };
-    qself.lt.to_tokens(xs);
-    qself.typ.to_tokens(xs);
+    qself.lt.to_tokens(ys);
+    qself.typ.to_tokens(ys);
     let pos = cmp::min(qself.pos, path.segs.len());
-    let mut segments = path.segs.pairs();
+    let mut segs = path.segs.pairs();
     if pos > 0 {
-        TokensOrDefault(&qself.as_).to_tokens(xs);
-        path.colon.to_tokens(xs);
-        for (i, segment) in segments.by_ref().take(pos).enumerate() {
+        TokensOrDefault(&qself.as_).to_tokens(ys);
+        path.colon.to_tokens(ys);
+        for (i, x) in segs.by_ref().take(pos).enumerate() {
             if i + 1 == pos {
-                segment.value().to_tokens(xs);
-                qself.gt.to_tokens(xs);
-                segment.punct().to_tokens(xs);
+                x.value().to_tokens(ys);
+                qself.gt.to_tokens(ys);
+                x.punct().to_tokens(ys);
             } else {
-                segment.to_tokens(xs);
+                x.to_tokens(ys);
             }
         }
     } else {
-        qself.gt.to_tokens(xs);
-        path.colon.to_tokens(xs);
+        qself.gt.to_tokens(ys);
+        path.colon.to_tokens(ys);
     }
-    for segment in segments {
-        segment.to_tokens(xs);
+    for x in segs {
+        x.to_tokens(ys);
     }
 }

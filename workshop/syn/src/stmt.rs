@@ -1,4 +1,3 @@
-
 struct AllowNoSemi(bool);
 
 pub struct Block {
@@ -41,7 +40,7 @@ impl Parse for Block {
     }
 }
 impl ToTokens for Block {
-    fn to_tokens(&self, ys: &mut pm2::Stream) {
+    fn to_tokens(&self, ys: &mut Stream) {
         self.brace.surround(ys, |ys| {
             ys.append_all(&self.stmts);
         });
@@ -54,22 +53,22 @@ pub enum Stmt {
     Expr(Expr, Option<Token![;]>),
     Mac(Mac),
 }
-impl Parse for stmt::Stmt {
+impl Parse for Stmt {
     fn parse(x: Stream) -> Res<Self> {
         let allow_nosemi = AllowNoSemi(false);
         parse_stmt(x, allow_nosemi)
     }
 }
-impl ToTokens for stmt::Stmt {
-    fn to_tokens(&self, xs: &mut pm2::Stream) {
+impl ToTokens for Stmt {
+    fn to_tokens(&self, ys: &mut Stream) {
         match self {
-            stmt::Stmt::stmt::Local(x) => x.to_tokens(xs),
-            stmt::Stmt::Item(x) => x.to_tokens(xs),
+            stmt::Stmt::stmt::Local(x) => x.to_tokens(ys),
+            stmt::Stmt::Item(x) => x.to_tokens(ys),
             stmt::Stmt::Expr(x, semi) => {
-                x.to_tokens(xs);
-                semi.to_tokens(xs);
+                x.to_tokens(ys);
+                semi.to_tokens(ys);
             },
-            stmt::Stmt::Mac(x) => x.to_tokens(xs),
+            stmt::Stmt::Mac(x) => x.to_tokens(ys),
         }
     }
 }
@@ -81,20 +80,20 @@ pub struct Local {
     pub init: Option<LocalInit>,
     pub semi: Token![;],
 }
-impl ToTokens for stmt::Local {
-    fn to_tokens(&self, xs: &mut pm2::Stream) {
-        outer_attrs_to_tokens(&self.attrs, xs);
-        self.let_.to_tokens(xs);
-        self.pat.to_tokens(xs);
+impl ToTokens for Local {
+    fn to_tokens(&self, ys: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, ys);
+        self.let_.to_tokens(ys);
+        self.pat.to_tokens(ys);
         if let Some(init) = &self.init {
-            init.eq.to_tokens(xs);
-            init.expr.to_tokens(xs);
+            init.eq.to_tokens(ys);
+            init.expr.to_tokens(ys);
             if let Some((else_token, diverge)) = &init.diverge {
-                else_token.to_tokens(xs);
-                diverge.to_tokens(xs);
+                else_token.to_tokens(ys);
+                diverge.to_tokens(ys);
             }
         }
-        self.semi.to_tokens(xs);
+        self.semi.to_tokens(ys);
     }
 }
 
@@ -108,15 +107,15 @@ pub struct Mac {
     pub mac: Macro,
     pub semi: Option<Token![;]>,
 }
-impl ToTokens for stmt::Mac {
-    fn to_tokens(&self, xs: &mut pm2::Stream) {
-        outer_attrs_to_tokens(&self.attrs, xs);
-        self.mac.to_tokens(xs);
-        self.semi.to_tokens(xs);
+impl ToTokens for Mac {
+    fn to_tokens(&self, ys: &mut Stream) {
+        outer_attrs_to_tokens(&self.attrs, ys);
+        self.mac.to_tokens(ys);
+        self.semi.to_tokens(ys);
     }
 }
 
-fn parse_stmt(x: Stream, allow_nosemi: AllowNoSemi) -> Res<stmt::Stmt> {
+fn parse_stmt(x: Stream, nosemi: AllowNoSemi) -> Res<stmt::Stmt> {
     let begin = x.fork();
     let attrs = x.call(attr::Attr::parse_outer)?;
     let ahead = x.fork();
@@ -165,7 +164,7 @@ fn parse_stmt(x: Stream, allow_nosemi: AllowNoSemi) -> Res<stmt::Stmt> {
         let item = parse_rest_of_item(begin, attrs, x)?;
         Ok(stmt::Stmt::Item(item))
     } else {
-        stmt_expr(x, allow_nosemi, attrs)
+        stmt_expr(x, nosemi, attrs)
     }
 }
 fn stmt_mac(x: Stream, attrs: Vec<attr::Attr>, path: Path) -> Res<stmt::Mac> {

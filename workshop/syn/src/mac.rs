@@ -29,7 +29,7 @@ impl Parse for Mac {
     }
 }
 impl ToTokens for Mac {
-    fn to_tokens(&self, ys: &mut pm2::Stream) {
+    fn to_tokens(&self, ys: &mut Stream) {
         self.path.to_tokens(ys);
         self.bang.to_tokens(ys);
         self.delim.surround(ys, self.toks.clone());
@@ -98,7 +98,7 @@ macro_rules! ast_enum_from_struct {
 }
 macro_rules! generate_to_tokens {
     (
-        ($($arms:tt)*) $tokens:ident $name:ident {
+        ($($arms:tt)*) $ys:ident $name:ident {
             $(#[cfg $cfg_attr:tt])*
             $(#[doc $($doc_attr:tt)*])*
             $variant:ident,
@@ -107,11 +107,11 @@ macro_rules! generate_to_tokens {
     ) => {
         generate_to_tokens!(
             ($($arms)* $(#[cfg $cfg_attr])* $name::$variant => {})
-            $tokens $name { $($next)* }
+            $ys $name { $($next)* }
         );
     };
     (
-        ($($arms:tt)*) $tokens:ident $name:ident {
+        ($($arms:tt)*) $ys:ident $name:ident {
             $(#[cfg $cfg_attr:tt])*
             $(#[doc $($doc_attr:tt)*])*
             $variant:ident $member:ident,
@@ -119,13 +119,13 @@ macro_rules! generate_to_tokens {
         }
     ) => {
         generate_to_tokens!(
-            ($($arms)* $(#[cfg $cfg_attr])* $name::$variant(_e) => _e.to_tokens($tokens),)
-            $tokens $name { $($next)* }
+            ($($arms)* $(#[cfg $cfg_attr])* $name::$variant(_e) => _e.to_tokens($ys),)
+            $ys $name { $($next)* }
         );
     };
-    (($($arms:tt)*) $tokens:ident $name:ident {}) => {
+    (($($arms:tt)*) $ys:ident $name:ident {}) => {
         impl ::quote::ToTokens for $name {
-            fn to_tokens(&self, $tokens: &mut crate::pm2::Stream) {
+            fn to_tokens(&self, $ys: &mut crate::pm2::Stream) {
                 match self {
                     $($arms)*
                 }
@@ -203,9 +203,9 @@ macro_rules! impl_parse_for_custom_keyword {
 macro_rules! impl_to_tokens_for_custom_keyword {
     ($ident:ident) => {
         impl $crate::__private::ToTokens for $ident {
-            fn to_tokens(&self, tokens: &mut $crate::__private::TokenStream2) {
+            fn to_tokens(&self, ys: &mut $crate::__private::TokenStream2) {
                 let ident = $crate::Ident::new($crate::__private::stringify!($ident), self.span);
-                $crate::__private::TokenStreamExt::append(tokens, ident);
+                $crate::__private::TokenStreamExt::append(ys, ident);
             }
         }
     };
@@ -297,8 +297,8 @@ macro_rules! impl_parse_for_custom_punctuation {
 macro_rules! impl_to_tokens_for_custom_punctuation {
     ($ident:ident, $($tt:tt)+) => {
         impl $crate::__private::ToTokens for $ident {
-            fn to_tokens(&self, tokens: &mut $crate::__private::TokenStream2) {
-                $crate::__private::print_punct($crate::stringify_punct!($($tt)+), &self.spans, tokens)
+            fn to_tokens(&self, ys: &mut $crate::__private::TokenStream2) {
+                $crate::__private::print_punct($crate::stringify_punct!($($tt)+), &self.spans, ys)
             }
         }
     };
@@ -417,24 +417,24 @@ macro_rules! parse_quote_spanned {
 
 #[macro_export]
 macro_rules! parse_macro_input {
-    ($tokenstream:ident as $ty:ty) => {
-        match $crate::parse::<$ty>($tokenstream) {
+    ($ys:ident as $ty:ty) => {
+        match $crate::parse::<$ty>($ys) {
             $crate::__private::Ok(data) => data,
             $crate::__private::Err(err) => {
                 return $crate::__private::pm2::Stream::from(err.to_compile_error());
             },
         }
     };
-    ($tokenstream:ident with $parser:path) => {
-        match $crate::parse::Parser::parse($parser, $tokenstream) {
+    ($ys:ident with $parser:path) => {
+        match $crate::parse::Parser::parse($parser, $ys) {
             $crate::__private::Ok(data) => data,
             $crate::__private::Err(err) => {
                 return $crate::__private::pm2::Stream::from(err.to_compile_error());
             },
         }
     };
-    ($tokenstream:ident) => {
-        $crate::parse_macro_input!($tokenstream as _)
+    ($ys:ident) => {
+        $crate::parse_macro_input!($ys as _)
     };
 }
 

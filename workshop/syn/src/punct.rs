@@ -340,8 +340,8 @@ where
     T: ToTokens,
     P: ToTokens,
 {
-    fn to_tokens(&self, tokens: &mut pm2::Stream) {
-        tokens.append_all(self.pairs());
+    fn to_tokens(&self, ys: &mut Stream) {
+        ys.append_all(self.pairs());
     }
 }
 
@@ -736,13 +736,13 @@ where
     T: ToTokens,
     P: ToTokens,
 {
-    fn to_tokens(&self, tokens: &mut pm2::Stream) {
+    fn to_tokens(&self, ys: &mut Stream) {
         match self {
             Pair::Punctuated(a, b) => {
-                a.to_tokens(tokens);
-                b.to_tokens(tokens);
+                a.to_tokens(ys);
+                b.to_tokens(ys);
             },
-            Pair::End(a) => a.to_tokens(tokens),
+            Pair::End(a) => a.to_tokens(ys),
         }
     }
 }

@@ -116,7 +116,7 @@ impl Parse for Lifetime {
     }
 }
 impl ToTokens for Lifetime {
-    fn to_tokens(&self, ys: &mut pm2::Stream) {
+    fn to_tokens(&self, ys: &mut Stream) {
         let mut apos = Punct::new('\'', pm2::Spacing::Joint);
         apos.set_span(self.apos);
         ys.append(apos);

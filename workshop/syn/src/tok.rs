@@ -477,13 +477,13 @@ impl Delim {
             Bracket(x) => &x.span,
         }
     }
-    pub fn surround(&self, xs: &mut pm2::Stream, inner: pm2::Stream) {
+    pub fn surround(&self, ys: &mut Stream, inner: pm2::Stream) {
         let (delim, span) = match self {
             tok::Delim::Paren(x) => (pm2::Delim::Parenthesis, x.span),
             tok::Delim::Brace(x) => (pm2::Delim::Brace, x.span),
             tok::Delim::Bracket(x) => (pm2::Delim::Bracket, x.span),
         };
-        delim(delim, span.join(), xs, inner);
+        delim(delim, span.join(), ys, inner);
     }
     pub fn is_brace(&self) -> bool {
         match self {
