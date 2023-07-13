@@ -314,7 +314,7 @@ pub trait Fold {
     fn fold_label(&mut self, i: Label) -> Label {
         fold_label(self, i)
     }
-    fn fold_lifetime(&mut self, i: Lifetime) -> Lifetime {
+    fn fold_lifetime(&mut self, i: Life) -> Life {
         fold_lifetime(self, i)
     }
     fn fold_lifetime_param(&mut self, i: gen::param::Life) -> gen::param::Life {
@@ -1260,7 +1260,7 @@ where
     data::Field {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         vis: f.fold_visibility(node.vis),
-        mut_: f.fold_field_mutability(node.mutability),
+        mut_: f.fold_field_mutability(node.mut_),
         ident: (node.ident).map(|it| f.fold_ident(it)),
         colon: node.colon,
         typ: f.fold_type(node.typ),
@@ -1409,7 +1409,7 @@ where
     F: Fold + ?Sized,
 {
     match node {
-        Arg::Lifetime(_binding_0) => Arg::Lifetime(f.fold_lifetime(_binding_0)),
+        Arg::Life(_binding_0) => Arg::Life(f.fold_lifetime(_binding_0)),
         Arg::Type(_binding_0) => Arg::Type(f.fold_type(_binding_0)),
         Arg::Const(_binding_0) => Arg::Const(f.fold_expr(_binding_0)),
         Arg::AssocType(_binding_0) => Arg::AssocType(f.fold_assoc_type(_binding_0)),
@@ -1777,11 +1777,11 @@ where
         colon: node.colon,
     }
 }
-pub fn fold_lifetime<F>(f: &mut F, node: Lifetime) -> Lifetime
+pub fn fold_lifetime<F>(f: &mut F, node: Life) -> Life
 where
     F: Fold + ?Sized,
 {
-    Lifetime {
+    Life {
         apos: f.fold_span(node.apos),
         ident: f.fold_ident(node.ident),
     }
@@ -2184,7 +2184,7 @@ where
 {
     item::Receiver {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        reference: (node.reference).map(|it| ((it).0, ((it).1).map(|it| f.fold_lifetime(it)))),
+        ref_: (node.ref_).map(|it| ((it).0, ((it).1).map(|it| f.fold_lifetime(it)))),
         mut_: node.mut_,
         self_: node.self_,
         colon: node.colon,
@@ -2444,7 +2444,7 @@ where
 {
     match node {
         gen::bound::Type::Trait(_binding_0) => gen::bound::Type::Trait(f.fold_trait_bound(_binding_0)),
-        gen::bound::Type::Lifetime(_binding_0) => gen::bound::Type::Lifetime(f.fold_lifetime(_binding_0)),
+        gen::bound::Type::Life(_binding_0) => gen::bound::Type::Life(f.fold_lifetime(_binding_0)),
         gen::bound::Type::Verbatim(_binding_0) => gen::bound::Type::Verbatim(_binding_0),
     }
 }

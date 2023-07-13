@@ -1014,7 +1014,7 @@
         },
         "label": {
           "option": {
-            "syn": "Lifetime"
+            "syn": "Life"
           }
         },
         "expr": {
@@ -1105,7 +1105,7 @@
             "syn": "Bgen::bound::Lifes"
           }
         },
-        "constness": {
+        "const_": {
           "option": {
             "token": "Const"
           }
@@ -1188,7 +1188,7 @@
         },
         "label": {
           "option": {
-            "syn": "Lifetime"
+            "syn": "Life"
           }
         }
       }
@@ -1634,7 +1634,7 @@
         "and": {
           "token": "And"
         },
-        "mutability": {
+        "mut_": {
           "option": {
             "token": "Mut"
           }
@@ -1936,7 +1936,7 @@
         "vis": {
           "syn": "Visibility"
         },
-        "mutability": {
+        "mut_": {
           "syn": "FieldMutability"
         },
         "ident": {
@@ -2234,7 +2234,7 @@
         "static_": {
           "token": "Static"
         },
-        "mutability": {
+        "mut_": {
           "syn": "StaticMutability"
         },
         "ident": {
@@ -2292,9 +2292,9 @@
         ]
       },
       "variants": {
-        "Lifetime": [
+        "Life": [
           {
-            "syn": "Lifetime"
+            "syn": "Life"
           }
         ],
         "Type": [
@@ -2334,7 +2334,7 @@
         ]
       },
       "variants": {
-        "Lifetime": [
+        "Life": [
           {
             "syn": "gen::param::Life"
           }
@@ -2844,7 +2844,7 @@
             "syn": "attr::Attr"
           }
         },
-        "unsafety": {
+        "unsafe_": {
           "option": {
             "token": "Unsafe"
           }
@@ -2880,7 +2880,7 @@
             "token": "Default"
           }
         },
-        "unsafety": {
+        "unsafe_": {
           "option": {
             "token": "Unsafe"
           }
@@ -2967,7 +2967,7 @@
         "vis": {
           "syn": "Visibility"
         },
-        "unsafety": {
+        "unsafe_": {
           "option": {
             "token": "Unsafe"
           }
@@ -3018,7 +3018,7 @@
         "static_": {
           "token": "Static"
         },
-        "mutability": {
+        "mut_": {
           "syn": "StaticMutability"
         },
         "ident": {
@@ -3096,7 +3096,7 @@
         "vis": {
           "syn": "Visibility"
         },
-        "unsafety": {
+        "unsafe_": {
           "option": {
             "token": "Unsafe"
           }
@@ -3293,7 +3293,7 @@
       },
       "fields": {
         "name": {
-          "syn": "Lifetime"
+          "syn": "Life"
         },
         "colon": {
           "token": "Colon"
@@ -3301,12 +3301,12 @@
       }
     },
     {
-      "ident": "Lifetime",
+      "ident": "Life",
       "features": {
         "any": []
       },
       "fields": {
-        "apostrophe": {
+        "apos": {
           "syn": "pm2::Span"
         },
         "ident": {
@@ -3328,8 +3328,8 @@
             "syn": "attr::Attr"
           }
         },
-        "lifetime": {
-          "syn": "Lifetime"
+        "life": {
+          "syn": "Life"
         },
         "colon": {
           "option": {
@@ -3339,7 +3339,7 @@
         "bounds": {
           "punctuated": {
             "element": {
-              "syn": "Lifetime"
+              "syn": "Life"
             },
             "punct": "Plus"
           }
@@ -3781,7 +3781,7 @@
             "token": "Ref"
           }
         },
-        "mutability": {
+        "mut_": {
           "option": {
             "token": "Mut"
           }
@@ -3872,7 +3872,7 @@
         "and": {
           "token": "And"
         },
-        "mutability": {
+        "mut_": {
           "option": {
             "token": "Mut"
           }
@@ -4145,8 +4145,8 @@
         ]
       },
       "fields": {
-        "lifetime": {
-          "syn": "Lifetime"
+        "life": {
+          "syn": "Life"
         },
         "colon": {
           "token": "Colon"
@@ -4154,7 +4154,7 @@
         "bounds": {
           "punctuated": {
             "element": {
-              "syn": "Lifetime"
+              "syn": "Life"
             },
             "punct": "Plus"
           }
@@ -4262,13 +4262,13 @@
               },
               {
                 "option": {
-                  "syn": "Lifetime"
+                  "syn": "Life"
                 }
               }
             ]
           }
         },
-        "mutability": {
+        "mut_": {
           "option": {
             "token": "Mut"
           }
@@ -4318,7 +4318,7 @@
         ]
       },
       "fields": {
-        "constness": {
+        "const_": {
           "option": {
             "token": "Const"
           }
@@ -4328,7 +4328,7 @@
             "token": "Async"
           }
         },
-        "unsafety": {
+        "unsafe_": {
           "option": {
             "token": "Unsafe"
           }
@@ -4797,7 +4797,7 @@
             "syn": "Bgen::bound::Lifes"
           }
         },
-        "unsafety": {
+        "unsafe_": {
           "option": {
             "token": "Unsafe"
           }
@@ -4970,9 +4970,9 @@
             "syn": "gen::bound::Trait"
           }
         ],
-        "Lifetime": [
+        "Life": [
           {
-            "syn": "Lifetime"
+            "syn": "Life"
           }
         ],
         "Verbatim": [
@@ -5038,7 +5038,7 @@
             "token": "Const"
           }
         },
-        "mutability": {
+        "mut_": {
           "option": {
             "token": "Mut"
           }
@@ -5062,12 +5062,12 @@
         "and": {
           "token": "And"
         },
-        "lifetime": {
+        "life": {
           "option": {
-            "syn": "Lifetime"
+            "syn": "Life"
           }
         },
-        "mutability": {
+        "mut_": {
           "option": {
             "token": "Mut"
           }
@@ -5444,7 +5444,7 @@
         ]
       },
       "variants": {
-        "Lifetime": [
+        "Life": [
           {
             "syn": "PredicateLifetime"
           }

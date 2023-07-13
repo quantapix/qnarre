@@ -5,7 +5,7 @@ pub mod bound {
     ast_enum_of_structs! {
         pub enum Type {
             Trait(Trait),
-            Lifetime(Lifetime),
+            Life(Life),
             Verbatim(Stream),
         }
     }
@@ -21,7 +21,7 @@ pub mod bound {
                 if !(x.peek(Ident::peek_any)
                     || x.peek(Token![::])
                     || x.peek(Token![?])
-                    || x.peek(Lifetime)
+                    || x.peek(Life)
                     || x.peek(tok::Paren)
                     || x.peek(Token![~]))
                 {
@@ -33,8 +33,8 @@ pub mod bound {
     }
     impl Parse for Type {
         fn parse(x: Stream) -> Res<Self> {
-            if x.peek(Lifetime) {
-                return x.parse().map(Type::Lifetime);
+            if x.peek(Life) {
+                return x.parse().map(Type::Life);
             }
             let beg = x.fork();
             let y;
@@ -147,7 +147,7 @@ pub mod bound {
                     let mut ys = Puncted::new();
                     while !x.peek(Token![>]) {
                         let attrs = x.call(attr::Attr::parse_outer)?;
-                        let life: Lifetime = x.parse()?;
+                        let life: Life = x.parse()?;
                         ys.push_value(param::Param::Life(param::Life {
                             attrs,
                             life,
@@ -197,7 +197,7 @@ pub mod param {
             let look = x.lookahead1();
             if look.peek(Ident) {
                 Ok(Param::Type(Type { attrs, ..x.parse()? }))
-            } else if look.peek(Lifetime) {
+            } else if look.peek(Life) {
                 Ok(Param::Life(Life { attrs, ..x.parse()? }))
             } else if look.peek(Token![const]) {
                 Ok(Param::Const(Const { attrs, ..x.parse()? }))
@@ -209,12 +209,12 @@ pub mod param {
 
     pub struct Life {
         pub attrs: Vec<attr::Attr>,
-        pub life: Lifetime,
+        pub life: Life,
         pub colon: Option<Token![:]>,
-        pub bounds: Puncted<Lifetime, Token![+]>,
+        pub bounds: Puncted<Life, Token![+]>,
     }
     impl Life {
-        pub fn new(life: Lifetime) -> Self {
+        pub fn new(life: Life) -> Self {
             Life {
                 attrs: Vec::new(),
                 life,
@@ -539,7 +539,7 @@ pub mod Where {
     }
     impl Parse for Pred {
         fn parse(x: Stream) -> Res<Self> {
-            if x.peek(Lifetime) && x.peek2(Token![:]) {
+            if x.peek(Life) && x.peek2(Token![:]) {
                 Ok(Pred::Life(Life {
                     life: x.parse()?,
                     colon: x.parse()?,
@@ -599,9 +599,9 @@ pub mod Where {
     }
 
     pub struct Life {
-        pub life: Lifetime,
+        pub life: Life,
         pub colon: Token![:],
-        pub bounds: Puncted<Lifetime, Token![+]>,
+        pub bounds: Puncted<Life, Token![+]>,
     }
     impl ToTokens for Life {
         fn to_tokens(&self, ys: &mut Stream) {
@@ -685,7 +685,7 @@ impl Parse for Gens {
             }
             let attrs = x.call(attr::Attr::parse_outer)?;
             let look = x.lookahead1();
-            if look.peek(Lifetime) {
+            if look.peek(Life) {
                 ys.push_value(Param::Life(param::Life { attrs, ..x.parse()? }));
             } else if look.peek(Ident) {
                 ys.push_value(Param::Type(param::Type { attrs, ..x.parse()? }));

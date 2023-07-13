@@ -183,7 +183,7 @@ fn normalize(krate: &mut Crate) {
             }
             e.args.sort_by_key(|arg| match arg {
                 AngleBracketedArg::Arg(arg) => match arg {
-                    GenericArg::Lifetime(_) => Group::Lifetimes,
+                    GenericArg::Life(_) => Group::Lifetimes,
                     GenericArg::Type(_) | GenericArg::Const(_) => Group::TypesAndConsts,
                 },
                 AngleBracketedArg::Constraint(_) => Group::Constraints,
@@ -197,7 +197,7 @@ fn normalize(krate: &mut Crate) {
                 TypesAndConsts,
             }
             e.params.sort_by_key(|param| match param.kind {
-                GenericParamKind::Lifetime => Group::Lifetimes,
+                GenericParamKind::Life => Group::Lifetimes,
                 GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => Group::TypesAndConsts,
             });
             mut_visit::noop_visit_generics(e, self);

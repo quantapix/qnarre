@@ -81,7 +81,7 @@ impl Default for Args {
 }
 
 pub enum Arg {
-    Lifetime(Lifetime),
+    Life(Life),
     Type(typ::Type),
     Const(Expr),
     AssocType(AssocType),
@@ -264,8 +264,8 @@ impl Parse for ParenthesizedArgs {
 }
 impl Parse for Arg {
     fn parse(x: Stream) -> Res<Self> {
-        if x.peek(Lifetime) && !x.peek2(Token![+]) {
-            return Ok(Arg::Lifetime(x.parse()?));
+        if x.peek(Life) && !x.peek2(Token![+]) {
+            return Ok(Arg::Life(x.parse()?));
         }
         if x.peek(Lit) || x.peek(tok::Brace) {
             return const_argument(x).map(Arg::Const);
@@ -454,7 +454,7 @@ impl ToTokens for Arg {
     fn to_tokens(&self, ys: &mut Stream) {
         use Arg::*;
         match self {
-            Lifetime(x) => x.to_tokens(ys),
+            Life(x) => x.to_tokens(ys),
             Type(x) => x.to_tokens(ys),
             Const(x) => match x {
                 Expr::Lit(_) => x.to_tokens(ys),
@@ -476,7 +476,7 @@ impl ToTokens for AngledArgs {
         let mut trailing_or_empty = true;
         for x in self.args.pairs() {
             match x.value() {
-                Arg::Lifetime(_) => {
+                Arg::Life(_) => {
                     x.to_tokens(ys);
                     trailing_or_empty = x.punct().is_some();
                 },
@@ -492,7 +492,7 @@ impl ToTokens for AngledArgs {
                     x.to_tokens(ys);
                     trailing_or_empty = x.punct().is_some();
                 },
-                Arg::Lifetime(_) => {},
+                Arg::Life(_) => {},
             }
         }
         self.gt.to_tokens(ys);

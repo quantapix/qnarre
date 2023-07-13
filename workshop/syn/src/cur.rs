@@ -118,17 +118,14 @@ impl<'a> Cursor<'a> {
             _ => None,
         }
     }
-    pub fn lifetime(mut self) -> Option<(Lifetime, Cursor<'a>)> {
+    pub fn life(mut self) -> Option<(Life, Cursor<'a>)> {
         self.ignore_none();
         match self.entry() {
             Entry::Punct(x) if x.as_char() == '\'' && x.spacing() == Spacing::Joint => {
-                let next = unsafe { self.bump_ignore_group() };
-                let (ident, rest) = next.ident()?;
-                let lifetime = Lifetime {
-                    apostrophe: x.span(),
-                    ident,
-                };
-                Some((lifetime, rest))
+                let y = unsafe { self.bump_ignore_group() };
+                let (ident, rest) = y.ident()?;
+                let life = Life { apos: x.span(), ident };
+                Some((life, rest))
             },
             _ => None,
         }

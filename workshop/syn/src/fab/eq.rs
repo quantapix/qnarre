@@ -469,7 +469,7 @@ impl PartialEq for data::Field {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
             && self.vis == other.vis
-            && self.mut_ == other.mutability
+            && self.mut_ == other.mut_
             && self.ident == other.ident
             && self.colon == other.colon
             && self.typ == other.typ
@@ -581,7 +581,7 @@ impl Eq for Arg {}
 impl PartialEq for Arg {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Arg::Lifetime(self0), Arg::Lifetime(other0)) => self0 == other0,
+            (Arg::Life(self0), Arg::Life(other0)) => self0 == other0,
             (Arg::Type(self0), Arg::Type(other0)) => self0 == other0,
             (Arg::Const(self0), Arg::Const(other0)) => self0 == other0,
             (Arg::AssocType(self0), Arg::AssocType(other0)) => self0 == other0,
@@ -1091,7 +1091,7 @@ impl Eq for item::Receiver {}
 impl PartialEq for item::Receiver {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
-            && self.reference == other.reference
+            && self.ref_ == other.ref_
             && self.mut_ == other.mut_
             && self.colon == other.colon
             && self.typ == other.typ
@@ -1301,7 +1301,7 @@ impl PartialEq for gen::bound::Type {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (gen::bound::Type::Trait(self0), gen::bound::Type::Trait(other0)) => self0 == other0,
-            (gen::bound::Type::Lifetime(self0), gen::bound::Type::Lifetime(other0)) => self0 == other0,
+            (gen::bound::Type::Life(self0), gen::bound::Type::Life(other0)) => self0 == other0,
             (gen::bound::Type::Verbatim(self0), gen::bound::Type::Verbatim(other0)) => {
                 TokenStreamHelper(self0) == TokenStreamHelper(other0)
             },

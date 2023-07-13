@@ -799,23 +799,23 @@ fn parse_item_use(x: Stream, root: bool) -> Res<Option<Use>> {
 
 pub struct Receiver {
     pub attrs: Vec<attr::Attr>,
-    pub ref_: Option<(Token![&], Option<Lifetime>)>,
+    pub ref_: Option<(Token![&], Option<Life>)>,
     pub mut_: Option<Token![mut]>,
     pub self_: Token![self],
     pub colon: Option<Token![:]>,
     pub typ: Box<typ::Type>,
 }
 impl Receiver {
-    pub fn lifetime(&self) -> Option<&Lifetime> {
+    pub fn life(&self) -> Option<&Life> {
         self.ref_.as_ref()?.1.as_ref()
     }
 }
 impl Parse for Receiver {
     fn parse(x: Stream) -> Res<Self> {
         let ref_ = if x.peek(Token![&]) {
-            let amp: Token![&] = x.parse()?;
-            let life: Option<Lifetime> = x.parse()?;
-            Some((amp, life))
+            let amper: Token![&] = x.parse()?;
+            let life: Option<Life> = x.parse()?;
+            Some((amper, life))
         } else {
             None
         };
@@ -829,10 +829,10 @@ impl Parse for Receiver {
                 qself: None,
                 path: Path::from(Ident::new("Self", self_.span)),
             });
-            if let Some((ampersand, lifetime)) = ref_.as_ref() {
+            if let Some((amper, life)) = ref_.as_ref() {
                 y = typ::Type::Ref(typ::Ref {
-                    and: Token![&](ampersand.span),
-                    lifetime: lifetime.clone(),
+                    and: Token![&](amper.span),
+                    life: life.clone(),
                     mut_: mut_.as_ref().map(|x| Token![mut](x.span)),
                     elem: Box::new(y),
                 });
@@ -852,9 +852,9 @@ impl Parse for Receiver {
 impl ToTokens for Receiver {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(self.attrs.outer());
-        if let Some((ampersand, lifetime)) = &self.reference {
-            ampersand.to_tokens(ys);
-            lifetime.to_tokens(ys);
+        if let Some((amper, life)) = &self.ref_ {
+            amper.to_tokens(ys);
+            life.to_tokens(ys);
         }
         self.mut_.to_tokens(ys);
         self.self_.to_tokens(ys);
@@ -862,9 +862,9 @@ impl ToTokens for Receiver {
             colon.to_tokens(ys);
             self.typ.to_tokens(ys);
         } else {
-            let consistent = match (&self.reference, &self.mut_, &*self.typ) {
-                (Some(_), mutability, typ::Type::Ref(ty)) => {
-                    mutability.is_some() == ty.mut_.is_some()
+            let consistent = match (&self.ref_, &self.mut_, &*self.typ) {
+                (Some(_), mut_, typ::Type::Ref(ty)) => {
+                    mut_.is_some() == ty.mut_.is_some()
                         && match &*ty.elem {
                             typ::Type::Path(ty) => ty.qself.is_none() && ty.path.is_ident("Self"),
                             _ => false,
@@ -957,7 +957,7 @@ impl Parse for Sig {
 }
 impl ToTokens for Sig {
     fn to_tokens(&self, ys: &mut Stream) {
-        self.constness.to_tokens(ys);
+        self.const_.to_tokens(ys);
         self.async_.to_tokens(ys);
         self.unsafe_.to_tokens(ys);
         self.abi.to_tokens(ys);
@@ -1960,7 +1960,7 @@ pub fn parse_rest_of_item(begin: Buffer, mut attrs: Vec<attr::Attr>, x: Stream) 
     } else if look.peek(Token![static]) {
         let vis = x.parse()?;
         let static_ = x.parse()?;
-        let mutability = x.parse()?;
+        let mut_ = x.parse()?;
         let ident = x.parse()?;
         if x.peek(Token![=]) {
             x.parse::<Token![=]>()?;
@@ -1978,7 +1978,7 @@ pub fn parse_rest_of_item(begin: Buffer, mut attrs: Vec<attr::Attr>, x: Stream) 
                     attrs: Vec::new(),
                     vis,
                     static_,
-                    mut_: mutability,
+                    mut_,
                     ident,
                     colon,
                     typ: ty,
@@ -2252,9 +2252,9 @@ fn parse_trait_or_trait_alias(x: Stream) -> Res<Item> {
     let (attrs, vis, trait_, ident, gens) = parse_start_of_trait_alias(x)?;
     let look = x.lookahead1();
     if look.peek(tok::Brace) || look.peek(Token![:]) || look.peek(Token![where]) {
-        let unsafety = None;
+        let unsafe_ = None;
         let auto_ = None;
-        parse_rest_of_trait(x, attrs, vis, unsafety, auto_, trait_, ident, gens).map(Item::Trait)
+        parse_rest_of_trait(x, attrs, vis, unsafe_, auto_, trait_, ident, gens).map(Item::Trait)
     } else if look.peek(Token![=]) {
         parse_rest_of_trait_alias(x, attrs, vis, trait_, ident, gens).map(Item::TraitAlias)
     } else {
@@ -2385,7 +2385,7 @@ fn parse_impl(x: Stream, verbatim: bool) -> Res<Option<Impl>> {
     let has_gens = x.peek(Token![<])
         && (x.peek2(Token![>])
             || x.peek2(Token![#])
-            || (x.peek2(Ident) || x.peek2(Lifetime))
+            || (x.peek2(Ident) || x.peek2(Life))
                 && (x.peek3(Token![:]) || x.peek3(Token![,]) || x.peek3(Token![>]) || x.peek3(Token![=]))
             || x.peek2(Token![const]));
     let mut gens: gen::Gens = if has_gens { x.parse()? } else { gen::Gens::default() };

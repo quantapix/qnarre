@@ -92,7 +92,7 @@ mod typ;
 use cur::Cursor;
 use data::DeriveInput;
 use err::{Err, Res};
-use ident::Lifetime;
+use ident::Life;
 use parse::{Parse, Parser, Stream};
 use path::Path;
 use punct::Puncted;

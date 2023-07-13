@@ -282,7 +282,7 @@ impl ToTokens for Block {
 pub struct Break {
     pub attrs: Vec<attr::Attr>,
     pub break_: Token![break],
-    pub label: Option<Lifetime>,
+    pub label: Option<Life>,
     pub expr: Option<Box<Expr>>,
 }
 impl Parse for Break {
@@ -399,7 +399,7 @@ impl ToTokens for Const {
 pub struct Continue {
     pub attrs: Vec<attr::Attr>,
     pub continue_: Token![continue],
-    pub label: Option<Lifetime>,
+    pub label: Option<Life>,
 }
 impl Parse for Continue {
     fn parse(x: Stream) -> Res<Self> {
@@ -1373,7 +1373,7 @@ impl ToTokens for FieldValue {
 }
 
 pub struct Label {
-    pub name: Lifetime,
+    pub name: Life,
     pub colon: Token![:],
 }
 impl Parse for Label {
@@ -1386,7 +1386,7 @@ impl Parse for Label {
 }
 impl Parse for Option<Label> {
     fn parse(x: Stream) -> Res<Self> {
-        if x.peek(Lifetime) {
+        if x.peek(Life) {
             x.parse().map(Some)
         } else {
             Ok(None)
@@ -1871,7 +1871,7 @@ fn atom_expr(x: Stream, allow: AllowStruct) -> Res<Expr> {
         x.parse().map(Expr::TryBlock)
     } else if x.peek(Token![|])
         || x.peek(Token![move])
-        || x.peek(Token![for]) && x.peek2(Token![<]) && (x.peek3(Lifetime) || x.peek3(Token![>]))
+        || x.peek(Token![for]) && x.peek2(Token![<]) && (x.peek3(Life) || x.peek3(Token![>]))
         || x.peek(Token![const]) && !x.peek2(tok::Brace)
         || x.peek(Token![static])
         || x.peek(Token![async]) && (x.peek2(Token![|]) || x.peek2(Token![move]))
@@ -1923,7 +1923,7 @@ fn atom_expr(x: Stream, allow: AllowStruct) -> Res<Expr> {
         expr_range(x, allow).map(Expr::Range)
     } else if x.peek(Token![_]) {
         x.parse().map(Expr::Infer)
-    } else if x.peek(Lifetime) {
+    } else if x.peek(Life) {
         let the_label: Label = x.parse()?;
         let mut y = if x.peek(Token![while]) {
             Expr::While(x.parse()?)
@@ -2065,7 +2065,7 @@ pub fn expr_early(x: Stream) -> Res<Expr> {
         Expr::If(x.parse()?)
     } else if x.peek(Token![while]) {
         Expr::While(x.parse()?)
-    } else if x.peek(Token![for]) && !(x.peek2(Token![<]) && (x.peek3(Lifetime) || x.peek3(Token![>]))) {
+    } else if x.peek(Token![for]) && !(x.peek2(Token![<]) && (x.peek3(Life) || x.peek3(Token![>]))) {
         Expr::ForLoop(x.parse()?)
     } else if x.peek(Token![loop]) {
         Expr::Loop(x.parse()?)

@@ -611,7 +611,7 @@ impl Clone for data::Field {
         data::Field {
             attrs: self.attrs.clone(),
             vis: self.vis.clone(),
-            mut_: self.mutability.clone(),
+            mut_: self.mut_.clone(),
             ident: self.ident.clone(),
             colon: self.colon.clone(),
             typ: self.typ.clone(),
@@ -746,7 +746,7 @@ impl Clone for item::Foreign::Type {
 impl Clone for Arg {
     fn clone(&self) -> Self {
         match self {
-            Arg::Lifetime(v0) => Arg::Lifetime(v0.clone()),
+            Arg::Life(v0) => Arg::Life(v0.clone()),
             Arg::Type(v0) => Arg::Type(v0.clone()),
             Arg::Const(v0) => Arg::Const(v0.clone()),
             Arg::AssocType(v0) => Arg::AssocType(v0.clone()),
@@ -1389,7 +1389,7 @@ impl Clone for item::Receiver {
     fn clone(&self) -> Self {
         item::Receiver {
             attrs: self.attrs.clone(),
-            reference: self.reference.clone(),
+            ref_: self.ref_.clone(),
             mut_: self.mut_.clone(),
             self_: self.self_.clone(),
             colon: self.colon.clone(),
@@ -1619,7 +1619,7 @@ impl Clone for gen::bound::Type {
     fn clone(&self) -> Self {
         match self {
             gen::bound::Type::Trait(v0) => gen::bound::Type::Trait(v0.clone()),
-            gen::bound::Type::Lifetime(v0) => gen::bound::Type::Lifetime(v0.clone()),
+            gen::bound::Type::Life(v0) => gen::bound::Type::Life(v0.clone()),
             gen::bound::Type::Verbatim(v0) => gen::bound::Type::Verbatim(v0.clone()),
         }
     }

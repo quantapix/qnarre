@@ -539,7 +539,7 @@ impl Debug for expr::Closure {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
                 formatter.field("lifetimes", &self.lifes);
-                formatter.field("constness", &self.const_);
+                formatter.field("const_", &self.const_);
                 formatter.field("movability", &self.static_);
                 formatter.field("asyncness", &self.async_);
                 formatter.field("capture", &self.move_);
@@ -814,7 +814,7 @@ impl Debug for expr::Ref {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
                 formatter.field("and", &self.and);
-                formatter.field("mutability", &self.mut_);
+                formatter.field("mut_", &self.mut_);
                 formatter.field("expr", &self.expr);
                 formatter.finish()
             }
@@ -975,7 +975,7 @@ impl Debug for data::Field {
         let mut formatter = formatter.debug_struct("data::Field");
         formatter.field("attrs", &self.attrs);
         formatter.field("vis", &self.vis);
-        formatter.field("mutability", &self.mutability);
+        formatter.field("mut_", &self.mut_);
         formatter.field("ident", &self.ident);
         formatter.field("colon", &self.colon);
         formatter.field("ty", &self.typ);
@@ -1125,7 +1125,7 @@ impl Debug for item::Foreign::Static {
                 formatter.field("attrs", &self.attrs);
                 formatter.field("vis", &self.vis);
                 formatter.field("static_", &self.static_);
-                formatter.field("mutability", &self.mut_);
+                formatter.field("mut_", &self.mut_);
                 formatter.field("ident", &self.ident);
                 formatter.field("colon", &self.colon);
                 formatter.field("ty", &self.typ);
@@ -1157,8 +1157,8 @@ impl Debug for Arg {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.write_str("path::Arg::")?;
         match self {
-            Arg::Lifetime(v0) => {
-                let mut formatter = formatter.debug_tuple("Lifetime");
+            Arg::Life(v0) => {
+                let mut formatter = formatter.debug_tuple("Life");
                 formatter.field(v0);
                 formatter.finish()
             },
@@ -1195,7 +1195,7 @@ impl Debug for gen::Param {
         formatter.write_str("gen::Param::")?;
         match self {
             gen::Param::Life(v0) => {
-                let mut formatter = formatter.debug_tuple("Lifetime");
+                let mut formatter = formatter.debug_tuple("Life");
                 formatter.field(v0);
                 formatter.finish()
             },
@@ -1428,7 +1428,7 @@ impl Debug for item::Foreign {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
-                formatter.field("unsafety", &self.unsafe_);
+                formatter.field("unsafe_", &self.unsafe_);
                 formatter.field("abi", &self.abi);
                 formatter.field("brace", &self.brace);
                 formatter.field("items", &self.items);
@@ -1445,7 +1445,7 @@ impl Debug for item::Impl {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
                 formatter.field("defaultness", &self.default_);
-                formatter.field("unsafety", &self.unsafe_);
+                formatter.field("unsafe_", &self.unsafe_);
                 formatter.field("impl_", &self.impl_);
                 formatter.field("gens", &self.gens);
                 formatter.field("trait_", &self.trait_);
@@ -1480,7 +1480,7 @@ impl Debug for item::Mod {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
                 formatter.field("vis", &self.vis);
-                formatter.field("unsafety", &self.unsafe_);
+                formatter.field("unsafe_", &self.unsafe_);
                 formatter.field("mod_", &self.mod_);
                 formatter.field("ident", &self.ident);
                 formatter.field("content", &self.gist);
@@ -1499,7 +1499,7 @@ impl Debug for item::Static {
                 formatter.field("attrs", &self.attrs);
                 formatter.field("vis", &self.vis);
                 formatter.field("static_", &self.static_);
-                formatter.field("mutability", &self.mut_);
+                formatter.field("mut_", &self.mut_);
                 formatter.field("ident", &self.ident);
                 formatter.field("colon", &self.colon);
                 formatter.field("ty", &self.typ);
@@ -1537,7 +1537,7 @@ impl Debug for item::Trait {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
                 formatter.field("vis", &self.vis);
-                formatter.field("unsafety", &self.unsafe_);
+                formatter.field("unsafe_", &self.unsafe_);
                 formatter.field("auto_", &self.auto_);
                 formatter.field("restriction", &self.restriction);
                 formatter.field("trait_", &self.trait_);
@@ -1633,24 +1633,24 @@ impl Debug for Label {
         formatter.finish()
     }
 }
-impl Debug for Lifetime {
+impl Debug for Life {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        impl Lifetime {
+        impl Life {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
-                formatter.field("apostrophe", &self.apos);
+                formatter.field("apos", &self.apos);
                 formatter.field("ident", &self.ident);
                 formatter.finish()
             }
         }
-        self.debug(formatter, "Lifetime")
+        self.debug(formatter, "Life")
     }
 }
 impl Debug for gen::param::Life {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("gen::param::Life");
         formatter.field("attrs", &self.attrs);
-        formatter.field("lifetime", &self.life);
+        formatter.field("life", &self.life);
         formatter.field("colon", &self.colon);
         formatter.field("bounds", &self.bounds);
         formatter.finish()
@@ -1836,7 +1836,7 @@ impl Debug for pat::Ident {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
                 formatter.field("by_ref", &self.ref_);
-                formatter.field("mutability", &self.mut_);
+                formatter.field("mut_", &self.mut_);
                 formatter.field("ident", &self.ident);
                 formatter.field("subpat", &self.sub);
                 formatter.finish()
@@ -1880,7 +1880,7 @@ impl Debug for pat::Ref {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("attrs", &self.attrs);
                 formatter.field("and", &self.and);
-                formatter.field("mutability", &self.mut_);
+                formatter.field("mut_", &self.mut_);
                 formatter.field("pat", &self.pat);
                 formatter.finish()
             }
@@ -2024,7 +2024,7 @@ impl Debug for Segment {
 impl Debug for gen::Where::Life {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("PredicateLifetime");
-        formatter.field("lifetime", &self.life);
+        formatter.field("life", &self.life);
         formatter.field("colon", &self.colon);
         formatter.field("bounds", &self.bounds);
         formatter.finish()
@@ -2072,8 +2072,8 @@ impl Debug for item::Receiver {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("item::Receiver");
         formatter.field("attrs", &self.attrs);
-        formatter.field("reference", &self.reference);
-        formatter.field("mutability", &self.mut_);
+        formatter.field("reference", &self.ref_);
+        formatter.field("mut_", &self.mut_);
         formatter.field("self_", &self.self_);
         formatter.field("colon", &self.colon);
         formatter.field("ty", &self.typ);
@@ -2097,9 +2097,9 @@ impl Debug for typ::Ret {
 impl Debug for item::Sig {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("item::Sig");
-        formatter.field("constness", &self.const_);
+        formatter.field("const_", &self.const_);
         formatter.field("asyncness", &self.async_);
-        formatter.field("unsafety", &self.unsafe_);
+        formatter.field("unsafe_", &self.unsafe_);
         formatter.field("abi", &self.abi);
         formatter.field("fn_", &self.fn_);
         formatter.field("ident", &self.ident);
@@ -2311,7 +2311,7 @@ impl Debug for typ::Fn {
             fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut y = f.debug_struct(name);
                 y.field("lifetimes", &self.lifes);
-                y.field("unsafety", &self.unsafe_);
+                y.field("unsafe_", &self.unsafe_);
                 y.field("abi", &self.abi);
                 y.field("fn_", &self.fn_);
                 y.field("paren", &self.paren);
@@ -2407,7 +2407,7 @@ impl Debug for gen::bound::Type {
                 formatter.field(v0);
                 formatter.finish()
             },
-            gen::bound::Type::Lifetime(v0) => v0.debug(formatter, "Lifetime"),
+            gen::bound::Type::Life(v0) => v0.debug(formatter, "Life"),
             gen::bound::Type::Verbatim(v0) => {
                 let mut formatter = formatter.debug_tuple("Verbatim");
                 formatter.field(v0);
@@ -2449,7 +2449,7 @@ impl Debug for typ::Ptr {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("star", &self.star);
                 formatter.field("const_", &self.const_);
-                formatter.field("mutability", &self.mut_);
+                formatter.field("mut_", &self.mut_);
                 formatter.field("elem", &self.elem);
                 formatter.finish()
             }
@@ -2463,8 +2463,8 @@ impl Debug for typ::Ref {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("and", &self.and);
-                formatter.field("lifetime", &self.life);
-                formatter.field("mutability", &self.mut_);
+                formatter.field("life", &self.life);
+                formatter.field("mut_", &self.mut_);
                 formatter.field("elem", &self.elem);
                 formatter.finish()
             }
@@ -2667,7 +2667,7 @@ impl Debug for gen::Where::Pred {
         formatter.write_str("WherePredicate::")?;
         match self {
             gen::Where::Pred::Life(v0) => {
-                let mut formatter = formatter.debug_tuple("Lifetime");
+                let mut formatter = formatter.debug_tuple("Life");
                 formatter.field(v0);
                 formatter.finish()
             },

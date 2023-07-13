@@ -16,17 +16,17 @@ fn test_split_for_impl() {
             lt: Some,
             params: [
                 gen::Param::Life(gen::param::Life {
-                    lifetime: Lifetime {
+                    life: Life {
                         ident: "a",
                     },
                 }),
                 gen::Param::Life(gen::param::Life {
-                    lifetime: Lifetime {
+                    life: Life {
                         ident: "b",
                     },
                     colon: Some,
                     bounds: [
-                        Lifetime {
+                        Life {
                             ident: "a",
                         },
                     ],
@@ -47,7 +47,7 @@ fn test_split_for_impl() {
                     ident: "T",
                     colon: Some,
                     bounds: [
-                        gen::bound::Type::Lifetime {
+                        gen::bound::Type::Life {
                             ident: "a",
                         },
                     ],
@@ -115,13 +115,13 @@ fn test_split_for_impl() {
 fn test_ty_param_bound() {
     let tokens = quote!('a);
     snapshot!(tokens as gen::bound::Type, @r###"
-    gen::bound::Type::Lifetime {
+    gen::bound::Type::Life {
         ident: "a",
     }
     "###);
     let tokens = quote!('_);
     snapshot!(tokens as gen::bound::Type, @r###"
-    gen::bound::Type::Lifetime {
+    gen::bound::Type::Life {
         ident: "_",
     }
     "###);

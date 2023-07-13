@@ -29,7 +29,7 @@ fn test_by_mut_value() {
     };
     snapshot!(&sig.args[0], @r###"
     item::FnArg::Receiver(item::Receiver {
-        mutability: Some,
+        mut_: Some,
         colon: Some,
         ty: Type::Path {
             path: Path {
@@ -190,7 +190,7 @@ fn test_mut_value_shorthand() {
     };
     snapshot!(&sig.args[0], @r###"
     item::FnArg::Receiver(item::Receiver {
-        mutability: Some,
+        mut_: Some,
         ty: Type::Path {
             path: Path {
                 segments: [
@@ -232,11 +232,11 @@ fn test_ref_shorthand_with_lifetime() {
     };
     snapshot!(&sig.args[0], @r###"
     item::FnArg::Receiver(item::Receiver {
-        reference: Some(Some(Lifetime {
+        reference: Some(Some(Life {
             ident: "a",
         })),
         ty: Type::Reference {
-            lifetime: Some(Lifetime {
+            life: Some(Life {
                 ident: "a",
             }),
             elem: Type::Path {
@@ -260,9 +260,9 @@ fn test_ref_mut_shorthand() {
     snapshot!(&sig.args[0], @r###"
     item::FnArg::Receiver(item::Receiver {
         reference: Some(None),
-        mutability: Some,
+        mut_: Some,
         ty: Type::Reference {
-            mutability: Some,
+            mut_: Some,
             elem: Type::Path {
                 path: Path {
                     segments: [
@@ -283,15 +283,15 @@ fn test_ref_mut_shorthand_with_lifetime() {
     };
     snapshot!(&sig.args[0], @r###"
     item::FnArg::Receiver(item::Receiver {
-        reference: Some(Some(Lifetime {
+        reference: Some(Some(Life {
             ident: "a",
         })),
-        mutability: Some,
+        mut_: Some,
         ty: Type::Reference {
-            lifetime: Some(Lifetime {
+            life: Some(Life {
                 ident: "a",
             }),
-            mutability: Some,
+            mut_: Some,
             elem: Type::Path {
                 path: Path {
                     segments: [

@@ -49,22 +49,22 @@ pub fn xid_ok(x: &str) -> bool {
     true
 }
 
-pub struct Lifetime {
+pub struct Life {
     pub apos: pm2::Span,
     pub ident: Ident,
 }
-impl Lifetime {
+impl Life {
     pub fn new(x: &str, s: pm2::Span) -> Self {
         if !x.starts_with('\'') {
-            panic!("lifetime name must start with apostrophe as in \"'a\", got {:?}", x);
+            panic!("life name must start with apos as in \"'a\", got {:?}", x);
         }
         if x == "'" {
-            panic!("lifetime name must not be empty");
+            panic!("life name must not be empty");
         }
         if !ident::xid_ok(&x[1..]) {
-            panic!("{:?} is not a valid lifetime name", x);
+            panic!("{:?} is not a valid life name", x);
         }
-        Lifetime {
+        Life {
             apos: s,
             ident: Ident::new(&x[1..], s),
         }
@@ -77,47 +77,47 @@ impl Lifetime {
         self.ident.set_span(s);
     }
 }
-impl Display for Lifetime {
+impl Display for Life {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         "'".fmt(f)?;
         self.ident.fmt(f)
     }
 }
-impl Clone for Lifetime {
+impl Clone for Life {
     fn clone(&self) -> Self {
-        Lifetime {
+        Life {
             apos: self.apos,
             ident: self.ident.clone(),
         }
     }
 }
-impl PartialEq for Lifetime {
-    fn eq(&self, x: &Lifetime) -> bool {
+impl PartialEq for Life {
+    fn eq(&self, x: &Life) -> bool {
         self.ident.eq(&x.ident)
     }
 }
-impl Eq for Lifetime {}
-impl PartialOrd for Lifetime {
-    fn partial_cmp(&self, x: &Lifetime) -> Option<Ordering> {
+impl Eq for Life {}
+impl PartialOrd for Life {
+    fn partial_cmp(&self, x: &Life) -> Option<Ordering> {
         Some(self.cmp(x))
     }
 }
-impl Ord for Lifetime {
-    fn cmp(&self, x: &Lifetime) -> Ordering {
+impl Ord for Life {
+    fn cmp(&self, x: &Life) -> Ordering {
         self.ident.cmp(&x.ident)
     }
 }
-impl Hash for Lifetime {
+impl Hash for Life {
     fn hash<H: Hasher>(&self, x: &mut H) {
         self.ident.hash(x);
     }
 }
-impl Parse for Lifetime {
+impl Parse for Life {
     fn parse(x: Stream) -> Res<Self> {
-        x.step(|c| c.lifetime().ok_or_else(|| c.err("expected lifetime")))
+        x.step(|c| c.life().ok_or_else(|| c.err("expected life")))
     }
 }
-impl ToTokens for Lifetime {
+impl ToTokens for Life {
     fn to_tokens(&self, ys: &mut Stream) {
         let mut apos = Punct::new('\'', pm2::Spacing::Joint);
         apos.set_span(self.apos);
@@ -131,7 +131,7 @@ pub fn Ident(x: look::Marker) -> Ident {
     match x {}
 }
 #[allow(non_snake_case)]
-pub fn Lifetime(x: look::Marker) -> Lifetime {
+pub fn Life(x: look::Marker) -> Life {
     match x {}
 }
 

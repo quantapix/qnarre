@@ -312,7 +312,7 @@ pub trait VisitMut {
     fn visit_label_mut(&mut self, i: &mut Label) {
         visit_label_mut(self, i);
     }
-    fn visit_lifetime_mut(&mut self, i: &mut Lifetime) {
+    fn visit_lifetime_mut(&mut self, i: &mut Life) {
         visit_lifetime_mut(self, i);
     }
     fn visit_lifetime_param_mut(&mut self, i: &mut gen::param::Life) {
@@ -1104,7 +1104,7 @@ where
     if let Some(it) = &mut node.lifes {
         v.visit_bound_lifetimes_mut(it);
     }
-    skip!(node.constness);
+    skip!(node.const_);
     skip!(node.movability);
     skip!(node.asyncness);
     skip!(node.capture);
@@ -1332,7 +1332,7 @@ where
         v.visit_attribute_mut(it);
     }
     skip!(node.and);
-    skip!(node.mutability);
+    skip!(node.mut_);
     v.visit_expr_mut(&mut *node.expr);
 }
 pub fn visit_expr_repeat_mut<V>(v: &mut V, node: &mut expr::Repeat)
@@ -1467,7 +1467,7 @@ where
         v.visit_attribute_mut(it);
     }
     v.visit_visibility_mut(&mut node.vis);
-    v.visit_field_mutability_mut(&mut node.mutability);
+    v.visit_field_mutability_mut(&mut node.mut_);
     if let Some(it) = &mut node.ident {
         v.visit_ident_mut(it);
     }
@@ -1639,7 +1639,7 @@ where
     V: VisitMut + ?Sized,
 {
     match node {
-        Arg::Lifetime(_binding_0) => {
+        Arg::Life(_binding_0) => {
             v.visit_lifetime_mut(_binding_0);
         },
         Arg::Type(_binding_0) => {
@@ -1912,7 +1912,7 @@ where
     for it in &mut node.attrs {
         v.visit_attribute_mut(it);
     }
-    skip!(node.unsafety);
+    skip!(node.unsafe_);
     v.visit_abi_mut(&mut node.abi);
     skip!(node.brace);
     for it in &mut node.items {
@@ -1927,7 +1927,7 @@ where
         v.visit_attribute_mut(it);
     }
     skip!(node.defaultness);
-    skip!(node.unsafety);
+    skip!(node.unsafe_);
     skip!(node.impl_);
     v.visit_generics_mut(&mut node.gens);
     if let Some(it) = &mut node.trait_ {
@@ -1962,7 +1962,7 @@ where
         v.visit_attribute_mut(it);
     }
     v.visit_visibility_mut(&mut node.vis);
-    skip!(node.unsafety);
+    skip!(node.unsafe_);
     skip!(node.mod_);
     v.visit_ident_mut(&mut node.ident);
     if let Some(it) = &mut node.gist {
@@ -2012,7 +2012,7 @@ where
         v.visit_attribute_mut(it);
     }
     v.visit_visibility_mut(&mut node.vis);
-    skip!(node.unsafety);
+    skip!(node.unsafe_);
     skip!(node.auto_);
     if let Some(it) = &mut node.restriction {
         v.visit_impl_restriction_mut(it);
@@ -2096,7 +2096,7 @@ where
     v.visit_lifetime_mut(&mut node.name);
     skip!(node.colon);
 }
-pub fn visit_lifetime_mut<V>(v: &mut V, node: &mut Lifetime)
+pub fn visit_lifetime_mut<V>(v: &mut V, node: &mut Life)
 where
     V: VisitMut + ?Sized,
 {
@@ -2357,7 +2357,7 @@ where
         v.visit_attribute_mut(it);
     }
     skip!(node.by_ref);
-    skip!(node.mutability);
+    skip!(node.mut_);
     v.visit_ident_mut(&mut node.ident);
     if let Some(it) = &mut node.sub {
         skip!((it).0);
@@ -2395,7 +2395,7 @@ where
         v.visit_attribute_mut(it);
     }
     skip!(node.and);
-    skip!(node.mutability);
+    skip!(node.mut_);
     v.visit_pat_mut(&mut *node.pat);
 }
 pub fn visit_pat_rest_mut<V>(v: &mut V, node: &mut pat::Rest)
@@ -2576,13 +2576,13 @@ where
     for it in &mut node.attrs {
         v.visit_attribute_mut(it);
     }
-    if let Some(it) = &mut node.reference {
+    if let Some(it) = &mut node.ref_ {
         skip!((it).0);
         if let Some(it) = &mut (it).1 {
             v.visit_lifetime_mut(it);
         }
     }
-    skip!(node.mutability);
+    skip!(node.mut_);
     skip!(node.self_);
     skip!(node.colon);
     v.visit_type_mut(&mut *node.typ);
@@ -2603,9 +2603,9 @@ pub fn visit_signature_mut<V>(v: &mut V, node: &mut item::Sig)
 where
     V: VisitMut + ?Sized,
 {
-    skip!(node.constness);
+    skip!(node.const_);
     skip!(node.asyncness);
-    skip!(node.unsafety);
+    skip!(node.unsafe_);
     if let Some(it) = &mut node.abi {
         v.visit_abi_mut(it);
     }
@@ -2842,7 +2842,7 @@ where
     if let Some(it) = &mut node.lifes {
         v.visit_bound_lifetimes_mut(it);
     }
-    skip!(node.unsafety);
+    skip!(node.unsafe_);
     if let Some(it) = &mut node.abi {
         v.visit_abi_mut(it);
     }
@@ -2918,7 +2918,7 @@ where
         gen::bound::Type::Trait(_binding_0) => {
             v.visit_trait_bound_mut(_binding_0);
         },
-        gen::bound::Type::Lifetime(_binding_0) => {
+        gen::bound::Type::Life(_binding_0) => {
             v.visit_lifetime_mut(_binding_0);
         },
         gen::bound::Type::Verbatim(_binding_0) => {
@@ -2948,7 +2948,7 @@ where
 {
     skip!(node.star);
     skip!(node.const_);
-    skip!(node.mutability);
+    skip!(node.mut_);
     v.visit_type_mut(&mut *node.elem);
 }
 pub fn visit_type_reference_mut<V>(v: &mut V, node: &mut typ::Ref)
@@ -2959,7 +2959,7 @@ where
     if let Some(it) = &mut node.life {
         v.visit_lifetime_mut(it);
     }
-    skip!(node.mutability);
+    skip!(node.mut_);
     v.visit_type_mut(&mut *node.elem);
 }
 pub fn visit_type_slice_mut<V>(v: &mut V, node: &mut typ::Slice)

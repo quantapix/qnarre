@@ -838,7 +838,7 @@ impl Hash for data::Field {
     {
         self.attrs.hash(state);
         self.vis.hash(state);
-        self.mutability.hash(state);
+        self.mut_.hash(state);
         self.ident.hash(state);
         self.colon.hash(state);
         self.typ.hash(state);
@@ -1019,7 +1019,7 @@ impl Hash for Arg {
         H: Hasher,
     {
         match self {
-            Arg::Lifetime(v0) => {
+            Arg::Life(v0) => {
                 state.write_u8(0u8);
                 v0.hash(state);
             },
@@ -1860,7 +1860,7 @@ impl Hash for item::Receiver {
         H: Hasher,
     {
         self.attrs.hash(state);
-        self.reference.hash(state);
+        self.ref_.hash(state);
         self.mut_.hash(state);
         self.colon.hash(state);
         self.typ.hash(state);
@@ -2202,7 +2202,7 @@ impl Hash for gen::bound::Type {
                 state.write_u8(0u8);
                 v0.hash(state);
             },
-            gen::bound::Type::Lifetime(v0) => {
+            gen::bound::Type::Life(v0) => {
                 state.write_u8(1u8);
                 v0.hash(state);
             },

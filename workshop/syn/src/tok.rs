@@ -29,7 +29,7 @@ macro_rules! impl_tok {
         impl private::Sealed for $n {}
     };
 }
-impl_tok!("lifetime" Lifetime);
+impl_tok!("life" Life);
 impl_tok!("literal" Lit);
 impl_tok!("string literal" lit::Str);
 impl_tok!("byte string literal" lit::ByteStr);

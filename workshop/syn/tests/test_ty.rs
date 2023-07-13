@@ -204,7 +204,7 @@ fn test_trait_object() {
                 lifetimes: Some(Bgen::bound::Lifes {
                     lifetimes: [
                         gen::Param::Life(gen::param::Life {
-                            lifetime: Lifetime {
+                            life: Life {
                                 ident: "a",
                             },
                         }),
@@ -216,7 +216,7 @@ fn test_trait_object() {
                             ident: "Trait",
                             arguments: path::Args::AngleBracketed {
                                 args: [
-                                    path::Arg::Lifetime(Lifetime {
+                                    path::Arg::Life(Life {
                                         ident: "a",
                                     }),
                                 ],
@@ -225,7 +225,7 @@ fn test_trait_object() {
                     ],
                 },
             }),
-            gen::bound::Type::Lifetime {
+            gen::bound::Type::Life {
                 ident: "static",
             },
         ],
@@ -236,7 +236,7 @@ fn test_trait_object() {
     Type::TraitObject {
         dyn_: Some,
         bounds: [
-            gen::bound::Type::Lifetime {
+            gen::bound::Type::Life {
                 ident: "a",
             },
             gen::bound::Type::Trait(gen::bound::Trait {

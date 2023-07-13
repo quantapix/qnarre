@@ -68,7 +68,7 @@ pub struct Ptr {
 }
 pub struct Ref {
     pub and: Token![&],
-    pub life: Option<Lifetime>,
+    pub life: Option<Life>,
     pub mut_: Option<Token![mut]>,
     pub elem: Box<Type>,
 }
@@ -179,7 +179,7 @@ pub fn ambig_ty(x: Stream, allow_plus: bool, group_gen: bool) -> Res<Type> {
                 elems: Puncted::new(),
             }));
         }
-        if gist.peek(Lifetime) {
+        if gist.peek(Life) {
             return Ok(Type::Paren(Paren {
                 paren,
                 elem: Box::new(Type::TraitObject(gist.parse()?)),
@@ -240,7 +240,7 @@ pub fn ambig_ty(x: Stream, allow_plus: bool, group_gen: bool) -> Res<Type> {
                                 paren: Some(paren),
                                 ..trait_bound
                             }),
-                            other @ (gen::bound::Type::Lifetime(_) | gen::bound::Type::Verbatim(_)) => other,
+                            other @ (gen::bound::Type::Life(_) | gen::bound::Type::Verbatim(_)) => other,
                         }
                     },
                     _ => break,
@@ -305,7 +305,7 @@ pub fn ambig_ty(x: Stream, allow_plus: bool, group_gen: bool) -> Res<Type> {
                     if !(x.peek(Ident::peek_any)
                         || x.peek(Token![::])
                         || x.peek(Token![?])
-                        || x.peek(Lifetime)
+                        || x.peek(Life)
                         || x.peek(tok::Paren))
                     {
                         break;
@@ -356,7 +356,7 @@ pub fn ambig_ty(x: Stream, allow_plus: bool, group_gen: bool) -> Res<Type> {
         Impl::parse(x, allow_plus).map(Type::ImplTrait)
     } else if look.peek(Token![_]) {
         x.parse().map(Type::Infer)
-    } else if look.peek(Lifetime) {
+    } else if look.peek(Life) {
         x.parse().map(Type::TraitObject)
     } else {
         Err(look.err())
@@ -551,7 +551,7 @@ impl Trait {
                     one = true;
                     break;
                 },
-                gen::bound::Type::Lifetime(x) => {
+                gen::bound::Type::Life(x) => {
                     last = Some(x.ident.span());
                 },
             }
@@ -585,7 +585,7 @@ impl Impl {
                     one = true;
                     break;
                 },
-                gen::bound::Type::Lifetime(x) => {
+                gen::bound::Type::Life(x) => {
                     last = Some(x.ident.span());
                 },
             }
