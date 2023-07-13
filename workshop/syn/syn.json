@@ -3466,7 +3466,7 @@
         },
         "init": {
           "option": {
-            "syn": "stmt::LocalInit"
+            "syn": "stmt::Init"
           }
         },
         "semi": {
@@ -3475,7 +3475,7 @@
       }
     },
     {
-      "ident": "stmt::LocalInit",
+      "ident": "stmt::Init",
       "features": {
         "any": [
           "full"

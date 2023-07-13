@@ -2929,7 +2929,7 @@ impl Debug for Lite<syn::stmt::Local> {
         if let Some(val) = &self.value.init {
             #[derive(RefCast)]
             #[repr(transparent)]
-            struct Print(syn::stmt::LocalInit);
+            struct Print(syn::stmt::Init);
             impl Debug for Print {
                 fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                     formatter.write_str("Some(")?;
@@ -2943,9 +2943,9 @@ impl Debug for Lite<syn::stmt::Local> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::stmt::LocalInit> {
+impl Debug for Lite<syn::stmt::Init> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("stmt::LocalInit");
+        let mut formatter = formatter.debug_struct("stmt::Init");
         formatter.field("expr", Lite(&self.value.expr));
         if let Some(val) = &self.value.diverge {
             #[derive(RefCast)]
@@ -3717,7 +3717,7 @@ impl Debug for Lite<syn::stmt::Stmt> {
                 if let Some(val) = &_val.init {
                     #[derive(RefCast)]
                     #[repr(transparent)]
-                    struct Print(syn::stmt::LocalInit);
+                    struct Print(syn::stmt::Init);
                     impl Debug for Print {
                         fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                             formatter.write_str("Some(")?;

@@ -879,8 +879,8 @@ impl PartialEq for stmt::Local {
         self.attrs == other.attrs && self.pat == other.pat && self.init == other.init
     }
 }
-impl Eq for stmt::LocalInit {}
-impl PartialEq for stmt::LocalInit {
+impl Eq for stmt::Init {}
+impl PartialEq for stmt::Init {
     fn eq(&self, other: &Self) -> bool {
         self.expr == other.expr && self.diverge == other.diverge
     }

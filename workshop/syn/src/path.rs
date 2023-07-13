@@ -1,4 +1,4 @@
-use pm2::Stream;
+use super::{expr, tok, typ, Ident, Punctuated, Stream};
 
 pub struct Path {
     pub colon: Option<Token![::]>,
@@ -89,6 +89,8 @@ pub enum Arg {
     Constraint(Constraint),
 }
 
+pub use expr::Expr;
+
 pub struct AngledArgs {
     pub colon2: Option<Token![::]>,
     pub lt: Token![<],
@@ -127,61 +129,61 @@ pub struct QSelf {
 }
 
 impl Path {
-    pub fn parse_mod_style(x: Stream) -> Res<Self> {
+    pub fn parse_mod_style(s: Stream) -> Res<Self> {
         Ok(Path {
-            colon: x.parse()?,
+            colon: s.parse()?,
             segs: {
                 let mut ys = Punctuated::new();
                 loop {
-                    if !x.peek(Ident)
-                        && !x.peek(Token![super])
-                        && !x.peek(Token![self])
-                        && !x.peek(Token![Self])
-                        && !x.peek(Token![crate])
+                    if !s.peek(Ident)
+                        && !s.peek(Token![super])
+                        && !s.peek(Token![self])
+                        && !s.peek(Token![Self])
+                        && !s.peek(Token![crate])
                     {
                         break;
                     }
-                    let ident = Ident::parse_any(x)?;
-                    ys.push_value(Segment::from(ident));
-                    if !x.peek(Token![::]) {
+                    let y = Ident::parse_any(s)?;
+                    ys.push_value(Segment::from(y));
+                    if !s.peek(Token![::]) {
                         break;
                     }
-                    let punct = x.parse()?;
-                    ys.push_punct(punct);
+                    let y = s.parse()?;
+                    ys.push_punct(y);
                 }
                 if ys.is_empty() {
-                    return Err(x.parse::<Ident>().unwrap_err());
+                    return Err(s.parse::<Ident>().unwrap_err());
                 } else if ys.trailing_punct() {
-                    return Err(x.error("expected path segment after `::`"));
+                    return Err(s.error("expected path segment after `::`"));
                 }
                 ys
             },
         })
     }
-    pub fn parse_helper(x: Stream, expr_style: bool) -> Res<Self> {
-        let mut path = Path {
-            colon: x.parse()?,
+    pub fn parse_helper(s: Stream, style: bool) -> Res<Self> {
+        let mut y = Path {
+            colon: s.parse()?,
             segs: {
                 let mut ys = Punctuated::new();
-                let value = Segment::parse_helper(x, expr_style)?;
-                ys.push_value(value);
+                let y = Segment::parse_helper(s, style)?;
+                ys.push_value(y);
                 ys
             },
         };
-        Path::parse_rest(x, &mut path, expr_style)?;
-        Ok(path)
+        Path::parse_rest(s, &mut y, style)?;
+        Ok(y)
     }
-    pub fn parse_rest(x: Stream, path: &mut Self, expr_style: bool) -> Res<()> {
-        while x.peek(Token![::]) && !x.peek3(tok::Paren) {
-            let punct: Token![::] = x.parse()?;
-            path.segs.push_punct(punct);
-            let value = Segment::parse_helper(x, expr_style)?;
-            path.segs.push_value(value);
+    pub fn parse_rest(s: Stream, path: &mut Self, style: bool) -> Res<()> {
+        while s.peek(Token![::]) && !s.peek3(tok::Paren) {
+            let y: Token![::] = s.parse()?;
+            path.segs.push_punct(y);
+            let y = Segment::parse_helper(s, style)?;
+            path.segs.push_value(y);
         }
         Ok(())
     }
     pub fn is_mod_style(&self) -> bool {
-        self.segs.iter().all(|x| x.arguments.is_none())
+        self.segs.iter().all(|x| x.args.is_none())
     }
 }
 impl Parse for Path {
@@ -191,13 +193,9 @@ impl Parse for Path {
 }
 impl Segment {
     fn parse_helper(x: Stream, expr_style: bool) -> Res<Self> {
-        if x.peek(Token![super])
-            || x.peek(Token![self])
-            || x.peek(Token![crate])
-            || cfg!(feature = "full") && x.peek(Token![try])
-        {
-            let ident = x.call(Ident::parse_any)?;
-            return Ok(Segment::from(ident));
+        if x.peek(Token![super]) || x.peek(Token![self]) || x.peek(Token![crate]) || x.peek(Token![try]) {
+            let y = x.call(Ident::parse_any)?;
+            return Ok(Segment::from(y));
         }
         let ident = if x.peek(Token![Self]) {
             x.call(Ident::parse_any)?
@@ -215,52 +213,52 @@ impl Segment {
     }
 }
 impl Parse for Segment {
-    fn parse(x: Stream) -> Res<Self> {
-        Self::parse_helper(x, false)
+    fn parse(s: Stream) -> Res<Self> {
+        Self::parse_helper(s, false)
     }
 }
 impl AngledArgs {
-    pub fn parse_turbofish(x: Stream) -> Res<Self> {
-        let y: Token![::] = x.parse()?;
-        Self::do_parse(Some(y), x)
+    pub fn parse_turbofish(s: Stream) -> Res<Self> {
+        let y: Token![::] = s.parse()?;
+        Self::do_parse(Some(y), s)
     }
-    fn do_parse(colon2: Option<Token![::]>, x: Stream) -> Res<Self> {
+    fn do_parse(colon2: Option<Token![::]>, s: Stream) -> Res<Self> {
         Ok(AngledArgs {
             colon2,
-            lt: x.parse()?,
+            lt: s.parse()?,
             args: {
                 let mut ys = Punctuated::new();
                 loop {
-                    if x.peek(Token![>]) {
+                    if s.peek(Token![>]) {
                         break;
                     }
-                    let y: Arg = x.parse()?;
+                    let y: Arg = s.parse()?;
                     ys.push_value(y);
-                    if x.peek(Token![>]) {
+                    if s.peek(Token![>]) {
                         break;
                     }
-                    let y: Token![,] = x.parse()?;
+                    let y: Token![,] = s.parse()?;
                     ys.push_punct(y);
                 }
                 ys
             },
-            gt: x.parse()?,
+            gt: s.parse()?,
         })
     }
 }
 impl Parse for AngledArgs {
-    fn parse(x: Stream) -> Res<Self> {
-        let y: Option<Token![::]> = x.parse()?;
-        Self::do_parse(y, x)
+    fn parse(s: Stream) -> Res<Self> {
+        let y: Option<Token![::]> = s.parse()?;
+        Self::do_parse(y, s)
     }
 }
 impl Parse for ParenthesizedArgs {
-    fn parse(x: Stream) -> Res<Self> {
-        let gist;
+    fn parse(s: Stream) -> Res<Self> {
+        let y;
         Ok(ParenthesizedArgs {
-            paren: parenthesized!(gist in x),
-            args: gist.parse_terminated(typ::Type::parse, Token![,])?,
-            ret: x.call(typ::Ret::without_plus)?,
+            paren: parenthesized!(y in s),
+            args: y.parse_terminated(typ::Type::parse, Token![,])?,
+            ret: s.call(typ::Ret::without_plus)?,
         })
     }
 }

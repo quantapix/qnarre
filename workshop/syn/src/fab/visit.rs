@@ -349,7 +349,7 @@ pub trait Visit<'ast> {
     fn visit_local(&mut self, i: &'ast stmt::Local) {
         visit_local(self, i);
     }
-    fn visit_local_init(&mut self, i: &'ast stmt::LocalInit) {
+    fn visit_local_init(&mut self, i: &'ast stmt::Init) {
         visit_local_init(self, i);
     }
     fn visit_macro(&mut self, i: &'ast Macro) {
@@ -2201,7 +2201,7 @@ where
     }
     skip!(node.semi);
 }
-pub fn visit_local_init<'ast, V>(v: &mut V, node: &'ast stmt::LocalInit)
+pub fn visit_local_init<'ast, V>(v: &mut V, node: &'ast stmt::Init)
 where
     V: Visit<'ast> + ?Sized,
 {

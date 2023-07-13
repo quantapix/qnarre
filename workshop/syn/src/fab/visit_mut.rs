@@ -349,7 +349,7 @@ pub trait VisitMut {
     fn visit_local_mut(&mut self, i: &mut stmt::Local) {
         visit_local_mut(self, i);
     }
-    fn visit_local_init_mut(&mut self, i: &mut stmt::LocalInit) {
+    fn visit_local_init_mut(&mut self, i: &mut stmt::Init) {
         visit_local_init_mut(self, i);
     }
     fn visit_macro_mut(&mut self, i: &mut Macro) {
@@ -2203,7 +2203,7 @@ where
     }
     skip!(node.semi);
 }
-pub fn visit_local_init_mut<V>(v: &mut V, node: &mut stmt::LocalInit)
+pub fn visit_local_init_mut<V>(v: &mut V, node: &mut stmt::Init)
 where
     V: VisitMut + ?Sized,
 {

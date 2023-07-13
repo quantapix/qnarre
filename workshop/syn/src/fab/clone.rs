@@ -1123,9 +1123,9 @@ impl Clone for stmt::Local {
         }
     }
 }
-impl Clone for stmt::LocalInit {
+impl Clone for stmt::Init {
     fn clone(&self) -> Self {
-        stmt::LocalInit {
+        stmt::Init {
             eq: self.eq.clone(),
             expr: self.expr.clone(),
             diverge: self.diverge.clone(),

@@ -1501,7 +1501,7 @@ impl Hash for stmt::Local {
         self.init.hash(state);
     }
 }
-impl Hash for stmt::LocalInit {
+impl Hash for stmt::Init {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,

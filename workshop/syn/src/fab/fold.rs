@@ -347,7 +347,7 @@ pub trait Fold {
     fn fold_local(&mut self, i: stmt::Local) -> stmt::Local {
         fold_local(self, i)
     }
-    fn fold_local_init(&mut self, i: stmt::LocalInit) -> stmt::LocalInit {
+    fn fold_local_init(&mut self, i: stmt::Init) -> stmt::Init {
         fold_local_init(self, i)
     }
     fn fold_macro(&mut self, i: Macro) -> Macro {
@@ -1887,11 +1887,11 @@ where
         semi: node.semi,
     }
 }
-pub fn fold_local_init<F>(f: &mut F, node: stmt::LocalInit) -> stmt::LocalInit
+pub fn fold_local_init<F>(f: &mut F, node: stmt::Init) -> stmt::Init
 where
     F: Fold + ?Sized,
 {
-    stmt::LocalInit {
+    stmt::Init {
         eq: node.eq,
         expr: Box::new(f.fold_expr(*node.expr)),
         diverge: (node.diverge).map(|it| ((it).0, Box::new(f.fold_expr(*(it).1)))),

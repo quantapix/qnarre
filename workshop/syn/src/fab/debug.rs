@@ -1691,9 +1691,9 @@ impl Debug for stmt::Local {
         self.debug(formatter, "stmt::Local")
     }
 }
-impl Debug for stmt::LocalInit {
+impl Debug for stmt::Init {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("stmt::LocalInit");
+        let mut formatter = formatter.debug_struct("stmt::Init");
         formatter.field("eq", &self.eq);
         formatter.field("expr", &self.expr);
         formatter.field("diverge", &self.diverge);
