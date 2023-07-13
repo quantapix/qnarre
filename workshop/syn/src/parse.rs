@@ -1,7 +1,10 @@
 use super::{
+    err,
     look::{self, Lookahead1, Peek},
+    pm2::{Delim, DelimSpan, Span},
     punct::Punctuated,
     tok::Tok,
+    Cursor,
 };
 use std::{
     cell::Cell,
@@ -15,7 +18,7 @@ use std::{
 };
 
 pub struct Buffer<'a> {
-    scope: pm2::Span,
+    scope: Span,
     cell: Cell<Cursor<'static>>,
     marker: PhantomData<Cursor<'a>>,
     unexpected: Cell<Option<Rc<Cell<Unexpected>>>>,
@@ -33,7 +36,7 @@ impl<'a> Buffer<'a> {
     }
     pub fn peek2<T: Peek>(&self, x: T) -> bool {
         fn peek2(x: &Buffer, f: fn(Cursor) -> bool) -> bool {
-            if let Some(x) = x.cursor().group(pm2::Delim::None) {
+            if let Some(x) = x.cursor().group(Delim::None) {
                 if x.0.skip().map_or(false, f) {
                     return true;
                 }
@@ -45,7 +48,7 @@ impl<'a> Buffer<'a> {
     }
     pub fn peek3<T: Peek>(&self, x: T) -> bool {
         fn peek3(x: &Buffer, f: fn(Cursor) -> bool) -> bool {
-            if let Some(x) = x.cursor().group(pm2::Delim::None) {
+            if let Some(x) = x.cursor().group(Delim::None) {
                 if x.0.skip().and_then(Cursor::skip).map_or(false, f) {
                     return true;
                 }
@@ -92,7 +95,7 @@ impl<'a> Buffer<'a> {
         self.cell.set(rest);
         Ok(y)
     }
-    pub fn span(&self) -> pm2::Span {
+    pub fn span(&self) -> Span {
         let y = self.cursor();
         if y.eof() {
             self.scope
@@ -133,7 +136,7 @@ impl<'a> Debug for Buffer<'a> {
 
 pub enum Unexpected {
     None,
-    Some(pm2::Span),
+    Some(Span),
     Chain(Rc<Cell<Unexpected>>),
 }
 impl Default for Unexpected {
@@ -153,7 +156,7 @@ impl Clone for Unexpected {
 }
 
 pub struct Step<'c, 'a> {
-    scope: pm2::Span,
+    scope: Span,
     cursor: Cursor<'c>,
     marker: PhantomData<fn(Cursor<'c>) -> Cursor<'a>>,
 }
@@ -211,7 +214,7 @@ impl Parse for Group {
     fn parse(x: Stream) -> Res<Self> {
         x.step(|x| {
             if let Some((y, rest)) = x.any_group_token() {
-                if y.delimiter() != pm2::Delim::None {
+                if y.delimiter() != Delim::None {
                     return Ok((y, rest));
                 }
             }
@@ -245,7 +248,7 @@ pub trait Parser: Sized {
     fn parse_str(self, s: &str) -> Res<Self::Output> {
         self.parse2(proc_macro2::pm2::Stream::from_str(s)?)
     }
-    fn __parse_scoped(self, scope: pm2::Span, tokens: pm2::Stream) -> Res<Self::Output> {
+    fn __parse_scoped(self, scope: Span, tokens: pm2::Stream) -> Res<Self::Output> {
         let _ = scope;
         self.parse2(tokens)
     }
@@ -266,7 +269,7 @@ where
             Ok(node)
         }
     }
-    fn __parse_scoped(self, scope: pm2::Span, tokens: pm2::Stream) -> Res<Self::Output> {
+    fn __parse_scoped(self, scope: Span, tokens: pm2::Stream) -> Res<Self::Output> {
         let buf = cur::Buffer::new2(tokens);
         let cursor = buf.begin();
         let unexpected = Rc::new(Cell::new(Unexpected::None));
@@ -285,7 +288,7 @@ pub fn advance_step_cursor<'c, 'a>(proof: Step<'c, 'a>, to: Cursor<'c>) -> Curso
     let _ = proof;
     unsafe { mem::transmute::<Cursor<'c>, Cursor<'a>>(to) }
 }
-pub fn new_parse_buffer(scope: pm2::Span, cursor: Cursor, unexpected: Rc<Cell<Unexpected>>) -> Buffer {
+pub fn new_parse_buffer(scope: Span, cursor: Cursor, unexpected: Rc<Cell<Unexpected>>) -> Buffer {
     Buffer {
         scope,
         cell: Cell::new(unsafe { mem::transmute::<Cursor, Cursor<'static>>(cursor) }),
@@ -300,7 +303,7 @@ fn cell_clone<T: Default + Clone>(x: &Cell<T>) -> T {
     x.set(prev);
     y
 }
-fn inner_unexpected(x: &Buffer) -> (Rc<Cell<Unexpected>>, Option<pm2::Span>) {
+fn inner_unexpected(x: &Buffer) -> (Rc<Cell<Unexpected>>, Option<Span>) {
     let mut y = get_unexpected(x);
     loop {
         use Unexpected::*;
@@ -314,11 +317,11 @@ fn inner_unexpected(x: &Buffer) -> (Rc<Cell<Unexpected>>, Option<pm2::Span>) {
 pub fn get_unexpected(x: &Buffer) -> Rc<Cell<Unexpected>> {
     cell_clone(&x.unexpected).unwrap()
 }
-fn span_of_unexpected_ignoring_nones(mut x: Cursor) -> Option<pm2::Span> {
+fn span_of_unexpected_ignoring_nones(mut x: Cursor) -> Option<Span> {
     if x.eof() {
         return None;
     }
-    while let Some((inner, _span, rest)) = x.group(pm2::Delim::None) {
+    while let Some((inner, _span, rest)) = x.group(Delim::None) {
         if let Some(x) = span_of_unexpected_ignoring_nones(inner) {
             return Some(x);
         }
@@ -332,13 +335,13 @@ fn span_of_unexpected_ignoring_nones(mut x: Cursor) -> Option<pm2::Span> {
 }
 
 fn tokens_to_parse_buffer(x: &cur::Buffer) -> Buffer {
-    let scope = pm2::Span::call_site();
+    let scope = Span::call_site();
     let cursor = x.begin();
     let unexpected = Rc::new(Cell::new(Unexpected::None));
     new_parse_buffer(scope, cursor, unexpected)
 }
 
-pub fn parse_scoped<F: Parser>(f: F, s: pm2::Span, xs: pm2::Stream) -> Res<F::Output> {
+pub fn parse_scoped<F: Parser>(f: F, s: Span, xs: pm2::Stream) -> Res<F::Output> {
     f.__parse_scoped(s, xs)
 }
 
@@ -391,10 +394,10 @@ pub mod discouraged {
         }
     }
     pub trait AnyDelim {
-        fn parse_any_delim(&self) -> Res<(pm2::Delim, pm2::DelimSpan, Buffer)>;
+        fn parse_any_delim(&self) -> Res<(Delim, DelimSpan, Buffer)>;
     }
     impl<'a> AnyDelim for Buffer<'a> {
-        fn parse_any_delim(&self) -> Res<(pm2::Delim, pm2::DelimSpan, Buffer)> {
+        fn parse_any_delim(&self) -> Res<(Delim, DelimSpan, Buffer)> {
             self.step(|c| {
                 if let Some((content, delim, span, rest)) = c.any_group() {
                     let scope = crate::close_span_of_group(*c);

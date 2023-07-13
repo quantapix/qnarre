@@ -1,3 +1,5 @@
+use super::{attr, expr, item, mac, pat, pm2, tok, Ident, Path, Stream};
+
 pub struct Mac {
     pub path: Path,
     pub bang: Token![!],

@@ -1,17 +1,18 @@
 use super::{
-    err, err, mac,
     path::Path,
-    pm2::{self, Stream},
-    tok,
+    pm2::{self, Delim, DelimSpan, Spacing, Span, Stream, Tree},
+    *,
 };
 
 enum Entry {
     Group(Group, usize),
     Ident(Ident),
     Punct(Punct),
-    Lit(pm2::Lit),
+    Lit(Lit),
     End(isize),
 }
+
+pub use super::{pm2::Lit, Group, Ident, Punct};
 
 pub struct Cursor<'a> {
     ptr: *const Entry,
@@ -50,7 +51,7 @@ impl<'a> Cursor<'a> {
     }
     fn ignore_none(&mut self) {
         while let Entry::Group(x, _) = self.entry() {
-            if x.delimiter() == pm2::Delim::None {
+            if x.delimiter() == Delim::None {
                 unsafe { *self = self.bump_ignore_group() };
             } else {
                 break;
@@ -60,37 +61,37 @@ impl<'a> Cursor<'a> {
     pub fn eof(self) -> bool {
         self.ptr == self.scope
     }
-    pub fn group(mut self, d: pm2::Delim) -> Option<(Cursor<'a>, pm2::DelimSpan, Cursor<'a>)> {
-        if d != pm2::Delim::None {
+    pub fn group(mut self, d: Delim) -> Option<(Cursor<'a>, DelimSpan, Cursor<'a>)> {
+        if d != Delim::None {
             self.ignore_none();
         }
-        if let Entry::Group(x, end) = self.entry() {
+        if let Entry::Group(x, i) = self.entry() {
             if x.delimiter() == d {
                 let span = x.delim_span();
-                let end_of_group = unsafe { self.ptr.add(*end) };
-                let inside_of_group = unsafe { Cursor::create(self.ptr.add(1), end_of_group) };
-                let after_group = unsafe { Cursor::create(end_of_group, self.scope) };
-                return Some((inside_of_group, span, after_group));
+                let end = unsafe { self.ptr.add(*i) };
+                let inside = unsafe { Cursor::create(self.ptr.add(1), end) };
+                let after = unsafe { Cursor::create(end, self.scope) };
+                return Some((inside, span, after));
             }
         }
         None
     }
-    pub fn any_group(self) -> Option<(Cursor<'a>, pm2::Delim, pm2::DelimSpan, Cursor<'a>)> {
-        if let Entry::Group(x, end) = self.entry() {
-            let delimiter = x.delimiter();
+    pub fn any_group(self) -> Option<(Cursor<'a>, Delim, DelimSpan, Cursor<'a>)> {
+        if let Entry::Group(x, i) = self.entry() {
+            let delim = x.delimiter();
             let span = x.delim_span();
-            let end_of_group = unsafe { self.ptr.add(*end) };
-            let inside_of_group = unsafe { Cursor::create(self.ptr.add(1), end_of_group) };
-            let after_group = unsafe { Cursor::create(end_of_group, self.scope) };
-            return Some((inside_of_group, delimiter, span, after_group));
+            let end = unsafe { self.ptr.add(*i) };
+            let inside = unsafe { Cursor::create(self.ptr.add(1), end) };
+            let after = unsafe { Cursor::create(end, self.scope) };
+            return Some((inside, delim, span, after));
         }
         None
     }
     pub fn any_group_token(self) -> Option<(Group, Cursor<'a>)> {
-        if let Entry::Group(x, end) = self.entry() {
-            let end_of_group = unsafe { self.ptr.add(*end) };
-            let after_group = unsafe { Cursor::create(end_of_group, self.scope) };
-            return Some((x.clone(), after_group));
+        if let Entry::Group(x, i) = self.entry() {
+            let end = unsafe { self.ptr.add(*i) };
+            let after = unsafe { Cursor::create(end, self.scope) };
+            return Some((x.clone(), after));
         }
         None
     }
@@ -108,7 +109,7 @@ impl<'a> Cursor<'a> {
             _ => None,
         }
     }
-    pub fn literal(mut self) -> Option<(pm2::Lit, Cursor<'a>)> {
+    pub fn literal(mut self) -> Option<(Lit, Cursor<'a>)> {
         self.ignore_none();
         match self.entry() {
             Entry::Lit(x) => Some((x.clone(), unsafe { self.bump_ignore_group() })),
@@ -118,7 +119,7 @@ impl<'a> Cursor<'a> {
     pub fn lifetime(mut self) -> Option<(Lifetime, Cursor<'a>)> {
         self.ignore_none();
         match self.entry() {
-            Entry::Punct(x) if x.as_char() == '\'' && x.spacing() == pm2::Spacing::Joint => {
+            Entry::Punct(x) if x.as_char() == '\'' && x.spacing() == Spacing::Joint => {
                 let next = unsafe { self.bump_ignore_group() };
                 let (ident, rest) = next.ident()?;
                 let lifetime = Lifetime {
@@ -132,52 +133,49 @@ impl<'a> Cursor<'a> {
     }
     pub fn token_stream(self) -> pm2::Stream {
         let mut ys = Vec::new();
-        let mut cur = self;
-        while let Some((x, rest)) = cur.token_tree() {
+        let mut c = self;
+        while let Some((x, rest)) = c.token_tree() {
             ys.push(x);
-            cur = rest;
+            c = rest;
         }
         ys.into_iter().collect()
     }
-    pub fn token_tree(self) -> Option<(pm2::Tree, Cursor<'a>)> {
-        use Entry::*;
-        let (tree, len) = match self.entry() {
-            Group(x, end) => (x.clone().into(), *end),
-            Lit(x) => (x.clone().into(), 1),
-            Ident(x) => (x.clone().into(), 1),
-            Punct(x) => (x.clone().into(), 1),
-            End(_) => return None,
+    pub fn token_tree(self) -> Option<(Tree, Cursor<'a>)> {
+        let (y, i) = match self.entry() {
+            Entry::Group(x, i) => (x.clone().into(), *i),
+            Entry::Lit(x) => (x.clone().into(), 1),
+            Entry::Ident(x) => (x.clone().into(), 1),
+            Entry::Punct(x) => (x.clone().into(), 1),
+            Entry::End(_) => return None,
         };
-        let rest = unsafe { Cursor::create(self.ptr.add(len), self.scope) };
-        Some((tree, rest))
+        let rest = unsafe { Cursor::create(self.ptr.add(i), self.scope) };
+        Some((y, rest))
     }
-    pub fn span(self) -> pm2::Span {
-        use Entry::*;
+    pub fn span(self) -> Span {
         match self.entry() {
-            Group(x, _) => x.span(),
-            Lit(x) => x.span(),
-            Ident(x) => x.span(),
-            Punct(x) => x.span(),
-            End(_) => pm2::Span::call_site(),
+            Entry::Group(x, _) => x.span(),
+            Entry::Lit(x) => x.span(),
+            Entry::Ident(x) => x.span(),
+            Entry::Punct(x) => x.span(),
+            Entry::End(_) => Span::call_site(),
         }
     }
-    pub fn prev_span(mut self) -> pm2::Span {
+    pub fn prev_span(mut self) -> Span {
         if buff_start(self) < self.ptr {
             self.ptr = unsafe { self.ptr.offset(-1) };
             if let Entry::End(_) = self.entry() {
                 let mut depth = 1;
                 loop {
                     self.ptr = unsafe { self.ptr.offset(-1) };
-                    use Entry::*;
                     match self.entry() {
-                        Group(x, _) => {
+                        Entry::Group(x, _) => {
                             depth -= 1;
                             if depth == 0 {
                                 return x.span();
                             }
                         },
-                        End(_) => depth += 1,
-                        Lit(_) | Ident(_) | Punct(_) => {},
+                        Entry::End(_) => depth += 1,
+                        Entry::Lit(_) | Entry::Ident(_) | Entry::Punct(_) => {},
                     }
                 }
             }
@@ -185,15 +183,15 @@ impl<'a> Cursor<'a> {
         self.span()
     }
     pub fn skip(self) -> Option<Cursor<'a>> {
-        use Entry::*;
         let y = match self.entry() {
-            End(_) => return None,
-            Punct(x) if x.as_char() == '\'' && x.spacing() == pm2::Spacing::Joint => match unsafe { &*self.ptr.add(1) }
-            {
-                Ident(_) => 2,
-                _ => 1,
+            Entry::End(_) => return None,
+            Entry::Punct(x) if x.as_char() == '\'' && x.spacing() == Spacing::Joint => {
+                match unsafe { &*self.ptr.add(1) } {
+                    Entry::Ident(_) => 2,
+                    _ => 1,
+                }
             },
-            Group(_, x) => *x,
+            Entry::Group(_, x) => *x,
             _ => 1,
         };
         Some(unsafe { Cursor::create(self.ptr.add(y), self.scope) })
@@ -221,54 +219,24 @@ impl<'a> PartialOrd for Cursor<'a> {
     }
 }
 
-fn same_scope(a: Cursor, b: Cursor) -> bool {
-    a.scope == b.scope
-}
-fn same_buff(a: Cursor, b: Cursor) -> bool {
-    buff_start(a) == buff_start(b)
-}
-fn buff_start(c: Cursor) -> *const Entry {
-    unsafe {
-        match &*c.scope {
-            Entry::End(x) => c.scope.offset(*x),
-            _ => unreachable!(),
-        }
-    }
-}
-fn cmp_assuming_same_buffer(a: Cursor, b: Cursor) -> Ordering {
-    a.ptr.cmp(&b.ptr)
-}
-fn open_span_of_group(c: Cursor) -> pm2::Span {
-    match c.entry() {
-        Entry::Group(x, _) => x.span_open(),
-        _ => c.span(),
-    }
-}
-fn close_span_of_group(c: Cursor) -> pm2::Span {
-    match c.entry() {
-        Entry::Group(x, _) => x.span_close(),
-        _ => c.span(),
-    }
-}
 pub struct Buffer {
     entries: Box<[Entry]>,
 }
 impl Buffer {
     fn recursive_new(ys: &mut Vec<Entry>, xs: pm2::Stream) {
         for x in xs {
-            use Entry::*;
             match x {
-                pm2::Tree::Ident(x) => ys.push(Ident(x)),
-                pm2::Tree::Punct(x) => ys.push(Punct(x)),
-                pm2::Tree::Literal(x) => ys.push(Lit(x)),
-                pm2::Tree::Group(x) => {
+                Tree::Ident(x) => ys.push(Entry::Ident(x)),
+                Tree::Punct(x) => ys.push(Entry::Punct(x)),
+                Tree::Literal(x) => ys.push(Entry::Lit(x)),
+                Tree::Group(x) => {
                     let beg = ys.len();
-                    ys.push(End(0));
+                    ys.push(Entry::End(0));
                     Self::recursive_new(ys, x.stream());
                     let end = ys.len();
-                    ys.push(End(-(end as isize)));
-                    let off = end - beg;
-                    ys[beg] = Group(x, off);
+                    ys.push(Entry::End(-(end as isize)));
+                    let len = end - beg;
+                    ys[beg] = Entry::Group(x, len);
                 },
             }
         }
@@ -287,5 +255,35 @@ impl Buffer {
     pub fn begin(&self) -> Cursor {
         let y = self.entries.as_ptr();
         unsafe { Cursor::create(y, y.add(self.entries.len() - 1)) }
+    }
+}
+
+fn same_scope(a: Cursor, b: Cursor) -> bool {
+    a.scope == b.scope
+}
+fn same_buff(a: Cursor, b: Cursor) -> bool {
+    buff_start(a) == buff_start(b)
+}
+fn buff_start(c: Cursor) -> *const Entry {
+    unsafe {
+        match &*c.scope {
+            Entry::End(x) => c.scope.offset(*x),
+            _ => unreachable!(),
+        }
+    }
+}
+fn cmp_assuming_same_buffer(a: Cursor, b: Cursor) -> Ordering {
+    a.ptr.cmp(&b.ptr)
+}
+fn open_span_of_group(c: Cursor) -> Span {
+    match c.entry() {
+        Entry::Group(x, _) => x.span_open(),
+        _ => c.span(),
+    }
+}
+fn close_span_of_group(c: Cursor) -> Span {
+    match c.entry() {
+        Entry::Group(x, _) => x.span_close(),
+        _ => c.span(),
     }
 }
