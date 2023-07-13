@@ -1,4 +1,4 @@
-use super::{attr, expr, item, mac, pat, pm2, tok, Ident, Path, Stream};
+use super::*;
 
 struct NoSemi(bool);
 
@@ -19,7 +19,7 @@ impl Block {
             let y = parse_stmt(x, NoSemi(true))?;
             let semi = match &y {
                 Stmt::Expr(x, None) => expr::requires_terminator(x),
-                Stmt::Mac(x) => x.semi.is_none() && !x.mac.delimiter.is_brace(),
+                Stmt::Mac(x) => x.semi.is_none() && !x.mac.delim.is_brace(),
                 Stmt::Local(_) | Stmt::Item(_) | Stmt::Expr(_, Some(_)) => false,
             };
             ys.push(y);
@@ -87,7 +87,7 @@ pub struct Local {
 }
 impl ToTokens for Local {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outer_attrs_to_tokens(&self.attrs, ys);
         self.let_.to_tokens(ys);
         self.pat.to_tokens(ys);
         if let Some(x) = &self.init {
@@ -115,7 +115,7 @@ pub struct Mac {
 }
 impl ToTokens for Mac {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outer_attrs_to_tokens(&self.attrs, ys);
         self.mac.to_tokens(ys);
         self.semi.to_tokens(ys);
     }
@@ -126,18 +126,18 @@ fn parse_stmt(s: Stream, nosemi: NoSemi) -> Res<Stmt> {
     let attrs = s.call(attr::Attr::parse_outer)?;
     let ahead = s.fork();
     let mut is_mac = false;
-    if let Ok(path) = ahead.call(Path::parse_mod_style) {
+    if let Ok(x) = ahead.call(Path::parse_mod_style) {
         if ahead.peek(Token![!]) {
             if ahead.peek2(Ident) || ahead.peek2(Token![try]) {
                 is_mac = true;
             } else if ahead.peek2(tok::Brace) && !(ahead.peek3(Token![.]) || ahead.peek3(Token![?])) {
                 s.advance_to(&ahead);
-                return stmt_mac(s, attrs, path).map(Stmt::Mac);
+                return parse_mac(s, attrs, x).map(Stmt::Mac);
             }
         }
     }
     if s.peek(Token![let]) {
-        stmt_local(s, attrs).map(Stmt::Local)
+        parse_local(s, attrs).map(Stmt::Local)
     } else if s.peek(Token![pub])
         || s.peek(Token![crate]) && !s.peek2(Token![::])
         || s.peek(Token![extern])
@@ -167,13 +167,13 @@ fn parse_stmt(s: Stream, nosemi: NoSemi) -> Res<Stmt> {
         || s.peek(Token![macro])
         || is_mac
     {
-        let x = parse_rest_of_item(beg, attrs, s)?;
+        let x = item::parse_rest_of_item(beg, attrs, s)?;
         Ok(Stmt::Item(x))
     } else {
-        stmt_expr(s, nosemi, attrs)
+        parse_expr(s, attrs, nosemi)
     }
 }
-fn stmt_mac(s: Stream, attrs: Vec<attr::Attr>, path: Path) -> Res<Mac> {
+fn parse_mac(s: Stream, attrs: Vec<attr::Attr>, path: Path) -> Res<Mac> {
     let bang: Token![!] = s.parse()?;
     let (delim, toks) = mac::parse_delim(s)?;
     let semi: Option<Token![;]> = s.parse()?;
@@ -188,7 +188,7 @@ fn stmt_mac(s: Stream, attrs: Vec<attr::Attr>, path: Path) -> Res<Mac> {
         semi,
     })
 }
-fn stmt_local(s: Stream, attrs: Vec<attr::Attr>) -> Res<Local> {
+fn parse_local(s: Stream, attrs: Vec<attr::Attr>) -> Res<Local> {
     let let_: Token![let] = s.parse()?;
     let mut pat = pat::Pat::parse_single(s)?;
     if s.peek(Token![:]) {
@@ -232,7 +232,7 @@ fn stmt_local(s: Stream, attrs: Vec<attr::Attr>) -> Res<Local> {
         semi,
     })
 }
-fn stmt_expr(s: Stream, nosemi: NoSemi, mut attrs: Vec<attr::Attr>) -> Res<Stmt> {
+fn parse_expr(s: Stream, mut attrs: Vec<attr::Attr>, nosemi: NoSemi) -> Res<Stmt> {
     let mut y = expr::expr_early(s)?;
     let mut tgt = &mut y;
     loop {

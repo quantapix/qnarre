@@ -1,4 +1,4 @@
-pub use super::{attr, pm2::Stream, stmt, tok};
+use super::*;
 use quote::IdentFragment;
 
 ast_enum_of_structs! {
@@ -1724,7 +1724,7 @@ fn expr_attrs(x: Stream) -> Res<Vec<attr::Attr>> {
     loop {
         if x.peek(tok::Group) {
             let ahead = x.fork();
-            let group = super::parse_group(&ahead)?;
+            let group = parse::parse_group(&ahead)?;
             if !group.buf.peek(Token![#]) || group.buf.peek2(Token![!]) {
                 break;
             }
@@ -2098,10 +2098,10 @@ pub fn expr_early(x: Stream) -> Res<Expr> {
     Ok(y)
 }
 fn expr_group(x: Stream) -> Res<Group> {
-    let y = super::parse_group(x)?;
+    let y = parse::parse_group(x)?;
     Ok(Group {
         attrs: Vec::new(),
-        group: y.token,
+        group: y.tok,
         expr: y.buf.parse()?,
     })
 }

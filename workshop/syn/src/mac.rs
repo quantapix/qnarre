@@ -1,4 +1,4 @@
-use super::{attr, expr, item, mac, pat, pm2, tok, Ident, Path, Stream};
+use super::*;
 
 pub struct Mac {
     pub path: Path,
@@ -10,9 +10,9 @@ impl Mac {
     pub fn parse_body<T: Parse>(&self) -> Res<T> {
         self.parse_body_with(T::parse)
     }
-    pub fn parse_body_with<F: Parser>(&self, parser: F) -> Res<F::Output> {
+    pub fn parse_body_with<T: Parser>(&self, f: T) -> Res<T::Output> {
         let scope = self.delim.span().close();
-        parse::parse_scoped(parser, scope, self.toks.clone())
+        parse::parse_scoped(f, scope, self.toks.clone())
     }
 }
 impl Parse for Mac {
@@ -38,11 +38,11 @@ impl ToTokens for Mac {
     }
 }
 
-pub fn parse_delim(x: parse::Stream) -> Res<(tok::Delim, pm2::Stream)> {
-    x.step(|c| {
-        if let Some((pm2::Tree::Group(g), rest)) = c.token_tree() {
-            let s = g.delim_span();
-            let delim = match g.delimiter() {
+pub fn parse_delim(s: Stream) -> Res<(tok::Delim, pm2::Stream)> {
+    s.step(|c| {
+        if let Some((pm2::Tree::Group(x), rest)) = c.token_tree() {
+            let s = x.delim_span();
+            let delim = match x.delimiter() {
                 pm2::Delim::Parenthesis => tok::Delim::Paren(Paren(s)),
                 pm2::Delim::Brace => tok::Delim::Brace(Brace(s)),
                 pm2::Delim::Bracket => tok::Delim::Bracket(Bracket(s)),
@@ -50,7 +50,7 @@ pub fn parse_delim(x: parse::Stream) -> Res<(tok::Delim, pm2::Stream)> {
                     return Err(c.error("expected delimiter"));
                 },
             };
-            Ok(((delim, g.stream()), rest))
+            Ok(((delim, x.stream()), rest))
         } else {
             Err(c.error("expected delimiter"))
         }
@@ -546,7 +546,7 @@ macro_rules! Token {
 #[macro_export]
 macro_rules! parenthesized {
     ($content:ident in $cur:expr) => {
-        match $crate::parse_parens(&$cur) {
+        match $crate::parse::parse_parens(&$cur) {
             $crate::__private::Ok(x) => {
                 $content = x.content;
                 x.token
@@ -561,7 +561,7 @@ macro_rules! parenthesized {
 #[macro_export]
 macro_rules! braced {
     ($content:ident in $cur:expr) => {
-        match $crate::parse_braces(&$cur) {
+        match $crate::parse::parse_braces(&$cur) {
             $crate::__private::Ok(x) => {
                 $content = x.content;
                 x.token
@@ -576,7 +576,7 @@ macro_rules! braced {
 #[macro_export]
 macro_rules! bracketed {
     ($content:ident in $cur:expr) => {
-        match $crate::parse_brackets(&$cur) {
+        match $crate::parse::parse_brackets(&$cur) {
             $crate::__private::Ok(x) => {
                 $content = x.content;
                 x.token

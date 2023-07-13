@@ -90,9 +90,10 @@ use cur::Cursor;
 use data::DeriveInput;
 use err::{Err, Res};
 use ident::Lifetime;
-use parse::{Parse, Stream};
+use parse::{Parse, Parser, Stream};
 use path::Path;
 use punct::Punctuated;
+use parse::{parse_parens, }
 
 mod look {
     use super::{
@@ -172,67 +173,6 @@ mod look {
     }
 
     impl<F: Copy + FnOnce(TokenMarker) -> T, T: Tok> Sealed for F {}
-}
-
-pub struct Parens<'a> {
-    pub tok: tok::Paren,
-    pub buf: parse::Buffer<'a>,
-}
-pub fn parse_parens<'a>(x: &parse::Buffer<'a>) -> Res<Parens<'a>> {
-    parse_delimited(x, pm2::Delim::Parenthesis).map(|(span, buf)| Parens {
-        tok: tok::Paren(span),
-        buf,
-    })
-}
-pub struct Braces<'a> {
-    pub token: tok::Brace,
-    pub buf: parse::Buffer<'a>,
-}
-pub fn parse_braces<'a>(x: &parse::Buffer<'a>) -> Res<Braces<'a>> {
-    parse_delimited(x, pm2::Delim::Brace).map(|(span, buf)| Braces {
-        token: tok::Brace(span),
-        buf,
-    })
-}
-pub struct Brackets<'a> {
-    pub token: tok::Bracket,
-    pub buf: parse::Buffer<'a>,
-}
-pub fn parse_brackets<'a>(x: &parse::Buffer<'a>) -> Res<Brackets<'a>> {
-    parse_delimited(x, pm2::Delim::Bracket).map(|(span, buf)| Brackets {
-        token: tok::Bracket(span),
-        buf,
-    })
-}
-pub struct Group<'a> {
-    pub token: tok::Group,
-    pub buf: parse::Buffer<'a>,
-}
-pub fn parse_group<'a>(x: &parse::Buffer<'a>) -> Res<Group<'a>> {
-    parse_delimited(x, pm2::Delim::None).map(|(span, buf)| Group {
-        token: tok::Group(span.join()),
-        buf,
-    })
-}
-fn parse_delimited<'a>(x: &parse::Buffer<'a>, d: pm2::Delim) -> Res<(pm2::DelimSpan, parse::Buffer<'a>)> {
-    x.step(|c| {
-        if let Some((gist, span, rest)) = c.group(d) {
-            let scope = close_span_of_group(*c);
-            let nested = parse::advance_step_cursor(c, gist);
-            let unexpected = parse::get_unexpected(x);
-            let gist = parse::new_parse_buffer(scope, nested, unexpected);
-            Ok(((span, gist), rest))
-        } else {
-            use pm2::Delim::*;
-            let y = match d {
-                Parenthesis => "expected parentheses",
-                Brace => "expected braces",
-                Bracket => "expected brackets",
-                None => "expected group",
-            };
-            Err(c.error(y))
-        }
-    })
 }
 
 pub trait ParseQuote: Sized {
@@ -348,8 +288,8 @@ impl Parse for Visibility {
     fn parse(x: Stream) -> Res<Self> {
         if x.peek(tok::Group) {
             let ahead = x.fork();
-            let y = super::parse_group(&ahead)?;
-            if y.content.is_empty() {
+            let y = parse::parse_group(&ahead)?;
+            if y.buf.is_empty() {
                 x.advance_to(&ahead);
                 return Ok(Visibility::Inherited);
             }
@@ -716,14 +656,14 @@ pub fn parse_file(mut x: &str) -> Res<File> {
     Ok(y)
 }
 pub fn parse_str<T: parse::Parse>(s: &str) -> Res<T> {
-    parse::Parser::parse_str(T::parse, s)
+    Parser::parse_str(T::parse, s)
 }
 
-pub fn parse<T: parse::Parse>(ys: Stream) -> Res<T> {
-    parse::Parser::parse(T::parse, ys)
+pub fn parse<T: parse::Parse>(s: Stream) -> Res<T> {
+    Parser::parse(T::parse, s)
 }
-pub fn parse2<T: parse::Parse>(ys: Stream) -> Res<T> {
-    parse::Parser::parse2(T::parse, ys)
+pub fn parse2<T: parse::Parse>(s: Stream) -> Res<T> {
+    Parser::parse2(T::parse, s)
 }
 
 fn wrap_bare_struct(ys: &mut Stream, e: &Expr) {

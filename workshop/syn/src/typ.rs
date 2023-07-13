@@ -1,4 +1,4 @@
-pub use pm2::Stream;
+use super::*;
 
 ast_enum_of_structs! {
     pub enum Type {
@@ -599,10 +599,10 @@ impl Impl {
 }
 impl Parse for Group {
     fn parse(x: Stream) -> Res<Self> {
-        let y = super::parse_group(x)?;
+        let y = parse::parse_group(x)?;
         Ok(Group {
-            group: y.token,
-            elem: y.gist.parse()?,
+            group: y.tok,
+            elem: y.buf.parse()?,
         })
     }
 }

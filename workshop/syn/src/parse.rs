@@ -1,10 +1,9 @@
 use super::{
-    err,
     look::{self, Lookahead1, Peek},
     pm2::{Delim, DelimSpan, Span},
     punct::Punctuated,
     tok::Tok,
-    Cursor,
+    *,
 };
 use std::{
     cell::Cell,
@@ -16,6 +15,66 @@ use std::{
     rc::Rc,
     str::FromStr,
 };
+
+pub struct Parens<'a> {
+    pub tok: tok::Paren,
+    pub buf: Buffer<'a>,
+}
+pub fn parse_parens<'a>(x: &Buffer<'a>) -> Res<Parens<'a>> {
+    parse_delimited(x, Delim::Parenthesis).map(|(x, buf)| Parens {
+        tok: tok::Paren(x),
+        buf,
+    })
+}
+pub struct Braces<'a> {
+    pub tok: tok::Brace,
+    pub buf: Buffer<'a>,
+}
+pub fn parse_braces<'a>(x: &Buffer<'a>) -> Res<Braces<'a>> {
+    parse_delimited(x, Delim::Brace).map(|(x, buf)| Braces {
+        tok: tok::Brace(x),
+        buf,
+    })
+}
+pub struct Brackets<'a> {
+    pub tok: tok::Bracket,
+    pub buf: Buffer<'a>,
+}
+pub fn parse_brackets<'a>(x: &Buffer<'a>) -> Res<Brackets<'a>> {
+    parse_delimited(x, Delim::Bracket).map(|(x, buf)| Brackets {
+        tok: tok::Bracket(x),
+        buf,
+    })
+}
+pub struct Group<'a> {
+    pub tok: tok::Group,
+    pub buf: Buffer<'a>,
+}
+pub fn parse_group<'a>(x: &Buffer<'a>) -> Res<Group<'a>> {
+    parse_delimited(x, Delim::None).map(|(x, buf)| Group {
+        tok: tok::Group(x.join()),
+        buf,
+    })
+}
+fn parse_delimited<'a>(b: &Buffer<'a>, d: Delim) -> Res<(DelimSpan, Buffer<'a>)> {
+    b.step(|c| {
+        if let Some((y, span, rest)) = c.group(d) {
+            let scope = close_span_of_group(*c);
+            let nested = advance_step_cursor(c, y);
+            let unexpected = get_unexpected(b);
+            let y = new_parse_buffer(scope, nested, unexpected);
+            Ok(((span, y), rest))
+        } else {
+            let y = match d {
+                Delim::Parenthesis => "expected parentheses",
+                Delim::Brace => "expected braces",
+                Delim::Bracket => "expected brackets",
+                Delim::None => "expected group",
+            };
+            Err(c.error(y))
+        }
+    })
+}
 
 pub struct Buffer<'a> {
     scope: Span,
