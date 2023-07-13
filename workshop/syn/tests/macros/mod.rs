@@ -1,7 +1,7 @@
 #![allow(unused_macros, unused_macro_rules)]
 #[path = "../debug/mod.rs"]
 pub mod debug;
-use syn::parse::Parse;
+use syn::Parse;
 macro_rules! errorf {
     ($($tt:tt)*) => {{
         use ::std::io::Write;
@@ -11,7 +11,7 @@ macro_rules! errorf {
 }
 macro_rules! punctuated {
     ($($e:expr,)+) => {{
-        let mut seq = ::syn::punctuated::Punctuated::new();
+        let mut seq = ::syn::Puncted::new();
         $(
             seq.push($e);
         )+

@@ -1,23 +1,18 @@
-use super::{
-    parse::{Parse, Stream},
-    tok::Tok,
-};
+use super::*;
 use std::{
-    fmt::{self, Debug},
-    hash::{Hash, Hasher},
     iter,
     mem::ManuallyDrop,
     ops::{Deref, DerefMut, Index, IndexMut},
     option, slice, vec,
 };
 
-pub struct Punctuated<T, P> {
+pub struct Puncted<T, P> {
     inner: Vec<(T, P)>,
     last: Option<Box<T>>,
 }
-impl<T, P> Punctuated<T, P> {
+impl<T, P> Puncted<T, P> {
     pub const fn new() -> Self {
-        Punctuated {
+        Puncted {
             inner: Vec::new(),
             last: None,
         }
@@ -77,14 +72,14 @@ impl<T, P> Punctuated<T, P> {
     pub fn push_value(&mut self, value: T) {
         assert!(
             self.empty_or_trailing(),
-            "Punctuated::push_value: cannot push value if Punctuated is missing trailing punctuation",
+            "Puncted::push_value: cannot push value if Puncted is missing trailing punctuation",
         );
         self.last = Some(Box::new(value));
     }
     pub fn push_punct(&mut self, punctuation: P) {
         assert!(
             self.last.is_some(),
-            "Punctuated::push_punct: cannot push punctuation if Punctuated is empty or already has trailing punctuation",
+            "Puncted::push_punct: cannot push punctuation if Puncted is empty or already has trailing punctuation",
         );
         let last = self.last.take().unwrap();
         self.inner.push((*last, punctuation));
@@ -93,7 +88,7 @@ impl<T, P> Punctuated<T, P> {
         if self.last.is_some() {
             self.last.take().map(|t| Pair::End(*t))
         } else {
-            self.inner.pop().map(|(t, p)| Pair::Punctuated(t, p))
+            self.inner.pop().map(|(t, p)| Pair::Puncted(t, p))
         }
     }
     pub fn pop_punct(&mut self) -> Option<P> {
@@ -124,7 +119,7 @@ impl<T, P> Punctuated<T, P> {
     where
         P: Default,
     {
-        assert!(index <= self.len(), "Punctuated::insert: index out of range",);
+        assert!(index <= self.len(), "Puncted::insert: index out of range",);
         if index == self.len() {
             self.push(value);
         } else {
@@ -148,7 +143,7 @@ impl<T, P> Punctuated<T, P> {
     where
         P: Parse,
     {
-        let mut ys = Punctuated::new();
+        let mut ys = Puncted::new();
         loop {
             if x.is_empty() {
                 break;
@@ -176,7 +171,7 @@ impl<T, P> Punctuated<T, P> {
     where
         P: Tok + Parse,
     {
-        let mut ys = Punctuated::new();
+        let mut ys = Puncted::new();
         loop {
             let y = f(x)?;
             ys.push_value(y);
@@ -189,46 +184,46 @@ impl<T, P> Punctuated<T, P> {
         Ok(ys)
     }
 }
-impl<T, P> Clone for Punctuated<T, P>
+impl<T, P> Clone for Puncted<T, P>
 where
     T: Clone,
     P: Clone,
 {
     fn clone(&self) -> Self {
-        Punctuated {
+        Puncted {
             inner: self.inner.clone(),
             last: self.last.clone(),
         }
     }
 }
-impl<T, P> Eq for Punctuated<T, P>
+impl<T, P> Eq for Puncted<T, P>
 where
     T: Eq,
     P: Eq,
 {
 }
-impl<T, P> PartialEq for Punctuated<T, P>
+impl<T, P> PartialEq for Puncted<T, P>
 where
     T: PartialEq,
     P: PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
-        let Punctuated { inner, last } = self;
+        let Puncted { inner, last } = self;
         *inner == other.inner && *last == other.last
     }
 }
-impl<T, P> Hash for Punctuated<T, P>
+impl<T, P> Hash for Puncted<T, P>
 where
     T: Hash,
     P: Hash,
 {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        let Punctuated { inner, last } = self;
+        let Puncted { inner, last } = self;
         inner.hash(state);
         last.hash(state);
     }
 }
-impl<T: Debug, P: Debug> Debug for Punctuated<T, P> {
+impl<T: Debug, P: Debug> Debug for Puncted<T, P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut list = f.debug_list();
         for (t, p) in &self.inner {
@@ -241,17 +236,17 @@ impl<T: Debug, P: Debug> Debug for Punctuated<T, P> {
         list.finish()
     }
 }
-impl<T, P> FromIterator<T> for Punctuated<T, P>
+impl<T, P> FromIterator<T> for Puncted<T, P>
 where
     P: Default,
 {
     fn from_iter<I: IntoIterator<Item = T>>(i: I) -> Self {
-        let mut ret = Punctuated::new();
+        let mut ret = Puncted::new();
         ret.extend(i);
         ret
     }
 }
-impl<T, P> Extend<T> for Punctuated<T, P>
+impl<T, P> Extend<T> for Puncted<T, P>
 where
     P: Default,
 {
@@ -261,14 +256,14 @@ where
         }
     }
 }
-impl<T, P> FromIterator<Pair<T, P>> for Punctuated<T, P> {
+impl<T, P> FromIterator<Pair<T, P>> for Puncted<T, P> {
     fn from_iter<I: IntoIterator<Item = Pair<T, P>>>(i: I) -> Self {
-        let mut ret = Punctuated::new();
+        let mut ret = Puncted::new();
         do_extend(&mut ret, i.into_iter());
         ret
     }
 }
-impl<T, P> Extend<Pair<T, P>> for Punctuated<T, P>
+impl<T, P> Extend<Pair<T, P>> for Puncted<T, P>
 where
     P: Default,
 {
@@ -279,7 +274,7 @@ where
         do_extend(self, i.into_iter());
     }
 }
-impl<T, P> IntoIterator for Punctuated<T, P> {
+impl<T, P> IntoIterator for Puncted<T, P> {
     type Item = T;
     type IntoIter = IntoIter<T>;
     fn into_iter(self) -> Self::IntoIter {
@@ -291,26 +286,26 @@ impl<T, P> IntoIterator for Punctuated<T, P> {
         }
     }
 }
-impl<'a, T, P> IntoIterator for &'a Punctuated<T, P> {
+impl<'a, T, P> IntoIterator for &'a Puncted<T, P> {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
     fn into_iter(self) -> Self::IntoIter {
-        Punctuated::iter(self)
+        Puncted::iter(self)
     }
 }
-impl<'a, T, P> IntoIterator for &'a mut Punctuated<T, P> {
+impl<'a, T, P> IntoIterator for &'a mut Puncted<T, P> {
     type Item = &'a mut T;
     type IntoIter = IterMut<'a, T>;
     fn into_iter(self) -> Self::IntoIter {
-        Punctuated::iter_mut(self)
+        Puncted::iter_mut(self)
     }
 }
-impl<T, P> Default for Punctuated<T, P> {
+impl<T, P> Default for Puncted<T, P> {
     fn default() -> Self {
-        Punctuated::new()
+        Puncted::new()
     }
 }
-impl<T, P> Index<usize> for Punctuated<T, P> {
+impl<T, P> Index<usize> for Puncted<T, P> {
     type Output = T;
     fn index(&self, index: usize) -> &Self::Output {
         if index == self.len() - 1 {
@@ -323,7 +318,7 @@ impl<T, P> Index<usize> for Punctuated<T, P> {
         }
     }
 }
-impl<T, P> IndexMut<usize> for Punctuated<T, P> {
+impl<T, P> IndexMut<usize> for Puncted<T, P> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         if index == self.len() - 1 {
             match &mut self.last {
@@ -335,7 +330,7 @@ impl<T, P> IndexMut<usize> for Punctuated<T, P> {
         }
     }
 }
-impl<T, P> ToTokens for Punctuated<T, P>
+impl<T, P> ToTokens for Puncted<T, P>
 where
     T: ToTokens,
     P: ToTokens,
@@ -345,17 +340,17 @@ where
     }
 }
 
-fn do_extend<T, P, I>(punctuated: &mut Punctuated<T, P>, i: I)
+fn do_extend<T, P, I>(punctuated: &mut Puncted<T, P>, i: I)
 where
     I: Iterator<Item = Pair<T, P>>,
 {
     let mut nomore = false;
     for pair in i {
         if nomore {
-            panic!("Punctuated extended with items after a Pair::End");
+            panic!("Puncted extended with items after a Pair::End");
         }
         match pair {
-            Pair::Punctuated(a, b) => punctuated.inner.push((a, b)),
+            Pair::Puncted(a, b) => punctuated.inner.push((a, b)),
             Pair::End(a) => {
                 punctuated.last = Some(Box::new(a));
                 nomore = true;
@@ -373,7 +368,7 @@ impl<'a, T, P> Iterator for Pairs<'a, T, P> {
     fn next(&mut self) -> Option<Self::Item> {
         self.inner
             .next()
-            .map(|(t, p)| Pair::Punctuated(t, p))
+            .map(|(t, p)| Pair::Puncted(t, p))
             .or_else(|| self.last.next().map(Pair::End))
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -385,7 +380,7 @@ impl<'a, T, P> DoubleEndedIterator for Pairs<'a, T, P> {
         self.last
             .next()
             .map(Pair::End)
-            .or_else(|| self.inner.next_back().map(|(t, p)| Pair::Punctuated(t, p)))
+            .or_else(|| self.inner.next_back().map(|(t, p)| Pair::Puncted(t, p)))
     }
 }
 impl<'a, T, P> ExactSizeIterator for Pairs<'a, T, P> {
@@ -411,7 +406,7 @@ impl<'a, T, P> Iterator for PairsMut<'a, T, P> {
     fn next(&mut self) -> Option<Self::Item> {
         self.inner
             .next()
-            .map(|(t, p)| Pair::Punctuated(t, p))
+            .map(|(t, p)| Pair::Puncted(t, p))
             .or_else(|| self.last.next().map(Pair::End))
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -423,7 +418,7 @@ impl<'a, T, P> DoubleEndedIterator for PairsMut<'a, T, P> {
         self.last
             .next()
             .map(Pair::End)
-            .or_else(|| self.inner.next_back().map(|(t, p)| Pair::Punctuated(t, p)))
+            .or_else(|| self.inner.next_back().map(|(t, p)| Pair::Puncted(t, p)))
     }
 }
 impl<'a, T, P> ExactSizeIterator for PairsMut<'a, T, P> {
@@ -441,7 +436,7 @@ impl<T, P> Iterator for IntoPairs<T, P> {
     fn next(&mut self) -> Option<Self::Item> {
         self.inner
             .next()
-            .map(|(t, p)| Pair::Punctuated(t, p))
+            .map(|(t, p)| Pair::Puncted(t, p))
             .or_else(|| self.last.next().map(Pair::End))
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -453,7 +448,7 @@ impl<T, P> DoubleEndedIterator for IntoPairs<T, P> {
         self.last
             .next()
             .map(Pair::End)
-            .or_else(|| self.inner.next_back().map(|(t, p)| Pair::Punctuated(t, p)))
+            .or_else(|| self.inner.next_back().map(|(t, p)| Pair::Puncted(t, p)))
     }
 }
 impl<T, P> ExactSizeIterator for IntoPairs<T, P> {
@@ -657,46 +652,46 @@ pub(crate) fn empty_punctuated_iter_mut<'a, T>() -> IterMut<'a, T> {
 }
 
 pub enum Pair<T, P> {
-    Punctuated(T, P),
+    Puncted(T, P),
     End(T),
 }
 impl<T, P> Pair<T, P> {
     pub fn into_value(self) -> T {
         match self {
-            Pair::Punctuated(t, _) | Pair::End(t) => t,
+            Pair::Puncted(t, _) | Pair::End(t) => t,
         }
     }
     pub fn value(&self) -> &T {
         match self {
-            Pair::Punctuated(t, _) | Pair::End(t) => t,
+            Pair::Puncted(t, _) | Pair::End(t) => t,
         }
     }
     pub fn value_mut(&mut self) -> &mut T {
         match self {
-            Pair::Punctuated(t, _) | Pair::End(t) => t,
+            Pair::Puncted(t, _) | Pair::End(t) => t,
         }
     }
     pub fn punct(&self) -> Option<&P> {
         match self {
-            Pair::Punctuated(_, p) => Some(p),
+            Pair::Puncted(_, p) => Some(p),
             Pair::End(_) => None,
         }
     }
     pub fn punct_mut(&mut self) -> Option<&mut P> {
         match self {
-            Pair::Punctuated(_, p) => Some(p),
+            Pair::Puncted(_, p) => Some(p),
             Pair::End(_) => None,
         }
     }
     pub fn new(t: T, p: Option<P>) -> Self {
         match p {
-            Some(p) => Pair::Punctuated(t, p),
+            Some(p) => Pair::Puncted(t, p),
             None => Pair::End(t),
         }
     }
     pub fn into_tuple(self) -> (T, Option<P>) {
         match self {
-            Pair::Punctuated(t, p) => (t, Some(p)),
+            Pair::Puncted(t, p) => (t, Some(p)),
             Pair::End(t) => (t, None),
         }
     }
@@ -708,7 +703,7 @@ impl<T, P> Pair<&T, &P> {
         P: Clone,
     {
         match self {
-            Pair::Punctuated(t, p) => Pair::Punctuated(t.clone(), p.clone()),
+            Pair::Puncted(t, p) => Pair::Puncted(t.clone(), p.clone()),
             Pair::End(t) => Pair::End(t.clone()),
         }
     }
@@ -720,7 +715,7 @@ where
 {
     fn clone(&self) -> Self {
         match self {
-            Pair::Punctuated(t, p) => Pair::Punctuated(t.clone(), p.clone()),
+            Pair::Puncted(t, p) => Pair::Puncted(t.clone(), p.clone()),
             Pair::End(t) => Pair::End(t.clone()),
         }
     }
@@ -738,7 +733,7 @@ where
 {
     fn to_tokens(&self, ys: &mut Stream) {
         match self {
-            Pair::Punctuated(a, b) => {
+            Pair::Puncted(a, b) => {
                 a.to_tokens(ys);
                 b.to_tokens(ys);
             },

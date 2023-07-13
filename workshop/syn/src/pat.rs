@@ -1,5 +1,5 @@
+use super::*;
 pub use expr::{Const, Lit, Macro as Mac, Path, Range};
-use pm2::Stream;
 
 ast_enum_of_structs! {
     pub enum Pat {
@@ -32,7 +32,7 @@ pub struct Ident {
 pub struct Or {
     pub attrs: Vec<attr::Attr>,
     pub vert: Option<Token![|]>,
-    pub cases: Punctuated<Pat, Token![|]>,
+    pub cases: Puncted<Pat, Token![|]>,
 }
 pub struct Paren {
     pub attrs: Vec<attr::Attr>,
@@ -52,27 +52,27 @@ pub struct Rest {
 pub struct Slice {
     pub attrs: Vec<attr::Attr>,
     pub bracket: tok::Bracket,
-    pub elems: Punctuated<Pat, Token![,]>,
+    pub elems: Puncted<Pat, Token![,]>,
 }
 pub struct Struct {
     pub attrs: Vec<attr::Attr>,
     pub qself: Option<QSelf>,
     pub path: Path,
     pub brace: tok::Brace,
-    pub fields: Punctuated<Field, Token![,]>,
+    pub fields: Puncted<Field, Token![,]>,
     pub rest: Option<Rest>,
 }
 pub struct Tuple {
     pub attrs: Vec<attr::Attr>,
     pub paren: tok::Paren,
-    pub elems: Punctuated<Pat, Token![,]>,
+    pub elems: Puncted<Pat, Token![,]>,
 }
 pub struct TupleStruct {
     pub attrs: Vec<attr::Attr>,
     pub qself: Option<QSelf>,
     pub path: Path,
     pub paren: tok::Paren,
-    pub elems: Punctuated<Pat, Token![,]>,
+    pub elems: Puncted<Pat, Token![,]>,
 }
 pub struct Type {
     pub attrs: Vec<attr::Attr>,
@@ -142,7 +142,7 @@ impl Pat {
 fn multi_impl(x: Stream, vert: Option<Token![|]>) -> Res<Pat> {
     let mut y = Pat::parse_single(x)?;
     if vert.is_some() || x.peek(Token![|]) && !x.peek(Token![||]) && !x.peek(Token![|=]) {
-        let mut cases = Punctuated::new();
+        let mut cases = Puncted::new();
         cases.push_value(y);
         while x.peek(Token![|]) && !x.peek(Token![||]) && !x.peek(Token![|=]) {
             let punct = x.parse()?;
@@ -218,7 +218,7 @@ fn ident(x: Stream) -> Res<Ident> {
 fn tuple_struct(x: Stream, qself: Option<QSelf>, path: Path) -> Res<TupleStruct> {
     let gist;
     let paren = parenthesized!(gist in x);
-    let mut elems = Punctuated::new();
+    let mut elems = Puncted::new();
     while !gist.is_empty() {
         let value = Pat::parse_multi(&gist)?;
         elems.push_value(value);
@@ -239,7 +239,7 @@ fn tuple_struct(x: Stream, qself: Option<QSelf>, path: Path) -> Res<TupleStruct>
 fn struct_(x: Stream, qself: Option<QSelf>, path: Path) -> Res<Struct> {
     let gist;
     let brace = braced!(gist in x);
-    let mut fields = Punctuated::new();
+    let mut fields = Puncted::new();
     let mut rest = None;
     while !gist.is_empty() {
         let attrs = gist.call(attr::Attr::parse_outer)?;
@@ -356,7 +356,7 @@ fn range_half_open(x: Stream) -> Res<Pat> {
 fn paren_or_tuple(x: Stream) -> Res<Pat> {
     let gist;
     let paren = parenthesized!(gist in x);
-    let mut elems = Punctuated::new();
+    let mut elems = Puncted::new();
     while !gist.is_empty() {
         let x = Pat::parse_multi(&gist)?;
         if gist.is_empty() {
@@ -460,7 +460,7 @@ fn range_bound(x: Stream) -> Res<Option<RangeBound>> {
 fn slice(x: Stream) -> Res<Slice> {
     let gist;
     let bracket = bracketed!(gist in x);
-    let mut elems = Punctuated::new();
+    let mut elems = Puncted::new();
     while !gist.is_empty() {
         let y = Pat::parse_multi(&gist)?;
         match y {

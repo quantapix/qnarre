@@ -47,12 +47,12 @@ pub fn parse_delim(s: Stream) -> Res<(tok::Delim, pm2::Stream)> {
                 pm2::Delim::Brace => tok::Delim::Brace(Brace(s)),
                 pm2::Delim::Bracket => tok::Delim::Bracket(Bracket(s)),
                 pm2::Delim::None => {
-                    return Err(c.error("expected delimiter"));
+                    return Err(c.err("expected delimiter"));
                 },
             };
             Ok(((delim, x.stream()), rest))
         } else {
-            Err(c.error("expected delimiter"))
+            Err(c.err("expected delimiter"))
         }
     })
 }

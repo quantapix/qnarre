@@ -31,7 +31,7 @@ pub struct Fn {
     pub abi: Option<Abi>,
     pub fn_: Token![fn],
     pub paren: tok::Paren,
-    pub args: Punctuated<FnArg, Token![,]>,
+    pub args: Puncted<FnArg, Token![,]>,
     pub vari: Option<Variadic>,
     pub ret: Ret,
 }
@@ -41,7 +41,7 @@ pub struct Group {
 }
 pub struct Impl {
     pub impl_: Token![impl],
-    pub bounds: Punctuated<gen::bound::Type, Token![+]>,
+    pub bounds: Puncted<gen::bound::Type, Token![+]>,
 }
 pub struct Infer {
     pub underscore: Token![_],
@@ -78,11 +78,11 @@ pub struct Slice {
 }
 pub struct Trait {
     pub dyn_: Option<Token![dyn]>,
-    pub bounds: Punctuated<gen::bound::Type, Token![+]>,
+    pub bounds: Puncted<gen::bound::Type, Token![+]>,
 }
 pub struct Tuple {
     pub paren: tok::Paren,
-    pub elems: Punctuated<Type, Token![,]>,
+    pub elems: Puncted<Type, Token![,]>,
 }
 pub struct Abi {
     pub extern_: Token![extern],
@@ -167,7 +167,7 @@ pub fn ambig_ty(x: Stream, allow_plus: bool, group_gen: bool) -> Res<Type> {
             && !look.peek(Token![crate])
             || x.peek(Token![dyn])
         {
-            return Err(look.error());
+            return Err(look.err());
         }
     }
     if look.peek(tok::Paren) {
@@ -176,7 +176,7 @@ pub fn ambig_ty(x: Stream, allow_plus: bool, group_gen: bool) -> Res<Type> {
         if gist.is_empty() {
             return Ok(Type::Tuple(Tuple {
                 paren,
-                elems: Punctuated::new(),
+                elems: Puncted::new(),
             }));
         }
         if gist.peek(Lifetime) {
@@ -189,7 +189,7 @@ pub fn ambig_ty(x: Stream, allow_plus: bool, group_gen: bool) -> Res<Type> {
             return Ok(Type::TraitObject(Trait {
                 dyn_: None,
                 bounds: {
-                    let mut ys = Punctuated::new();
+                    let mut ys = Puncted::new();
                     ys.push_value(gen::bound::Type::Trait(gen::bound::Trait {
                         paren: Some(paren),
                         ..gist.parse()?
@@ -207,7 +207,7 @@ pub fn ambig_ty(x: Stream, allow_plus: bool, group_gen: bool) -> Res<Type> {
             return Ok(Type::Tuple(Tuple {
                 paren,
                 elems: {
-                    let mut ys = Punctuated::new();
+                    let mut ys = Puncted::new();
                     ys.push_value(first);
                     ys.push_punct(gist.parse()?);
                     while !gist.is_empty() {
@@ -248,7 +248,7 @@ pub fn ambig_ty(x: Stream, allow_plus: bool, group_gen: bool) -> Res<Type> {
                 return Ok(Type::TraitObject(Trait {
                     dyn_: None,
                     bounds: {
-                        let mut ys = Punctuated::new();
+                        let mut ys = Puncted::new();
                         ys.push_value(first);
                         while let Some(plus) = x.parse()? {
                             ys.push_punct(plus);
@@ -292,7 +292,7 @@ pub fn ambig_ty(x: Stream, allow_plus: bool, group_gen: bool) -> Res<Type> {
             }));
         }
         if lifes.is_some() || allow_plus && x.peek(Token![+]) {
-            let mut bounds = Punctuated::new();
+            let mut bounds = Puncted::new();
             bounds.push_value(gen::bound::Type::Trait(gen::bound::Trait {
                 paren: None,
                 modifier: gen::bound::Modifier::None,
@@ -359,7 +359,7 @@ pub fn ambig_ty(x: Stream, allow_plus: bool, group_gen: bool) -> Res<Type> {
     } else if look.peek(Lifetime) {
         x.parse().map(Type::TraitObject)
     } else {
-        Err(look.error())
+        Err(look.err())
     }
 }
 impl Parse for Slice {
@@ -391,7 +391,7 @@ impl Parse for Ptr {
         } else if look.peek(Token![mut]) {
             (None, Some(x.parse()?))
         } else {
-            return Err(look.error());
+            return Err(look.err());
         };
         Ok(Ptr {
             star,
@@ -422,7 +422,7 @@ impl Parse for Fn {
             fn_: x.parse()?,
             paren: parenthesized!(args in x),
             args: {
-                let mut ys = Punctuated::new();
+                let mut ys = Puncted::new();
                 while !args.is_empty() {
                     let attrs = args.call(attr::Attr::parse_outer)?;
                     if ys.empty_or_trailing()
@@ -465,14 +465,14 @@ impl Parse for Tuple {
         if gist.is_empty() {
             return Ok(Tuple {
                 paren,
-                elems: Punctuated::new(),
+                elems: Puncted::new(),
             });
         }
         let first: Type = gist.parse()?;
         Ok(Tuple {
             paren,
             elems: {
-                let mut ys = Punctuated::new();
+                let mut ys = Puncted::new();
                 ys.push_value(first);
                 ys.push_punct(gist.parse()?);
                 while !gist.is_empty() {
@@ -541,7 +541,7 @@ impl Trait {
         let bounds = Self::parse_bounds(span, x, plus)?;
         Ok(Trait { dyn_, bounds })
     }
-    fn parse_bounds(s: pm2::Span, x: Stream, plus: bool) -> Res<Punctuated<gen::bound::Type, Token![+]>> {
+    fn parse_bounds(s: pm2::Span, x: Stream, plus: bool) -> Res<Puncted<gen::bound::Type, Token![+]>> {
         let ys = gen::bound::Type::parse_multiple(x, plus)?;
         let mut last = None;
         let mut one = false;

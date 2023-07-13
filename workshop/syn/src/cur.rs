@@ -1,5 +1,4 @@
 use super::{
-    path::Path,
     pm2::{self, Delim, DelimSpan, Spacing, Span, Stream, Tree},
     *,
 };
@@ -12,12 +11,15 @@ enum Entry {
     End(isize),
 }
 
-pub use super::{pm2::Lit, Group, Ident, Punct};
+pub use super::{
+    pm2::{Group, Lit},
+    Ident, Punct,
+};
 
 pub struct Cursor<'a> {
     ptr: *const Entry,
     scope: *const Entry,
-    marker: PhantomData<&'a Entry>,
+    _marker: PhantomData<&'a Entry>,
 }
 impl<'a> Cursor<'a> {
     pub fn empty() -> Self {
@@ -27,7 +29,7 @@ impl<'a> Cursor<'a> {
         Cursor {
             ptr: &EMPTY_ENTRY.0,
             scope: &EMPTY_ENTRY.0,
-            marker: PhantomData,
+            _marker: PhantomData,
         }
     }
     unsafe fn create(mut ptr: *const Entry, scope: *const Entry) -> Self {
@@ -40,7 +42,7 @@ impl<'a> Cursor<'a> {
         Cursor {
             ptr,
             scope,
-            marker: PhantomData,
+            _marker: PhantomData,
         }
     }
     fn entry(self) -> &'a Entry {

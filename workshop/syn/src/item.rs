@@ -1,4 +1,4 @@
-pub use pm2::Stream;
+use super::*;
 
 ast_enum_of_structs! {
     pub enum Item {
@@ -138,7 +138,7 @@ pub struct Enum {
     pub ident: Ident,
     pub gens: gen::Gens,
     pub brace: tok::Brace,
-    pub elems: Punctuated<data::Variant, Token![,]>,
+    pub elems: Puncted<data::Variant, Token![,]>,
 }
 impl From<Enum> for DeriveInput {
     fn from(x: Enum) -> DeriveInput {
@@ -591,7 +591,7 @@ pub struct Trait {
     pub ident: Ident,
     pub gens: gen::Gens,
     pub colon: Option<Token![:]>,
-    pub supers: Punctuated<gen::bound::Type, Token![+]>,
+    pub supers: Puncted<gen::bound::Type, Token![+]>,
     pub brace: tok::Brace,
     pub items: Vec<Trait::Item>,
 }
@@ -635,7 +635,7 @@ pub struct TraitAlias {
     pub ident: Ident,
     pub gens: gen::Gens,
     pub eq: Token![=],
-    pub bounds: Punctuated<gen::bound::Type, Token![+]>,
+    pub bounds: Puncted<gen::bound::Type, Token![+]>,
     pub semi: Token![;],
 }
 impl Parse for TraitAlias {
@@ -913,7 +913,7 @@ pub struct Sig {
     pub ident: Ident,
     pub gens: gen::Gens,
     pub paren: tok::Paren,
-    pub args: Punctuated<FnArg, Token![,]>,
+    pub args: Puncted<FnArg, Token![,]>,
     pub vari: Option<Variadic>,
     pub ret: typ::Ret,
 }
@@ -1630,7 +1630,7 @@ pub mod Trait {
         pub ident: Ident,
         pub gens: gen::Gens,
         pub colon: Option<Token![:]>,
-        pub bounds: Punctuated<gen::bound::Type, Token![+]>,
+        pub bounds: Puncted<gen::bound::Type, Token![+]>,
         pub default: Option<(Token![=], typ::Type)>,
         pub semi: Token![;],
     }
@@ -1749,7 +1749,7 @@ pub mod Use {
         } else if look.peek(tok::Brace) {
             let y;
             let brace = braced!(y in x);
-            let mut elems = Punctuated::new();
+            let mut elems = Puncted::new();
             let mut has_root = false;
             loop {
                 if y.is_empty() {
@@ -1823,7 +1823,7 @@ pub mod Use {
 
     pub struct Group {
         pub brace: tok::Brace,
-        pub elems: Punctuated<Tree, Token![,]>,
+        pub elems: Puncted<Tree, Token![,]>,
     }
     impl ToTokens for Group {
         fn to_tokens(&self, ys: &mut Stream) {
@@ -1851,7 +1851,7 @@ struct FlexibleItemType {
     ident: Ident,
     gens: gen::Gens,
     colon: Option<Token![:]>,
-    bounds: Punctuated<gen::bound::Type, Token![+]>,
+    bounds: Puncted<gen::bound::Type, Token![+]>,
     typ: Option<(Token![=], typ::Type)>,
     semi: Token![;],
 }
@@ -1892,9 +1892,9 @@ impl FlexibleItemType {
             semi,
         })
     }
-    fn parse_optional_bounds(x: Stream) -> Res<(Option<Token![:]>, Punctuated<gen::bound::Type, Token![+]>)> {
+    fn parse_optional_bounds(x: Stream) -> Res<(Option<Token![:]>, Puncted<gen::bound::Type, Token![+]>)> {
         let colon: Option<Token![:]> = x.parse()?;
-        let mut bounds = Punctuated::new();
+        let mut bounds = Puncted::new();
         if colon.is_some() {
             loop {
                 if x.peek(Token![where]) || x.peek(Token![=]) || x.peek(Token![;]) {
@@ -2151,8 +2151,8 @@ fn parse_fn_arg_or_variadic(x: Stream, attrs: Vec<attr::Attr>, variadic: bool) -
         ty: x.parse()?,
     })))
 }
-fn parse_fn_args(x: Stream) -> Res<(Punctuated<FnArg, Token![,]>, Option<Variadic>)> {
-    let mut ys = Punctuated::new();
+fn parse_fn_args(x: Stream) -> Res<(Puncted<FnArg, Token![,]>, Option<Variadic>)> {
+    let mut ys = Puncted::new();
     let mut vari = None;
     let mut has_receiver = false;
     while !x.is_empty() {
@@ -2272,7 +2272,7 @@ fn parse_rest_of_trait(
     mut gens: gen::Gens,
 ) -> Res<Trait> {
     let colon: Option<Token![:]> = x.parse()?;
-    let mut supers = Punctuated::new();
+    let mut supers = Puncted::new();
     if colon.is_some() {
         loop {
             if x.peek(Token![where]) || x.peek(tok::Brace) {
@@ -2325,7 +2325,7 @@ fn parse_rest_of_trait_alias(
     mut gens: gen::Gens,
 ) -> Res<TraitAlias> {
     let eq: Token![=] = x.parse()?;
-    let mut bounds = Punctuated::new();
+    let mut bounds = Puncted::new();
     loop {
         if x.peek(Token![where]) || x.peek(Token![;]) {
             break;

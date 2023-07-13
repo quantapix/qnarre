@@ -1,20 +1,16 @@
 #![allow(unused_variables)]
 
 use crate::*;
+
 macro_rules! full {
     ($e:expr) => {
         $e
     };
 }
-#[cfg(all(feature = "derive", not(feature = "full")))]
-macro_rules! full {
-    ($e:expr) => {
-        unreachable!()
-    };
-}
 macro_rules! skip {
     ($($tt:tt)*) => {};
 }
+
 pub trait Visit<'ast> {
     fn visit_abi(&mut self, i: &'ast Abi) {
         visit_abi(self, i);
@@ -578,7 +574,7 @@ where
 {
     skip!(node.colon2);
     skip!(node.lt);
-    for el in Punctuated::pairs(&node.args) {
+    for el in Puncted::pairs(&node.args) {
         let it = el.value();
         v.visit_generic_argument(it);
     }
@@ -775,7 +771,7 @@ where
 {
     skip!(node.for_);
     skip!(node.lt);
-    for el in Punctuated::pairs(&node.lifes) {
+    for el in Puncted::pairs(&node.lifes) {
         let it = el.value();
         v.visit_generic_param(it);
     }
@@ -806,7 +802,7 @@ where
         v.visit_angle_bracketed_generic_arguments(it);
     }
     skip!(node.colon);
-    for el in Punctuated::pairs(&node.bounds) {
+    for el in Puncted::pairs(&node.bounds) {
         let it = el.value();
         v.visit_type_param_bound(it);
     }
@@ -833,7 +829,7 @@ where
 {
     skip!(node.enum_);
     skip!(node.brace);
-    for el in Punctuated::pairs(&node.variants) {
+    for el in Puncted::pairs(&node.variants) {
         let it = el.value();
         v.visit_variant(it);
     }
@@ -997,7 +993,7 @@ where
         v.visit_attribute(it);
     }
     skip!(node.bracket);
-    for el in Punctuated::pairs(&node.elems) {
+    for el in Puncted::pairs(&node.elems) {
         let it = el.value();
         v.visit_expr(it);
     }
@@ -1082,7 +1078,7 @@ where
     }
     v.visit_expr(&*node.func);
     skip!(node.paren);
-    for el in Punctuated::pairs(&node.args) {
+    for el in Puncted::pairs(&node.args) {
         let it = el.value();
         v.visit_expr(it);
     }
@@ -1113,7 +1109,7 @@ where
     skip!(node.asyncness);
     skip!(node.capture);
     skip!(node.or1);
-    for el in Punctuated::pairs(&node.inputs) {
+    for el in Puncted::pairs(&node.inputs) {
         let it = el.value();
         v.visit_pat(it);
     }
@@ -1286,7 +1282,7 @@ where
         v.visit_angle_bracketed_generic_arguments(it);
     }
     skip!(node.paren);
-    for el in Punctuated::pairs(&node.args) {
+    for el in Puncted::pairs(&node.args) {
         let it = el.value();
         v.visit_expr(it);
     }
@@ -1375,7 +1371,7 @@ where
     }
     v.visit_path(&node.path);
     skip!(node.brace);
-    for el in Punctuated::pairs(&node.fields) {
+    for el in Puncted::pairs(&node.fields) {
         let it = el.value();
         v.visit_field_value(it);
     }
@@ -1412,7 +1408,7 @@ where
         v.visit_attribute(it);
     }
     skip!(node.paren);
-    for el in Punctuated::pairs(&node.elems) {
+    for el in Puncted::pairs(&node.elems) {
         let it = el.value();
         v.visit_expr(it);
     }
@@ -1527,7 +1523,7 @@ where
     V: Visit<'ast> + ?Sized,
 {
     skip!(node.brace);
-    for el in Punctuated::pairs(&node.field) {
+    for el in Puncted::pairs(&node.field) {
         let it = el.value();
         v.visit_field(it);
     }
@@ -1537,7 +1533,7 @@ where
     V: Visit<'ast> + ?Sized,
 {
     skip!(node.paren);
-    for el in Punctuated::pairs(&node.field) {
+    for el in Puncted::pairs(&node.field) {
         let it = el.value();
         v.visit_field(it);
     }
@@ -1684,7 +1680,7 @@ where
     V: Visit<'ast> + ?Sized,
 {
     skip!(node.lt);
-    for el in Punctuated::pairs(&node.params) {
+    for el in Puncted::pairs(&node.params) {
         let it = el.value();
         v.visit_generic_param(it);
     }
@@ -1874,7 +1870,7 @@ where
     v.visit_ident(&node.ident);
     v.visit_generics(&node.gens);
     skip!(node.brace);
-    for el in Punctuated::pairs(&node.elems) {
+    for el in Puncted::pairs(&node.elems) {
         let it = el.value();
         v.visit_variant(it);
     }
@@ -2023,7 +2019,7 @@ where
     v.visit_ident(&node.ident);
     v.visit_generics(&node.gens);
     skip!(node.colon);
-    for el in Punctuated::pairs(&node.supers) {
+    for el in Puncted::pairs(&node.supers) {
         let it = el.value();
         v.visit_type_param_bound(it);
     }
@@ -2044,7 +2040,7 @@ where
     v.visit_ident(&node.ident);
     v.visit_generics(&node.gens);
     skip!(node.eq);
-    for el in Punctuated::pairs(&node.bounds) {
+    for el in Puncted::pairs(&node.bounds) {
         let it = el.value();
         v.visit_type_param_bound(it);
     }
@@ -2114,7 +2110,7 @@ where
     }
     v.visit_lifetime(&node.life);
     skip!(node.colon);
-    for el in Punctuated::pairs(&node.bounds) {
+    for el in Puncted::pairs(&node.bounds) {
         let it = el.value();
         v.visit_lifetime(it);
     }
@@ -2287,7 +2283,7 @@ where
     V: Visit<'ast> + ?Sized,
 {
     skip!(node.paren);
-    for el in Punctuated::pairs(&node.ins) {
+    for el in Puncted::pairs(&node.ins) {
         let it = el.value();
         v.visit_type(it);
     }
@@ -2374,7 +2370,7 @@ where
         v.visit_attribute(it);
     }
     skip!(node.leading_vert);
-    for el in Punctuated::pairs(&node.cases) {
+    for el in Puncted::pairs(&node.cases) {
         let it = el.value();
         v.visit_pat(it);
     }
@@ -2417,7 +2413,7 @@ where
         v.visit_attribute(it);
     }
     skip!(node.bracket);
-    for el in Punctuated::pairs(&node.elems) {
+    for el in Puncted::pairs(&node.elems) {
         let it = el.value();
         v.visit_pat(it);
     }
@@ -2434,7 +2430,7 @@ where
     }
     v.visit_path(&node.path);
     skip!(node.brace);
-    for el in Punctuated::pairs(&node.fields) {
+    for el in Puncted::pairs(&node.fields) {
         let it = el.value();
         v.visit_field_pat(it);
     }
@@ -2450,7 +2446,7 @@ where
         v.visit_attribute(it);
     }
     skip!(node.paren);
-    for el in Punctuated::pairs(&node.elems) {
+    for el in Puncted::pairs(&node.elems) {
         let it = el.value();
         v.visit_pat(it);
     }
@@ -2467,7 +2463,7 @@ where
     }
     v.visit_path(&node.path);
     skip!(node.paren);
-    for el in Punctuated::pairs(&node.elems) {
+    for el in Puncted::pairs(&node.elems) {
         let it = el.value();
         v.visit_pat(it);
     }
@@ -2497,7 +2493,7 @@ where
     V: Visit<'ast> + ?Sized,
 {
     skip!(node.leading_colon);
-    for el in Punctuated::pairs(&node.segs) {
+    for el in Puncted::pairs(&node.segs) {
         let it = el.value();
         v.visit_path_segment(it);
     }
@@ -2529,7 +2525,7 @@ where
 {
     v.visit_lifetime(&node.life);
     skip!(node.colon);
-    for el in Punctuated::pairs(&node.bounds) {
+    for el in Puncted::pairs(&node.bounds) {
         let it = el.value();
         v.visit_lifetime(it);
     }
@@ -2543,7 +2539,7 @@ where
     }
     v.visit_type(&node.bounded);
     skip!(node.colon);
-    for el in Punctuated::pairs(&node.bounds) {
+    for el in Puncted::pairs(&node.bounds) {
         let it = el.value();
         v.visit_type_param_bound(it);
     }
@@ -2615,7 +2611,7 @@ where
     v.visit_ident(&node.ident);
     v.visit_generics(&node.gens);
     skip!(node.paren);
-    for el in Punctuated::pairs(&node.args) {
+    for el in Puncted::pairs(&node.args) {
         let it = el.value();
         v.visit_fn_arg(it);
     }
@@ -2766,7 +2762,7 @@ where
     v.visit_ident(&node.ident);
     v.visit_generics(&node.gens);
     skip!(node.colon);
-    for el in Punctuated::pairs(&node.bounds) {
+    for el in Puncted::pairs(&node.bounds) {
         let it = el.value();
         v.visit_type_param_bound(it);
     }
@@ -2850,7 +2846,7 @@ where
     }
     skip!(node.fn_);
     skip!(node.paren);
-    for el in Punctuated::pairs(&node.args) {
+    for el in Puncted::pairs(&node.args) {
         let it = el.value();
         v.visit_bare_fn_arg(it);
     }
@@ -2871,7 +2867,7 @@ where
     V: Visit<'ast> + ?Sized,
 {
     skip!(node.impl_);
-    for el in Punctuated::pairs(&node.bounds) {
+    for el in Puncted::pairs(&node.bounds) {
         let it = el.value();
         v.visit_type_param_bound(it);
     }
@@ -2903,7 +2899,7 @@ where
     }
     v.visit_ident(&node.ident);
     skip!(node.colon);
-    for el in Punctuated::pairs(&node.bounds) {
+    for el in Puncted::pairs(&node.bounds) {
         let it = el.value();
         v.visit_type_param_bound(it);
     }
@@ -2976,7 +2972,7 @@ where
     V: Visit<'ast> + ?Sized,
 {
     skip!(node.dyn_);
-    for el in Punctuated::pairs(&node.bounds) {
+    for el in Puncted::pairs(&node.bounds) {
         let it = el.value();
         v.visit_type_param_bound(it);
     }
@@ -2986,7 +2982,7 @@ where
     V: Visit<'ast> + ?Sized,
 {
     skip!(node.paren);
-    for el in Punctuated::pairs(&node.elems) {
+    for el in Puncted::pairs(&node.elems) {
         let it = el.value();
         v.visit_type(it);
     }
@@ -3018,7 +3014,7 @@ where
     V: Visit<'ast> + ?Sized,
 {
     skip!(node.brace);
-    for el in Punctuated::pairs(&node.elems) {
+    for el in Puncted::pairs(&node.elems) {
         let it = el.value();
         v.visit_use_tree(it);
     }
@@ -3123,7 +3119,7 @@ where
     V: Visit<'ast> + ?Sized,
 {
     skip!(node.where_);
-    for el in Punctuated::pairs(&node.preds) {
+    for el in Puncted::pairs(&node.preds) {
         let it = el.value();
         v.visit_where_predicate(it);
     }

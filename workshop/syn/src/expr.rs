@@ -50,7 +50,7 @@ impl Expr {
         qself: None,
         path: path::Path {
             colon: None,
-            segs: Punctuated::new(),
+            segs: Puncted::new(),
         },
     });
     pub fn replace_attrs(&mut self, y: Vec<attr::Attr>) -> Vec<attr::Attr> {
@@ -146,13 +146,13 @@ impl_by_parsing_expr! {
 pub struct Array {
     pub attrs: Vec<attr::Attr>,
     pub bracket: tok::Bracket,
-    pub elems: Punctuated<Expr, Token![,]>,
+    pub elems: Puncted<Expr, Token![,]>,
 }
 impl Parse for Array {
     fn parse(x: Stream) -> Res<Self> {
         let y;
         let bracket = bracketed!(y in x);
-        let mut elems = Punctuated::new();
+        let mut elems = Puncted::new();
         while !y.is_empty() {
             let first: Expr = y.parse()?;
             elems.push_value(first);
@@ -304,7 +304,7 @@ pub struct Call {
     pub attrs: Vec<attr::Attr>,
     pub func: Box<Expr>,
     pub paren: tok::Paren,
-    pub args: Punctuated<Expr, Token![,]>,
+    pub args: Puncted<Expr, Token![,]>,
 }
 impl ToTokens for Call {
     fn to_tokens(&self, ys: &mut Stream) {
@@ -339,7 +339,7 @@ pub struct Closure {
     pub async_: Option<Token![async]>,
     pub move_: Option<Token![move]>,
     pub or1: Token![|],
-    pub ins: Punctuated<pat::Pat, Token![,]>,
+    pub ins: Puncted<pat::Pat, Token![,]>,
     pub or2: Token![|],
     pub ret: typ::Ret,
     pub body: Box<Expr>,
@@ -741,7 +741,7 @@ pub struct MethodCall {
     pub method: Ident,
     pub turbofish: Option<AngledArgs>,
     pub paren: tok::Paren,
-    pub args: Punctuated<Expr, Token![,]>,
+    pub args: Puncted<Expr, Token![,]>,
 }
 impl ToTokens for MethodCall {
     fn to_tokens(&self, ys: &mut Stream) {
@@ -889,7 +889,7 @@ pub struct Struct {
     pub qself: Option<QSelf>,
     pub path: path::Path,
     pub brace: tok::Brace,
-    pub fields: Punctuated<FieldValue, Token![,]>,
+    pub fields: Puncted<FieldValue, Token![,]>,
     pub dot2: Option<Token![..]>,
     pub rest: Option<Box<Expr>>,
 }
@@ -953,7 +953,7 @@ impl ToTokens for TryBlock {
 pub struct Tuple {
     pub attrs: Vec<attr::Attr>,
     pub paren: tok::Paren,
-    pub elems: Punctuated<Expr, Token![,]>,
+    pub elems: Puncted<Expr, Token![,]>,
 }
 impl ToTokens for Tuple {
     fn to_tokens(&self, ys: &mut Stream) {
@@ -1315,7 +1315,7 @@ impl Parse for UnOp {
         } else if look.peek(Token![-]) {
             x.parse().map(UnOp::Neg)
         } else {
-            Err(look.error())
+            Err(look.err())
         }
     }
 }
@@ -1471,7 +1471,7 @@ impl RangeLimits {
         } else if dot2 {
             x.parse().map(RangeLimits::HalfOpen)
         } else {
-            Err(look.error())
+            Err(look.err())
         }
     }
 }
@@ -1486,7 +1486,7 @@ impl Parse for RangeLimits {
         } else if dot2 && !dot3 {
             x.parse().map(RangeLimits::HalfOpen)
         } else {
-            Err(look.error())
+            Err(look.err())
         }
     }
 }
@@ -1989,7 +1989,7 @@ fn paren_or_tuple(x: Stream) -> Res<Expr> {
         return Ok(Expr::Tuple(Tuple {
             attrs: Vec::new(),
             paren,
-            elems: Punctuated::new(),
+            elems: Puncted::new(),
         }));
     }
     let first: Expr = y.parse()?;
@@ -2000,7 +2000,7 @@ fn paren_or_tuple(x: Stream) -> Res<Expr> {
             expr: Box::new(first),
         }));
     }
-    let mut elems = Punctuated::new();
+    let mut elems = Puncted::new();
     elems.push_value(first);
     while !y.is_empty() {
         let punct = y.parse()?;
@@ -2024,12 +2024,12 @@ fn array_or_repeat(x: Stream) -> Res<Expr> {
         return Ok(Expr::Array(Array {
             attrs: Vec::new(),
             bracket,
-            elems: Punctuated::new(),
+            elems: Puncted::new(),
         }));
     }
     let first: Expr = y.parse()?;
     if y.is_empty() || y.peek(Token![,]) {
-        let mut elems = Punctuated::new();
+        let mut elems = Puncted::new();
         elems.push_value(first);
         while !y.is_empty() {
             let punct = y.parse()?;
@@ -2125,7 +2125,7 @@ fn else_block(x: Stream) -> Res<(Token![else], Box<Expr>)> {
             block: x.parse()?,
         })
     } else {
-        return Err(look.error());
+        return Err(look.err());
     };
     Ok((else_, Box::new(branch)))
 }
@@ -2143,7 +2143,7 @@ fn expr_closure(x: Stream, allow: AllowStruct) -> Res<Closure> {
     let async_: Option<Token![async]> = x.parse()?;
     let move_: Option<Token![move]> = x.parse()?;
     let or1: Token![|] = x.parse()?;
-    let mut ins = Punctuated::new();
+    let mut ins = Puncted::new();
     loop {
         if x.peek(Token![|]) {
             break;
@@ -2251,7 +2251,7 @@ fn expr_ret(x: Stream, allow: AllowStruct) -> Res<Return> {
 fn expr_struct_helper(x: Stream, qself: Option<QSelf>, path: Path) -> Res<Struct> {
     let y;
     let brace = braced!(y in x);
-    let mut fields = Punctuated::new();
+    let mut fields = Puncted::new();
     while !y.is_empty() {
         if y.peek(Token![..]) {
             return Ok(Struct {

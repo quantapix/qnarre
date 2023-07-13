@@ -1,3 +1,5 @@
+use super::*;
+
 pub struct DeriveInput {
     pub attrs: Vec<attr::Attr>,
     pub vis: Visibility,
@@ -13,7 +15,7 @@ pub enum Data {
 pub struct Enum {
     pub enum_: Token![enum],
     pub brace: tok::Brace,
-    pub variants: Punctuated<Variant, Token![,]>,
+    pub variants: Puncted<Variant, Token![,]>,
 }
 pub struct Struct {
     pub struct_: Token![struct],
@@ -79,7 +81,7 @@ impl IntoIterator for Fields {
         match self {
             Named(x) => x.field.into_iter(),
             Unnamed(x) => x.field.into_iter(),
-            Unit => Punctuated::<Field, ()>::new().into_iter(),
+            Unit => Puncted::<Field, ()>::new().into_iter(),
         }
     }
 }
@@ -99,11 +101,11 @@ impl<'a> IntoIterator for &'a mut Fields {
 }
 pub struct Named {
     pub brace: tok::Brace,
-    pub field: Punctuated<Field, Token![,]>,
+    pub field: Puncted<Field, Token![,]>,
 }
 pub struct Unnamed {
     pub paren: tok::Paren,
-    pub field: Punctuated<Field, Token![,]>,
+    pub field: Puncted<Field, Token![,]>,
 }
 pub struct Field {
     pub attrs: Vec<attr::Attr>,
@@ -265,7 +267,7 @@ pub fn data_struct(x: Stream) -> Res<(Option<gen::Where>, Fields, Option<Token![
         Err(look.error())
     }
 }
-pub fn data_enum(x: Stream) -> Res<(Option<gen::Where>, tok::Brace, Punctuated<Variant, Token![,]>)> {
+pub fn data_enum(x: Stream) -> Res<(Option<gen::Where>, tok::Brace, Puncted<Variant, Token![,]>)> {
     let where_ = x.parse()?;
     let y;
     let brace = braced!(y in x);

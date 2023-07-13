@@ -1,8 +1,8 @@
-use super::{expr, tok, typ, Ident, Punctuated, Stream};
+use super::*;
 
 pub struct Path {
     pub colon: Option<Token![::]>,
-    pub segs: Punctuated<Segment, Token![::]>,
+    pub segs: Puncted<Segment, Token![::]>,
 }
 impl Path {
     pub fn is_ident<I: ?Sized>(&self, i: &I) -> bool
@@ -29,7 +29,7 @@ where
     fn from(x: T) -> Self {
         let mut y = Path {
             colon: None,
-            segs: Punctuated::new(),
+            segs: Puncted::new(),
         };
         y.segs.push_value(x.into());
         y
@@ -94,7 +94,7 @@ pub use expr::Expr;
 pub struct AngledArgs {
     pub colon2: Option<Token![::]>,
     pub lt: Token![<],
-    pub args: Punctuated<Arg, Token![,]>,
+    pub args: Puncted<Arg, Token![,]>,
     pub gt: Token![>],
 }
 pub struct AssocType {
@@ -113,11 +113,11 @@ pub struct Constraint {
     pub ident: Ident,
     pub args: Option<AngledArgs>,
     pub colon: Token![:],
-    pub bounds: Punctuated<gen::bound::Type, Token![+]>,
+    pub bounds: Puncted<gen::bound::Type, Token![+]>,
 }
 pub struct ParenthesizedArgs {
     pub paren: tok::Paren,
-    pub args: Punctuated<typ::Type, Token![,]>,
+    pub args: Puncted<typ::Type, Token![,]>,
     pub ret: Ret,
 }
 pub struct QSelf {
@@ -133,7 +133,7 @@ impl Path {
         Ok(Path {
             colon: s.parse()?,
             segs: {
-                let mut ys = Punctuated::new();
+                let mut ys = Puncted::new();
                 loop {
                     if !s.peek(Ident)
                         && !s.peek(Token![super])
@@ -164,7 +164,7 @@ impl Path {
         let mut y = Path {
             colon: s.parse()?,
             segs: {
-                let mut ys = Punctuated::new();
+                let mut ys = Puncted::new();
                 let y = Segment::parse_helper(s, style)?;
                 ys.push_value(y);
                 ys
@@ -227,7 +227,7 @@ impl AngledArgs {
             colon2,
             lt: s.parse()?,
             args: {
-                let mut ys = Punctuated::new();
+                let mut ys = Puncted::new();
                 loop {
                     if s.peek(Token![>]) {
                         break;
@@ -316,7 +316,7 @@ impl Parse for Arg {
                         },
                         colon,
                         bounds: {
-                            let mut ys = Punctuated::new();
+                            let mut ys = Puncted::new();
                             loop {
                                 if x.peek(Token![,]) || x.peek(Token![>]) {
                                     break;
@@ -358,7 +358,7 @@ pub fn const_argument(x: Stream) -> Res<Expr> {
         let y: expr::Block = x.parse()?;
         return Ok(Expr::Block(y));
     }
-    Err(y.error())
+    Err(y.err())
 }
 pub fn qpath(x: Stream, expr_style: bool) -> Res<(Option<QSelf>, Path)> {
     if x.peek(Token![<]) {
@@ -373,7 +373,7 @@ pub fn qpath(x: Stream, expr_style: bool) -> Res<(Option<QSelf>, Path)> {
         };
         let gt: Token![>] = x.parse()?;
         let colon2: Token![::] = x.parse()?;
-        let mut rest = Punctuated::new();
+        let mut rest = Puncted::new();
         loop {
             let path = Segment::parse_helper(x, expr_style)?;
             rest.push_value(path);

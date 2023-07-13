@@ -8,8 +8,7 @@ mod gen;
 use proc_macro2::Ident;
 use ref_cast::RefCast;
 use std::fmt::{self, Debug};
-use std::ops::Deref;
-use syn::punct::Punctuated;
+use std::{ops::Deref, Puncted};
 #[derive(RefCast)]
 #[repr(transparent)]
 pub struct Lite<T: ?Sized> {
@@ -92,7 +91,7 @@ where
         formatter.debug_list().entries(self.value.iter().map(Lite)).finish()
     }
 }
-impl<T, P> Debug for Lite<Punctuated<T, P>>
+impl<T, P> Debug for Lite<Puncted<T, P>>
 where
     Lite<T>: Debug,
 {

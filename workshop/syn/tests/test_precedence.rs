@@ -304,9 +304,7 @@ fn syn_brackets(syn_expr: syn::Expr) -> syn::Expr {
     folder.fold_expr(syn_expr)
 }
 fn collect_exprs(file: syn::File) -> Vec<syn::Expr> {
-    use syn::fold::Fold;
-    use syn::punct::Punctuated;
-    use syn::{expr::Tuple, gen::param::Const, patt::Patt, tok, Expr, Path};
+    use syn::{expr::Tuple, fold::Fold, gen::param::Const, patt::Patt, tok, Expr, Path, Puncted};
     struct CollectExprs(Vec<Expr>);
     impl Fold for CollectExprs {
         fn fold_expr(&mut self, expr: Expr) -> Expr {
@@ -316,7 +314,7 @@ fn collect_exprs(file: syn::File) -> Vec<syn::Expr> {
             }
             Expr::Tuple(expr::Tuple {
                 attrs: vec![],
-                elems: Punctuated::new(),
+                elems: Puncted::new(),
                 paren: tok::Paren::default(),
             })
         }

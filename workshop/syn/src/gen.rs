@@ -1,3 +1,5 @@
+use super::*;
+
 pub mod bound {
     pub use pm2::Stream;
     ast_enum_of_structs! {
@@ -8,8 +10,8 @@ pub mod bound {
         }
     }
     impl Type {
-        pub fn parse_multiple(x: Stream, plus: bool) -> Res<Punctuated<Self, Token![+]>> {
-            let mut ys = Punctuated::new();
+        pub fn parse_multiple(x: Stream, plus: bool) -> Res<Puncted<Self, Token![+]>> {
+            let mut ys = Puncted::new();
             loop {
                 ys.push_value(x.parse()?);
                 if !(plus && x.peek(Token![+])) {
@@ -123,7 +125,7 @@ pub mod bound {
     pub struct Lifes {
         pub for_: Token![for],
         pub lt: Token![<],
-        pub lifes: Punctuated<Param, Token![,]>,
+        pub lifes: Puncted<Param, Token![,]>,
         pub gt: Token![>],
     }
     impl Default for Lifes {
@@ -131,7 +133,7 @@ pub mod bound {
             Lifes {
                 for_: Default::default(),
                 lt: Default::default(),
-                lifes: Punctuated::new(),
+                lifes: Puncted::new(),
                 gt: Default::default(),
             }
         }
@@ -142,7 +144,7 @@ pub mod bound {
                 for_: x.parse()?,
                 lt: x.parse()?,
                 lifes: {
-                    let mut ys = Punctuated::new();
+                    let mut ys = Puncted::new();
                     while !x.peek(Token![>]) {
                         let attrs = x.call(attr::Attr::parse_outer)?;
                         let life: Lifetime = x.parse()?;
@@ -150,7 +152,7 @@ pub mod bound {
                             attrs,
                             life,
                             colon: None,
-                            bounds: Punctuated::new(),
+                            bounds: Puncted::new(),
                         }));
                         if x.peek(Token![>]) {
                             break;
@@ -209,7 +211,7 @@ pub mod param {
         pub attrs: Vec<attr::Attr>,
         pub life: Lifetime,
         pub colon: Option<Token![:]>,
-        pub bounds: Punctuated<Lifetime, Token![+]>,
+        pub bounds: Puncted<Lifetime, Token![+]>,
     }
     impl Life {
         pub fn new(life: Lifetime) -> Self {
@@ -217,7 +219,7 @@ pub mod param {
                 attrs: Vec::new(),
                 life,
                 colon: None,
-                bounds: Punctuated::new(),
+                bounds: Puncted::new(),
             }
         }
     }
@@ -237,7 +239,7 @@ pub mod param {
                     }
                 },
                 bounds: {
-                    let mut ys = Punctuated::new();
+                    let mut ys = Puncted::new();
                     if colon {
                         loop {
                             if x.peek(Token![,]) || x.peek(Token![>]) {
@@ -303,7 +305,7 @@ pub mod param {
         pub attrs: Vec<attr::Attr>,
         pub ident: Ident,
         pub colon: Option<Token![:]>,
-        pub bounds: Punctuated<bound::Type, Token![+]>,
+        pub bounds: Puncted<bound::Type, Token![+]>,
         pub eq: Option<Token![=]>,
         pub default: Option<typ::Type>,
     }
@@ -313,7 +315,7 @@ pub mod param {
                 attrs: vec![],
                 ident,
                 colon: None,
-                bounds: Punctuated::new(),
+                bounds: Puncted::new(),
                 eq: None,
                 default: None,
             }
@@ -324,7 +326,7 @@ pub mod param {
             let attrs = x.call(attr::Attr::parse_outer)?;
             let ident: Ident = x.parse()?;
             let colon: Option<Token![:]> = x.parse()?;
-            let mut ys = Punctuated::new();
+            let mut ys = Puncted::new();
             if colon.is_some() {
                 loop {
                     if x.peek(Token![,]) || x.peek(Token![>]) || x.peek(Token![=]) {
@@ -479,14 +481,14 @@ pub mod param {
 use param::Param;
 pub struct Where {
     pub where_: Token![where],
-    pub preds: Punctuated<Where::Pred, Token![,]>,
+    pub preds: Puncted<Where::Pred, Token![,]>,
 }
 impl Parse for Where {
     fn parse(x: Stream) -> Res<Self> {
         Ok(Where {
             where_: x.parse()?,
             preds: {
-                let mut ys = Punctuated::new();
+                let mut ys = Puncted::new();
                 loop {
                     if x.is_empty()
                         || x.peek(tok::Brace)
@@ -542,7 +544,7 @@ pub mod Where {
                     life: x.parse()?,
                     colon: x.parse()?,
                     bounds: {
-                        let mut ys = Punctuated::new();
+                        let mut ys = Puncted::new();
                         loop {
                             if x.is_empty()
                                 || x.peek(tok::Brace)
@@ -570,7 +572,7 @@ pub mod Where {
                     bounded: x.parse()?,
                     colon: x.parse()?,
                     bounds: {
-                        let mut ys = Punctuated::new();
+                        let mut ys = Puncted::new();
                         loop {
                             if x.is_empty()
                                 || x.peek(tok::Brace)
@@ -599,7 +601,7 @@ pub mod Where {
     pub struct Life {
         pub life: Lifetime,
         pub colon: Token![:],
-        pub bounds: Punctuated<Lifetime, Token![+]>,
+        pub bounds: Puncted<Lifetime, Token![+]>,
     }
     impl ToTokens for Life {
         fn to_tokens(&self, ys: &mut Stream) {
@@ -613,7 +615,7 @@ pub mod Where {
         pub lifes: Option<bound::Lifes>,
         pub bounded: typ::Type,
         pub colon: Token![:],
-        pub bounds: Punctuated<bound::Type, Token![+]>,
+        pub bounds: Puncted<bound::Type, Token![+]>,
     }
     impl ToTokens for Type {
         fn to_tokens(&self, ys: &mut Stream) {
@@ -627,7 +629,7 @@ pub mod Where {
 
 pub struct Gens {
     pub lt: Option<Token![<]>,
-    pub ps: Punctuated<Param, Token![,]>,
+    pub ps: Puncted<Param, Token![,]>,
     pub gt: Option<Token![>]>,
     pub where_: Option<Where>,
 }
@@ -653,7 +655,7 @@ impl Gens {
     pub fn make_where_clause(&mut self) -> &mut Where {
         self.where_.get_or_insert_with(|| Where {
             where_: <Token![where]>::default(),
-            preds: Punctuated::new(),
+            preds: Puncted::new(),
         })
     }
     pub fn split_for_impl(&self) -> (Impl, Type, Option<&Where>) {
@@ -664,7 +666,7 @@ impl Default for Gens {
     fn default() -> Self {
         Gens {
             lt: None,
-            ps: Punctuated::new(),
+            ps: Puncted::new(),
             gt: None,
             where_: None,
         }
@@ -676,7 +678,7 @@ impl Parse for Gens {
             return Ok(Gens::default());
         }
         let lt: Token![<] = x.parse()?;
-        let mut ys = Punctuated::new();
+        let mut ys = Puncted::new();
         loop {
             if x.peek(Token![>]) {
                 break;
@@ -694,7 +696,7 @@ impl Parse for Gens {
                     attrs,
                     ident: x.call(Ident::parse_any)?,
                     colon: None,
-                    bounds: Punctuated::new(),
+                    bounds: Puncted::new(),
                     eq: None,
                     default: None,
                 }));

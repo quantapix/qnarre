@@ -1,4 +1,4 @@
-use super::{err, err, mac, path::Path, pm2::Stream, tok};
+use super::*;
 
 ast_enum_of_structs! {
     pub enum Meta {
@@ -188,7 +188,7 @@ fn parse_path(x: Stream) -> Res<Path> {
     Ok(Path {
         colon: x.parse()?,
         segs: {
-            let mut ys = Punctuated::new();
+            let mut ys = Puncted::new();
             if x.peek(Ident::peek_any) {
                 let y = Ident::parse_any(x)?;
                 ys.push_value(path::Segment::from(y));

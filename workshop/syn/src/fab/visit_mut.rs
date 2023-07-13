@@ -1,20 +1,16 @@
 #![allow(unused_variables)]
 
 use crate::*;
+
 macro_rules! full {
     ($e:expr) => {
         $e
     };
 }
-#[cfg(all(feature = "derive", not(feature = "full")))]
-macro_rules! full {
-    ($e:expr) => {
-        unreachable!()
-    };
-}
 macro_rules! skip {
     ($($tt:tt)*) => {};
 }
+
 pub trait VisitMut {
     fn visit_abi_mut(&mut self, i: &mut Abi) {
         visit_abi_mut(self, i);
@@ -578,7 +574,7 @@ where
 {
     skip!(node.colon2);
     skip!(node.lt);
-    for mut el in Punctuated::pairs_mut(&mut node.args) {
+    for mut el in Puncted::pairs_mut(&mut node.args) {
         let it = el.value_mut();
         v.visit_generic_argument_mut(it);
     }
@@ -775,7 +771,7 @@ where
 {
     skip!(node.for_);
     skip!(node.lt);
-    for mut el in Punctuated::pairs_mut(&mut node.lifes) {
+    for mut el in Puncted::pairs_mut(&mut node.lifes) {
         let it = el.value_mut();
         v.visit_generic_param_mut(it);
     }
@@ -806,7 +802,7 @@ where
         v.visit_angle_bracketed_generic_arguments_mut(it);
     }
     skip!(node.colon);
-    for mut el in Punctuated::pairs_mut(&mut node.bounds) {
+    for mut el in Puncted::pairs_mut(&mut node.bounds) {
         let it = el.value_mut();
         v.visit_type_param_bound_mut(it);
     }
@@ -833,7 +829,7 @@ where
 {
     skip!(node.enum_);
     skip!(node.brace);
-    for mut el in Punctuated::pairs_mut(&mut node.variants) {
+    for mut el in Puncted::pairs_mut(&mut node.variants) {
         let it = el.value_mut();
         v.visit_variant_mut(it);
     }
@@ -997,7 +993,7 @@ where
         v.visit_attribute_mut(it);
     }
     skip!(node.bracket);
-    for mut el in Punctuated::pairs_mut(&mut node.elems) {
+    for mut el in Puncted::pairs_mut(&mut node.elems) {
         let it = el.value_mut();
         v.visit_expr_mut(it);
     }
@@ -1082,7 +1078,7 @@ where
     }
     v.visit_expr_mut(&mut *node.func);
     skip!(node.paren);
-    for mut el in Punctuated::pairs_mut(&mut node.args) {
+    for mut el in Puncted::pairs_mut(&mut node.args) {
         let it = el.value_mut();
         v.visit_expr_mut(it);
     }
@@ -1113,7 +1109,7 @@ where
     skip!(node.asyncness);
     skip!(node.capture);
     skip!(node.or1);
-    for mut el in Punctuated::pairs_mut(&mut node.inputs) {
+    for mut el in Puncted::pairs_mut(&mut node.inputs) {
         let it = el.value_mut();
         v.visit_pat_mut(it);
     }
@@ -1286,7 +1282,7 @@ where
         v.visit_angle_bracketed_generic_arguments_mut(it);
     }
     skip!(node.paren);
-    for mut el in Punctuated::pairs_mut(&mut node.args) {
+    for mut el in Puncted::pairs_mut(&mut node.args) {
         let it = el.value_mut();
         v.visit_expr_mut(it);
     }
@@ -1375,7 +1371,7 @@ where
     }
     v.visit_path_mut(&mut node.path);
     skip!(node.brace);
-    for mut el in Punctuated::pairs_mut(&mut node.fields) {
+    for mut el in Puncted::pairs_mut(&mut node.fields) {
         let it = el.value_mut();
         v.visit_field_value_mut(it);
     }
@@ -1412,7 +1408,7 @@ where
         v.visit_attribute_mut(it);
     }
     skip!(node.paren);
-    for mut el in Punctuated::pairs_mut(&mut node.elems) {
+    for mut el in Puncted::pairs_mut(&mut node.elems) {
         let it = el.value_mut();
         v.visit_expr_mut(it);
     }
@@ -1527,7 +1523,7 @@ where
     V: VisitMut + ?Sized,
 {
     skip!(node.brace);
-    for mut el in Punctuated::pairs_mut(&mut node.field) {
+    for mut el in Puncted::pairs_mut(&mut node.field) {
         let it = el.value_mut();
         v.visit_field_mut(it);
     }
@@ -1537,7 +1533,7 @@ where
     V: VisitMut + ?Sized,
 {
     skip!(node.paren);
-    for mut el in Punctuated::pairs_mut(&mut node.field) {
+    for mut el in Puncted::pairs_mut(&mut node.field) {
         let it = el.value_mut();
         v.visit_field_mut(it);
     }
@@ -1684,7 +1680,7 @@ where
     V: VisitMut + ?Sized,
 {
     skip!(node.lt);
-    for mut el in Punctuated::pairs_mut(&mut node.params) {
+    for mut el in Puncted::pairs_mut(&mut node.params) {
         let it = el.value_mut();
         v.visit_generic_param_mut(it);
     }
@@ -1876,7 +1872,7 @@ where
     v.visit_ident_mut(&mut node.ident);
     v.visit_generics_mut(&mut node.gens);
     skip!(node.brace);
-    for mut el in Punctuated::pairs_mut(&mut node.elems) {
+    for mut el in Puncted::pairs_mut(&mut node.elems) {
         let it = el.value_mut();
         v.visit_variant_mut(it);
     }
@@ -2025,7 +2021,7 @@ where
     v.visit_ident_mut(&mut node.ident);
     v.visit_generics_mut(&mut node.gens);
     skip!(node.colon);
-    for mut el in Punctuated::pairs_mut(&mut node.supers) {
+    for mut el in Puncted::pairs_mut(&mut node.supers) {
         let it = el.value_mut();
         v.visit_type_param_bound_mut(it);
     }
@@ -2046,7 +2042,7 @@ where
     v.visit_ident_mut(&mut node.ident);
     v.visit_generics_mut(&mut node.gens);
     skip!(node.eq);
-    for mut el in Punctuated::pairs_mut(&mut node.bounds) {
+    for mut el in Puncted::pairs_mut(&mut node.bounds) {
         let it = el.value_mut();
         v.visit_type_param_bound_mut(it);
     }
@@ -2116,7 +2112,7 @@ where
     }
     v.visit_lifetime_mut(&mut node.life);
     skip!(node.colon);
-    for mut el in Punctuated::pairs_mut(&mut node.bounds) {
+    for mut el in Puncted::pairs_mut(&mut node.bounds) {
         let it = el.value_mut();
         v.visit_lifetime_mut(it);
     }
@@ -2289,7 +2285,7 @@ where
     V: VisitMut + ?Sized,
 {
     skip!(node.paren);
-    for mut el in Punctuated::pairs_mut(&mut node.ins) {
+    for mut el in Puncted::pairs_mut(&mut node.ins) {
         let it = el.value_mut();
         v.visit_type_mut(it);
     }
@@ -2376,7 +2372,7 @@ where
         v.visit_attribute_mut(it);
     }
     skip!(node.leading_vert);
-    for mut el in Punctuated::pairs_mut(&mut node.cases) {
+    for mut el in Puncted::pairs_mut(&mut node.cases) {
         let it = el.value_mut();
         v.visit_pat_mut(it);
     }
@@ -2419,7 +2415,7 @@ where
         v.visit_attribute_mut(it);
     }
     skip!(node.bracket);
-    for mut el in Punctuated::pairs_mut(&mut node.elems) {
+    for mut el in Puncted::pairs_mut(&mut node.elems) {
         let it = el.value_mut();
         v.visit_pat_mut(it);
     }
@@ -2436,7 +2432,7 @@ where
     }
     v.visit_path_mut(&mut node.path);
     skip!(node.brace);
-    for mut el in Punctuated::pairs_mut(&mut node.fields) {
+    for mut el in Puncted::pairs_mut(&mut node.fields) {
         let it = el.value_mut();
         v.visit_field_pat_mut(it);
     }
@@ -2452,7 +2448,7 @@ where
         v.visit_attribute_mut(it);
     }
     skip!(node.paren);
-    for mut el in Punctuated::pairs_mut(&mut node.elems) {
+    for mut el in Puncted::pairs_mut(&mut node.elems) {
         let it = el.value_mut();
         v.visit_pat_mut(it);
     }
@@ -2469,7 +2465,7 @@ where
     }
     v.visit_path_mut(&mut node.path);
     skip!(node.paren);
-    for mut el in Punctuated::pairs_mut(&mut node.elems) {
+    for mut el in Puncted::pairs_mut(&mut node.elems) {
         let it = el.value_mut();
         v.visit_pat_mut(it);
     }
@@ -2499,7 +2495,7 @@ where
     V: VisitMut + ?Sized,
 {
     skip!(node.leading_colon);
-    for mut el in Punctuated::pairs_mut(&mut node.segs) {
+    for mut el in Puncted::pairs_mut(&mut node.segs) {
         let it = el.value_mut();
         v.visit_path_segment_mut(it);
     }
@@ -2531,7 +2527,7 @@ where
 {
     v.visit_lifetime_mut(&mut node.life);
     skip!(node.colon);
-    for mut el in Punctuated::pairs_mut(&mut node.bounds) {
+    for mut el in Puncted::pairs_mut(&mut node.bounds) {
         let it = el.value_mut();
         v.visit_lifetime_mut(it);
     }
@@ -2545,7 +2541,7 @@ where
     }
     v.visit_type_mut(&mut node.bounded);
     skip!(node.colon);
-    for mut el in Punctuated::pairs_mut(&mut node.bounds) {
+    for mut el in Puncted::pairs_mut(&mut node.bounds) {
         let it = el.value_mut();
         v.visit_type_param_bound_mut(it);
     }
@@ -2617,7 +2613,7 @@ where
     v.visit_ident_mut(&mut node.ident);
     v.visit_generics_mut(&mut node.gens);
     skip!(node.paren);
-    for mut el in Punctuated::pairs_mut(&mut node.args) {
+    for mut el in Puncted::pairs_mut(&mut node.args) {
         let it = el.value_mut();
         v.visit_fn_arg_mut(it);
     }
@@ -2768,7 +2764,7 @@ where
     v.visit_ident_mut(&mut node.ident);
     v.visit_generics_mut(&mut node.gens);
     skip!(node.colon);
-    for mut el in Punctuated::pairs_mut(&mut node.bounds) {
+    for mut el in Puncted::pairs_mut(&mut node.bounds) {
         let it = el.value_mut();
         v.visit_type_param_bound_mut(it);
     }
@@ -2852,7 +2848,7 @@ where
     }
     skip!(node.fn_);
     skip!(node.paren);
-    for mut el in Punctuated::pairs_mut(&mut node.args) {
+    for mut el in Puncted::pairs_mut(&mut node.args) {
         let it = el.value_mut();
         v.visit_bare_fn_arg_mut(it);
     }
@@ -2873,7 +2869,7 @@ where
     V: VisitMut + ?Sized,
 {
     skip!(node.impl_);
-    for mut el in Punctuated::pairs_mut(&mut node.bounds) {
+    for mut el in Puncted::pairs_mut(&mut node.bounds) {
         let it = el.value_mut();
         v.visit_type_param_bound_mut(it);
     }
@@ -2905,7 +2901,7 @@ where
     }
     v.visit_ident_mut(&mut node.ident);
     skip!(node.colon);
-    for mut el in Punctuated::pairs_mut(&mut node.bounds) {
+    for mut el in Puncted::pairs_mut(&mut node.bounds) {
         let it = el.value_mut();
         v.visit_type_param_bound_mut(it);
     }
@@ -2978,7 +2974,7 @@ where
     V: VisitMut + ?Sized,
 {
     skip!(node.dyn_);
-    for mut el in Punctuated::pairs_mut(&mut node.bounds) {
+    for mut el in Puncted::pairs_mut(&mut node.bounds) {
         let it = el.value_mut();
         v.visit_type_param_bound_mut(it);
     }
@@ -2988,7 +2984,7 @@ where
     V: VisitMut + ?Sized,
 {
     skip!(node.paren);
-    for mut el in Punctuated::pairs_mut(&mut node.elems) {
+    for mut el in Puncted::pairs_mut(&mut node.elems) {
         let it = el.value_mut();
         v.visit_type_mut(it);
     }
@@ -3020,7 +3016,7 @@ where
     V: VisitMut + ?Sized,
 {
     skip!(node.brace);
-    for mut el in Punctuated::pairs_mut(&mut node.elems) {
+    for mut el in Puncted::pairs_mut(&mut node.elems) {
         let it = el.value_mut();
         v.visit_use_tree_mut(it);
     }
@@ -3125,7 +3121,7 @@ where
     V: VisitMut + ?Sized,
 {
     skip!(node.where_);
-    for mut el in Punctuated::pairs_mut(&mut node.preds) {
+    for mut el in Puncted::pairs_mut(&mut node.preds) {
         let it = el.value_mut();
         v.visit_where_predicate_mut(it);
     }

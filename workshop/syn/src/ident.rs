@@ -1,3 +1,5 @@
+use super::*;
+
 impl Parse for Ident {
     fn parse(x: Stream) -> Res<Self> {
         x.step(|cursor| {
@@ -5,10 +7,10 @@ impl Parse for Ident {
                 if accept_as_ident(&ident) {
                     Ok((ident, rest))
                 } else {
-                    Err(cursor.error(format_args!("expected identifier, found keyword `{}`", ident,)))
+                    Err(cursor.err(format_args!("expected identifier, found keyword `{}`", ident,)))
                 }
             } else {
-                Err(cursor.error("expected identifier"))
+                Err(cursor.err("expected identifier"))
             }
         })
     }
@@ -112,7 +114,7 @@ impl Hash for Lifetime {
 }
 impl Parse for Lifetime {
     fn parse(x: Stream) -> Res<Self> {
-        x.step(|c| c.lifetime().ok_or_else(|| c.error("expected lifetime")))
+        x.step(|c| c.lifetime().ok_or_else(|| c.err("expected lifetime")))
     }
 }
 impl ToTokens for Lifetime {
@@ -125,11 +127,11 @@ impl ToTokens for Lifetime {
 }
 
 #[allow(non_snake_case)]
-pub fn Ident(x: look::TokenMarker) -> Ident {
+pub fn Ident(x: look::Marker) -> Ident {
     match x {}
 }
 #[allow(non_snake_case)]
-pub fn Lifetime(x: look::TokenMarker) -> Lifetime {
+pub fn Lifetime(x: look::Marker) -> Lifetime {
     match x {}
 }
 
@@ -143,7 +145,7 @@ impl IdentExt for Ident {
     fn parse_any(x: parse::Stream) -> Res<Self> {
         x.step(|c| match c.ident() {
             Some((ident, rest)) => Ok((ident, rest)),
-            None => Err(c.error("expected ident")),
+            None => Err(c.err("expected ident")),
         })
     }
     fn unraw(&self) -> Ident {

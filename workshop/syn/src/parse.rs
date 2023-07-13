@@ -1,20 +1,8 @@
 use super::{
-    look::{self, Lookahead1, Peek},
     pm2::{Delim, DelimSpan, Span},
-    punct::Punctuated,
-    tok::Tok,
     *,
 };
-use std::{
-    cell::Cell,
-    fmt::{self, Debug, Display},
-    hash::{Hash, Hasher},
-    marker::PhantomData,
-    mem,
-    ops::Deref,
-    rc::Rc,
-    str::FromStr,
-};
+use std::{cell::Cell, mem, rc::Rc, str::FromStr};
 
 pub struct Parens<'a> {
     pub tok: tok::Paren,
@@ -71,16 +59,16 @@ fn parse_delimited<'a>(b: &Buffer<'a>, d: Delim) -> Res<(DelimSpan, Buffer<'a>)>
                 Delim::Bracket => "expected brackets",
                 Delim::None => "expected group",
             };
-            Err(c.error(y))
+            Err(c.err(y))
         }
     })
 }
 
 pub struct Buffer<'a> {
     scope: Span,
-    cell: Cell<Cursor<'static>>,
-    marker: PhantomData<Cursor<'a>>,
-    unexpected: Cell<Option<Rc<Cell<Unexpected>>>>,
+    cur: Cell<Cursor<'static>>,
+    _marker: PhantomData<Cursor<'a>>,
+    unexp: Cell<Option<Rc<Cell<Unexpected>>>>,
 }
 impl<'a> Buffer<'a> {
     pub fn parse<T: Parse>(&self) -> Res<T> {
@@ -89,12 +77,11 @@ impl<'a> Buffer<'a> {
     pub fn call<T>(&self, x: fn(Stream) -> Res<T>) -> Res<T> {
         x(self)
     }
-    pub fn peek<T: Peek>(&self, x: T) -> bool {
-        let _ = x;
+    pub fn peek<T: Peek>(&self, _: T) -> bool {
         T::Token::peek(self.cursor())
     }
-    pub fn peek2<T: Peek>(&self, x: T) -> bool {
-        fn peek2(x: &Buffer, f: fn(Cursor) -> bool) -> bool {
+    pub fn peek2<T: Peek>(&self, _: T) -> bool {
+        fn doit(x: &Buffer, f: fn(Cursor) -> bool) -> bool {
             if let Some(x) = x.cursor().group(Delim::None) {
                 if x.0.skip().map_or(false, f) {
                     return true;
@@ -102,11 +89,10 @@ impl<'a> Buffer<'a> {
             }
             x.cursor().skip().map_or(false, f)
         }
-        let _ = x;
-        peek2(self, T::Token::peek)
+        doit(self, T::Token::peek)
     }
-    pub fn peek3<T: Peek>(&self, x: T) -> bool {
-        fn peek3(x: &Buffer, f: fn(Cursor) -> bool) -> bool {
+    pub fn peek3<T: Peek>(&self, _: T) -> bool {
+        fn doit(x: &Buffer, f: fn(Cursor) -> bool) -> bool {
             if let Some(x) = x.cursor().group(Delim::None) {
                 if x.0.skip().and_then(Cursor::skip).map_or(false, f) {
                     return true;
@@ -114,29 +100,28 @@ impl<'a> Buffer<'a> {
             }
             x.cursor().skip().and_then(Cursor::skip).map_or(false, f)
         }
-        let _ = x;
-        peek3(self, T::Token::peek)
+        doit(self, T::Token::peek)
     }
-    pub fn parse_terminated<T, P>(&self, f: fn(Stream) -> Res<T>, sep: P) -> Res<Punctuated<T, P::Token>>
+    pub fn parse_terminated<T, P>(&self, f: fn(Stream) -> Res<T>, sep: P) -> Res<Puncted<T, P::Token>>
     where
         P: Peek,
         P::Token: Parse,
     {
         let _ = sep;
-        Punctuated::parse_terminated_with(self, f)
+        Puncted::parse_terminated_with(self, f)
     }
     pub fn is_empty(&self) -> bool {
         self.cursor().eof()
     }
-    pub fn lookahead1(&self) -> Lookahead1<'a> {
+    pub fn lookahead1(&self) -> Look1<'a> {
         look::new(self.scope, self.cursor())
     }
     pub fn fork(&self) -> Self {
         Buffer {
             scope: self.scope,
-            cell: self.cell.clone(),
-            marker: PhantomData,
-            unexpected: Cell::new(Some(Rc::new(Cell::new(Unexpected::None)))),
+            cur: self.cur.clone(),
+            _marker: PhantomData,
+            unexp: Cell::new(Some(Rc::new(Cell::new(Unexpected::None)))),
         }
     }
     pub fn error<T: Display>(&self, x: T) -> Err {
@@ -148,10 +133,10 @@ impl<'a> Buffer<'a> {
     {
         let (y, rest) = f(Step {
             scope: self.scope,
-            cursor: self.cell.get(),
-            marker: PhantomData,
+            cur: self.cur.get(),
+            _marker: PhantomData,
         })?;
-        self.cell.set(rest);
+        self.cur.set(rest);
         Ok(y)
     }
     pub fn span(&self) -> Span {
@@ -163,7 +148,7 @@ impl<'a> Buffer<'a> {
         }
     }
     pub fn cursor(&self) -> Cursor<'a> {
-        self.cell.get()
+        self.cur.get()
     }
     fn check_unexpected(&self) -> Res<()> {
         match inner_unexpected(self).1 {
@@ -216,13 +201,13 @@ impl Clone for Unexpected {
 
 pub struct Step<'c, 'a> {
     scope: Span,
-    cursor: Cursor<'c>,
-    marker: PhantomData<fn(Cursor<'c>) -> Cursor<'a>>,
+    cur: Cursor<'c>,
+    _marker: PhantomData<fn(Cursor<'c>) -> Cursor<'a>>,
 }
 impl<'c, 'a> Deref for Step<'c, 'a> {
     type Target = Cursor<'c>;
     fn deref(&self) -> &Self::Target {
-        &self.cursor
+        &self.cur
     }
 }
 impl<'c, 'a> Copy for Step<'c, 'a> {}
@@ -232,60 +217,106 @@ impl<'c, 'a> Clone for Step<'c, 'a> {
     }
 }
 impl<'c, 'a> Step<'c, 'a> {
-    pub fn error<T: Display>(self, x: T) -> Err {
-        err::new_at(self.scope, self.cursor, x)
+    pub fn err<T: Display>(self, x: T) -> Err {
+        err::new_at(self.scope, self.cur, x)
     }
 }
 
 pub type Stream<'a> = &'a Buffer<'a>;
 
+pub trait Quote: Sized {
+    fn parse(s: Stream) -> Res<Self>;
+}
+impl<T: Parse> Quote for T {
+    fn parse(s: Stream) -> Res<Self> {
+        <T as Parse>::parse(s)
+    }
+}
+impl Quote for attr::Attr {
+    fn parse(s: Stream) -> Res<Self> {
+        if s.peek(Token![#]) && s.peek2(Token![!]) {
+            attr::single_inner(s)
+        } else {
+            attr::single_outer(s)
+        }
+    }
+}
+impl Quote for pat::Pat {
+    fn parse(s: Stream) -> Res<Self> {
+        pat::Pat::parse_multi_with_leading_vert(s)
+    }
+}
+impl Quote for Box<pat::Pat> {
+    fn parse(s: Stream) -> Res<Self> {
+        <pat::Pat as Quote>::parse(s).map(Box::new)
+    }
+}
+impl<T: Parse, P: Parse> Quote for Puncted<T, P> {
+    fn parse(s: Stream) -> Res<Self> {
+        Self::parse_terminated(s)
+    }
+}
+impl Quote for Vec<Stmt> {
+    fn parse(s: Stream) -> Res<Self> {
+        Block::parse_within(s)
+    }
+}
+
+pub fn parse_quote_fn<T: Quote>(s: Stream) -> T {
+    let y = T::parse;
+    match y.parse2(s) {
+        Ok(x) => x,
+        Err(x) => panic!("{}", x),
+    }
+}
+
 pub trait Parse: Sized {
-    fn parse(x: Stream) -> Res<Self>;
+    fn parse(s: Stream) -> Res<Self>;
 }
 impl<T: Parse> Parse for Box<T> {
-    fn parse(x: Stream) -> Res<Self> {
-        x.parse().map(Box::new)
+    fn parse(s: Stream) -> Res<Self> {
+        s.parse().map(Box::new)
     }
 }
 impl<T: Parse + Tok> Parse for Option<T> {
-    fn parse(x: Stream) -> Res<Self> {
-        if T::peek(x.cursor()) {
-            Ok(Some(x.parse()?))
+    fn parse(s: Stream) -> Res<Self> {
+        if T::peek(s.cursor()) {
+            Ok(Some(s.parse()?))
         } else {
             Ok(None)
         }
     }
 }
 impl Parse for pm2::Stream {
-    fn parse(x: Stream) -> Res<Self> {
-        x.step(|x| Ok((x.token_stream(), Cursor::empty())))
+    fn parse(s: Stream) -> Res<Self> {
+        s.step(|x| Ok((x.token_stream(), Cursor::empty())))
     }
 }
 impl Parse for pm2::Tree {
-    fn parse(x: Stream) -> Res<Self> {
-        x.step(|x| match x.token_tree() {
-            Some((tt, rest)) => Ok((tt, rest)),
-            None => Err(x.error("expected token tree")),
+    fn parse(s: Stream) -> Res<Self> {
+        s.step(|x| match x.token_tree() {
+            Some((y, rest)) => Ok((y, rest)),
+            None => Err(x.err("expected token tree")),
         })
     }
 }
-impl Parse for Group {
-    fn parse(x: Stream) -> Res<Self> {
-        x.step(|x| {
+impl Parse for pm2::Group {
+    fn parse(s: Stream) -> Res<Self> {
+        s.step(|x| {
             if let Some((y, rest)) = x.any_group_token() {
                 if y.delimiter() != Delim::None {
                     return Ok((y, rest));
                 }
             }
-            Err(x.error("expected group token"))
+            Err(x.err("expected group token"))
         })
     }
 }
 impl Parse for Punct {
-    fn parse(x: Stream) -> Res<Self> {
-        x.step(|x| match x.punct() {
+    fn parse(s: Stream) -> Res<Self> {
+        s.step(|x| match x.punct() {
             Some((y, rest)) => Ok((y, rest)),
-            None => Err(x.error("expected punctuation token")),
+            None => Err(x.err("expected punctuation token")),
         })
     }
 }
@@ -293,7 +324,7 @@ impl Parse for pm2::Lit {
     fn parse(x: Stream) -> Res<Self> {
         x.step(|x| match x.literal() {
             Some((y, rest)) => Ok((y, rest)),
-            None => Err(x.error("expected literal token")),
+            None => Err(x.err("expected literal token")),
         })
     }
 }
@@ -317,42 +348,41 @@ where
     F: FnOnce(Stream) -> Res<T>,
 {
     type Output = T;
-    fn parse2(self, tokens: pm2::Stream) -> Res<T> {
-        let buf = cur::Buffer::new2(tokens);
+    fn parse2(self, s: pm2::Stream) -> Res<T> {
+        let buf = cur::Buffer::new2(s);
         let state = tokens_to_parse_buffer(&buf);
         let node = self(&state)?;
         state.check_unexpected()?;
-        if let Some(unexpected_span) = span_of_unexpected_ignoring_nones(state.cursor()) {
-            Err(Err::new(unexpected_span, "unexpected token"))
+        if let Some(x) = span_of_unexpected_ignoring_nones(state.cursor()) {
+            Err(Err::new(x, "unexpected token"))
         } else {
             Ok(node)
         }
     }
-    fn __parse_scoped(self, scope: Span, tokens: pm2::Stream) -> Res<Self::Output> {
-        let buf = cur::Buffer::new2(tokens);
+    fn __parse_scoped(self, scope: Span, s: pm2::Stream) -> Res<Self::Output> {
+        let buf = cur::Buffer::new2(s);
         let cursor = buf.begin();
         let unexpected = Rc::new(Cell::new(Unexpected::None));
         let state = new_parse_buffer(scope, cursor, unexpected);
         let node = self(&state)?;
         state.check_unexpected()?;
-        if let Some(unexpected_span) = span_of_unexpected_ignoring_nones(state.cursor()) {
-            Err(Err::new(unexpected_span, "unexpected token"))
+        if let Some(x) = span_of_unexpected_ignoring_nones(state.cursor()) {
+            Err(Err::new(x, "unexpected token"))
         } else {
             Ok(node)
         }
     }
 }
 
-pub fn advance_step_cursor<'c, 'a>(proof: Step<'c, 'a>, to: Cursor<'c>) -> Cursor<'a> {
-    let _ = proof;
+pub fn advance_step_cursor<'c, 'a>(_: Step<'c, 'a>, to: Cursor<'c>) -> Cursor<'a> {
     unsafe { mem::transmute::<Cursor<'c>, Cursor<'a>>(to) }
 }
-pub fn new_parse_buffer(scope: Span, cursor: Cursor, unexpected: Rc<Cell<Unexpected>>) -> Buffer {
+pub fn new_parse_buffer(scope: Span, cur: Cursor, unexp: Rc<Cell<Unexpected>>) -> Buffer {
     Buffer {
         scope,
-        cell: Cell::new(unsafe { mem::transmute::<Cursor, Cursor<'static>>(cursor) }),
-        marker: PhantomData,
-        unexpected: Cell::new(Some(unexpected)),
+        cur: Cell::new(unsafe { mem::transmute::<Cursor, Cursor<'static>>(cur) }),
+        _marker: PhantomData,
+        unexp: Cell::new(Some(unexp)),
     }
 }
 
@@ -374,7 +404,7 @@ fn inner_unexpected(x: &Buffer) -> (Rc<Cell<Unexpected>>, Option<Span>) {
     }
 }
 pub fn get_unexpected(x: &Buffer) -> Rc<Cell<Unexpected>> {
-    cell_clone(&x.unexpected).unwrap()
+    cell_clone(&x.unexp).unwrap()
 }
 fn span_of_unexpected_ignoring_nones(mut x: Cursor) -> Option<Span> {
     if x.eof() {
@@ -395,9 +425,9 @@ fn span_of_unexpected_ignoring_nones(mut x: Cursor) -> Option<Span> {
 
 fn tokens_to_parse_buffer(x: &cur::Buffer) -> Buffer {
     let scope = Span::call_site();
-    let cursor = x.begin();
-    let unexpected = Rc::new(Cell::new(Unexpected::None));
-    new_parse_buffer(scope, cursor, unexpected)
+    let cur = x.begin();
+    let unexp = Rc::new(Cell::new(Unexpected::None));
+    new_parse_buffer(scope, cur, unexp)
 }
 
 pub fn parse_scoped<F: Parser>(f: F, s: Span, xs: pm2::Stream) -> Res<F::Output> {
@@ -458,12 +488,12 @@ pub mod discouraged {
     impl<'a> AnyDelim for Buffer<'a> {
         fn parse_any_delim(&self) -> Res<(Delim, DelimSpan, Buffer)> {
             self.step(|c| {
-                if let Some((content, delim, span, rest)) = c.any_group() {
+                if let Some((y, delim, span, rest)) = c.any_group() {
                     let scope = crate::close_span_of_group(*c);
-                    let nested = advance_step_cursor(c, content);
-                    let unexpected = get_unexpected(self);
-                    let content = new_parse_buffer(scope, nested, unexpected);
-                    Ok(((delim, span, content), rest))
+                    let nested = advance_step_cursor(c, y);
+                    let unexp = get_unexpected(self);
+                    let y = new_parse_buffer(scope, nested, unexp);
+                    Ok(((delim, span, y), rest))
                 } else {
                     Err(c.error("expected any delimiter"))
                 }

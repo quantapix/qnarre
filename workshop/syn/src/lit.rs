@@ -1,4 +1,4 @@
-pub use pm2::Stream;
+use super::*;
 use std::{
     char,
     ops::{Index, RangeFrom},
@@ -113,7 +113,7 @@ impl Lit {
     }
 }
 #[allow(non_snake_case)]
-pub fn Lit(x: look::TokenMarker) -> Lit {
+pub fn Lit(x: look::Marker) -> Lit {
     match x {}
 }
 
@@ -220,7 +220,7 @@ macro_rules! extra_traits {
             }
         }
         #[allow(non_snake_case)]
-        pub fn $ty(x: look::TokenMarker) -> $ty {
+        pub fn $ty(x: look::Marker) -> $ty {
             match x {}
         }
     };
@@ -566,7 +566,7 @@ impl Debug for Bool {
     }
 }
 #[allow(non_snake_case)]
-pub fn Bool(x: look::TokenMarker) -> Bool {
+pub fn Bool(x: look::Marker) -> Bool {
     match x {}
 }
 
@@ -1096,7 +1096,7 @@ impl Parse for Lit {
                     }
                 }
             }
-            Err(c.error("expected literal"))
+            Err(c.err("expected literal"))
         })
     }
 }

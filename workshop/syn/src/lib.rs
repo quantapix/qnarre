@@ -45,25 +45,28 @@
 
 extern crate proc_macro;
 
-use proc_macro2::Punct;
-use quote::{quote, spanned, ToTokens, TokenStreamExt};
-use std::{
-    cmp::{self, Ordering},
+pub use quote::ToTokens;
+pub use std::{
     fmt::{self, Debug, Display},
     hash::{Hash, Hasher},
     marker::PhantomData,
-    mem,
     ops::{self, Deref, DerefMut},
+};
+
+use quote::{quote, spanned, TokenStreamExt};
+use std::{
+    cmp::{self, Ordering},
+    mem,
     thread::{self, ThreadId},
 };
 
 mod pm2 {
     pub use proc_macro2::{
-        extra::DelimSpan, Delimiter as Delim, Group, Ident, Literal as Lit, Spacing, Span, TokenStream as Stream,
-        TokenTree as Tree,
+        extra::DelimSpan, Delimiter as Delim, Group, Ident, Literal as Lit, Punct, Spacing, Span,
+        TokenStream as Stream, TokenTree as Tree,
     };
 }
-pub use pm2::Ident;
+pub use pm2::{Ident, Punct};
 
 #[macro_use]
 mod mac;
@@ -92,134 +95,84 @@ use err::{Err, Res};
 use ident::Lifetime;
 use parse::{Parse, Parser, Stream};
 use path::Path;
-use punct::Punctuated;
-use parse::{parse_parens, }
+use punct::Puncted;
+use tok::Tok;
 
 mod look {
-    use super::{
-        err::{self, Err},
-        sealed::look::Sealed,
-        tok::Tok,
-    };
+    use super::{sealed::look::Sealed, *};
     use std::cell::RefCell;
-    pub struct Lookahead1<'a> {
+    pub struct Look1<'a> {
         scope: pm2::Span,
-        cursor: Cursor<'a>,
-        comparisons: RefCell<Vec<&'static str>>,
+        cur: Cursor<'a>,
+        comps: RefCell<Vec<&'static str>>,
     }
-    impl<'a> Lookahead1<'a> {
-        pub fn peek<T: Peek>(&self, token: T) -> bool {
-            let _ = token;
-            peek_impl(self, T::Token::peek, T::Token::display)
+    impl<'a> Look1<'a> {
+        pub fn peek<T: Peek>(&self, _: T) -> bool {
+            fn doit(x: &Look1, f: fn(Cursor) -> bool, d: fn() -> &'static str) -> bool {
+                if f(x.cur) {
+                    return true;
+                }
+                x.comps.borrow_mut().push(d());
+                false
+            }
+            doit(self, T::Token::peek, T::Token::display)
         }
-        pub fn error(self) -> Err {
-            let comparisons = self.comparisons.borrow();
-            match comparisons.len() {
+        pub fn err(self) -> Err {
+            let ys = self.comps.borrow();
+            match ys.len() {
                 0 => {
-                    if self.cursor.eof() {
+                    if self.cur.eof() {
                         Err::new(self.scope, "unexpected end of input")
                     } else {
-                        Err::new(self.cursor.span(), "unexpected token")
+                        Err::new(self.cur.span(), "unexpected token")
                     }
                 },
                 1 => {
-                    let message = format!("expected {}", comparisons[0]);
-                    err::new_at(self.scope, self.cursor, message)
+                    let y = format!("expected {}", ys[0]);
+                    err::new_at(self.scope, self.cur, y)
                 },
                 2 => {
-                    let message = format!("expected {} or {}", comparisons[0], comparisons[1]);
-                    err::new_at(self.scope, self.cursor, message)
+                    let y = format!("expected {} or {}", ys[0], ys[1]);
+                    err::new_at(self.scope, self.cur, y)
                 },
                 _ => {
-                    let join = comparisons.join(", ");
-                    let message = format!("expected one of: {}", join);
-                    err::new_at(self.scope, self.cursor, message)
+                    let y = ys.join(", ");
+                    let y = format!("expected one of: {}", y);
+                    err::new_at(self.scope, self.cur, y)
                 },
             }
         }
     }
 
-    pub fn new(scope: pm2::Span, cursor: Cursor) -> Lookahead1 {
-        Lookahead1 {
+    pub fn new(scope: pm2::Span, cur: Cursor) -> Look1 {
+        Look1 {
             scope,
-            cursor,
-            comparisons: RefCell::new(Vec::new()),
+            cur,
+            comps: RefCell::new(Vec::new()),
         }
-    }
-    fn peek_impl(lookahead: &Lookahead1, peek: fn(Cursor) -> bool, display: fn() -> &'static str) -> bool {
-        if peek(lookahead.cursor) {
-            return true;
-        }
-        lookahead.comparisons.borrow_mut().push(display());
-        false
     }
 
     pub trait Peek: Sealed {
         type Token: Tok;
     }
-    impl<F: Copy + FnOnce(TokenMarker) -> T, T: Tok> Peek for F {
+    impl<F: Copy + FnOnce(Marker) -> T, T: Tok> Peek for F {
         type Token = T;
     }
 
-    pub enum TokenMarker {}
-    impl<S> IntoSpans<S> for TokenMarker {
+    pub enum Marker {}
+    impl<S> IntoSpans<S> for Marker {
         fn into_spans(self) -> S {
             match self {}
         }
     }
 
-    pub fn is_delimiter(x: Cursor, d: pm2::Delim) -> bool {
+    pub fn is_delim(x: Cursor, d: pm2::Delim) -> bool {
         x.group(d).is_some()
     }
 
-    impl<F: Copy + FnOnce(TokenMarker) -> T, T: Tok> Sealed for F {}
+    impl<F: Copy + FnOnce(Marker) -> T, T: Tok> Sealed for F {}
 }
-
-pub trait ParseQuote: Sized {
-    fn parse(x: parse::Stream) -> Res<Self>;
-}
-impl<T: Parse> ParseQuote for T {
-    fn parse(x: parse::Stream) -> Res<Self> {
-        <T as Parse>::parse(x)
-    }
-}
-impl ParseQuote for attr::Attr {
-    fn parse(x: parse::Stream) -> Res<Self> {
-        if x.peek(Token![#]) && x.peek2(Token![!]) {
-            parsing::attr::single_inner(x)
-        } else {
-            parsing::attr::single_outer(x)
-        }
-    }
-}
-impl ParseQuote for pat::Pat {
-    fn parse(x: parse::Stream) -> Res<Self> {
-        pat::Pat::parse_multi_with_leading_vert(x)
-    }
-}
-impl ParseQuote for Box<pat::Pat> {
-    fn parse(x: parse::Stream) -> Res<Self> {
-        <pat::Pat as ParseQuote>::parse(x).map(Box::new)
-    }
-}
-impl<T: Parse, P: Parse> ParseQuote for Punctuated<T, P> {
-    fn parse(x: parse::Stream) -> Res<Self> {
-        Self::parse_terminated(x)
-    }
-}
-impl ParseQuote for Vec<Stmt> {
-    fn parse(x: parse::Stream) -> Res<Self> {
-        Block::parse_within(x)
-    }
-}
-
-pub fn parse_quote_fn<T: ParseQuote>(x: pm2::Stream) -> T {
-    let y = T::parse;
-    match y.parse2(x) {
-        Ok(x) => x,
-        Err(x) => panic!("{}", x),
-    }
-}
+use look::{Look1, Peek};
 
 struct TokensOrDefault<'a, T: 'a>(pub &'a Option<T>);
 impl<'a, T> ToTokens for TokensOrDefault<'a, T>
@@ -544,7 +497,7 @@ mod fab {
     mod hash;
     mod helper {
         pub mod fold {
-            use crate::punct::{Pair, Punctuated};
+            use crate::punct::{Pair, Puncted};
             pub trait FoldHelper {
                 type Item;
                 fn lift<F>(self, f: F) -> Self
@@ -560,7 +513,7 @@ mod fab {
                     self.into_iter().map(f).collect()
                 }
             }
-            impl<T, U> FoldHelper for Punctuated<T, U> {
+            impl<T, U> FoldHelper for Puncted<T, U> {
                 type Item = T;
                 fn lift<F>(self, mut f: F) -> Self
                 where
@@ -579,7 +532,7 @@ pub use fab::*;
 pub mod __private {
     pub use super::{
         lower::punct as print_punct,
-        parse_quote_fn,
+        parse::parse_quote_fn,
         parsing::{peek_punct, punct as parse_punct},
     };
     pub use proc_macro::TokenStream;
