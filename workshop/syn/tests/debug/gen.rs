@@ -145,7 +145,7 @@ impl Debug for Lite<syn::typ::FnArg> {
             }
             formatter.field("name", Print::ref_cast(val));
         }
-        formatter.field("ty", Lite(&self.value.ty));
+        formatter.field("ty", Lite(&self.value.typ));
         formatter.finish()
     }
 }

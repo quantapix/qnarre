@@ -105,7 +105,7 @@ fn test_empty_group_vis() {
                         vis: data::Visibility::Inherited,
                         ident: Some("f"),
                         colon: Some,
-                        ty: Type::Tuple,
+                        typ: Type::Tuple,
                     },
                 ],
             },

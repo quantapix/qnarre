@@ -267,7 +267,7 @@ impl ToTokens for Paren {
 }
 
 pub struct Path {
-    pub qself: Option<QSelf>,
+    pub qself: Option<path::QSelf>,
     pub path: Path,
 }
 impl Parse for Path {
@@ -495,7 +495,7 @@ impl ToTokens for Abi {
 pub struct FnArg {
     pub attrs: Vec<attr::Attr>,
     pub name: Option<(Ident, Token![:])>,
-    pub ty: Type,
+    pub typ: Type,
 }
 impl Parse for FnArg {
     fn parse(x: Stream) -> Res<Self> {
@@ -510,7 +510,7 @@ impl ToTokens for FnArg {
             name.to_tokens(ys);
             colon.to_tokens(ys);
         }
-        self.ty.to_tokens(ys);
+        self.typ.to_tokens(ys);
     }
 }
 
@@ -575,17 +575,17 @@ pub fn parse_ambig_typ(s: Stream, plus: bool, gen: bool) -> Res<Type> {
     if s.peek(tok::Group) {
         let mut y: Group = s.parse()?;
         if s.peek(Token![::]) && s.peek3(Ident::peek_any) {
-            if let Type::Path(mut ty) = *y.elem {
-                Path::parse_rest(s, &mut ty.path, false)?;
-                return Ok(Type::Path(ty));
+            if let Type::Path(mut typ) = *y.elem {
+                Path::parse_rest(s, &mut typ.path, false)?;
+                return Ok(Type::Path(typ));
             } else {
                 return Ok(Type::Path(Path {
-                    qself: Some(QSelf {
+                    qself: Some(path::QSelf {
                         lt: Token![<](y.group.span),
-                        position: 0,
+                        pos: 0,
                         as_: None,
                         gt: Token![>](y.group.span),
-                        ty: y.elem,
+                        typ: y.elem,
                     }),
                     path: Path::parse_helper(s, false)?,
                 }));
@@ -678,8 +678,8 @@ pub fn parse_ambig_typ(s: Stream, plus: bool, gen: bool) -> Res<Type> {
                 let first = match first {
                     Type::Path(Path { qself: None, path }) => gen::bound::Type::Trait(gen::bound::Trait {
                         paren: Some(paren),
-                        modifier: gen::bound::Modifier::None,
-                        lifetimes: None,
+                        modif: gen::bound::Modifier::None,
+                        lifes: None,
                         path,
                     }),
                     Type::TraitObject(Trait { dyn_: None, bounds }) => {
@@ -727,16 +727,16 @@ pub fn parse_ambig_typ(s: Stream, plus: bool, gen: bool) -> Res<Type> {
         || look.peek(Token![::])
         || look.peek(Token![<])
     {
-        let ty: Path = s.parse()?;
-        if ty.qself.is_some() {
-            return Ok(Type::Path(ty));
+        let typ: Path = s.parse()?;
+        if typ.qself.is_some() {
+            return Ok(Type::Path(typ));
         }
-        if s.peek(Token![!]) && !s.peek(Token![!=]) && ty.path.is_mod_style() {
+        if s.peek(Token![!]) && !s.peek(Token![!=]) && typ.path.is_mod_style() {
             let bang: Token![!] = s.parse()?;
             let (delimiter, tokens) = mac::parse_delim(s)?;
             return Ok(Type::Mac(Mac {
                 mac: Macro {
-                    path: ty.path,
+                    path: typ.path,
                     bang,
                     delimiter,
                     tokens,
@@ -747,9 +747,9 @@ pub fn parse_ambig_typ(s: Stream, plus: bool, gen: bool) -> Res<Type> {
             let mut bounds = Puncted::new();
             bounds.push_value(gen::bound::Type::Trait(gen::bound::Trait {
                 paren: None,
-                modifier: gen::bound::Modifier::None,
-                lifetimes: lifes,
-                path: ty.path,
+                modif: gen::bound::Modifier::None,
+                lifes,
+                path: typ.path,
             }));
             if plus {
                 while s.peek(Token![+]) {
@@ -767,7 +767,7 @@ pub fn parse_ambig_typ(s: Stream, plus: bool, gen: bool) -> Res<Type> {
             }
             return Ok(Type::TraitObject(Trait { dyn_: None, bounds }));
         }
-        Ok(Type::Path(ty))
+        Ok(Type::Path(typ))
     } else if look.peek(Token![dyn]) {
         let dyn_: Token![dyn] = s.parse()?;
         let dyn_span = dyn_.span;
@@ -852,7 +852,7 @@ fn parse_fn_arg(s: Stream, self_: bool) -> Res<FnArg> {
             Type::Verbatim(parse::parse_verbatim(&beg, s))
         },
     };
-    Ok(FnArg { attrs, name, ty })
+    Ok(FnArg { attrs, name, typ: ty })
 }
 fn parse_variadic(s: Stream, attrs: Vec<attr::Attr>) -> Res<Variadic> {
     Ok(Variadic {

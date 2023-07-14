@@ -232,8 +232,8 @@ fn librustc_brackets(mut librustc_expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
         fn visit_pat(&mut self, pat: &mut P<patt::Patt>) {
             let _ = pat;
         }
-        fn visit_ty(&mut self, ty: &mut P<typ::Type>) {
-            let _ = ty;
+        fn visit_ty(&mut self, typ: &mut P<typ::Type>) {
+            let _ = typ;
         }
         fn visit_attribute(&mut self, x: &mut attr::Attr) {
             let _ = x;

@@ -10,7 +10,7 @@ fn test_by_value() {
     snapshot!(&sig.args[0], @r###"
     item::FnArg::Receiver(item::Receiver {
         colon: Some,
-        ty: Type::Path {
+        typ: Type::Path {
             path: Path {
                 segments: [
                     path::Segment {
@@ -31,7 +31,7 @@ fn test_by_mut_value() {
     item::FnArg::Receiver(item::Receiver {
         mut_: Some,
         colon: Some,
-        ty: Type::Path {
+        typ: Type::Path {
             path: Path {
                 segments: [
                     path::Segment {
@@ -51,7 +51,7 @@ fn test_by_ref() {
     snapshot!(&sig.args[0], @r###"
     item::FnArg::Receiver(item::Receiver {
         colon: Some,
-        ty: Type::Reference {
+        typ: Type::Reference {
             elem: Type::Path {
                 path: Path {
                     segments: [
@@ -73,7 +73,7 @@ fn test_by_box() {
     snapshot!(&sig.args[0], @r###"
     item::FnArg::Receiver(item::Receiver {
         colon: Some,
-        ty: Type::Path {
+        typ: Type::Path {
             path: Path {
                 segments: [
                     path::Segment {
@@ -106,7 +106,7 @@ fn test_by_pin() {
     snapshot!(&sig.args[0], @r###"
     item::FnArg::Receiver(item::Receiver {
         colon: Some,
-        ty: Type::Path {
+        typ: Type::Path {
             path: Path {
                 segments: [
                     path::Segment {
@@ -139,7 +139,7 @@ fn test_explicit_type() {
     snapshot!(&sig.args[0], @r###"
     item::FnArg::Receiver(item::Receiver {
         colon: Some,
-        ty: Type::Path {
+        typ: Type::Path {
             path: Path {
                 segments: [
                     path::Segment {
@@ -171,7 +171,7 @@ fn test_value_shorthand() {
     };
     snapshot!(&sig.args[0], @r###"
     item::FnArg::Receiver(item::Receiver {
-        ty: Type::Path {
+        typ: Type::Path {
             path: Path {
                 segments: [
                     path::Segment {
@@ -191,7 +191,7 @@ fn test_mut_value_shorthand() {
     snapshot!(&sig.args[0], @r###"
     item::FnArg::Receiver(item::Receiver {
         mut_: Some,
-        ty: Type::Path {
+        typ: Type::Path {
             path: Path {
                 segments: [
                     path::Segment {
@@ -211,7 +211,7 @@ fn test_ref_shorthand() {
     snapshot!(&sig.args[0], @r###"
     item::FnArg::Receiver(item::Receiver {
         reference: Some(None),
-        ty: Type::Reference {
+        typ: Type::Reference {
             elem: Type::Path {
                 path: Path {
                     segments: [
@@ -235,7 +235,7 @@ fn test_ref_shorthand_with_lifetime() {
         reference: Some(Some(Life {
             ident: "a",
         })),
-        ty: Type::Reference {
+        typ: Type::Reference {
             life: Some(Life {
                 ident: "a",
             }),
@@ -261,7 +261,7 @@ fn test_ref_mut_shorthand() {
     item::FnArg::Receiver(item::Receiver {
         reference: Some(None),
         mut_: Some,
-        ty: Type::Reference {
+        typ: Type::Reference {
             mut_: Some,
             elem: Type::Path {
                 path: Path {
@@ -287,7 +287,7 @@ fn test_ref_mut_shorthand_with_lifetime() {
             ident: "a",
         })),
         mut_: Some,
-        ty: Type::Reference {
+        typ: Type::Reference {
             life: Some(Life {
                 ident: "a",
             }),

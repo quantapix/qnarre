@@ -649,7 +649,7 @@ where
         v.visit_ident(&(it).0);
         skip!((it).1);
     }
-    v.visit_type(&node.ty);
+    v.visit_type(&node.typ);
 }
 pub fn visit_bare_variadic<'ast, V>(v: &mut V, node: &'ast typ::Variadic)
 where

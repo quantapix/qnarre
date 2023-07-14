@@ -570,7 +570,7 @@ pub fn Bool(x: look::Marker) -> Bool {
     match x {}
 }
 
-pub fn parse::parse_str(x: &str) -> (Box<str>, Box<str>) {
+pub fn parse_str(x: &str) -> (Box<str>, Box<str>) {
     match byte(x, 0) {
         b'"' => parse_str_cooked(x),
         b'r' => parse_str_raw(x),

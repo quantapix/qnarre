@@ -83,7 +83,7 @@ impl Debug for typ::FnArg {
         let mut f = f.debug_struct("typ::FnArg");
         f.field("attrs", &self.attrs);
         f.field("name", &self.name);
-        f.field("ty", &self.ty);
+        f.field("ty", &self.typ);
         f.finish()
     }
 }

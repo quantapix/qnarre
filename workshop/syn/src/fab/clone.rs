@@ -31,23 +31,23 @@ impl Clone for Arm {
         }
     }
 }
-impl Clone for AssocConst {
+impl Clone for path::AssocConst {
     fn clone(&self) -> Self {
-        AssocConst {
+        path::AssocConst {
             ident: self.ident.clone(),
-            gnrs: self.gnrs.clone(),
+            args: self.args.clone(),
             eq: self.eq.clone(),
             val: self.val.clone(),
         }
     }
 }
-impl Clone for AssocType {
+impl Clone for path::AssocType {
     fn clone(&self) -> Self {
-        AssocType {
+        path::AssocType {
             ident: self.ident.clone(),
-            gnrs: self.gnrs.clone(),
+            args: self.args.clone(),
             eq: self.eq.clone(),
-            ty: self.ty.clone(),
+            typ: self.typ.clone(),
         }
     }
 }
@@ -72,7 +72,7 @@ impl Clone for typ::FnArg {
         typ::FnArg {
             attrs: self.attrs.clone(),
             name: self.name.clone(),
-            ty: self.ty.clone(),
+            typ: self.typ.clone(),
         }
     }
 }
@@ -1367,14 +1367,14 @@ impl Clone for gen::Where::Type {
         }
     }
 }
-impl Clone for QSelf {
+impl Clone for path::QSelf {
     fn clone(&self) -> Self {
-        QSelf {
+        path::QSelf {
             lt: self.lt.clone(),
-            ty: self.ty.clone(),
+            typ: self.typ.clone(),
             pos: self.pos.clone(),
             as_: self.as_.clone(),
-            gt_: self.gt_.clone(),
+            gt: self.gt.clone(),
         }
     }
 }

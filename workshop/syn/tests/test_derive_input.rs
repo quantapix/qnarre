@@ -62,7 +62,7 @@ fn test_struct() {
                         vis: data::Visibility::Public,
                         ident: Some("ident"),
                         colon: Some,
-                        ty: Type::Path {
+                        typ: Type::Path {
                             path: Path {
                                 segments: [
                                     path::Segment {
@@ -76,7 +76,7 @@ fn test_struct() {
                         vis: data::Visibility::Public,
                         ident: Some("attrs"),
                         colon: Some,
-                        ty: Type::Path {
+                        typ: Type::Path {
                             path: Path {
                                 segments: [
                                     path::Segment {
@@ -146,13 +146,13 @@ fn test_union() {
                         vis: data::Visibility::Inherited,
                         ident: Some("uninit"),
                         colon: Some,
-                        ty: Type::Tuple,
+                        typ: Type::Tuple,
                     },
                     Field {
                         vis: data::Visibility::Inherited,
                         ident: Some("value"),
                         colon: Some,
-                        ty: Type::Path {
+                        typ: Type::Path {
                             path: Path {
                                 segments: [
                                     path::Segment {
@@ -230,7 +230,7 @@ fn test_enum() {
                         fields: [
                             Field {
                                 vis: data::Visibility::Inherited,
-                                ty: Type::Path {
+                                typ: Type::Path {
                                     path: Path {
                                         segments: [
                                             path::Segment {
@@ -249,7 +249,7 @@ fn test_enum() {
                         fields: [
                             Field {
                                 vis: data::Visibility::Inherited,
-                                ty: Type::Path {
+                                typ: Type::Path {
                                     path: Path {
                                         segments: [
                                             path::Segment {
@@ -406,7 +406,7 @@ fn test_pub_restricted() {
                                 ],
                             },
                         },
-                        ty: Type::Path {
+                        typ: Type::Path {
                             path: Path {
                                 segments: [
                                     path::Segment {
@@ -541,7 +541,7 @@ fn test_fields_on_named_struct() {
                         vis: data::Visibility::Inherited,
                         ident: Some("foo"),
                         colon: Some,
-                        ty: Type::Path {
+                        typ: Type::Path {
                             path: Path {
                                 segments: [
                                     path::Segment {
@@ -555,7 +555,7 @@ fn test_fields_on_named_struct() {
                         vis: data::Visibility::Public,
                         ident: Some("bar"),
                         colon: Some,
-                        ty: Type::Path {
+                        typ: Type::Path {
                             path: Path {
                                 segments: [
                                     path::Segment {
@@ -580,7 +580,7 @@ fn test_fields_on_named_struct() {
             vis: data::Visibility::Inherited,
             ident: Some("foo"),
             colon: Some,
-            ty: Type::Path {
+            typ: Type::Path {
                 path: Path {
                     segments: [
                         path::Segment {
@@ -594,7 +594,7 @@ fn test_fields_on_named_struct() {
             vis: data::Visibility::Public,
             ident: Some("bar"),
             colon: Some,
-            ty: Type::Path {
+            typ: Type::Path {
                 path: Path {
                     segments: [
                         path::Segment {
@@ -622,7 +622,7 @@ fn test_fields_on_tuple_struct() {
                 fields: [
                     Field {
                         vis: data::Visibility::Inherited,
-                        ty: Type::Path {
+                        typ: Type::Path {
                             path: Path {
                                 segments: [
                                     path::Segment {
@@ -634,7 +634,7 @@ fn test_fields_on_tuple_struct() {
                     },
                     Field {
                         vis: data::Visibility::Public,
-                        ty: Type::Path {
+                        typ: Type::Path {
                             path: Path {
                                 segments: [
                                     path::Segment {
@@ -658,7 +658,7 @@ fn test_fields_on_tuple_struct() {
     [
         Field {
             vis: data::Visibility::Inherited,
-            ty: Type::Path {
+            typ: Type::Path {
                 path: Path {
                     segments: [
                         path::Segment {
@@ -670,7 +670,7 @@ fn test_fields_on_tuple_struct() {
         },
         Field {
             vis: data::Visibility::Public,
-            ty: Type::Path {
+            typ: Type::Path {
                 path: Path {
                     segments: [
                         path::Segment {
@@ -698,7 +698,7 @@ fn test_ambiguous_crate() {
                 fields: [
                     Field {
                         vis: data::Visibility::Inherited,
-                        ty: Type::Path {
+                        typ: Type::Path {
                             path: Path {
                                 segments: [
                                     path::Segment {

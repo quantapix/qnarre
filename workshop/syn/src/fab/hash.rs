@@ -81,7 +81,7 @@ impl Hash for typ::FnArg {
     {
         self.attrs.hash(state);
         self.name.hash(state);
-        self.ty.hash(state);
+        self.typ.hash(state);
     }
 }
 impl Hash for typ::Variadic {

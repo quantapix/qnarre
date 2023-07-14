@@ -324,7 +324,7 @@ fn range(x: Stream, qself: Option<QSelf>, path: Path) -> Res<Pat> {
     }
     Ok(Pat::Range(expr::Range {
         attrs: Vec::new(),
-        start: Some(Box::new(Expr::Path(expr::Path {
+        beg: Some(Box::new(Expr::Path(expr::Path {
             attrs: Vec::new(),
             qself,
             path,
@@ -339,7 +339,7 @@ fn range_half_open(x: Stream) -> Res<Pat> {
     if end.is_some() {
         Ok(Pat::Range(expr::Range {
             attrs: Vec::new(),
-            start: None,
+            beg: None,
             limits,
             end: end.map(RangeBound::into_expr),
         }))
@@ -398,7 +398,7 @@ fn lit_or_range(x: Stream) -> Res<Pat> {
         }
         Ok(Pat::Range(expr::Range {
             attrs: Vec::new(),
-            start: Some(beg.into_expr()),
+            beg: Some(beg.into_expr()),
             limits,
             end: end.map(RangeBound::into_expr),
         }))

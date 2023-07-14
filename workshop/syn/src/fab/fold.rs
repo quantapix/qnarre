@@ -590,26 +590,26 @@ where
         comma: node.comma,
     }
 }
-pub fn fold_assoc_const<F>(f: &mut F, node: AssocConst) -> AssocConst
+pub fn fold_assoc_const<F>(f: &mut F, node: path::AssocConst) -> path::AssocConst
 where
     F: Fold + ?Sized,
 {
-    AssocConst {
+    path::AssocConst {
         ident: f.fold_ident(node.ident),
-        gnrs: (node.gnrs).map(|it| f.fold_angle_bracketed_generic_arguments(it)),
+        args: (node.args).map(|it| f.fold_angle_bracketed_generic_arguments(it)),
         eq: node.eq,
         val: f.fold_expr(node.val),
     }
 }
-pub fn fold_assoc_type<F>(f: &mut F, node: AssocType) -> AssocType
+pub fn fold_assoc_type<F>(f: &mut F, node: path::AssocType) -> path::AssocType
 where
     F: Fold + ?Sized,
 {
-    AssocType {
+    path::AssocType {
         ident: f.fold_ident(node.ident),
-        gnrs: (node.gnrs).map(|it| f.fold_angle_bracketed_generic_arguments(it)),
+        args: (node.args).map(|it| f.fold_angle_bracketed_generic_arguments(it)),
         eq: node.eq,
-        ty: f.fold_type(node.ty),
+        typ: f.fold_type(node.typ),
     }
 }
 pub fn fold_attr_style<F>(f: &mut F, node: attr::Style) -> attr::Style
@@ -639,7 +639,7 @@ where
     typ::FnArg {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         name: (node.name).map(|it| (f.fold_ident((it).0), (it).1)),
-        ty: f.fold_type(node.ty),
+        typ: f.fold_type(node.typ),
     }
 }
 pub fn fold_bare_variadic<F>(f: &mut F, node: typ::Variadic) -> typ::Variadic
@@ -2153,16 +2153,16 @@ where
         bounds: FoldHelper::lift(node.bounds, |it| f.fold_type_param_bound(it)),
     }
 }
-pub fn fold_qself<F>(f: &mut F, node: QSelf) -> QSelf
+pub fn fold_qself<F>(f: &mut F, node: path::QSelf) -> path::QSelf
 where
     F: Fold + ?Sized,
 {
-    QSelf {
+    path::QSelf {
         lt: node.lt,
-        ty: Box::new(f.fold_type(*node.ty)),
+        typ: Box::new(f.fold_type(*node.typ)),
         pos: node.pos,
         as_: node.as_,
-        gt_: node.gt_,
+        gt: node.gt,
     }
 }
 pub fn fold_range_limits<F>(f: &mut F, node: RangeLimits) -> RangeLimits

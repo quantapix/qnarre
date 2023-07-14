@@ -54,7 +54,7 @@ impl PartialEq for attr::Attr {
 impl Eq for typ::FnArg {}
 impl PartialEq for typ::FnArg {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs && self.name == other.name && self.ty == other.ty
+        self.attrs == other.attrs && self.name == other.name && self.typ == other.typ
     }
 }
 impl Eq for typ::Variadic {}

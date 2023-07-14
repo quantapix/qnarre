@@ -169,7 +169,7 @@ fn test_group_colons() {
     snapshot!(tokens as typ::Type, @r###"
     Type::Path {
         qself: Some(QSelf {
-            ty: Type::Slice {
+            typ: Type::Slice {
                 elem: Type::Path {
                     path: Path {
                         segments: [
