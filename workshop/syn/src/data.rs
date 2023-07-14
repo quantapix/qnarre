@@ -96,6 +96,99 @@ impl ToTokens for DeriveInput {
     }
 }
 
+pub enum Visibility {
+    Public(Token![pub]),
+    Restricted(Restricted),
+    Inherited,
+}
+impl Visibility {
+    fn is_inherited(&self) -> bool {
+        match self {
+            Visibility::Inherited => true,
+            _ => false,
+        }
+    }
+    fn parse_pub(x: Stream) -> Res<Self> {
+        let pub_ = x.parse::<Token![pub]>()?;
+        if x.peek(tok::Paren) {
+            let ahead = x.fork();
+            let y;
+            let paren = parenthesized!(y in ahead);
+            if y.peek(Token![crate]) || y.peek(Token![self]) || y.peek(Token![super]) {
+                let path = y.call(Ident::parse_any)?;
+                if y.is_empty() {
+                    x.advance_to(&ahead);
+                    return Ok(Visibility::Restricted(Restricted {
+                        pub_,
+                        paren,
+                        in_: None,
+                        path: Box::new(Path::from(path)),
+                    }));
+                }
+            } else if y.peek(Token![in]) {
+                let in_: Token![in] = y.parse()?;
+                let path = y.call(Path::parse_mod_style)?;
+                x.advance_to(&ahead);
+                return Ok(Visibility::Restricted(Restricted {
+                    pub_,
+                    paren,
+                    in_: Some(in_),
+                    path: Box::new(path),
+                }));
+            }
+        }
+        Ok(Visibility::Public(pub_))
+    }
+    pub fn is_some(&self) -> bool {
+        match self {
+            Visibility::Inherited => false,
+            _ => true,
+        }
+    }
+}
+impl Parse for Visibility {
+    fn parse(s: Stream) -> Res<Self> {
+        if s.peek(tok::Group) {
+            let ahead = s.fork();
+            let y = parse::parse_group(&ahead)?;
+            if y.buf.is_empty() {
+                s.advance_to(&ahead);
+                return Ok(Visibility::Inherited);
+            }
+        }
+        if s.peek(Token![pub]) {
+            Self::parse_pub(s)
+        } else {
+            Ok(Visibility::Inherited)
+        }
+    }
+}
+impl ToTokens for Visibility {
+    fn to_tokens(&self, ys: &mut Stream) {
+        match self {
+            Visibility::Public(x) => x.to_tokens(ys),
+            Visibility::Restricted(x) => x.to_tokens(ys),
+            Visibility::Inherited => {},
+        }
+    }
+}
+
+pub struct Restricted {
+    pub pub_: Token![pub],
+    pub paren: tok::Paren,
+    pub in_: Option<Token![in]>,
+    pub path: Box<Path>,
+}
+impl ToTokens for Restricted {
+    fn to_tokens(&self, ys: &mut Stream) {
+        self.pub_.to_tokens(ys);
+        self.paren.surround(ys, |ys| {
+            self.in_.to_tokens(ys);
+            self.path.to_tokens(ys);
+        });
+    }
+}
+
 pub enum Data {
     Enum(Enum),
     Struct(Struct),

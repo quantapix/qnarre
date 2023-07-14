@@ -1421,19 +1421,19 @@ impl PartialEq for data::Variant {
             && self.discrim == other.discrim
     }
 }
-impl Eq for VisRestricted {}
-impl PartialEq for VisRestricted {
+impl Eq for data::Restricted {}
+impl PartialEq for data::Restricted {
     fn eq(&self, other: &Self) -> bool {
         self.in_ == other.in_ && self.path == other.path
     }
 }
-impl Eq for Visibility {}
-impl PartialEq for Visibility {
+impl Eq for data::Visibility {}
+impl PartialEq for data::Visibility {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Visibility::Public(_), Visibility::Public(_)) => true,
-            (Visibility::Restricted(self0), Visibility::Restricted(other0)) => self0 == other0,
-            (Visibility::Inherited, Visibility::Inherited) => true,
+            (data::Visibility::Public(_), data::Visibility::Public(_)) => true,
+            (data::Visibility::Restricted(self0), data::Visibility::Restricted(other0)) => self0 == other0,
+            (data::Visibility::Inherited, data::Visibility::Inherited) => true,
             _ => false,
         }
     }

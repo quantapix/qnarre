@@ -544,10 +544,10 @@ pub trait Fold {
     fn fold_variant(&mut self, i: data::Variant) -> data::Variant {
         fold_variant(self, i)
     }
-    fn fold_vis_restricted(&mut self, i: VisRestricted) -> VisRestricted {
+    fn fold_vis_restricted(&mut self, i: data::Restricted) -> data::Restricted {
         fold_vis_restricted(self, i)
     }
-    fn fold_visibility(&mut self, i: Visibility) -> Visibility {
+    fn fold_visibility(&mut self, i: data::Visibility) -> data::Visibility {
         fold_visibility(self, i)
     }
     fn fold_where_clause(&mut self, i: gen::Where) -> gen::Where {
@@ -2598,25 +2598,25 @@ where
         discrim: (node.discrim).map(|it| ((it).0, f.fold_expr((it).1))),
     }
 }
-pub fn fold_vis_restricted<F>(f: &mut F, node: VisRestricted) -> VisRestricted
+pub fn fold_vis_restricted<F>(f: &mut F, node: data::Restricted) -> data::Restricted
 where
     F: Fold + ?Sized,
 {
-    VisRestricted {
+    data::Restricted {
         pub_: node.pub_,
         paren: node.paren,
         in_: node.in_,
         path: Box::new(f.fold_path(*node.path)),
     }
 }
-pub fn fold_visibility<F>(f: &mut F, node: Visibility) -> Visibility
+pub fn fold_visibility<F>(f: &mut F, node: data::Visibility) -> data::Visibility
 where
     F: Fold + ?Sized,
 {
     match node {
-        Visibility::Public(_binding_0) => Visibility::Public(_binding_0),
-        Visibility::Restricted(_binding_0) => Visibility::Restricted(f.fold_vis_restricted(_binding_0)),
-        Visibility::Inherited => Visibility::Inherited,
+        data::Visibility::Public(_binding_0) => data::Visibility::Public(_binding_0),
+        data::Visibility::Restricted(_binding_0) => data::Visibility::Restricted(f.fold_vis_restricted(_binding_0)),
+        data::Visibility::Inherited => data::Visibility::Inherited,
     }
 }
 pub fn fold_where_clause<F>(f: &mut F, node: gen::Where) -> gen::Where

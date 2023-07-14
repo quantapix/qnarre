@@ -1,7 +1,5 @@
-#![allow(clippy::let_underscore_untyped, clippy::manual_let_else)]
-use std::env;
-use std::process::Command;
-use std::str;
+use std::{env, process::Command, str};
+
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     let compiler = match rustc_version() {

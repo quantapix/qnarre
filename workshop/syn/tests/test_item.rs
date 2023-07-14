@@ -25,7 +25,7 @@ fn test_macro_variable_attr() {
                 },
             },
         ],
-        vis: Visibility::Inherited,
+        vis: data::Visibility::Inherited,
         sig: item::Sig {
             ident: "f",
             gens: gen::Gens,
@@ -144,7 +144,7 @@ fn test_supertraits() {
     let tokens = quote!(trait Trait where {});
     snapshot!(tokens as item::Trait, @r###"
     item::Trait {
-        vis: Visibility::Inherited,
+        vis: data::Visibility::Inherited,
         ident: "Trait",
         gens: gen::Gens {
             where_clause: Some(gen::Where),
@@ -155,7 +155,7 @@ fn test_supertraits() {
     let tokens = quote!(trait Trait: where {});
     snapshot!(tokens as item::Trait, @r###"
     item::Trait {
-        vis: Visibility::Inherited,
+        vis: data::Visibility::Inherited,
         ident: "Trait",
         gens: gen::Gens {
             where_clause: Some(gen::Where),
@@ -167,7 +167,7 @@ fn test_supertraits() {
     let tokens = quote!(trait Trait: Sized where {});
     snapshot!(tokens as item::Trait, @r###"
     item::Trait {
-        vis: Visibility::Inherited,
+        vis: data::Visibility::Inherited,
         ident: "Trait",
         gens: gen::Gens {
             where_clause: Some(gen::Where),
@@ -190,7 +190,7 @@ fn test_supertraits() {
     let tokens = quote!(trait Trait: Sized + where {});
     snapshot!(tokens as item::Trait, @r###"
     item::Trait {
-        vis: Visibility::Inherited,
+        vis: data::Visibility::Inherited,
         ident: "Trait",
         gens: gen::Gens {
             where_clause: Some(gen::Where),
@@ -220,7 +220,7 @@ fn test_type_empty_bounds() {
     };
     snapshot!(tokens as item::Trait, @r###"
     item::Trait {
-        vis: Visibility::Inherited,
+        vis: data::Visibility::Inherited,
         ident: "Foo",
         gens: gen::Gens,
         items: [
@@ -271,7 +271,7 @@ fn test_impl_trait_trailing_plus() {
     };
     snapshot!(tokens as Item, @r###"
     Item::Fn {
-        vis: Visibility::Inherited,
+        vis: data::Visibility::Inherited,
         sig: item::Sig {
             ident: "f",
             gens: gen::Gens,

@@ -10,7 +10,7 @@ fn test_basic() {
         shebang: Some("#!/usr/bin/env rustx"),
         items: [
             Item::Fn {
-                vis: Visibility::Inherited,
+                vis: data::Visibility::Inherited,
                 sig: item::Sig {
                     ident: "main",
                     gens: gen::Gens,
@@ -46,7 +46,7 @@ fn test_comment() {
         ],
         items: [
             Item::Fn {
-                vis: Visibility::Inherited,
+                vis: data::Visibility::Inherited,
                 sig: item::Sig {
                     ident: "main",
                     gens: gen::Gens,

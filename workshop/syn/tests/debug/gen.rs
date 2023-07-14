@@ -4587,9 +4587,9 @@ impl Debug for Lite<syn::Variant> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::VisRestricted> {
+impl Debug for Lite<syn::data::Restricted> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("VisRestricted");
+        let mut formatter = formatter.debug_struct("data::Restricted");
         if self.value.in_.is_some() {
             formatter.field("in_", &Present);
         }
@@ -4597,22 +4597,22 @@ impl Debug for Lite<syn::VisRestricted> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::Visibility> {
+impl Debug for Lite<syn::data::Visibility> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match &self.value {
-            syn::Visibility::Public(_val) => {
-                formatter.write_str("Visibility::Public")?;
+            syn::data::Visibility::Public(_val) => {
+                formatter.write_str("data::Visibility::Public")?;
                 Ok(())
             },
-            syn::Visibility::Restricted(_val) => {
-                let mut formatter = formatter.debug_struct("Visibility::Restricted");
+            syn::data::Visibility::Restricted(_val) => {
+                let mut formatter = formatter.debug_struct("data::Visibility::Restricted");
                 if _val.in_.is_some() {
                     formatter.field("in_", &Present);
                 }
                 formatter.field("path", Lite(&_val.path));
                 formatter.finish()
             },
-            syn::Visibility::Inherited => formatter.write_str("Visibility::Inherited"),
+            syn::data::Visibility::Inherited => formatter.write_str("data::Visibility::Inherited"),
         }
     }
 }

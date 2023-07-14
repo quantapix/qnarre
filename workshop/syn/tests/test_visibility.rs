@@ -4,7 +4,7 @@ mod macros;
 use syn::*;
 #[derive(Debug)]
 struct VisRest {
-    vis: Visibility,
+    vis: data::Visibility,
     rest: pm2::Stream,
 }
 impl Parse for VisRest {
@@ -34,31 +34,31 @@ macro_rules! assert_vis_parse {
 }
 #[test]
 fn test_pub() {
-    assert_vis_parse!("pub", Ok(Visibility::Public(_)));
+    assert_vis_parse!("pub", Ok(data::Visibility::Public(_)));
 }
 #[test]
 fn test_inherited() {
-    assert_vis_parse!("", Ok(Visibility::Inherited));
+    assert_vis_parse!("", Ok(data::Visibility::Inherited));
 }
 #[test]
 fn test_in() {
-    assert_vis_parse!("pub(in foo::bar)", Ok(Visibility::Restricted(_)));
+    assert_vis_parse!("pub(in foo::bar)", Ok(data::Visibility::Restricted(_)));
 }
 #[test]
 fn test_pub_crate() {
-    assert_vis_parse!("pub(crate)", Ok(Visibility::Restricted(_)));
+    assert_vis_parse!("pub(crate)", Ok(data::Visibility::Restricted(_)));
 }
 #[test]
 fn test_pub_self() {
-    assert_vis_parse!("pub(self)", Ok(Visibility::Restricted(_)));
+    assert_vis_parse!("pub(self)", Ok(data::Visibility::Restricted(_)));
 }
 #[test]
 fn test_pub_super() {
-    assert_vis_parse!("pub(super)", Ok(Visibility::Restricted(_)));
+    assert_vis_parse!("pub(super)", Ok(data::Visibility::Restricted(_)));
 }
 #[test]
 fn test_missing_in() {
-    assert_vis_parse!("pub(foo::bar)", Ok(Visibility::Public(_)) + "(foo::bar)");
+    assert_vis_parse!("pub(foo::bar)", Ok(data::Visibility::Public(_)) + "(foo::bar)");
 }
 #[test]
 fn test_missing_in_path() {
@@ -68,7 +68,7 @@ fn test_missing_in_path() {
 fn test_crate_path() {
     assert_vis_parse!(
         "pub(crate::A, crate::B)",
-        Ok(Visibility::Public(_)) + "(crate::A, crate::B)"
+        Ok(data::Visibility::Public(_)) + "(crate::A, crate::B)"
     );
 }
 #[test]
@@ -95,14 +95,14 @@ fn test_empty_group_vis() {
     ]);
     snapshot!(tokens as DeriveInput, @r###"
     DeriveInput {
-        vis: Visibility::Inherited,
+        vis: data::Visibility::Inherited,
         ident: "S",
         gens: gen::Gens,
         data: Data::Struct {
             fields: Named {
                 fields: [
                     Field {
-                        vis: Visibility::Inherited,
+                        vis: data::Visibility::Inherited,
                         ident: Some("f"),
                         colon: Some,
                         ty: Type::Tuple,

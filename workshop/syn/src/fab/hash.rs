@@ -2382,7 +2382,7 @@ impl Hash for data::Variant {
         self.discrim.hash(state);
     }
 }
-impl Hash for VisRestricted {
+impl Hash for data::Restricted {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -2391,20 +2391,20 @@ impl Hash for VisRestricted {
         self.path.hash(state);
     }
 }
-impl Hash for Visibility {
+impl Hash for data::Visibility {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         match self {
-            Visibility::Public(_) => {
+            data::Visibility::Public(_) => {
                 state.write_u8(0u8);
             },
-            Visibility::Restricted(v0) => {
+            data::Visibility::Restricted(v0) => {
                 state.write_u8(1u8);
                 v0.hash(state);
             },
-            Visibility::Inherited => {
+            data::Visibility::Inherited => {
                 state.write_u8(2u8);
             },
         }

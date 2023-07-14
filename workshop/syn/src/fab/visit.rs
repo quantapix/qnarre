@@ -546,10 +546,10 @@ pub trait Visit<'ast> {
     fn visit_variant(&mut self, i: &'ast data::Variant) {
         visit_variant(self, i);
     }
-    fn visit_vis_restricted(&mut self, i: &'ast VisRestricted) {
+    fn visit_vis_restricted(&mut self, i: &'ast data::Restricted) {
         visit_vis_restricted(self, i);
     }
-    fn visit_visibility(&mut self, i: &'ast Visibility) {
+    fn visit_visibility(&mut self, i: &'ast data::Visibility) {
         visit_visibility(self, i);
     }
     fn visit_where_clause(&mut self, i: &'ast gen::Where) {
@@ -3091,7 +3091,7 @@ where
         v.visit_expr(&(it).1);
     }
 }
-pub fn visit_vis_restricted<'ast, V>(v: &mut V, node: &'ast VisRestricted)
+pub fn visit_vis_restricted<'ast, V>(v: &mut V, node: &'ast data::Restricted)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -3100,18 +3100,18 @@ where
     skip!(node.in_);
     v.visit_path(&*node.path);
 }
-pub fn visit_visibility<'ast, V>(v: &mut V, node: &'ast Visibility)
+pub fn visit_visibility<'ast, V>(v: &mut V, node: &'ast data::Visibility)
 where
     V: Visit<'ast> + ?Sized,
 {
     match node {
-        Visibility::Public(_binding_0) => {
+        data::Visibility::Public(_binding_0) => {
             skip!(_binding_0);
         },
-        Visibility::Restricted(_binding_0) => {
+        data::Visibility::Restricted(_binding_0) => {
             v.visit_vis_restricted(_binding_0);
         },
-        Visibility::Inherited => {},
+        data::Visibility::Inherited => {},
     }
 }
 pub fn visit_where_clause<'ast, V>(v: &mut V, node: &'ast gen::Where)

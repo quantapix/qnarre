@@ -1,51 +1,7 @@
-#![allow(non_camel_case_types)]
-#![allow(
-    clippy::bool_to_int_with_if,
-    clippy::cast_lossless,
-    clippy::cast_possible_truncation,
-    clippy::cast_possible_wrap,
-    clippy::cast_ptr_alignment,
-    clippy::default_trait_access,
-    clippy::derivable_impls,
-    clippy::doc_markdown,
-    clippy::expl_impl_clone_on_copy,
-    clippy::explicit_auto_deref,
-    clippy::if_not_else,
-    clippy::inherent_to_string,
-    clippy::items_after_statements,
-    clippy::large_enum_variant,
-    clippy::let_underscore_untyped, // https://github.com/rust-lang/rust-clippy/issues/10410
-    clippy::manual_assert,
-    clippy::manual_let_else,
-    clippy::match_like_matches_macro,
-    clippy::match_on_vec_items,
-    clippy::match_same_arms,
-    clippy::match_wildcard_for_single_variants, // clippy bug: https://github.com/rust-lang/rust-clippy/issues/6984
-    clippy::missing_errors_doc,
-    clippy::missing_panics_doc,
-    clippy::module_name_repetitions,
-    clippy::must_use_candidate,
-    clippy::needless_doctest_main,
-    clippy::needless_pass_by_value,
-    clippy::never_loop,
-    clippy::range_plus_one,
-    clippy::redundant_else,
-    clippy::return_self_not_must_use,
-    clippy::similar_names,
-    clippy::single_match_else,
-    clippy::too_many_arguments,
-    clippy::too_many_lines,
-    clippy::trivially_copy_pass_by_ref,
-    clippy::uninlined_format_args,
-    clippy::unnecessary_box_returns,
-    clippy::unnecessary_unwrap,
-    clippy::used_underscore_binding,
-    clippy::wildcard_imports,
-)]
-
 extern crate proc_macro;
 
 pub use quote::ToTokens;
+use quote::{quote, spanned, TokenStreamExt};
 pub use std::{
     cmp::{self, Ordering},
     fmt::{self, Debug, Display},
@@ -54,15 +10,62 @@ pub use std::{
     ops::{self, Deref, DerefMut},
 };
 
-use quote::{quote, spanned, TokenStreamExt};
-
 mod pm2 {
     pub use proc_macro2::{
         extra::DelimSpan, Delimiter as Delim, Group, Ident, LexError, Literal as Lit, Punct, Spacing, Span,
         TokenStream as Stream, TokenTree as Tree,
     };
+    pub trait IntoSpans<S> {
+        fn into_spans(self) -> S;
+    }
+    impl IntoSpans<Span> for Span {
+        fn into_spans(self) -> Span {
+            self
+        }
+    }
+    impl IntoSpans<[Span; 1]> for Span {
+        fn into_spans(self) -> [Span; 1] {
+            [self]
+        }
+    }
+    impl IntoSpans<[Span; 2]> for Span {
+        fn into_spans(self) -> [Span; 2] {
+            [self, self]
+        }
+    }
+    impl IntoSpans<[Span; 3]> for Span {
+        fn into_spans(self) -> [Span; 3] {
+            [self, self, self]
+        }
+    }
+    impl IntoSpans<[Span; 1]> for [Span; 1] {
+        fn into_spans(self) -> [Span; 1] {
+            self
+        }
+    }
+    impl IntoSpans<[Span; 2]> for [Span; 2] {
+        fn into_spans(self) -> [Span; 2] {
+            self
+        }
+    }
+    impl IntoSpans<[Span; 3]> for [Span; 3] {
+        fn into_spans(self) -> [Span; 3] {
+            self
+        }
+    }
+    impl IntoSpans<DelimSpan> for Span {
+        fn into_spans(self) -> DelimSpan {
+            let mut y = Group::new(Delim::None, Stream::new());
+            y.set_span(self);
+            y.delim_span()
+        }
+    }
+    impl IntoSpans<DelimSpan> for DelimSpan {
+        fn into_spans(self) -> DelimSpan {
+            self
+        }
+    }
 }
-pub use pm2::{Ident, Punct};
 
 #[macro_use]
 mod mac;
@@ -91,6 +94,7 @@ use err::{Err, Res};
 use ident::Life;
 use parse::{Parse, Parser, Stream};
 use path::Path;
+use pm2::{Ident, IntoSpans, Punct};
 use punct::Puncted;
 use tok::Tok;
 
@@ -183,153 +187,9 @@ where
     }
 }
 
-pub enum Visibility {
-    Public(Token![pub]),
-    Restricted(VisRestricted),
-    Inherited,
-}
-impl Visibility {
-    fn is_inherited(&self) -> bool {
-        match self {
-            Visibility::Inherited => true,
-            _ => false,
-        }
-    }
-    fn parse_pub(x: Stream) -> Res<Self> {
-        let pub_ = x.parse::<Token![pub]>()?;
-        if x.peek(tok::Paren) {
-            let ahead = x.fork();
-            let y;
-            let paren = parenthesized!(y in ahead);
-            if y.peek(Token![crate]) || y.peek(Token![self]) || y.peek(Token![super]) {
-                let path = y.call(Ident::parse_any)?;
-                if y.is_empty() {
-                    x.advance_to(&ahead);
-                    return Ok(Visibility::Restricted(VisRestricted {
-                        pub_,
-                        paren,
-                        in_: None,
-                        path: Box::new(Path::from(path)),
-                    }));
-                }
-            } else if y.peek(Token![in]) {
-                let in_: Token![in] = y.parse()?;
-                let path = y.call(Path::parse_mod_style)?;
-                x.advance_to(&ahead);
-                return Ok(Visibility::Restricted(VisRestricted {
-                    pub_,
-                    paren,
-                    in_: Some(in_),
-                    path: Box::new(path),
-                }));
-            }
-        }
-        Ok(Visibility::Public(pub_))
-    }
-    pub fn is_some(&self) -> bool {
-        match self {
-            Visibility::Inherited => false,
-            _ => true,
-        }
-    }
-}
-impl Parse for Visibility {
-    fn parse(x: Stream) -> Res<Self> {
-        if x.peek(tok::Group) {
-            let ahead = x.fork();
-            let y = parse::parse_group(&ahead)?;
-            if y.buf.is_empty() {
-                x.advance_to(&ahead);
-                return Ok(Visibility::Inherited);
-            }
-        }
-        if x.peek(Token![pub]) {
-            Self::parse_pub(x)
-        } else {
-            Ok(Visibility::Inherited)
-        }
-    }
-}
-impl ToTokens for Visibility {
-    fn to_tokens(&self, ys: &mut Stream) {
-        match self {
-            Visibility::Public(x) => x.to_tokens(ys),
-            Visibility::Restricted(x) => x.to_tokens(ys),
-            Visibility::Inherited => {},
-        }
-    }
-}
-
-pub struct VisRestricted {
-    pub pub_: Token![pub],
-    pub paren: tok::Paren,
-    pub in_: Option<Token![in]>,
-    pub path: Box<Path>,
-}
-impl ToTokens for VisRestricted {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.pub_.to_tokens(ys);
-        self.paren.surround(ys, |ys| {
-            self.in_.to_tokens(ys);
-            self.path.to_tokens(ys);
-        });
-    }
-}
-
 mod sealed {
     pub mod look {
         pub trait Sealed: Copy {}
-    }
-}
-
-pub trait IntoSpans<S> {
-    fn into_spans(self) -> S;
-}
-impl IntoSpans<pm2::Span> for pm2::Span {
-    fn into_spans(self) -> pm2::Span {
-        self
-    }
-}
-impl IntoSpans<[pm2::Span; 1]> for pm2::Span {
-    fn into_spans(self) -> [pm2::Span; 1] {
-        [self]
-    }
-}
-impl IntoSpans<[pm2::Span; 2]> for pm2::Span {
-    fn into_spans(self) -> [pm2::Span; 2] {
-        [self, self]
-    }
-}
-impl IntoSpans<[pm2::Span; 3]> for pm2::Span {
-    fn into_spans(self) -> [pm2::Span; 3] {
-        [self, self, self]
-    }
-}
-impl IntoSpans<[pm2::Span; 1]> for [pm2::Span; 1] {
-    fn into_spans(self) -> [pm2::Span; 1] {
-        self
-    }
-}
-impl IntoSpans<[pm2::Span; 2]> for [pm2::Span; 2] {
-    fn into_spans(self) -> [pm2::Span; 2] {
-        self
-    }
-}
-impl IntoSpans<[pm2::Span; 3]> for [pm2::Span; 3] {
-    fn into_spans(self) -> [pm2::Span; 3] {
-        self
-    }
-}
-impl IntoSpans<pm2::DelimSpan> for pm2::Span {
-    fn into_spans(self) -> pm2::DelimSpan {
-        let mut y = Group::new(pm2::Delim::None, pm2::Stream::new());
-        y.set_span(self);
-        y.delim_span()
-    }
-}
-impl IntoSpans<pm2::DelimSpan> for pm2::DelimSpan {
-    fn into_spans(self) -> pm2::DelimSpan {
-        self
     }
 }
 

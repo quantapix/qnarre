@@ -1688,13 +1688,13 @@ fn parse_expr(x: Stream, mut lhs: Expr, allow: AllowStruct, base: Precedence) ->
             let as_: Token![as] = x.parse()?;
             let plus = false;
             let gen = false;
-            let ty = ambig_ty(x, plus, gen)?;
+            let typ = typ::parse_ambig_typ(x, plus, gen)?;
             check_cast(x)?;
             lhs = Expr::Cast(Cast {
                 attrs: Vec::new(),
                 expr: Box::new(lhs),
                 as_,
-                typ: Box::new(ty),
+                typ: Box::new(typ),
             });
         } else {
             break;

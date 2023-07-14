@@ -10,7 +10,7 @@ fn test_split_for_impl() {
     };
     snapshot!(input as DeriveInput, @r###"
     DeriveInput {
-        vis: Visibility::Inherited,
+        vis: data::Visibility::Inherited,
         ident: "S",
         gens: gen::Gens {
             lt: Some,
@@ -162,7 +162,7 @@ fn test_fn_precedence_in_where_clause() {
     };
     snapshot!(input as item::Fn, @r###"
     item::Fn {
-        vis: Visibility::Inherited,
+        vis: data::Visibility::Inherited,
         sig: item::Sig {
             ident: "f",
             gens: gen::Gens {

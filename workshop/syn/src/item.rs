@@ -85,7 +85,7 @@ impl Parse for Item {
 
 pub struct Const {
     pub attrs: Vec<attr::Attr>,
-    pub vis: Visibility,
+    pub vis: data::Visibility,
     pub const_: Token![const],
     pub ident: Ident,
     pub gens: gen::Gens,
@@ -134,7 +134,7 @@ impl ToTokens for Const {
 
 pub struct Enum {
     pub attrs: Vec<attr::Attr>,
-    pub vis: Visibility,
+    pub vis: data::Visibility,
     pub enum_: Token![enum],
     pub ident: Ident,
     pub gens: gen::Gens,
@@ -159,7 +159,7 @@ impl From<Enum> for DeriveInput {
 impl Parse for Enum {
     fn parse(s: Stream) -> Res<Self> {
         let attrs = s.call(attr::Attr::parse_outer)?;
-        let vis = s.parse::<Visibility>()?;
+        let vis = s.parse::<data::Visibility>()?;
         let enum_ = s.parse::<Token![enum]>()?;
         let ident = s.parse::<Ident>()?;
         let gens = s.parse::<gen::Gens>()?;
@@ -191,7 +191,7 @@ impl ToTokens for Enum {
 
 pub struct ExternCrate {
     pub attrs: Vec<attr::Attr>,
-    pub vis: Visibility,
+    pub vis: data::Visibility,
     pub extern_: Token![extern],
     pub crate_: Token![crate],
     pub ident: Ident,
@@ -246,14 +246,14 @@ impl ToTokens for ExternCrate {
 
 pub struct Fn {
     pub attrs: Vec<attr::Attr>,
-    pub vis: Visibility,
+    pub vis: data::Visibility,
     pub sig: Sig,
     pub block: Box<stmt::Block>,
 }
 impl Parse for Fn {
     fn parse(s: Stream) -> Res<Self> {
         let attrs = s.call(attr::Attr::parse_outer)?;
-        let vis: Visibility = s.parse()?;
+        let vis: data::Visibility = s.parse()?;
         let sig: Sig = s.parse()?;
         parse_rest_of_fn(s, attrs, vis, sig)
     }
@@ -402,7 +402,7 @@ impl ToTokens for Mac {
 
 pub struct Mod {
     pub attrs: Vec<attr::Attr>,
-    pub vis: Visibility,
+    pub vis: data::Visibility,
     pub unsafe_: Option<Token![unsafe]>,
     pub mod_: Token![mod],
     pub ident: Ident,
@@ -412,7 +412,7 @@ pub struct Mod {
 impl Parse for Mod {
     fn parse(s: Stream) -> Res<Self> {
         let mut attrs = s.call(attr::Attr::parse_outer)?;
-        let vis: Visibility = s.parse()?;
+        let vis: data::Visibility = s.parse()?;
         let unsafe_: Option<Token![unsafe]> = s.parse()?;
         let mod_: Token![mod] = s.parse()?;
         let ident: Ident = if s.peek(Token![try]) {
@@ -473,7 +473,7 @@ impl ToTokens for Mod {
 
 pub struct Static {
     pub attrs: Vec<attr::Attr>,
-    pub vis: Visibility,
+    pub vis: data::Visibility,
     pub static_: Token![static],
     pub mut_: StaticMut,
     pub ident: Ident,
@@ -516,7 +516,7 @@ impl ToTokens for Static {
 
 pub struct Struct {
     pub attrs: Vec<attr::Attr>,
-    pub vis: Visibility,
+    pub vis: data::Visibility,
     pub struct_: Token![struct],
     pub ident: Ident,
     pub gens: gen::Gens,
@@ -541,7 +541,7 @@ impl From<Struct> for DeriveInput {
 impl Parse for Struct {
     fn parse(s: Stream) -> Res<Self> {
         let attrs = s.call(attr::Attr::parse_outer)?;
-        let vis = s.parse::<Visibility>()?;
+        let vis = s.parse::<data::Visibility>()?;
         let struct_ = s.parse::<Token![struct]>()?;
         let ident = s.parse::<Ident>()?;
         let gens = s.parse::<gen::Gens>()?;
@@ -584,7 +584,7 @@ impl ToTokens for Struct {
 
 pub struct Trait {
     pub attrs: Vec<attr::Attr>,
-    pub vis: Visibility,
+    pub vis: data::Visibility,
     pub unsafe_: Option<Token![unsafe]>,
     pub auto_: Option<Token![auto]>,
     pub restriction: Option<Impl::Restriction>,
@@ -599,7 +599,7 @@ pub struct Trait {
 impl Parse for Trait {
     fn parse(s: Stream) -> Res<Self> {
         let attrs = s.call(attr::Attr::parse_outer)?;
-        let vis: Visibility = s.parse()?;
+        let vis: data::Visibility = s.parse()?;
         let unsafe_: Option<Token![unsafe]> = s.parse()?;
         let auto_: Option<Token![auto]> = s.parse()?;
         let trait_: Token![trait] = s.parse()?;
@@ -631,7 +631,7 @@ impl ToTokens for Trait {
 
 pub struct TraitAlias {
     pub attrs: Vec<attr::Attr>,
-    pub vis: Visibility,
+    pub vis: data::Visibility,
     pub trait_: Token![trait],
     pub ident: Ident,
     pub gens: gen::Gens,
@@ -661,7 +661,7 @@ impl ToTokens for TraitAlias {
 
 pub struct Type {
     pub attrs: Vec<attr::Attr>,
-    pub vis: Visibility,
+    pub vis: data::Visibility,
     pub type_: Token![type],
     pub ident: Ident,
     pub gens: gen::Gens,
@@ -703,7 +703,7 @@ impl ToTokens for Type {
 
 pub struct Union {
     pub attrs: Vec<attr::Attr>,
-    pub vis: Visibility,
+    pub vis: data::Visibility,
     pub union_: Token![union],
     pub ident: Ident,
     pub gens: gen::Gens,
@@ -726,7 +726,7 @@ impl From<Union> for DeriveInput {
 impl Parse for Union {
     fn parse(s: Stream) -> Res<Self> {
         let attrs = s.call(attr::Attr::parse_outer)?;
-        let vis = s.parse::<Visibility>()?;
+        let vis = s.parse::<data::Visibility>()?;
         let union_ = s.parse::<Token![union]>()?;
         let ident = s.parse::<Ident>()?;
         let gens = s.parse::<gen::Gens>()?;
@@ -755,7 +755,7 @@ impl ToTokens for Union {
 
 pub struct Use {
     pub attrs: Vec<attr::Attr>,
-    pub vis: Visibility,
+    pub vis: data::Visibility,
     pub use_: Token![use],
     pub colon: Option<Token![::]>,
     pub tree: Use::Tree,
@@ -779,7 +779,7 @@ impl ToTokens for Use {
 }
 fn parse_item_use(s: Stream, root: bool) -> Res<Option<Use>> {
     let attrs = s.call(attr::Attr::parse_outer)?;
-    let vis: Visibility = s.parse()?;
+    let vis: data::Visibility = s.parse()?;
     let use_: Token![use] = s.parse()?;
     let colon: Option<Token![::]> = s.parse()?;
     let tree = Use::parse_tree(s, root && colon.is_none())?;
@@ -1032,10 +1032,10 @@ pub mod Foreign {
             let beg = x.fork();
             let mut attrs = x.call(attr::Attr::parse_outer)?;
             let ahead = x.fork();
-            let vis: Visibility = ahead.parse()?;
+            let vis: data::Visibility = ahead.parse()?;
             let look = ahead.look1();
             let mut y = if look.peek(Token![fn]) || peek_signature(&ahead) {
-                let vis: Visibility = x.parse()?;
+                let vis: data::Visibility = x.parse()?;
                 let sig: Sig = x.parse()?;
                 if x.peek(tok::Brace) {
                     let y;
@@ -1103,14 +1103,14 @@ pub mod Foreign {
 
     pub struct Fn {
         pub attrs: Vec<attr::Attr>,
-        pub vis: Visibility,
+        pub vis: data::Visibility,
         pub sig: Sig,
         pub semi: Token![;],
     }
     impl Parse for Fn {
         fn parse(x: Stream) -> Res<Self> {
             let attrs = x.call(attr::Attr::parse_outer)?;
-            let vis: Visibility = x.parse()?;
+            let vis: data::Visibility = x.parse()?;
             let sig: Sig = x.parse()?;
             let semi: Token![;] = x.parse()?;
             Ok(Fn { attrs, vis, sig, semi })
@@ -1127,7 +1127,7 @@ pub mod Foreign {
 
     pub struct Static {
         pub attrs: Vec<attr::Attr>,
-        pub vis: Visibility,
+        pub vis: data::Visibility,
         pub static_: Token![static],
         pub mut_: StaticMut,
         pub ident: Ident,
@@ -1164,7 +1164,7 @@ pub mod Foreign {
 
     pub struct Type {
         pub attrs: Vec<attr::Attr>,
-        pub vis: Visibility,
+        pub vis: data::Visibility,
         pub type_: Token![type],
         pub ident: Ident,
         pub gens: gen::Gens,
@@ -1235,7 +1235,7 @@ pub mod Impl {
             let beg = x.fork();
             let mut attrs = x.call(attr::Attr::parse_outer)?;
             let ahead = x.fork();
-            let vis: Visibility = ahead.parse()?;
+            let vis: data::Visibility = ahead.parse()?;
             let mut look = ahead.look1();
             let default_ = if look.peek(Token![default]) && !ahead.peek2(Token![!]) {
                 let y: Token![default] = ahead.parse()?;
@@ -1309,7 +1309,7 @@ pub mod Impl {
 
     pub struct Const {
         pub attrs: Vec<attr::Attr>,
-        pub vis: Visibility,
+        pub vis: data::Visibility,
         pub default_: Option<Token![default]>,
         pub const_: Token![const],
         pub ident: Ident,
@@ -1361,7 +1361,7 @@ pub mod Impl {
 
     pub struct Fn {
         pub attrs: Vec<attr::Attr>,
-        pub vis: Visibility,
+        pub vis: data::Visibility,
         pub default_: Option<Token![default]>,
         pub sig: Sig,
         pub block: Block,
@@ -1387,7 +1387,7 @@ pub mod Impl {
 
     pub struct Type {
         pub attrs: Vec<attr::Attr>,
-        pub vis: Visibility,
+        pub vis: data::Visibility,
         pub default_: Option<Token![default]>,
         pub type_: Token![type],
         pub ident: Ident,
@@ -1399,7 +1399,7 @@ pub mod Impl {
     impl Parse for Type {
         fn parse(x: Stream) -> Res<Self> {
             let attrs = x.call(attr::Attr::parse_outer)?;
-            let vis: Visibility = x.parse()?;
+            let vis: data::Visibility = x.parse()?;
             let default_: Option<Token![default]> = x.parse()?;
             let type_: Token![type] = x.parse()?;
             let ident: Ident = x.parse()?;
@@ -1474,7 +1474,7 @@ pub mod Trait {
         fn parse(x: Stream) -> Res<Self> {
             let beg = x.fork();
             let mut attrs = x.call(attr::Attr::parse_outer)?;
-            let vis: Visibility = x.parse()?;
+            let vis: data::Visibility = x.parse()?;
             let default_: Option<Token![default]> = x.parse()?;
             let ahead = x.fork();
             let look = ahead.look1();
@@ -1509,7 +1509,7 @@ pub mod Trait {
                 Err(look.error())
             }?;
             match (vis, default_) {
-                (Visibility::Inherited, None) => {},
+                (data::Visibility::Inherited, None) => {},
                 _ => return Ok(Item::Stream(verbatim_between(&beg, x))),
             }
             let ys = match &mut y {
@@ -1850,7 +1850,7 @@ enum WhereLoc {
 }
 
 struct FlexibleItemType {
-    vis: Visibility,
+    vis: data::Visibility,
     default_: Option<Token![default]>,
     type_: Token![type],
     ident: Ident,
@@ -1862,7 +1862,7 @@ struct FlexibleItemType {
 }
 impl FlexibleItemType {
     fn parse(x: Stream, allow_default: TypeDefault, where_loc: WhereLoc) -> Res<Self> {
-        let vis: Visibility = x.parse()?;
+        let vis: data::Visibility = x.parse()?;
         let default_: Option<Token![default]> = match allow_default {
             TypeDefault::Optional => x.parse()?,
             TypeDefault::Disallowed => None,
@@ -1927,10 +1927,10 @@ impl FlexibleItemType {
 
 pub fn parse_rest_of_item(begin: Buffer, mut attrs: Vec<attr::Attr>, x: Stream) -> Res<Item> {
     let ahead = x.fork();
-    let vis: Visibility = ahead.parse()?;
+    let vis: data::Visibility = ahead.parse()?;
     let look = ahead.look1();
     let mut item = if look.peek(Token![fn]) || peek_signature(&ahead) {
-        let vis: Visibility = x.parse()?;
+        let vis: data::Visibility = x.parse()?;
         let sig: Sig = x.parse()?;
         if x.peek(Token![;]) {
             x.parse::<Token![;]>()?;
@@ -2079,7 +2079,7 @@ pub fn parse_rest_of_item(begin: Buffer, mut attrs: Vec<attr::Attr>, x: Stream) 
     item.replace_attrs(attrs);
     Ok(item)
 }
-fn parse_macro2(begin: Buffer, _vis: Visibility, x: Stream) -> Res<Item> {
+fn parse_macro2(begin: Buffer, _vis: data::Visibility, x: Stream) -> Res<Item> {
     x.parse::<Token![macro]>()?;
     x.parse::<Ident>()?;
     let mut look = x.look1();
@@ -2106,7 +2106,7 @@ fn peek_signature(x: Stream) -> bool {
         && y.parse::<Option<Abi>>().is_ok()
         && y.peek(Token![fn])
 }
-fn parse_rest_of_fn(x: Stream, mut attrs: Vec<attr::Attr>, vis: Visibility, sig: Sig) -> Res<Fn> {
+fn parse_rest_of_fn(x: Stream, mut attrs: Vec<attr::Attr>, vis: data::Visibility, sig: Sig) -> Res<Fn> {
     let y;
     let brace = braced!(y in x);
     attr::inner(&y, &mut attrs)?;
@@ -2269,7 +2269,7 @@ fn parse_trait_or_trait_alias(x: Stream) -> Res<Item> {
 fn parse_rest_of_trait(
     x: Stream,
     mut attrs: Vec<attr::Attr>,
-    vis: Visibility,
+    vis: data::Visibility,
     unsafe_: Option<Token![unsafe]>,
     auto_: Option<Token![auto]>,
     trait_: Token![trait],
@@ -2313,9 +2313,9 @@ fn parse_rest_of_trait(
         items,
     })
 }
-fn parse_start_of_trait_alias(x: Stream) -> Res<(Vec<attr::Attr>, Visibility, Token![trait], Ident, gen::Gens)> {
+fn parse_start_of_trait_alias(x: Stream) -> Res<(Vec<attr::Attr>, data::Visibility, Token![trait], Ident, gen::Gens)> {
     let attrs = x.call(attr::Attr::parse_outer)?;
-    let vis: Visibility = x.parse()?;
+    let vis: data::Visibility = x.parse()?;
     let trait_: Token![trait] = x.parse()?;
     let ident: Ident = x.parse()?;
     let gens: gen::Gens = x.parse()?;
@@ -2324,7 +2324,7 @@ fn parse_start_of_trait_alias(x: Stream) -> Res<(Vec<attr::Attr>, Visibility, To
 fn parse_rest_of_trait_alias(
     x: Stream,
     attrs: Vec<attr::Attr>,
-    vis: Visibility,
+    vis: data::Visibility,
     trait_: Token![trait],
     ident: Ident,
     mut gens: gen::Gens,
@@ -2383,7 +2383,7 @@ fn parse_trait_item_type(beg: Buffer, x: Stream) -> Res<Trait::Item> {
 }
 fn parse_impl(x: Stream, verbatim: bool) -> Res<Option<Impl>> {
     let mut attrs = x.call(attr::Attr::parse_outer)?;
-    let has_visibility = verbatim && x.parse::<Visibility>()?.is_some();
+    let has_visibility = verbatim && x.parse::<data::Visibility>()?.is_some();
     let default_: Option<Token![default]> = x.parse()?;
     let unsafe_: Option<Token![unsafe]> = x.parse()?;
     let impl_: Token![impl] = x.parse()?;
@@ -2464,7 +2464,7 @@ fn parse_impl(x: Stream, verbatim: bool) -> Res<Option<Impl>> {
 }
 fn parse_impl_item_fn(x: Stream, omitted: bool) -> Res<Option<Impl::Fn>> {
     let mut attrs = x.call(attr::Attr::parse_outer)?;
-    let vis: Visibility = x.parse()?;
+    let vis: data::Visibility = x.parse()?;
     let default_: Option<Token![default]> = x.parse()?;
     let sig: Sig = x.parse()?;
     if omitted && x.parse::<Option<Token![;]>>()?.is_some() {

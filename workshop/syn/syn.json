@@ -618,7 +618,7 @@
           }
         },
         "vis": {
-          "syn": "Visibility"
+          "syn": "data::Visibility"
         },
         "ident": {
           "syn": "Ident"
@@ -1934,7 +1934,7 @@
           }
         },
         "vis": {
-          "syn": "Visibility"
+          "syn": "data::Visibility"
         },
         "mut_": {
           "syn": "Mut"
@@ -2176,7 +2176,7 @@
           }
         },
         "vis": {
-          "syn": "Visibility"
+          "syn": "data::Visibility"
         },
         "sig": {
           "syn": "item::Sig"
@@ -2223,7 +2223,7 @@
           }
         },
         "vis": {
-          "syn": "Visibility"
+          "syn": "data::Visibility"
         },
         "static_": {
           "token": "Static"
@@ -2261,7 +2261,7 @@
           }
         },
         "vis": {
-          "syn": "Visibility"
+          "syn": "data::Visibility"
         },
         "type": {
           "token": "Type"
@@ -2429,7 +2429,7 @@
           }
         },
         "vis": {
-          "syn": "Visibility"
+          "syn": "data::Visibility"
         },
         "defaultness": {
           "option": {
@@ -2476,7 +2476,7 @@
           }
         },
         "vis": {
-          "syn": "Visibility"
+          "syn": "data::Visibility"
         },
         "defaultness": {
           "option": {
@@ -2528,7 +2528,7 @@
           }
         },
         "vis": {
-          "syn": "Visibility"
+          "syn": "data::Visibility"
         },
         "defaultness": {
           "option": {
@@ -2687,7 +2687,7 @@
           }
         },
         "vis": {
-          "syn": "Visibility"
+          "syn": "data::Visibility"
         },
         "const_": {
           "token": "Const"
@@ -2733,7 +2733,7 @@
           }
         },
         "vis": {
-          "syn": "Visibility"
+          "syn": "data::Visibility"
         },
         "enum_": {
           "token": "Enum"
@@ -2771,7 +2771,7 @@
           }
         },
         "vis": {
-          "syn": "Visibility"
+          "syn": "data::Visibility"
         },
         "extern_": {
           "token": "Extern"
@@ -2813,7 +2813,7 @@
           }
         },
         "vis": {
-          "syn": "Visibility"
+          "syn": "data::Visibility"
         },
         "sig": {
           "syn": "item::Sig"
@@ -2959,7 +2959,7 @@
           }
         },
         "vis": {
-          "syn": "Visibility"
+          "syn": "data::Visibility"
         },
         "unsafe_": {
           "option": {
@@ -3007,7 +3007,7 @@
           }
         },
         "vis": {
-          "syn": "Visibility"
+          "syn": "data::Visibility"
         },
         "static_": {
           "token": "Static"
@@ -3053,7 +3053,7 @@
           }
         },
         "vis": {
-          "syn": "Visibility"
+          "syn": "data::Visibility"
         },
         "struct_": {
           "token": "Struct"
@@ -3088,7 +3088,7 @@
           }
         },
         "vis": {
-          "syn": "Visibility"
+          "syn": "data::Visibility"
         },
         "unsafe_": {
           "option": {
@@ -3151,7 +3151,7 @@
           }
         },
         "vis": {
-          "syn": "Visibility"
+          "syn": "data::Visibility"
         },
         "trait_": {
           "token": "Trait"
@@ -3192,7 +3192,7 @@
           }
         },
         "vis": {
-          "syn": "Visibility"
+          "syn": "data::Visibility"
         },
         "type": {
           "token": "Type"
@@ -3230,7 +3230,7 @@
           }
         },
         "vis": {
-          "syn": "Visibility"
+          "syn": "data::Visibility"
         },
         "union_": {
           "token": "Union"
@@ -3260,7 +3260,7 @@
           }
         },
         "vis": {
-          "syn": "Visibility"
+          "syn": "data::Visibility"
         },
         "use_": {
           "token": "Use"
@@ -5359,7 +5359,7 @@
       }
     },
     {
-      "ident": "VisRestricted",
+      "ident": "data::Restricted",
       "features": {
         "any": [
           "derive",
@@ -5386,7 +5386,7 @@
       }
     },
     {
-      "ident": "Visibility",
+      "ident": "data::Visibility",
       "features": {
         "any": [
           "derive",
@@ -5401,7 +5401,7 @@
         ],
         "Restricted": [
           {
-            "syn": "VisRestricted"
+            "syn": "data::Restricted"
           }
         ],
         "Inherited": []

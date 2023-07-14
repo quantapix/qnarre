@@ -1760,9 +1760,9 @@ impl Clone for data::Variant {
         }
     }
 }
-impl Clone for VisRestricted {
+impl Clone for data::Restricted {
     fn clone(&self) -> Self {
-        VisRestricted {
+        data::Restricted {
             pub_: self.pub_.clone(),
             paren: self.paren.clone(),
             in_: self.in_.clone(),
@@ -1770,12 +1770,12 @@ impl Clone for VisRestricted {
         }
     }
 }
-impl Clone for Visibility {
+impl Clone for data::Visibility {
     fn clone(&self) -> Self {
         match self {
-            Visibility::Public(v0) => Visibility::Public(v0.clone()),
-            Visibility::Restricted(v0) => Visibility::Restricted(v0.clone()),
-            Visibility::Inherited => Visibility::Inherited,
+            data::Visibility::Public(v0) => data::Visibility::Public(v0.clone()),
+            data::Visibility::Restricted(v0) => data::Visibility::Restricted(v0.clone()),
+            data::Visibility::Inherited => data::Visibility::Inherited,
         }
     }
 }

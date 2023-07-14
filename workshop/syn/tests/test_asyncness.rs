@@ -7,7 +7,7 @@ fn test_async_fn() {
     let input = "async fn process() {}";
     snapshot!(input as Item, @r###"
     Item::Fn {
-        vis: Visibility::Inherited,
+        vis: data::Visibility::Inherited,
         sig: item::Sig {
             async_: Some,
             ident: "process",

@@ -58,7 +58,7 @@ fn test_none_group() {
     ))]);
     snapshot!(tokens as stmt::Stmt, @r###"
     stmt::Stmt::Item(Item::Fn {
-        vis: Visibility::Inherited,
+        vis: data::Visibility::Inherited,
         sig: item::Sig {
             asyncness: Some,
             ident: "f",
@@ -146,7 +146,7 @@ fn test_macros() {
     };
     snapshot!(tokens as stmt::Stmt, @r###"
     stmt::Stmt::Item(Item::Fn {
-        vis: Visibility::Inherited,
+        vis: data::Visibility::Inherited,
         sig: item::Sig {
             ident: "main",
             gens: gen::Gens,

@@ -2623,9 +2623,9 @@ impl Debug for data::Variant {
         f.finish()
     }
 }
-impl Debug for VisRestricted {
+impl Debug for data::Restricted {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl VisRestricted {
+        impl data::Restricted {
             fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut f = f.debug_struct(name);
                 f.field("pub_", &self.pub_);
@@ -2635,20 +2635,20 @@ impl Debug for VisRestricted {
                 f.finish()
             }
         }
-        self.debug(formatter, "VisRestricted")
+        self.debug(formatter, "data::Restricted")
     }
 }
-impl Debug for Visibility {
+impl Debug for data::Visibility {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("Visibility::")?;
+        f.write_str("data::Visibility::")?;
         match self {
-            Visibility::Public(v0) => {
+            data::Visibility::Public(v0) => {
                 let mut f = f.debug_tuple("Public");
                 f.field(v0);
                 f.finish()
             },
-            Visibility::Restricted(v0) => v0.debug(formatter, "Restricted"),
-            Visibility::Inherited => f.write_str("Inherited"),
+            data::Visibility::Restricted(v0) => v0.debug(formatter, "Restricted"),
+            data::Visibility::Inherited => f.write_str("Inherited"),
         }
     }
 }

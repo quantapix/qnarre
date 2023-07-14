@@ -15,7 +15,7 @@ fn test_unit() {
     };
     snapshot!(input as DeriveInput, @r###"
     DeriveInput {
-        vis: Visibility::Inherited,
+        vis: data::Visibility::Inherited,
         ident: "Unit",
         gens: gen::Gens,
         data: Data::Struct {
@@ -52,14 +52,14 @@ fn test_struct() {
                 },
             },
         ],
-        vis: Visibility::Public,
+        vis: data::Visibility::Public,
         ident: "Item",
         gens: gen::Gens,
         data: Data::Struct {
             fields: Fields::Named {
                 fields: [
                     Field {
-                        vis: Visibility::Public,
+                        vis: data::Visibility::Public,
                         ident: Some("ident"),
                         colon: Some,
                         ty: Type::Path {
@@ -73,7 +73,7 @@ fn test_struct() {
                         },
                     },
                     Field {
-                        vis: Visibility::Public,
+                        vis: data::Visibility::Public,
                         ident: Some("attrs"),
                         colon: Some,
                         ty: Type::Path {
@@ -128,7 +128,7 @@ fn test_union() {
     };
     snapshot!(input as DeriveInput, @r###"
     DeriveInput {
-        vis: Visibility::Inherited,
+        vis: data::Visibility::Inherited,
         ident: "MaybeUninit",
         gens: gen::Gens {
             lt: Some,
@@ -143,13 +143,13 @@ fn test_union() {
             fields: Named {
                 fields: [
                     Field {
-                        vis: Visibility::Inherited,
+                        vis: data::Visibility::Inherited,
                         ident: Some("uninit"),
                         colon: Some,
                         ty: Type::Tuple,
                     },
                     Field {
-                        vis: Visibility::Inherited,
+                        vis: data::Visibility::Inherited,
                         ident: Some("value"),
                         colon: Some,
                         ty: Type::Path {
@@ -208,7 +208,7 @@ fn test_enum() {
                 },
             },
         ],
-        vis: Visibility::Public,
+        vis: data::Visibility::Public,
         ident: "Result",
         gens: gen::Gens {
             lt: Some,
@@ -229,7 +229,7 @@ fn test_enum() {
                     fields: Fields::Unnamed {
                         fields: [
                             Field {
-                                vis: Visibility::Inherited,
+                                vis: data::Visibility::Inherited,
                                 ty: Type::Path {
                                     path: Path {
                                         segments: [
@@ -248,7 +248,7 @@ fn test_enum() {
                     fields: Fields::Unnamed {
                         fields: [
                             Field {
-                                vis: Visibility::Inherited,
+                                vis: data::Visibility::Inherited,
                                 ty: Type::Path {
                                     path: Path {
                                         segments: [
@@ -348,7 +348,7 @@ fn test_attr_with_mod_style_path_with_self() {
                 },
             },
         ],
-        vis: Visibility::Inherited,
+        vis: data::Visibility::Inherited,
         ident: "S",
         gens: gen::Gens,
         data: Data::Struct {
@@ -377,7 +377,7 @@ fn test_pub_restricted() {
     };
     snapshot!(input as DeriveInput, @r###"
     DeriveInput {
-        vis: Visibility::Restricted {
+        vis: data::Visibility::Restricted {
             in_: Some,
             path: Path {
                 segments: [
@@ -393,7 +393,7 @@ fn test_pub_restricted() {
             fields: Fields::Unnamed {
                 fields: [
                     Field {
-                        vis: Visibility::Restricted {
+                        vis: data::Visibility::Restricted {
                             in_: Some,
                             path: Path {
                                 segments: [
@@ -430,7 +430,7 @@ fn test_pub_restricted_crate() {
     };
     snapshot!(input as DeriveInput, @r###"
     DeriveInput {
-        vis: Visibility::Restricted {
+        vis: data::Visibility::Restricted {
             path: Path {
                 segments: [
                     path::Segment {
@@ -455,7 +455,7 @@ fn test_pub_restricted_super() {
     };
     snapshot!(input as DeriveInput, @r###"
     DeriveInput {
-        vis: Visibility::Restricted {
+        vis: data::Visibility::Restricted {
             path: Path {
                 segments: [
                     path::Segment {
@@ -480,7 +480,7 @@ fn test_pub_restricted_in_super() {
     };
     snapshot!(input as DeriveInput, @r###"
     DeriveInput {
-        vis: Visibility::Restricted {
+        vis: data::Visibility::Restricted {
             in_: Some,
             path: Path {
                 segments: [
@@ -506,7 +506,7 @@ fn test_fields_on_unit_struct() {
     };
     snapshot!(input as DeriveInput, @r###"
     DeriveInput {
-        vis: Visibility::Inherited,
+        vis: data::Visibility::Inherited,
         ident: "S",
         gens: gen::Gens,
         data: Data::Struct {
@@ -531,14 +531,14 @@ fn test_fields_on_named_struct() {
     };
     snapshot!(input as DeriveInput, @r###"
     DeriveInput {
-        vis: Visibility::Inherited,
+        vis: data::Visibility::Inherited,
         ident: "S",
         gens: gen::Gens,
         data: Data::Struct {
             fields: Named {
                 fields: [
                     Field {
-                        vis: Visibility::Inherited,
+                        vis: data::Visibility::Inherited,
                         ident: Some("foo"),
                         colon: Some,
                         ty: Type::Path {
@@ -552,7 +552,7 @@ fn test_fields_on_named_struct() {
                         },
                     },
                     Field {
-                        vis: Visibility::Public,
+                        vis: data::Visibility::Public,
                         ident: Some("bar"),
                         colon: Some,
                         ty: Type::Path {
@@ -577,7 +577,7 @@ fn test_fields_on_named_struct() {
     snapshot!(data.fields.into_iter().collect::<Vec<_>>(), @r###"
     [
         Field {
-            vis: Visibility::Inherited,
+            vis: data::Visibility::Inherited,
             ident: Some("foo"),
             colon: Some,
             ty: Type::Path {
@@ -591,7 +591,7 @@ fn test_fields_on_named_struct() {
             },
         },
         Field {
-            vis: Visibility::Public,
+            vis: data::Visibility::Public,
             ident: Some("bar"),
             colon: Some,
             ty: Type::Path {
@@ -614,14 +614,14 @@ fn test_fields_on_tuple_struct() {
     };
     snapshot!(input as DeriveInput, @r###"
     DeriveInput {
-        vis: Visibility::Inherited,
+        vis: data::Visibility::Inherited,
         ident: "S",
         gens: gen::Gens,
         data: Data::Struct {
             fields: Fields::Unnamed {
                 fields: [
                     Field {
-                        vis: Visibility::Inherited,
+                        vis: data::Visibility::Inherited,
                         ty: Type::Path {
                             path: Path {
                                 segments: [
@@ -633,7 +633,7 @@ fn test_fields_on_tuple_struct() {
                         },
                     },
                     Field {
-                        vis: Visibility::Public,
+                        vis: data::Visibility::Public,
                         ty: Type::Path {
                             path: Path {
                                 segments: [
@@ -657,7 +657,7 @@ fn test_fields_on_tuple_struct() {
     snapshot!(data.fields.iter().collect::<Vec<_>>(), @r###"
     [
         Field {
-            vis: Visibility::Inherited,
+            vis: data::Visibility::Inherited,
             ty: Type::Path {
                 path: Path {
                     segments: [
@@ -669,7 +669,7 @@ fn test_fields_on_tuple_struct() {
             },
         },
         Field {
-            vis: Visibility::Public,
+            vis: data::Visibility::Public,
             ty: Type::Path {
                 path: Path {
                     segments: [
@@ -690,14 +690,14 @@ fn test_ambiguous_crate() {
     };
     snapshot!(input as DeriveInput, @r###"
     DeriveInput {
-        vis: Visibility::Inherited,
+        vis: data::Visibility::Inherited,
         ident: "S",
         gens: gen::Gens,
         data: Data::Struct {
             fields: Fields::Unnamed {
                 fields: [
                     Field {
-                        vis: Visibility::Inherited,
+                        vis: data::Visibility::Inherited,
                         ty: Type::Path {
                             path: Path {
                                 segments: [
