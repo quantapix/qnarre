@@ -9,8 +9,8 @@ pub struct Parens<'a> {
     pub buf: Buffer<'a>,
 }
 pub fn parse_parens<'a>(x: &Buffer<'a>) -> Res<Parens<'a>> {
-    parse_delimited(x, Delim::Parenthesis).map(|(x, buf)| Parens {
-        tok: tok::Paren(x),
+    parse_delimited(x, Delim::Parenthesis).map(|(span, buf)| Parens {
+        tok: tok::Paren(span),
         buf,
     })
 }
@@ -20,8 +20,8 @@ pub struct Braces<'a> {
     pub buf: Buffer<'a>,
 }
 pub fn parse_braces<'a>(x: &Buffer<'a>) -> Res<Braces<'a>> {
-    parse_delimited(x, Delim::Brace).map(|(x, buf)| Braces {
-        tok: tok::Brace(x),
+    parse_delimited(x, Delim::Brace).map(|(span, buf)| Braces {
+        tok: tok::Brace(span),
         buf,
     })
 }
@@ -31,8 +31,8 @@ pub struct Brackets<'a> {
     pub buf: Buffer<'a>,
 }
 pub fn parse_brackets<'a>(x: &Buffer<'a>) -> Res<Brackets<'a>> {
-    parse_delimited(x, Delim::Bracket).map(|(x, buf)| Brackets {
-        tok: tok::Bracket(x),
+    parse_delimited(x, Delim::Bracket).map(|(span, buf)| Brackets {
+        tok: tok::Bracket(span),
         buf,
     })
 }
@@ -42,16 +42,16 @@ pub struct Group<'a> {
     pub buf: Buffer<'a>,
 }
 pub fn parse_group<'a>(x: &Buffer<'a>) -> Res<Group<'a>> {
-    parse_delimited(x, Delim::None).map(|(x, buf)| Group {
-        tok: tok::Group(x.join()),
+    parse_delimited(x, Delim::None).map(|(span, buf)| Group {
+        tok: tok::Group(span.join()),
         buf,
     })
 }
 fn parse_delimited<'a>(b: &Buffer<'a>, d: Delim) -> Res<(DelimSpan, Buffer<'a>)> {
-    b.step(|c| {
-        if let Some((y, span, rest)) = c.group(d) {
-            let scope = close_span_of_group(*c);
-            let nested = advance_step_cursor(c, y);
+    b.step(|x| {
+        if let Some((y, span, rest)) = x.group(d) {
+            let scope = close_span_of_group(*x);
+            let nested = advance_step_cursor(x, y);
             let unexpected = get_unexpected(b);
             let y = new_parse_buffer(scope, nested, unexpected);
             Ok(((span, y), rest))
@@ -62,7 +62,7 @@ fn parse_delimited<'a>(b: &Buffer<'a>, d: Delim) -> Res<(DelimSpan, Buffer<'a>)>
                 Delim::Bracket => "expected brackets",
                 Delim::None => "expected group",
             };
-            Err(c.err(y))
+            Err(x.err(y))
         }
     })
 }
@@ -246,7 +246,7 @@ impl Quote for attr::Attr {
 }
 impl Quote for pat::Pat {
     fn parse(s: Stream) -> Res<Self> {
-        pat::Pat::parse_multi_with_leading_vert(s)
+        pat::Pat::parse_with_vert(s)
     }
 }
 impl Quote for Box<pat::Pat> {

@@ -433,7 +433,7 @@ impl Hash for Expr {
                 state.write_u8(35u8);
                 v0.hash(state);
             },
-            Expr::Verbatim(v0) => {
+            Expr::Stream(v0) => {
                 state.write_u8(36u8);
                 TokenStreamHelper(v0).hash(state);
             },
@@ -961,7 +961,7 @@ impl Hash for item::Foreign::Item {
                 state.write_u8(3u8);
                 v0.hash(state);
             },
-            item::Foreign::Item::Verbatim(v0) => {
+            item::Foreign::Item::Stream(v0) => {
                 state.write_u8(4u8);
                 TokenStreamHelper(v0).hash(state);
             },
@@ -1098,7 +1098,7 @@ impl Hash for item::Impl::Item {
                 state.write_u8(3u8);
                 v0.hash(state);
             },
-            item::Impl::Item::Verbatim(v0) => {
+            item::Impl::Item::Stream(v0) => {
                 state.write_u8(4u8);
                 TokenStreamHelper(v0).hash(state);
             },
@@ -1228,7 +1228,7 @@ impl Hash for Item {
                 state.write_u8(14u8);
                 v0.hash(state);
             },
-            Item::Verbatim(v0) => {
+            Item::Stream(v0) => {
                 state.write_u8(15u8);
                 TokenStreamHelper(v0).hash(state);
             },
@@ -1474,7 +1474,7 @@ impl Hash for Lit {
                 state.write_u8(6u8);
                 v0.hash(state);
             },
-            Lit::Verbatim(v0) => {
+            Lit::Stream(v0) => {
                 state.write_u8(7u8);
                 v0.to_string().hash(state);
             },
@@ -1995,7 +1995,7 @@ impl Hash for item::Trait::Item {
                 state.write_u8(3u8);
                 v0.hash(state);
             },
-            item::Trait::Item::Verbatim(v0) => {
+            item::Trait::Item::Stream(v0) => {
                 state.write_u8(4u8);
                 TokenStreamHelper(v0).hash(state);
             },
@@ -2110,7 +2110,7 @@ impl Hash for typ::Type {
                 state.write_u8(13u8);
                 v0.hash(state);
             },
-            typ::Type::Verbatim(v0) => {
+            typ::Type::Stream(v0) => {
                 state.write_u8(14u8);
                 TokenStreamHelper(v0).hash(state);
             },

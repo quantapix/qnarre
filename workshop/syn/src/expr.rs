@@ -33,13 +33,13 @@ ast_enum_of_structs! {
         Ref(Ref),
         Repeat(Repeat),
         Return(Return),
+        Stream(Stream),
         Struct(Struct),
         Try(Try),
         TryBlock(TryBlock),
         Tuple(Tuple),
         Unary(Unary),
         Unsafe(Unsafe),
-        Verbatim(Stream),
         While(While),
         Yield(Yield),
     }
@@ -94,7 +94,7 @@ impl Expr {
             | Unsafe(Unsafe { attrs, .. })
             | While(While { attrs, .. })
             | Yield(Yield { attrs, .. }) => mem::replace(attrs, y),
-            Verbatim(_) => Vec::new(),
+            Stream(_) => Vec::new(),
         }
     }
     pub fn parse_without_eager_brace(x: Stream) -> Res<Expr> {
@@ -447,7 +447,7 @@ impl Parse for ForLoop {
         let mut attrs = x.call(attr::Attr::parse_outers)?;
         let label: Option<Label> = x.parse()?;
         let for_: Token![for] = x.parse()?;
-        let pat = pat::Pat::parse_multi(x)?;
+        let pat = pat::Pat::parse_many(x)?;
         let in_: Token![in] = x.parse()?;
         let expr: Expr = x.call(Expr::parse_without_eager_brace)?;
         let y;
@@ -595,7 +595,7 @@ impl Parse for Let {
         Ok(Let {
             attrs: Vec::new(),
             let_: x.parse()?,
-            pat: Box::new(pat::Pat::parse_multi(x)?),
+            pat: Box::new(pat::Pat::parse_many(x)?),
             eq: x.parse()?,
             expr: Box::new({
                 let allow = AllowStruct(false);
@@ -1413,7 +1413,7 @@ impl Parse for Arm {
         let comma;
         Ok(Arm {
             attrs: x.call(attr::Attr::parse_outers)?,
-            pat: pat::Pat::parse_multi(x)?,
+            pat: pat::Pat::parse_many(x)?,
             guard: {
                 if x.peek(Token![if]) {
                     let if_: Token![if] = x.parse()?;
@@ -1612,7 +1612,7 @@ pub fn requires_terminator(x: &Expr) -> bool {
         | Expr::Tuple(_)
         | Expr::Unary(_)
         | Expr::Yield(_)
-        | Expr::Verbatim(_) => true
+        | Expr::Stream(_) => true
     }
 }
 fn parse_expr(x: Stream, mut lhs: Expr, allow: AllowStruct, base: Precedence) -> Res<Expr> {
@@ -1757,7 +1757,7 @@ fn unary_expr(x: Stream, allow: AllowStruct) -> Res<Expr> {
         }
         let expr = Box::new(unary_expr(x, allow)?);
         if raw.is_some() {
-            Ok(Expr::Verbatim(parse::parse_verbatim(&beg, x)))
+            Ok(Expr::Stream(parse::parse_verbatim(&beg, x)))
         } else {
             Ok(Expr::Reference(Ref { attrs, and, mut_, expr }))
         }
@@ -1770,7 +1770,7 @@ fn unary_expr(x: Stream, allow: AllowStruct) -> Res<Expr> {
 fn trailer_expr(beg: Buffer, mut attrs: Vec<attr::Attr>, x: Stream, allow: AllowStruct) -> Res<Expr> {
     let atom = atom_expr(x, allow)?;
     let mut y = trailer_helper(x, atom)?;
-    if let Expr::Verbatim(tokens) = &mut y {
+    if let Expr::Stream(tokens) = &mut y {
         *tokens = parse::parse_verbatim(&beg, x);
     } else {
         let inner_attrs = y.replace_attrs(Vec::new());
@@ -1956,7 +1956,7 @@ fn expr_builtin(x: Stream) -> Res<Expr> {
     let args;
     parenthesized!(args in x);
     args.parse::<pm2::Stream>()?;
-    Ok(Expr::Verbatim(parse::parse_verbatim(&begin, x)))
+    Ok(Expr::Stream(parse::parse_verbatim(&begin, x)))
 }
 fn path_or_macro_or_struct(x: Stream, allow: AllowStruct) -> Res<Expr> {
     let (qself, path) = qpath(x, true)?;
@@ -2188,7 +2188,7 @@ fn expr_closure(x: Stream, allow: AllowStruct) -> Res<Closure> {
 }
 fn closure_arg(x: Stream) -> Res<pat::Pat> {
     let attrs = x.call(attr::Attr::parse_outers)?;
-    let mut y = pat::Pat::parse_single(x)?;
+    let mut y = pat::Pat::parse_one(x)?;
     if x.peek(Token![:]) {
         Ok(pat::Pat::Type(pat::Type {
             attrs,

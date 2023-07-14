@@ -10,7 +10,7 @@ pub mod bound {
         }
     }
     impl Type {
-        pub fn parse_multiple(s: Stream, plus: bool) -> Res<Puncted<Self, Token![+]>> {
+        pub fn parse_many(s: Stream, plus: bool) -> Res<Puncted<Self, Token![+]>> {
             let mut ys = Puncted::new();
             loop {
                 ys.push_value(s.parse()?);

@@ -1,6 +1,6 @@
 #![cfg(target_pointer_width = "64")]
 use std::mem;
-use syn::{patt::Patt, typ::Type, Expr, Item, Lit};
+use syn::{pat::Pat, typ::Type, Expr, Item, Lit};
 #[test]
 fn test_expr_size() {
     assert_eq!(mem::size_of::<Expr>(), 176);
@@ -15,7 +15,7 @@ fn test_type_size() {
 }
 #[test]
 fn test_pat_size() {
-    assert_eq!(mem::size_of::<patt::Patt>(), 184);
+    assert_eq!(mem::size_of::<pat::Pat>(), 184);
 }
 #[test]
 fn test_lit_size() {

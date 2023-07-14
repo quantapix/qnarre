@@ -820,7 +820,7 @@
             "syn": "expr::Unsafe"
           }
         ],
-        "Verbatim": [
+        "Stream": [
           {
             "syn": "pm2::Stream"
           }
@@ -2154,7 +2154,7 @@
             "syn": "item::Foreign::Mac"
           }
         ],
-        "Verbatim": [
+        "Stream": [
           {
             "syn": "pm2::Stream"
           }
@@ -2407,7 +2407,7 @@
             "syn": "item::Impl::Mac"
           }
         ],
-        "Verbatim": [
+        "Stream": [
           {
             "syn": "pm2::Stream"
           }
@@ -2665,7 +2665,7 @@
             "syn": "item::Use"
           }
         ],
-        "Verbatim": [
+        "Stream": [
           {
             "syn": "pm2::Stream"
           }
@@ -3381,7 +3381,7 @@
             "syn": "lit::Bool"
           }
         ],
-        "Verbatim": [
+        "Stream": [
           {
             "syn": "pm2::Lit"
           }
@@ -3744,7 +3744,7 @@
             "syn": "pat::Type"
           }
         ],
-        "Verbatim": [
+        "Stream": [
           {
             "syn": "pm2::Stream"
           }
@@ -4509,7 +4509,7 @@
             "syn": "item::Trait::Mac"
           }
         ],
-        "Verbatim": [
+        "Stream": [
           {
             "syn": "pm2::Stream"
           }
@@ -4744,7 +4744,7 @@
             "syn": "typ::Tuple"
           }
         ],
-        "Verbatim": [
+        "Stream": [
           {
             "syn": "pm2::Stream"
           }
@@ -4969,7 +4969,7 @@
             "syn": "Life"
           }
         ],
-        "Verbatim": [
+        "Stream": [
           {
             "syn": "pm2::Stream"
           }

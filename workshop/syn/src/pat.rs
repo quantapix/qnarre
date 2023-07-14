@@ -23,51 +23,51 @@ ast_enum_of_structs! {
     }
 }
 impl Pat {
-    pub fn parse_single(x: Stream) -> Res<Self> {
-        let begin = x.fork();
-        let look = x.look1();
+    pub fn parse_one(s: Stream) -> Res<Self> {
+        let beg = s.fork();
+        let look = s.look1();
         if look.peek(Ident)
-            && (x.peek2(Token![::])
-                || x.peek2(Token![!])
-                || x.peek2(tok::Brace)
-                || x.peek2(tok::Paren)
-                || x.peek2(Token![..]))
-            || x.peek(Token![self]) && x.peek2(Token![::])
+            && (s.peek2(Token![::])
+                || s.peek2(Token![!])
+                || s.peek2(tok::Brace)
+                || s.peek2(tok::Paren)
+                || s.peek2(Token![..]))
+            || s.peek(Token![self]) && s.peek2(Token![::])
             || look.peek(Token![::])
             || look.peek(Token![<])
-            || x.peek(Token![Self])
-            || x.peek(Token![super])
-            || x.peek(Token![crate])
+            || s.peek(Token![Self])
+            || s.peek(Token![super])
+            || s.peek(Token![crate])
         {
-            path_or_mac_or_struct_or_range(x)
+            parse_path_or_mac_or_struct_or_range(s)
         } else if look.peek(Token![_]) {
-            x.call(wild).map(Pat::Wild)
-        } else if x.peek(Token![box]) {
-            parse_verbatim(begin, x)
-        } else if x.peek(Token![-]) || look.peek(Lit) || look.peek(Token![const]) {
-            lit_or_range(x)
-        } else if look.peek(Token![ref]) || look.peek(Token![mut]) || x.peek(Token![self]) || x.peek(Ident) {
-            x.call(ident).map(Pat::Ident)
+            s.call(parse_wild).map(Pat::Wild)
+        } else if s.peek(Token![box]) {
+            parse_verbatim(beg, s)
+        } else if s.peek(Token![-]) || look.peek(Lit) || look.peek(Token![const]) {
+            parse_lit_or_range(s)
+        } else if look.peek(Token![ref]) || look.peek(Token![mut]) || s.peek(Token![self]) || s.peek(Ident) {
+            s.call(parse_ident).map(Pat::Ident)
         } else if look.peek(Token![&]) {
-            x.call(parse_ref).map(Pat::Ref)
+            s.call(parse_ref).map(Pat::Ref)
         } else if look.peek(tok::Paren) {
-            x.call(paren_or_tuple)
+            s.call(parse_paren_or_tuple)
         } else if look.peek(tok::Bracket) {
-            x.call(parse_slice).map(Pat::Slice)
-        } else if look.peek(Token![..]) && !x.peek(Token![...]) {
-            range_half_open(x)
+            s.call(parse_slice).map(Pat::Slice)
+        } else if look.peek(Token![..]) && !s.peek(Token![...]) {
+            parse_range_half_open(s)
         } else if look.peek(Token![const]) {
-            x.call(parse_const).map(Pat::Stream)
+            s.call(parse_const).map(Pat::Stream)
         } else {
             Err(look.error())
         }
     }
-    pub fn parse_multi(x: Stream) -> Res<Self> {
-        multi_impl(x, None)
+    pub fn parse_many(s: Stream) -> Res<Self> {
+        parse_many(s, None)
     }
-    pub fn parse_with_vert(x: Stream) -> Res<Self> {
-        let vert: Option<Token![|]> = x.parse()?;
-        multi_impl(x, vert)
+    pub fn parse_with_vert(s: Stream) -> Res<Self> {
+        let vert: Option<Token![|]> = s.parse()?;
+        parse_many(s, vert)
     }
 }
 
@@ -285,154 +285,39 @@ impl RangeBound {
     }
 }
 
-fn multi_impl(x: Stream, vert: Option<Token![|]>) -> Res<Pat> {
-    let mut y = Pat::parse_single(x)?;
-    if vert.is_some() || x.peek(Token![|]) && !x.peek(Token![||]) && !x.peek(Token![|=]) {
-        let mut cases = Puncted::new();
-        cases.push_value(y);
-        while x.peek(Token![|]) && !x.peek(Token![||]) && !x.peek(Token![|=]) {
-            let punct = x.parse()?;
-            cases.push_punct(punct);
-            let pat = Pat::parse_single(x)?;
-            cases.push_value(pat);
-        }
-        y = Pat::Or(Or {
-            attrs: Vec::new(),
-            vert,
-            cases,
-        });
-    }
-    Ok(y)
-}
-fn path_or_mac_or_struct_or_range(x: Stream) -> Res<Pat> {
-    let (qself, path) = qpath(x, true)?;
-    if qself.is_none() && x.peek(Token![!]) && !x.peek(Token![!=]) && path.is_mod_style() {
-        let bang: Token![!] = x.parse()?;
-        let (delimiter, tokens) = mac::parse_delim(x)?;
-        return Ok(Pat::Macro(expr::Mac {
-            attrs: Vec::new(),
-            mac: Macro {
-                path,
-                bang,
-                delimiter,
-                tokens,
-            },
-        }));
-    }
-    if x.peek(tok::Brace) {
-        parse_struct(x, qself, path).map(Pat::Struct)
-    } else if x.peek(tok::Paren) {
-        tuple_struct(x, qself, path).map(Pat::TupleStruct)
-    } else if x.peek(Token![..]) {
-        range(x, qself, path)
-    } else {
-        Ok(Pat::Path(expr::Path {
-            attrs: Vec::new(),
-            qself,
-            path,
-        }))
-    }
-}
-fn wild(x: Stream) -> Res<Wild> {
-    Ok(Wild {
-        attrs: Vec::new(),
-        underscore: x.parse()?,
-    })
-}
-fn ident(x: Stream) -> Res<Ident> {
-    Ok(Ident {
-        attrs: Vec::new(),
-        ref_: x.parse()?,
-        mut_: x.parse()?,
-        ident: x.call(Ident::parse_any)?,
-        sub: {
-            if x.peek(Token![@]) {
-                let at_: Token![@] = x.parse()?;
-                let sub = Pat::parse_single(x)?;
-                Some((at_, Box::new(sub)))
-            } else {
-                None
-            }
-        },
-    })
-}
-fn tuple_struct(x: Stream, qself: Option<QSelf>, path: Path) -> Res<TupleStruct> {
-    let gist;
-    let paren = parenthesized!(gist in x);
-    let mut elems = Puncted::new();
-    while !gist.is_empty() {
-        let value = Pat::parse_multi(&gist)?;
-        elems.push_value(value);
-        if gist.is_empty() {
-            break;
-        }
-        let punct = gist.parse()?;
-        elems.push_punct(punct);
-    }
-    Ok(TupleStruct {
-        attrs: Vec::new(),
-        qself,
-        path,
-        paren,
-        elems,
-    })
-}
-fn parse_struct(s: Stream, qself: Option<QSelf>, path: Path) -> Res<Struct> {
+fn parse_const(s: Stream) -> Res<pm2::Stream> {
+    let beg = s.fork();
+    s.parse::<Token![const]>()?;
     let y;
-    let brace = braced!(y in s);
-    let mut fields = Puncted::new();
-    let mut rest = None;
-    while !y.is_empty() {
-        let attrs = y.call(attr::Attr::parse_outers)?;
-        if y.peek(Token![..]) {
-            rest = Some(Rest {
-                attrs,
-                dot2: y.parse()?,
-            });
-            break;
-        }
-        let mut y = y.call(field)?;
-        y.attrs = attrs;
-        fields.push_value(y);
-        if y.is_empty() {
-            break;
-        }
-        let y: Token![,] = y.parse()?;
-        fields.push_punct(y);
-    }
-    Ok(Struct {
-        attrs: Vec::new(),
-        qself,
-        path,
-        brace,
-        fields,
-        rest,
-    })
+    braced!(y in s);
+    y.call(attr::Attr::parse_inners)?;
+    y.call(stmt::Block::parse_within)?;
+    Ok(parse::parse_verbatim(&beg, s))
 }
-fn field(x: Stream) -> Res<Field> {
-    let beg = x.fork();
-    let box_: Option<Token![box]> = x.parse()?;
-    let ref_: Option<Token![ref]> = x.parse()?;
-    let mut_: Option<Token![mut]> = x.parse()?;
-    let member = if box_.is_some() || ref_.is_some() || mut_.is_some() {
-        x.parse().map(Member::Named)
+fn parse_field(s: Stream) -> Res<Field> {
+    let beg = s.fork();
+    let box_: Option<Token![box]> = s.parse()?;
+    let ref_: Option<Token![ref]> = s.parse()?;
+    let mut_: Option<Token![mut]> = s.parse()?;
+    let memb = if box_.is_some() || ref_.is_some() || mut_.is_some() {
+        s.parse().map(Member::Named)
     } else {
-        x.parse()
+        s.parse()
     }?;
-    if box_.is_none() && ref_.is_none() && mut_.is_none() && x.peek(Token![:]) || member.is_unnamed() {
+    if box_.is_none() && ref_.is_none() && mut_.is_none() && s.peek(Token![:]) || memb.is_unnamed() {
         return Ok(Field {
             attrs: Vec::new(),
-            memb: member,
-            colon: Some(x.parse()?),
-            pat: Box::new(Pat::parse_multi(x)?),
+            memb,
+            colon: Some(s.parse()?),
+            pat: Box::new(Pat::parse_many(s)?),
         });
     }
-    let ident = match member {
-        Member::Named(ident) => ident,
+    let ident = match memb {
+        Member::Named(x) => x,
         Member::Unnamed(_) => unreachable!(),
     };
     let pat = if box_.is_some() {
-        Pat::Stream(parse::parse_verbatim(&beg, x))
+        Pat::Stream(parse::parse_verbatim(&beg, s))
     } else {
         Pat::Ident(Ident {
             attrs: Vec::new(),
@@ -449,77 +334,30 @@ fn field(x: Stream) -> Res<Field> {
         pat: Box::new(pat),
     })
 }
-fn range(x: Stream, qself: Option<QSelf>, path: Path) -> Res<Pat> {
-    let limits = expr::Limits::parse_obsolete(x)?;
-    let end = x.call(parse_range_bound)?;
-    if let (expr::Limits::Closed(_), None) = (&limits, &end) {
-        return Err(x.error("expected range upper bound"));
-    }
-    Ok(Pat::Range(expr::Range {
+fn parse_ident(s: Stream) -> Res<Ident> {
+    Ok(Ident {
         attrs: Vec::new(),
-        beg: Some(Box::new(Expr::Path(expr::Path {
-            attrs: Vec::new(),
-            qself,
-            path,
-        }))),
-        limits,
-        end: end.map(RangeBound::into_expr),
-    }))
-}
-fn range_half_open(x: Stream) -> Res<Pat> {
-    let limits: expr::Limits = x.parse()?;
-    let end = x.call(parse_range_bound)?;
-    if end.is_some() {
-        Ok(Pat::Range(expr::Range {
-            attrs: Vec::new(),
-            beg: None,
-            limits,
-            end: end.map(RangeBound::into_expr),
-        }))
-    } else {
-        match limits {
-            expr::Limits::HalfOpen(dot2) => Ok(Pat::Rest(Rest {
-                attrs: Vec::new(),
-                dot2,
-            })),
-            expr::Limits::Closed(_) => Err(x.error("expected range upper bound")),
-        }
-    }
-}
-fn paren_or_tuple(x: Stream) -> Res<Pat> {
-    let gist;
-    let paren = parenthesized!(gist in x);
-    let mut elems = Puncted::new();
-    while !gist.is_empty() {
-        let x = Pat::parse_multi(&gist)?;
-        if gist.is_empty() {
-            if elems.is_empty() && !matches!(x, Pat::Rest(_)) {
-                return Ok(Pat::Paren(Paren {
-                    attrs: Vec::new(),
-                    paren,
-                    pat: Box::new(x),
-                }));
+        ref_: s.parse()?,
+        mut_: s.parse()?,
+        ident: s.call(Ident::parse_any)?,
+        sub: {
+            if s.peek(Token![@]) {
+                let at_: Token![@] = s.parse()?;
+                let y = Pat::parse_one(s)?;
+                Some((at_, Box::new(y)))
+            } else {
+                None
             }
-            elems.push_value(x);
-            break;
-        }
-        elems.push_value(x);
-        let punct = gist.parse()?;
-        elems.push_punct(punct);
-    }
-    Ok(Pat::Tuple(Tuple {
-        attrs: Vec::new(),
-        paren,
-        elems,
-    }))
+        },
+    })
 }
-fn lit_or_range(x: Stream) -> Res<Pat> {
-    let beg = x.call(parse_range_bound)?.unwrap();
-    if x.peek(Token![..]) {
-        let limits = expr::Limits::parse_obsolete(x)?;
-        let end = x.call(parse_range_bound)?;
+fn parse_lit_or_range(s: Stream) -> Res<Pat> {
+    let beg = s.call(parse_range_bound)?.unwrap();
+    if s.peek(Token![..]) {
+        let limits = expr::Limits::parse_obsolete(s)?;
+        let end = s.call(parse_range_bound)?;
         if let (expr::Limits::Closed(_), None) = (&limits, &end) {
-            return Err(x.error("expected range upper bound"));
+            return Err(s.error("expected range upper bound"));
         }
         Ok(Pat::Range(expr::Range {
             attrs: Vec::new(),
@@ -531,14 +369,97 @@ fn lit_or_range(x: Stream) -> Res<Pat> {
         Ok(beg.into_pat())
     }
 }
-fn parse_const(s: Stream) -> Res<pm2::Stream> {
-    let beg = s.fork();
-    s.parse::<Token![const]>()?;
+fn parse_many(s: Stream, vert: Option<Token![|]>) -> Res<Pat> {
+    let mut y = Pat::parse_one(s)?;
+    if vert.is_some() || s.peek(Token![|]) && !s.peek(Token![||]) && !s.peek(Token![|=]) {
+        let mut cases = Puncted::new();
+        cases.push_value(y);
+        while s.peek(Token![|]) && !s.peek(Token![||]) && !s.peek(Token![|=]) {
+            let x = s.parse()?;
+            cases.push_punct(x);
+            let x = Pat::parse_one(s)?;
+            cases.push_value(x);
+        }
+        y = Pat::Or(Or {
+            attrs: Vec::new(),
+            vert,
+            cases,
+        });
+    }
+    Ok(y)
+}
+fn parse_path_or_mac_or_struct_or_range(s: Stream) -> Res<Pat> {
+    let (qself, path) = qpath(s, true)?;
+    if qself.is_none() && s.peek(Token![!]) && !s.peek(Token![!=]) && path.is_mod_style() {
+        let bang: Token![!] = s.parse()?;
+        let (delim, toks) = mac::parse_delim(s)?;
+        return Ok(Pat::Mac(expr::Mac {
+            attrs: Vec::new(),
+            mac: mac::Mac {
+                path,
+                bang,
+                delim,
+                toks,
+            },
+        }));
+    }
+    if s.peek(tok::Brace) {
+        parse_struct(s, qself, path).map(Pat::Struct)
+    } else if s.peek(tok::Paren) {
+        parse_tuple_struct(s, qself, path).map(Pat::TupleStruct)
+    } else if s.peek(Token![..]) {
+        parse_range(s, qself, path)
+    } else {
+        Ok(Pat::Path(expr::Path {
+            attrs: Vec::new(),
+            qself,
+            path,
+        }))
+    }
+}
+fn parse_paren_or_tuple(s: Stream) -> Res<Pat> {
     let y;
-    braced!(y in s);
-    y.call(attr::Attr::parse_inners)?;
-    y.call(stmt::Block::parse_within)?;
-    Ok(parse::parse_verbatim(&beg, s))
+    let paren = parenthesized!(y in s);
+    let mut elems = Puncted::new();
+    while !y.is_empty() {
+        let x = Pat::parse_many(&y)?;
+        if y.is_empty() {
+            if elems.is_empty() && !matches!(x, Pat::Rest(_)) {
+                return Ok(Pat::Paren(Paren {
+                    attrs: Vec::new(),
+                    paren,
+                    pat: Box::new(x),
+                }));
+            }
+            elems.push_value(x);
+            break;
+        }
+        elems.push_value(x);
+        let x = y.parse()?;
+        elems.push_punct(x);
+    }
+    Ok(Pat::Tuple(Tuple {
+        attrs: Vec::new(),
+        paren,
+        elems,
+    }))
+}
+fn parse_range(s: Stream, qself: Option<QSelf>, path: Path) -> Res<Pat> {
+    let limits = expr::Limits::parse_obsolete(s)?;
+    let end = s.call(parse_range_bound)?;
+    if let (expr::Limits::Closed(_), None) = (&limits, &end) {
+        return Err(s.error("expected range upper bound"));
+    }
+    Ok(Pat::Range(expr::Range {
+        attrs: Vec::new(),
+        beg: Some(Box::new(Expr::Path(expr::Path {
+            attrs: Vec::new(),
+            qself,
+            path,
+        }))),
+        limits,
+        end: end.map(RangeBound::into_expr),
+    }))
 }
 fn parse_range_bound(s: Stream) -> Res<Option<RangeBound>> {
     if s.is_empty()
@@ -570,12 +491,32 @@ fn parse_range_bound(s: Stream) -> Res<Option<RangeBound>> {
     };
     Ok(Some(y))
 }
+fn parse_range_half_open(s: Stream) -> Res<Pat> {
+    let limits: expr::Limits = s.parse()?;
+    let end = s.call(parse_range_bound)?;
+    if end.is_some() {
+        Ok(Pat::Range(expr::Range {
+            attrs: Vec::new(),
+            beg: None,
+            limits,
+            end: end.map(RangeBound::into_expr),
+        }))
+    } else {
+        match limits {
+            expr::Limits::HalfOpen(dot2) => Ok(Pat::Rest(Rest {
+                attrs: Vec::new(),
+                dot2,
+            })),
+            expr::Limits::Closed(_) => Err(s.error("expected range upper bound")),
+        }
+    }
+}
 fn parse_ref(s: Stream) -> Res<Ref> {
     Ok(Ref {
         attrs: Vec::new(),
         and: s.parse()?,
         mut_: s.parse()?,
-        pat: Box::new(Pat::parse_single(s)?),
+        pat: Box::new(Pat::parse_one(s)?),
     })
 }
 fn parse_slice(s: Stream) -> Res<Slice> {
@@ -583,7 +524,7 @@ fn parse_slice(s: Stream) -> Res<Slice> {
     let bracket = bracketed!(y in s);
     let mut elems = Puncted::new();
     while !y.is_empty() {
-        let y = Pat::parse_multi(&y)?;
+        let y = Pat::parse_many(&y)?;
         match y {
             Pat::Range(x) if x.beg.is_none() || x.end.is_none() => {
                 let (start, end) = match x.limits {
@@ -608,8 +549,67 @@ fn parse_slice(s: Stream) -> Res<Slice> {
         elems,
     })
 }
+fn parse_struct(s: Stream, qself: Option<QSelf>, path: Path) -> Res<Struct> {
+    let y;
+    let brace = braced!(y in s);
+    let mut fields = Puncted::new();
+    let mut rest = None;
+    while !y.is_empty() {
+        let attrs = y.call(attr::Attr::parse_outers)?;
+        if y.peek(Token![..]) {
+            rest = Some(Rest {
+                attrs,
+                dot2: y.parse()?,
+            });
+            break;
+        }
+        let mut y = y.call(parse_field)?;
+        y.attrs = attrs;
+        fields.push_value(y);
+        if y.is_empty() {
+            break;
+        }
+        let y: Token![,] = y.parse()?;
+        fields.push_punct(y);
+    }
+    Ok(Struct {
+        attrs: Vec::new(),
+        qself,
+        path,
+        brace,
+        fields,
+        rest,
+    })
+}
+fn parse_tuple_struct(s: Stream, qself: Option<QSelf>, path: Path) -> Res<TupleStruct> {
+    let y;
+    let paren = parenthesized!(y in s);
+    let mut elems = Puncted::new();
+    while !y.is_empty() {
+        let x = Pat::parse_many(&y)?;
+        elems.push_value(x);
+        if y.is_empty() {
+            break;
+        }
+        let x = y.parse()?;
+        elems.push_punct(x);
+    }
+    Ok(TupleStruct {
+        attrs: Vec::new(),
+        qself,
+        path,
+        paren,
+        elems,
+    })
+}
 fn parse_verbatim(beg: parse::Buffer, s: Stream) -> Res<Pat> {
     s.parse::<Token![box]>()?;
-    Pat::parse_single(s)?;
+    Pat::parse_one(s)?;
     Ok(Pat::Stream(parse::parse_verbatim(&beg, s)))
+}
+fn parse_wild(s: Stream) -> Res<Wild> {
+    Ok(Wild {
+        attrs: Vec::new(),
+        underscore: s.parse()?,
+    })
 }

@@ -11,9 +11,9 @@ fn test_raw_operator() {
     let stmt = syn::parse::parse_str::<stmt::Stmt>("let _ = &raw const x;").unwrap();
     snapshot!(stmt, @r###"
     stmt::Stmt::stmt::Local {
-        pat: patt::Patt::Wild,
+        pat: pat::Pat::Wild,
         init: Some(stmt::Init {
-            expr: Expr::Verbatim(`& raw const x`),
+            expr: Expr::Stream(`& raw const x`),
         }),
     }
     "###);
@@ -23,7 +23,7 @@ fn test_raw_variable() {
     let stmt = syn::parse::parse_str::<stmt::Stmt>("let _ = &raw;").unwrap();
     snapshot!(stmt, @r###"
     stmt::Stmt::stmt::Local {
-        pat: patt::Patt::Wild,
+        pat: pat::Pat::Wild,
         init: Some(stmt::Init {
             expr: Expr::Reference {
                 expr: Expr::Path {
@@ -76,7 +76,7 @@ fn test_let_dot_dot() {
     };
     snapshot!(tokens as stmt::Stmt, @r###"
     stmt::Stmt::stmt::Local {
-        pat: patt::Patt::Rest,
+        pat: pat::Pat::Rest,
         init: Some(stmt::Init {
             expr: Expr::Lit {
                 lit: 10,
@@ -92,7 +92,7 @@ fn test_let_else() {
     };
     snapshot!(tokens as stmt::Stmt, @r###"
     stmt::Stmt::stmt::Local {
-        pat: patt::Patt::TupleStruct {
+        pat: pat::Pat::TupleStruct {
             path: Path {
                 segments: [
                     path::Segment {
@@ -101,7 +101,7 @@ fn test_let_else() {
                 ],
             },
             elems: [
-                patt::Patt::Ident {
+                pat::Pat::Ident {
                     ident: "x",
                 },
             ],

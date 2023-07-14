@@ -14,9 +14,9 @@ ast_enum_of_structs! {
         Ptr(Ptr),
         Ref(Ref),
         Slice(Slice),
+        Stream(Stream),
         Trait(Trait),
         Tuple(Tuple),
-        Verbatim(Stream),
     }
 }
 impl Type {
@@ -160,7 +160,7 @@ impl Impl {
     }
     pub fn parse(x: Stream, plus: bool) -> Res<Self> {
         let impl_: Token![impl] = x.parse()?;
-        let bounds = gen::bound::Type::parse_multiple(x, plus)?;
+        let bounds = gen::bound::Type::parse_many(x, plus)?;
         let mut last = None;
         let mut one = false;
         for x in &bounds {
@@ -386,7 +386,7 @@ impl Trait {
         Ok(Trait { dyn_, bounds })
     }
     fn parse_bounds(s: pm2::Span, x: Stream, plus: bool) -> Res<Puncted<gen::bound::Type, Token![+]>> {
-        let ys = gen::bound::Type::parse_multiple(x, plus)?;
+        let ys = gen::bound::Type::parse_many(x, plus)?;
         let mut last = None;
         let mut one = false;
         for y in &ys {
@@ -774,7 +774,7 @@ pub fn parse_ambig_typ(s: Stream, plus: bool, gen: bool) -> Res<Type> {
         let star: Option<Token![*]> = s.parse()?;
         let bounds = Trait::parse_bounds(dyn_span, s, plus)?;
         return Ok(if star.is_some() {
-            Type::Verbatim(parse::parse_verbatim(&beg, s))
+            Type::Stream(parse::parse_verbatim(&beg, s))
         } else {
             Type::TraitObject(Trait {
                 dyn_: Some(dyn_),
@@ -849,7 +849,7 @@ fn parse_fn_arg(s: Stream, self_: bool) -> Res<FnArg> {
         Some(ty) if !has_mut_self => ty,
         _ => {
             name = None;
-            Type::Verbatim(parse::parse_verbatim(&beg, s))
+            Type::Stream(parse::parse_verbatim(&beg, s))
         },
     };
     Ok(FnArg { attrs, name, typ: ty })

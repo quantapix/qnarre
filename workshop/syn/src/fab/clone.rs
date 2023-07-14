@@ -218,7 +218,7 @@ impl Clone for Expr {
             Expr::Tuple(v0) => Expr::Tuple(v0.clone()),
             Expr::Unary(v0) => Expr::Unary(v0.clone()),
             Expr::Unsafe(v0) => Expr::Unsafe(v0.clone()),
-            Expr::Verbatim(v0) => Expr::Verbatim(v0.clone()),
+            Expr::Stream(v0) => Expr::Stream(v0.clone()),
             Expr::While(v0) => Expr::While(v0.clone()),
             Expr::Yield(v0) => Expr::Yield(v0.clone()),
         }
@@ -693,7 +693,7 @@ impl Clone for item::Foreign::Item {
             item::Foreign::Item::Static(v0) => item::Foreign::Item::Static(v0.clone()),
             item::Foreign::Item::Type(v0) => item::Foreign::Item::Type(v0.clone()),
             item::Foreign::Item::Macro(v0) => item::Foreign::Item::Macro(v0.clone()),
-            item::Foreign::Item::Verbatim(v0) => item::Foreign::Item::Verbatim(v0.clone()),
+            item::Foreign::Item::Stream(v0) => item::Foreign::Item::Stream(v0.clone()),
         }
     }
 }
@@ -780,7 +780,7 @@ impl Clone for item::Impl::Item {
             item::Impl::Item::Fn(v0) => item::Impl::Item::Fn(v0.clone()),
             item::Impl::Item::Type(v0) => item::Impl::Item::Type(v0.clone()),
             item::Impl::Item::Macro(v0) => item::Impl::Item::Macro(v0.clone()),
-            item::Impl::Item::Verbatim(v0) => item::Impl::Item::Verbatim(v0.clone()),
+            item::Impl::Item::Stream(v0) => item::Impl::Item::Stream(v0.clone()),
         }
     }
 }
@@ -867,7 +867,7 @@ impl Clone for Item {
             Item::Type(v0) => Item::Type(v0.clone()),
             Item::Union(v0) => Item::Union(v0.clone()),
             Item::Use(v0) => Item::Use(v0.clone()),
-            Item::Verbatim(v0) => Item::Verbatim(v0.clone()),
+            Item::Stream(v0) => Item::Stream(v0.clone()),
         }
     }
 }
@@ -1099,7 +1099,7 @@ impl Clone for Lit {
             Lit::Int(v0) => Lit::Int(v0.clone()),
             Lit::Float(v0) => Lit::Float(v0.clone()),
             Lit::Bool(v0) => Lit::Bool(v0.clone()),
-            Lit::Verbatim(v0) => Lit::Verbatim(v0.clone()),
+            Lit::Stream(v0) => Lit::Stream(v0.clone()),
         }
     }
 }
@@ -1471,7 +1471,7 @@ impl Clone for item::Trait::Item {
             item::Trait::Item::Fn(v0) => item::Trait::Item::Fn(v0.clone()),
             item::Trait::Item::Type(v0) => item::Trait::Item::Type(v0.clone()),
             item::Trait::Item::Macro(v0) => item::Trait::Item::Macro(v0.clone()),
-            item::Trait::Item::Verbatim(v0) => item::Trait::Item::Verbatim(v0.clone()),
+            item::Trait::Item::Stream(v0) => item::Trait::Item::Stream(v0.clone()),
         }
     }
 }
@@ -1539,7 +1539,7 @@ impl Clone for typ::Type {
             typ::Type::Slice(v0) => typ::Type::Slice(v0.clone()),
             typ::Type::Trait(v0) => typ::Type::Trait(v0.clone()),
             typ::Type::Tuple(v0) => typ::Type::Tuple(v0.clone()),
-            typ::Type::Verbatim(v0) => typ::Type::Verbatim(v0.clone()),
+            typ::Type::Stream(v0) => typ::Type::Stream(v0.clone()),
         }
     }
 }

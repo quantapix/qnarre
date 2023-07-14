@@ -57,7 +57,7 @@ fn test_negative_impl() {
     snapshot!(tokens as Item, @r###"
     Item::Impl {
         gens: gen::Gens,
-        self_ty: Type::Verbatim(`! Trait`),
+        self_ty: Type::Stream(`! Trait`),
     }
     "###);
     #[cfg(any())]
@@ -98,7 +98,7 @@ fn test_negative_impl() {
     snapshot!(tokens as Item, @r###"
     Item::Impl {
         gens: gen::Gens,
-        self_ty: Type::Verbatim(`! !`),
+        self_ty: Type::Stream(`! !`),
     }
     "###);
 }
@@ -238,7 +238,7 @@ fn test_impl_visibility() {
     let tokens = quote! {
         pub default unsafe impl union {}
     };
-    snapshot!(tokens as Item, @"Item::Verbatim(`pub default unsafe impl union { }`)");
+    snapshot!(tokens as Item, @"Item::Stream(`pub default unsafe impl union { }`)");
 }
 #[test]
 fn test_impl_type_parameter_defaults() {

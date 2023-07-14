@@ -89,7 +89,7 @@ macro_rules! ast_enum_of_structs_impl {
     };
 }
 macro_rules! ast_enum_from_struct {
-    ($name:ident::Verbatim, $member:ident) => {};
+    ($name:ident::Stream, $member:ident) => {};
     ($name:ident::$variant:ident, $member:ident) => {
         impl From<$member> for $name {
             fn from(e: $member) -> $name {
@@ -541,11 +541,11 @@ macro_rules! Token {
 
 #[macro_export]
 macro_rules! parenthesized {
-    ($content:ident in $cur:expr) => {
-        match $crate::parse::parse_parens(&$cur) {
+    ($y:ident in $s:expr) => {
+        match $crate::parse::parse_parens(&$s) {
             $crate::__private::Ok(x) => {
-                $content = x.content;
-                x.token
+                $y = x.buf;
+                x.tok
             },
             $crate::__private::Err(x) => {
                 return $crate::__private::Err(x);
@@ -556,11 +556,11 @@ macro_rules! parenthesized {
 
 #[macro_export]
 macro_rules! braced {
-    ($content:ident in $cur:expr) => {
-        match $crate::parse::parse_braces(&$cur) {
+    ($y:ident in $s:expr) => {
+        match $crate::parse::parse_braces(&$s) {
             $crate::__private::Ok(x) => {
-                $content = x.content;
-                x.token
+                $y = x.buf;
+                x.tok
             },
             $crate::__private::Err(x) => {
                 return $crate::__private::Err(x);
@@ -571,11 +571,11 @@ macro_rules! braced {
 
 #[macro_export]
 macro_rules! bracketed {
-    ($content:ident in $cur:expr) => {
-        match $crate::parse::parse_brackets(&$cur) {
+    ($y:ident in $s:expr) => {
+        match $crate::parse::parse_brackets(&$s) {
             $crate::__private::Ok(x) => {
-                $content = x.content;
-                x.token
+                $y = x.buf;
+                x.tok
             },
             $crate::__private::Err(x) => {
                 return $crate::__private::Err(x);

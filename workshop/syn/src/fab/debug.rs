@@ -387,8 +387,8 @@ impl Debug for Expr {
             Expr::Tuple(v0) => v0.debug(formatter, "Tuple"),
             Expr::Unary(v0) => v0.debug(formatter, "Unary"),
             Expr::Unsafe(v0) => v0.debug(formatter, "Unsafe"),
-            Expr::Verbatim(v0) => {
-                let mut f = f.debug_tuple("Verbatim");
+            Expr::Stream(v0) => {
+                let mut f = f.debug_tuple("Stream");
                 f.field(v0);
                 f.finish()
             },
@@ -1078,8 +1078,8 @@ impl Debug for item::Foreign::Item {
             item::Foreign::Item::Static(v0) => v0.debug(formatter, "Static"),
             item::Foreign::Item::Type(v0) => v0.debug(formatter, "Type"),
             item::Foreign::Item::Macro(v0) => v0.debug(formatter, "Macro"),
-            item::Foreign::Item::Verbatim(v0) => {
-                let mut f = f.debug_tuple("Verbatim");
+            item::Foreign::Item::Stream(v0) => {
+                let mut f = f.debug_tuple("Stream");
                 f.field(v0);
                 f.finish()
             },
@@ -1228,8 +1228,8 @@ impl Debug for item::Impl::Item {
             item::Impl::Item::Fn(v0) => v0.debug(formatter, "Fn"),
             item::Impl::Item::Type(v0) => v0.debug(formatter, "Type"),
             item::Impl::Item::Macro(v0) => v0.debug(formatter, "Macro"),
-            item::Impl::Item::Verbatim(v0) => {
-                let mut f = f.debug_tuple("Verbatim");
+            item::Impl::Item::Stream(v0) => {
+                let mut f = f.debug_tuple("Stream");
                 f.field(v0);
                 f.finish()
             },
@@ -1340,8 +1340,8 @@ impl Debug for Item {
             Item::Type(v0) => v0.debug(formatter, "Type"),
             Item::Union(v0) => v0.debug(formatter, "Union"),
             Item::Use(v0) => v0.debug(formatter, "Use"),
-            Item::Verbatim(v0) => {
-                let mut f = f.debug_tuple("Verbatim");
+            Item::Stream(v0) => {
+                let mut f = f.debug_tuple("Stream");
                 f.field(v0);
                 f.finish()
             },
@@ -1665,8 +1665,8 @@ impl Debug for Lit {
             Lit::Int(v0) => v0.debug(formatter, "Int"),
             Lit::Float(v0) => v0.debug(formatter, "Float"),
             Lit::Bool(v0) => v0.debug(formatter, "Bool"),
-            Lit::Verbatim(v0) => {
-                let mut f = f.debug_tuple("Verbatim");
+            Lit::Stream(v0) => {
+                let mut f = f.debug_tuple("Stream");
                 f.field(v0);
                 f.finish()
             },
@@ -1819,7 +1819,7 @@ impl Debug for pat::Pat {
             pat::Pat::TupleStruct(v0) => v0.debug(formatter, "TupleStruct"),
             pat::Pat::Type(v0) => v0.debug(formatter, "Type"),
             pat::Pat::Stream(v0) => {
-                let mut f = f.debug_tuple("Verbatim");
+                let mut f = f.debug_tuple("Stream");
                 f.field(v0);
                 f.finish()
             },
@@ -2187,8 +2187,8 @@ impl Debug for item::Trait::Item {
             item::Trait::Item::Fn(v0) => v0.debug(formatter, "Fn"),
             item::Trait::Item::Type(v0) => v0.debug(formatter, "Type"),
             item::Trait::Item::Macro(v0) => v0.debug(formatter, "Macro"),
-            item::Trait::Item::Verbatim(v0) => {
-                let mut f = f.debug_tuple("Verbatim");
+            item::Trait::Item::Stream(v0) => {
+                let mut f = f.debug_tuple("Stream");
                 f.field(v0);
                 f.finish()
             },
@@ -2280,8 +2280,8 @@ impl Debug for typ::Type {
             typ::Type::Slice(v0) => v0.debug(f, "Slice"),
             typ::Type::Trait(v0) => v0.debug(f, "TraitObject"),
             typ::Type::Tuple(v0) => v0.debug(f, "Tuple"),
-            typ::Type::Verbatim(v0) => {
-                let mut y = f.debug_tuple("Verbatim");
+            typ::Type::Stream(v0) => {
+                let mut y = f.debug_tuple("Stream");
                 y.field(v0);
                 y.finish()
             },
@@ -2407,7 +2407,7 @@ impl Debug for gen::bound::Type {
             },
             gen::bound::Type::Life(v0) => v0.debug(formatter, "Life"),
             gen::bound::Type::Stream(v0) => {
-                let mut f = f.debug_tuple("Verbatim");
+                let mut f = f.debug_tuple("Stream");
                 f.field(v0);
                 f.finish()
             },

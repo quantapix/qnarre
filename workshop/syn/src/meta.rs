@@ -150,53 +150,53 @@ pub fn parse_nested(ins: Stream, mut f: impl FnMut(Nested) -> Res<()>) -> Res<()
         }
     }
 }
-pub fn parse_after_path(p: Path, x: Stream) -> Res<Meta> {
-    if x.peek(tok::Paren) || x.peek(tok::Bracket) || x.peek(tok::Brace) {
-        parse_list_after_path(p, x).map(Meta::List)
-    } else if x.peek(Token![=]) {
-        parse_name_value_after_path(p, x).map(Meta::NameValue)
+pub fn parse_after_path(p: Path, s: Stream) -> Res<Meta> {
+    if s.peek(tok::Paren) || s.peek(tok::Bracket) || s.peek(tok::Brace) {
+        parse_list_after_path(p, s).map(Meta::List)
+    } else if s.peek(Token![=]) {
+        parse_name_value_after_path(p, s).map(Meta::NameValue)
     } else {
         Ok(Meta::Path(p))
     }
 }
-pub fn parse_list_after_path(path: Path, x: Stream) -> Res<List> {
-    let (delim, toks) = mac::parse_delim(x)?;
+pub fn parse_list_after_path(path: Path, s: Stream) -> Res<List> {
+    let (delim, toks) = mac::parse_delim(s)?;
     Ok(List { path, delim, toks })
 }
-pub fn parse_name_value_after_path(path: Path, x: Stream) -> Res<NameValue> {
-    let eq: Token![=] = x.parse()?;
-    let ahead = x.fork();
+pub fn parse_name_value_after_path(path: Path, s: Stream) -> Res<NameValue> {
+    let eq: Token![=] = s.parse()?;
+    let ahead = s.fork();
     let lit: Option<Lit> = ahead.parse()?;
     let expr = if let (Some(lit), true) = (lit, ahead.is_empty()) {
-        x.advance_to(&ahead);
+        s.advance_to(&ahead);
         Expr::Lit(expr::Lit { attrs: Vec::new(), lit })
-    } else if x.peek(Token![#]) && x.peek2(tok::Bracket) {
-        return Err(x.error("unexpected attribute inside of attribute"));
+    } else if s.peek(Token![#]) && s.peek2(tok::Bracket) {
+        return Err(s.error("unexpected attribute inside of attribute"));
     } else {
-        x.parse()?
+        s.parse()?
     };
     Ok(NameValue { path, eq, expr })
 }
 
-fn parse_path(x: Stream) -> Res<Path> {
+fn parse_path(s: Stream) -> Res<Path> {
     Ok(Path {
-        colon: x.parse()?,
+        colon: s.parse()?,
         segs: {
             let mut ys = Puncted::new();
-            if x.peek(Ident::peek_any) {
-                let y = Ident::parse_any(x)?;
+            if s.peek(Ident::peek_any) {
+                let y = Ident::parse_any(s)?;
                 ys.push_value(path::Segment::from(y));
-            } else if x.is_empty() {
-                return Err(x.error("expected nested attribute"));
-            } else if x.peek(lit::Lit) {
-                return Err(x.error("unexpected literal in nested attribute, expected ident"));
+            } else if s.is_empty() {
+                return Err(s.error("expected nested attribute"));
+            } else if s.peek(lit::Lit) {
+                return Err(s.error("unexpected literal in nested attribute, expected ident"));
             } else {
-                return Err(x.error("unexpected token in nested attribute, expected ident"));
+                return Err(s.error("unexpected token in nested attribute, expected ident"));
             }
-            while x.peek(Token![::]) {
-                let y = x.parse()?;
+            while s.peek(Token![::]) {
+                let y = s.parse()?;
                 ys.push_punct(y);
-                let y = Ident::parse_any(x)?;
+                let y = Ident::parse_any(s)?;
                 ys.push_value(path::Segment::from(y));
             }
             ys

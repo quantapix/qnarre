@@ -119,8 +119,8 @@ fn librustc_parse_and_rewrite(input: &str) -> Option<P<ast::Expr>> {
 }
 fn librustc_brackets(mut librustc_expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
     use rustc_ast::ast::{
-        attr::Attr, expr::Field, gen::bound::Modifier, patt::Patt, stmt::Local, stmt::Stmt, typ::Type, BinOpKind,
-        Block, BorrowKind, Expr, ExprKind, GenericArg, GenericBound, LocalKind, StmtKind, StructExpr, StructRest,
+        attr::Attr, expr::Field, gen::bound::Modifier, pat::Pat, stmt::Local, stmt::Stmt, typ::Type, BinOpKind, Block,
+        BorrowKind, Expr, ExprKind, GenericArg, GenericBound, LocalKind, StmtKind, StructExpr, StructRest,
     };
     use rustc_ast::mut_visit::{noop_visit_generic_arg, noop_visit_local, noop_visit_param_bound, MutVisitor};
     use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
@@ -229,7 +229,7 @@ fn librustc_brackets(mut librustc_expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
                 _ => noop_visit_local(local, self),
             }
         }
-        fn visit_pat(&mut self, pat: &mut P<patt::Patt>) {
+        fn visit_pat(&mut self, pat: &mut P<pat::Pat>) {
             let _ = pat;
         }
         fn visit_ty(&mut self, typ: &mut P<typ::Type>) {
@@ -249,7 +249,7 @@ fn librustc_brackets(mut librustc_expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
 }
 fn syn_brackets(syn_expr: syn::Expr) -> syn::Expr {
     use syn::fold::{fold_expr, fold_generic_argument, Fold};
-    use syn::{expr::Paren, meta::NameValue, patt::Patt, stmt::Stmt, tok, typ::Type, Arg, BinOp, Expr};
+    use syn::{expr::Paren, meta::NameValue, pat::Pat, stmt::Stmt, tok, typ::Type, Arg, BinOp, Expr};
     struct ParenthesizeEveryExpr;
     fn needs_paren(expr: &Expr) -> bool {
         match expr {
@@ -285,7 +285,7 @@ fn syn_brackets(syn_expr: syn::Expr) -> syn::Expr {
         }
         fn fold_stmt(&mut self, stmt: stmt::Stmt) -> stmt::Stmt {
             match stmt {
-                stmt::Stmt::Expr(Expr::Verbatim(_), Some(_)) => stmt,
+                stmt::Stmt::Expr(Expr::Stream(_), Some(_)) => stmt,
                 stmt::Stmt::Expr(e, semi) => stmt::Stmt::Expr(fold_expr(self, e), semi),
                 s => s,
             }
@@ -293,7 +293,7 @@ fn syn_brackets(syn_expr: syn::Expr) -> syn::Expr {
         fn fold_meta_name_value(&mut self, x: meta::NameValue) -> meta::NameValue {
             x
         }
-        fn fold_pat(&mut self, x: patt::Patt) -> patt::Patt {
+        fn fold_pat(&mut self, x: pat::Pat) -> pat::Pat {
             x
         }
         fn fold_type(&mut self, x: typ::Type) -> typ::Type {
@@ -304,12 +304,12 @@ fn syn_brackets(syn_expr: syn::Expr) -> syn::Expr {
     folder.fold_expr(syn_expr)
 }
 fn collect_exprs(file: syn::item::File) -> Vec<syn::Expr> {
-    use syn::{expr::Tuple, fold::Fold, gen::param::Const, patt::Patt, tok, Expr, Path, Puncted};
+    use syn::{expr::Tuple, fold::Fold, gen::param::Const, pat::Pat, tok, Expr, Path, Puncted};
     struct CollectExprs(Vec<Expr>);
     impl Fold for CollectExprs {
         fn fold_expr(&mut self, expr: Expr) -> Expr {
             match expr {
-                Expr::Verbatim(_) => {},
+                Expr::Stream(_) => {},
                 _ => self.0.push(expr),
             }
             Expr::Tuple(expr::Tuple {
@@ -318,7 +318,7 @@ fn collect_exprs(file: syn::item::File) -> Vec<syn::Expr> {
                 paren: tok::Paren::default(),
             })
         }
-        fn fold_pat(&mut self, pat: patt::Patt) -> patt::Patt {
+        fn fold_pat(&mut self, pat: pat::Pat) -> pat::Pat {
             pat
         }
         fn fold_path(&mut self, path: Path) -> Path {

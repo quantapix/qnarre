@@ -220,7 +220,7 @@ fn test_macro_variable_match_arm() {
         },
         arms: [
             Arm {
-                pat: patt::Patt::Wild,
+                pat: pat::Pat::Wild,
                 body: Expr::Group {
                     expr: Expr::Tuple {
                         attrs: [

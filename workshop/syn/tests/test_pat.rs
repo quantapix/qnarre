@@ -4,15 +4,15 @@ mod macros;
 use syn::*;
 #[test]
 fn test_pat_ident() {
-    match patt::Patt::parse_single.parse2(quote!(self)).unwrap() {
-        patt::Patt::Ident(_) => (),
+    match pat::Pat::parse_single.parse2(quote!(self)).unwrap() {
+        pat::Pat::Ident(_) => (),
         value => panic!("expected patt::Ident, got {:?}", value),
     }
 }
 #[test]
 fn test_pat_path() {
-    match patt::Patt::parse_single.parse2(quote!(self::CONST)).unwrap() {
-        patt::Patt::Path(_) => (),
+    match pat::Pat::parse_single.parse2(quote!(self::CONST)).unwrap() {
+        pat::Pat::Path(_) => (),
         value => panic!("expected PatPath, got {:?}", value),
     }
 }
@@ -36,9 +36,9 @@ fn test_leading_vert() {
 fn test_group() {
     let group = Group::new(pm2::Delim::None, quote!(Some(_)));
     let tokens = pm2::Stream::from_iter(vec![pm2::Tree::Group(group)]);
-    let pat = patt::Patt::parse_single.parse2(tokens).unwrap();
+    let pat = pat::Pat::parse_single.parse2(tokens).unwrap();
     snapshot!(pat, @r###"
-    patt::Patt::TupleStruct {
+    pat::Pat::TupleStruct {
         path: Path {
             segments: [
                 path::Segment {
@@ -47,33 +47,33 @@ fn test_group() {
             ],
         },
         elems: [
-            patt::Patt::Wild,
+            pat::Pat::Wild,
         ],
     }
     "###);
 }
 #[test]
 fn test_ranges() {
-    patt::Patt::parse_single.parse::parse_str("..").unwrap();
-    patt::Patt::parse_single.parse::parse_str("..hi").unwrap();
-    patt::Patt::parse_single.parse::parse_str("lo..").unwrap();
-    patt::Patt::parse_single.parse::parse_str("lo..hi").unwrap();
-    patt::Patt::parse_single.parse::parse_str("..=").unwrap_err();
-    patt::Patt::parse_single.parse::parse_str("..=hi").unwrap();
-    patt::Patt::parse_single.parse::parse_str("lo..=").unwrap_err();
-    patt::Patt::parse_single.parse::parse_str("lo..=hi").unwrap();
-    patt::Patt::parse_single.parse::parse_str("...").unwrap_err();
-    patt::Patt::parse_single.parse::parse_str("...hi").unwrap_err();
-    patt::Patt::parse_single.parse::parse_str("lo...").unwrap_err();
-    patt::Patt::parse_single.parse::parse_str("lo...hi").unwrap();
-    patt::Patt::parse_single.parse::parse_str("[lo..]").unwrap_err();
-    patt::Patt::parse_single.parse::parse_str("[..=hi]").unwrap_err();
-    patt::Patt::parse_single.parse::parse_str("[(lo..)]").unwrap();
-    patt::Patt::parse_single.parse::parse_str("[(..=hi)]").unwrap();
-    patt::Patt::parse_single.parse::parse_str("[lo..=hi]").unwrap();
-    patt::Patt::parse_single.parse::parse_str("[_, lo.., _]").unwrap_err();
-    patt::Patt::parse_single.parse::parse_str("[_, ..=hi, _]").unwrap_err();
-    patt::Patt::parse_single.parse::parse_str("[_, (lo..), _]").unwrap();
-    patt::Patt::parse_single.parse::parse_str("[_, (..=hi), _]").unwrap();
-    patt::Patt::parse_single.parse::parse_str("[_, lo..=hi, _]").unwrap();
+    pat::Pat::parse_single.parse_str("..").unwrap();
+    pat::Pat::parse_single.parse_str("..hi").unwrap();
+    pat::Pat::parse_single.parse_str("lo..").unwrap();
+    pat::Pat::parse_single.parse_str("lo..hi").unwrap();
+    pat::Pat::parse_single.parse_str("..=").unwrap_err();
+    pat::Pat::parse_single.parse_str("..=hi").unwrap();
+    pat::Pat::parse_single.parse_str("lo..=").unwrap_err();
+    pat::Pat::parse_single.parse_str("lo..=hi").unwrap();
+    pat::Pat::parse_single.parse_str("...").unwrap_err();
+    pat::Pat::parse_single.parse_str("...hi").unwrap_err();
+    pat::Pat::parse_single.parse_str("lo...").unwrap_err();
+    pat::Pat::parse_single.parse_str("lo...hi").unwrap();
+    pat::Pat::parse_single.parse_str("[lo..]").unwrap_err();
+    pat::Pat::parse_single.parse_str("[..=hi]").unwrap_err();
+    pat::Pat::parse_single.parse_str("[(lo..)]").unwrap();
+    pat::Pat::parse_single.parse_str("[(..=hi)]").unwrap();
+    pat::Pat::parse_single.parse_str("[lo..=hi]").unwrap();
+    pat::Pat::parse_single.parse_str("[_, lo.., _]").unwrap_err();
+    pat::Pat::parse_single.parse_str("[_, ..=hi, _]").unwrap_err();
+    pat::Pat::parse_single.parse_str("[_, (lo..), _]").unwrap();
+    pat::Pat::parse_single.parse_str("[_, (..=hi), _]").unwrap();
+    pat::Pat::parse_single.parse_str("[_, lo..=hi, _]").unwrap();
 }

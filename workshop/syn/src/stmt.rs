@@ -11,7 +11,7 @@ impl Block {
         let mut ys = Vec::new();
         loop {
             while let semi @ Some(_) = s.parse()? {
-                ys.push(Stmt::Expr(Expr::Verbatim(pm2::Stream::new()), semi));
+                ys.push(Stmt::Expr(Expr::Stream(pm2::Stream::new()), semi));
             }
             if s.is_empty() {
                 break;
@@ -190,7 +190,7 @@ fn parse_mac(s: Stream, attrs: Vec<attr::Attr>, path: Path) -> Res<Mac> {
 }
 fn parse_local(s: Stream, attrs: Vec<attr::Attr>) -> Res<Local> {
     let let_: Token![let] = s.parse()?;
-    let mut pat = pat::Pat::parse_single(s)?;
+    let mut pat = pat::Pat::parse_one(s)?;
     if s.peek(Token![:]) {
         let colon: Token![:] = s.parse()?;
         let typ: Type = s.parse()?;
@@ -275,7 +275,7 @@ fn parse_expr(s: Stream, mut attrs: Vec<attr::Attr>, nosemi: NoSemi) -> Res<Stmt
             | Expr::Unsafe(_)
             | Expr::While(_)
             | Expr::Yield(_)
-            | Expr::Verbatim(_) => break,
+            | Expr::Stream(_) => break,
         };
     }
     attrs.extend(tgt.replace_attrs(Vec::new()));

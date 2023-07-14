@@ -2166,7 +2166,7 @@ fn parse_fn_arg_or_variadic(s: Stream, attrs: Vec<attr::Attr>, variadic: bool) -
             typ: s.parse()?,
         })));
     }
-    let pat = Box::new(pat::Pat::parse_single(s)?);
+    let pat = Box::new(pat::Pat::parse_one(s)?);
     let colon: Token![:] = s.parse()?;
     if variadic {
         if let Some(dots) = s.parse::<Option<Token![...]>>()? {

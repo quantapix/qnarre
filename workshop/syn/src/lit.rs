@@ -7,14 +7,14 @@ use std::{
 
 ast_enum_of_structs! {
     pub enum Lit {
-        Str(Str),
-        ByteStr(ByteStr),
-        Byte(Byte),
-        Char(Char),
-        Int(Int),
-        Float(Float),
         Bool(Bool),
-        Verbatim(pm2::Lit),
+        Byte(Byte),
+        ByteStr(ByteStr),
+        Char(Char),
+        Float(Float),
+        Int(Int),
+        Str(Str),
+        Stream(pm2::Lit),
     }
 }
 impl Lit {
@@ -68,7 +68,7 @@ impl Lit {
                     });
                 }
             },
-            b'c' => return Lit::Verbatim(tok),
+            b'c' => return Lit::Stream(tok),
             _ => {},
         }
         panic!("Unrecognized literal: `{}`", repr);
@@ -82,7 +82,7 @@ impl Lit {
             Char(x) => x.suffix(),
             Int(x) => x.suffix(),
             Float(x) => x.suffix(),
-            Bool(_) | Verbatim(_) => "",
+            Bool(_) | Stream(_) => "",
         }
     }
     pub fn span(&self) -> pm2::Span {
@@ -95,7 +95,7 @@ impl Lit {
             Int(x) => x.span(),
             Float(x) => x.span(),
             Bool(x) => x.span,
-            Verbatim(x) => x.span(),
+            Stream(x) => x.span(),
         }
     }
     pub fn set_span(&mut self, s: pm2::Span) {
@@ -108,7 +108,7 @@ impl Lit {
             Int(x) => x.set_span(s),
             Float(x) => x.set_span(s),
             Bool(x) => x.span = s,
-            Verbatim(x) => x.set_span(s),
+            Stream(x) => x.set_span(s),
         }
     }
 }

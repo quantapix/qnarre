@@ -974,7 +974,7 @@ where
         Expr::Unsafe(_binding_0) => {
             full!(v.visit_expr_unsafe(_binding_0));
         },
-        Expr::Verbatim(_binding_0) => {
+        Expr::Stream(_binding_0) => {
             skip!(_binding_0);
         },
         Expr::While(_binding_0) => {
@@ -1580,7 +1580,7 @@ where
         item::Foreign::Item::Macro(_binding_0) => {
             v.visit_foreign_item_macro(_binding_0);
         },
-        item::Foreign::Item::Verbatim(_binding_0) => {
+        item::Foreign::Item::Stream(_binding_0) => {
             skip!(_binding_0);
         },
     }
@@ -1712,7 +1712,7 @@ where
         item::Impl::Item::Macro(_binding_0) => {
             v.visit_impl_item_macro(_binding_0);
         },
-        item::Impl::Item::Verbatim(_binding_0) => {
+        item::Impl::Item::Stream(_binding_0) => {
             skip!(_binding_0);
         },
     }
@@ -1836,7 +1836,7 @@ where
         Item::Use(_binding_0) => {
             v.visit_item_use(_binding_0);
         },
-        Item::Verbatim(_binding_0) => {
+        Item::Stream(_binding_0) => {
             skip!(_binding_0);
         },
     }
@@ -2141,7 +2141,7 @@ where
         Lit::Bool(_binding_0) => {
             v.visit_lit_bool(_binding_0);
         },
-        Lit::Verbatim(_binding_0) => {
+        Lit::Stream(_binding_0) => {
             skip!(_binding_0);
         },
     }
@@ -2705,7 +2705,7 @@ where
         item::Trait::Item::Macro(_binding_0) => {
             v.visit_trait_item_macro(_binding_0);
         },
-        item::Trait::Item::Verbatim(_binding_0) => {
+        item::Trait::Item::Stream(_binding_0) => {
             skip!(_binding_0);
         },
     }
@@ -2819,7 +2819,7 @@ where
         typ::Type::Tuple(_binding_0) => {
             v.visit_type_tuple(_binding_0);
         },
-        typ::Type::Verbatim(_binding_0) => {
+        typ::Type::Stream(_binding_0) => {
             skip!(_binding_0);
         },
     }

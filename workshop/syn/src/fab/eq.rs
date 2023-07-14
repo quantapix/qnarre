@@ -206,7 +206,7 @@ impl PartialEq for Expr {
             (Expr::Tuple(self0), Expr::Tuple(other0)) => self0 == other0,
             (Expr::Unary(self0), Expr::Unary(other0)) => self0 == other0,
             (Expr::Unsafe(self0), Expr::Unsafe(other0)) => self0 == other0,
-            (Expr::Verbatim(self0), Expr::Verbatim(other0)) => TokenStreamHelper(self0) == TokenStreamHelper(other0),
+            (Expr::Stream(self0), Expr::Stream(other0)) => TokenStreamHelper(self0) == TokenStreamHelper(other0),
             (Expr::While(self0), Expr::While(other0)) => self0 == other0,
             (Expr::Yield(self0), Expr::Yield(other0)) => self0 == other0,
             _ => false,
@@ -543,7 +543,7 @@ impl PartialEq for item::Foreign::Item {
             (item::Foreign::Item::Static(self0), item::Foreign::Item::Static(other0)) => self0 == other0,
             (item::Foreign::Item::Type(self0), item::Foreign::Item::Type(other0)) => self0 == other0,
             (item::Foreign::Item::Macro(self0), item::Foreign::Item::Macro(other0)) => self0 == other0,
-            (item::Foreign::Item::Verbatim(self0), item::Foreign::Item::Verbatim(other0)) => {
+            (item::Foreign::Item::Stream(self0), item::Foreign::Item::Stream(other0)) => {
                 TokenStreamHelper(self0) == TokenStreamHelper(other0)
             },
             _ => false,
@@ -617,7 +617,7 @@ impl PartialEq for item::Impl::Item {
             (item::Impl::Item::Fn(self0), item::Impl::Item::Fn(other0)) => self0 == other0,
             (item::Impl::Item::Type(self0), item::Impl::Item::Type(other0)) => self0 == other0,
             (item::Impl::Item::Macro(self0), item::Impl::Item::Macro(other0)) => self0 == other0,
-            (item::Impl::Item::Verbatim(self0), item::Impl::Item::Verbatim(other0)) => {
+            (item::Impl::Item::Stream(self0), item::Impl::Item::Stream(other0)) => {
                 TokenStreamHelper(self0) == TokenStreamHelper(other0)
             },
             _ => false,
@@ -688,7 +688,7 @@ impl PartialEq for Item {
             (Item::Type(self0), Item::Type(other0)) => self0 == other0,
             (Item::Union(self0), Item::Union(other0)) => self0 == other0,
             (Item::Use(self0), Item::Use(other0)) => self0 == other0,
-            (Item::Verbatim(self0), Item::Verbatim(other0)) => TokenStreamHelper(self0) == TokenStreamHelper(other0),
+            (Item::Stream(self0), Item::Stream(other0)) => TokenStreamHelper(self0) == TokenStreamHelper(other0),
             _ => false,
         }
     }
@@ -857,7 +857,7 @@ impl PartialEq for Lit {
             (Lit::Int(self0), Lit::Int(other0)) => self0 == other0,
             (Lit::Float(self0), Lit::Float(other0)) => self0 == other0,
             (Lit::Bool(self0), Lit::Bool(other0)) => self0 == other0,
-            (Lit::Verbatim(self0), Lit::Verbatim(other0)) => self0.to_string() == other0.to_string(),
+            (Lit::Stream(self0), Lit::Stream(other0)) => self0.to_string() == other0.to_string(),
             _ => false,
         }
     }
@@ -1174,7 +1174,7 @@ impl PartialEq for item::Trait::Item {
             (item::Trait::Item::Fn(self0), item::Trait::Item::Fn(other0)) => self0 == other0,
             (item::Trait::Item::Type(self0), item::Trait::Item::Type(other0)) => self0 == other0,
             (item::Trait::Item::Macro(self0), item::Trait::Item::Macro(other0)) => self0 == other0,
-            (item::Trait::Item::Verbatim(self0), item::Trait::Item::Verbatim(other0)) => {
+            (item::Trait::Item::Stream(self0), item::Trait::Item::Stream(other0)) => {
                 TokenStreamHelper(self0) == TokenStreamHelper(other0)
             },
             _ => false,
@@ -1232,7 +1232,7 @@ impl PartialEq for typ::Type {
             (typ::Type::Slice(self0), typ::Type::Slice(other0)) => self0 == other0,
             (typ::Type::Trait(self0), typ::Type::Trait(other0)) => self0 == other0,
             (typ::Type::Tuple(self0), typ::Type::Tuple(other0)) => self0 == other0,
-            (typ::Type::Verbatim(self0), typ::Type::Verbatim(other0)) => {
+            (typ::Type::Stream(self0), typ::Type::Stream(other0)) => {
                 TokenStreamHelper(self0) == TokenStreamHelper(other0)
             },
             _ => false,

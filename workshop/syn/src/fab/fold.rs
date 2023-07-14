@@ -825,7 +825,7 @@ where
         Expr::Tuple(_binding_0) => Expr::Tuple(full!(f.fold_expr_tuple(_binding_0))),
         Expr::Unary(_binding_0) => Expr::Unary(f.fold_expr_unary(_binding_0)),
         Expr::Unsafe(_binding_0) => Expr::Unsafe(full!(f.fold_expr_unsafe(_binding_0))),
-        Expr::Verbatim(_binding_0) => Expr::Verbatim(_binding_0),
+        Expr::Stream(_binding_0) => Expr::Stream(_binding_0),
         Expr::While(_binding_0) => Expr::While(full!(f.fold_expr_while(_binding_0))),
         Expr::Yield(_binding_0) => Expr::Yield(full!(f.fold_expr_yield(_binding_0))),
     }
@@ -1348,7 +1348,7 @@ where
         item::Foreign::Item::Static(_binding_0) => item::Foreign::Item::Static(f.fold_foreign_item_static(_binding_0)),
         item::Foreign::Item::Type(_binding_0) => item::Foreign::Item::Type(f.fold_foreign_item_type(_binding_0)),
         item::Foreign::Item::Macro(_binding_0) => item::Foreign::Item::Macro(f.fold_foreign_item_macro(_binding_0)),
-        item::Foreign::Item::Verbatim(_binding_0) => item::Foreign::Item::Verbatim(_binding_0),
+        item::Foreign::Item::Stream(_binding_0) => item::Foreign::Item::Stream(_binding_0),
     }
 }
 pub fn fold_foreign_item_fn<F>(f: &mut F, node: item::Foreign::Fn) -> item::Foreign::Fn
@@ -1452,7 +1452,7 @@ where
         item::Impl::Item::Fn(_binding_0) => item::Impl::Item::Fn(f.fold_impl_item_fn(_binding_0)),
         item::Impl::Item::Type(_binding_0) => item::Impl::Item::Type(f.fold_impl_item_type(_binding_0)),
         item::Impl::Item::Macro(_binding_0) => item::Impl::Item::Macro(f.fold_impl_item_macro(_binding_0)),
-        item::Impl::Item::Verbatim(_binding_0) => item::Impl::Item::Verbatim(_binding_0),
+        item::Impl::Item::Stream(_binding_0) => item::Impl::Item::Stream(_binding_0),
     }
 }
 pub fn fold_impl_item_const<F>(f: &mut F, node: item::Impl::Const) -> item::Impl::Const
@@ -1546,7 +1546,7 @@ where
         Item::Type(_binding_0) => Item::Type(f.fold_item_type(_binding_0)),
         Item::Union(_binding_0) => Item::Union(f.fold_item_union(_binding_0)),
         Item::Use(_binding_0) => Item::Use(f.fold_item_use(_binding_0)),
-        Item::Verbatim(_binding_0) => Item::Verbatim(_binding_0),
+        Item::Stream(_binding_0) => Item::Stream(_binding_0),
     }
 }
 pub fn fold_item_const<F>(f: &mut F, node: item::Const) -> item::Const
@@ -1805,7 +1805,7 @@ where
         Lit::Int(_binding_0) => Lit::Int(f.fold_lit_int(_binding_0)),
         Lit::Float(_binding_0) => Lit::Float(f.fold_lit_float(_binding_0)),
         Lit::Bool(_binding_0) => Lit::Bool(f.fold_lit_bool(_binding_0)),
-        Lit::Verbatim(_binding_0) => Lit::Verbatim(_binding_0),
+        Lit::Stream(_binding_0) => Lit::Stream(_binding_0),
     }
 }
 pub fn fold_lit_bool<F>(f: &mut F, node: lit::Bool) -> lit::Bool
@@ -2279,7 +2279,7 @@ where
         item::Trait::Item::Fn(_binding_0) => item::Trait::Item::Fn(f.fold_trait_item_fn(_binding_0)),
         item::Trait::Item::Type(_binding_0) => item::Trait::Item::Type(f.fold_trait_item_type(_binding_0)),
         item::Trait::Item::Macro(_binding_0) => item::Trait::Item::Macro(f.fold_trait_item_macro(_binding_0)),
-        item::Trait::Item::Verbatim(_binding_0) => item::Trait::Item::Verbatim(_binding_0),
+        item::Trait::Item::Stream(_binding_0) => item::Trait::Item::Stream(_binding_0),
     }
 }
 pub fn fold_trait_item_const<F>(f: &mut F, node: item::Trait::Const) -> item::Trait::Const
@@ -2352,7 +2352,7 @@ where
         typ::Type::Slice(_binding_0) => typ::Type::Slice(f.fold_type_slice(_binding_0)),
         typ::Type::Trait(_binding_0) => typ::Type::Trait(f.fold_type_trait_object(_binding_0)),
         typ::Type::Tuple(_binding_0) => typ::Type::Tuple(f.fold_type_tuple(_binding_0)),
-        typ::Type::Verbatim(_binding_0) => typ::Type::Verbatim(_binding_0),
+        typ::Type::Stream(_binding_0) => typ::Type::Stream(_binding_0),
     }
 }
 pub fn fold_type_array<F>(f: &mut F, node: typ::Array) -> typ::Array

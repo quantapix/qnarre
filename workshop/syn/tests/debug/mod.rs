@@ -4,6 +4,8 @@
     clippy::used_underscore_binding
 )]
 #[rustfmt::skip]
+extern crate proc_macro;
+
 mod gen;
 use proc_macro2::Ident;
 use ref_cast::RefCast;
