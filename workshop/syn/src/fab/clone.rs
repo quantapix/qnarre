@@ -669,9 +669,9 @@ impl Clone for data::Unnamed {
         }
     }
 }
-impl Clone for File {
+impl Clone for item::File {
     fn clone(&self) -> Self {
-        File {
+        item::File {
             shebang: self.shebang.clone(),
             attrs: self.attrs.clone(),
             items: self.items.clone(),
@@ -854,7 +854,7 @@ impl Clone for Item {
         match self {
             Item::Const(v0) => Item::Const(v0.clone()),
             Item::Enum(v0) => Item::Enum(v0.clone()),
-            Item::ExternCrate(v0) => Item::ExternCrate(v0.clone()),
+            Item::Extern(v0) => Item::Extern(v0.clone()),
             Item::Fn(v0) => Item::Fn(v0.clone()),
             Item::Foreign(v0) => Item::Foreign(v0.clone()),
             Item::Impl(v0) => Item::Impl(v0.clone()),
@@ -900,9 +900,9 @@ impl Clone for item::Enum {
         }
     }
 }
-impl Clone for item::ExternCrate {
+impl Clone for item::Extern {
     fn clone(&self) -> Self {
-        item::ExternCrate {
+        item::Extern {
             attrs: self.attrs.clone(),
             vis: self.vis.clone(),
             extern_: self.extern_.clone(),

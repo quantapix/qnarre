@@ -8,7 +8,7 @@ mod macros;
 use syn::*;
 #[test]
 fn test_raw_operator() {
-    let stmt = syn::parse_str::<stmt::Stmt>("let _ = &raw const x;").unwrap();
+    let stmt = syn::parse::parse_str::<stmt::Stmt>("let _ = &raw const x;").unwrap();
     snapshot!(stmt, @r###"
     stmt::Stmt::stmt::Local {
         pat: patt::Patt::Wild,
@@ -20,7 +20,7 @@ fn test_raw_operator() {
 }
 #[test]
 fn test_raw_variable() {
-    let stmt = syn::parse_str::<stmt::Stmt>("let _ = &raw;").unwrap();
+    let stmt = syn::parse::parse_str::<stmt::Stmt>("let _ = &raw;").unwrap();
     snapshot!(stmt, @r###"
     stmt::Stmt::stmt::Local {
         pat: patt::Patt::Wild,
@@ -42,7 +42,7 @@ fn test_raw_variable() {
 }
 #[test]
 fn test_raw_invalid() {
-    assert!(syn::parse_str::<stmt::Stmt>("let _ = &raw x;").is_err());
+    assert!(syn::parse::parse_str::<stmt::Stmt>("let _ = &raw x;").is_err());
 }
 #[test]
 fn test_none_group() {

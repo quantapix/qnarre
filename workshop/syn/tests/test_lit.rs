@@ -197,7 +197,7 @@ fn negative() {
 #[test]
 fn suffix() {
     fn get_suffix(token: &str) -> String {
-        let lit = syn::parse_str::<Lit>(token).unwrap();
+        let lit = syn::parse::parse_str::<Lit>(token).unwrap();
         match lit {
             Lit::Str(lit) => lit.suffix().to_owned(),
             Lit::ByteStr(lit) => lit.suffix().to_owned(),
@@ -233,8 +233,8 @@ fn test_deep_group_empty() {
 }
 #[test]
 fn test_error() {
-    let err = syn::parse_str::<lit::Str>("...").unwrap_err();
+    let err = syn::parse::parse_str::<lit::Str>("...").unwrap_err();
     assert_eq!("expected string literal", err.to_string());
-    let err = syn::parse_str::<lit::Str>("5").unwrap_err();
+    let err = syn::parse::parse_str::<lit::Str>("5").unwrap_err();
     assert_eq!("expected string literal", err.to_string());
 }

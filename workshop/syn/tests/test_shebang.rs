@@ -4,9 +4,9 @@ mod macros;
 #[test]
 fn test_basic() {
     let content = "#!/usr/bin/env rustx\nfn main() {}";
-    let file = syn::parse_file(content).unwrap();
+    let file = syn::parse::parse_file(content).unwrap();
     snapshot!(file, @r###"
-    File {
+    item::File {
         shebang: Some("#!/usr/bin/env rustx"),
         items: [
             Item::Fn {
@@ -25,9 +25,9 @@ fn test_basic() {
 #[test]
 fn test_comment() {
     let content = "#!//am/i/a/comment\n[allow(dead_code)] fn main() {}";
-    let file = syn::parse_file(content).unwrap();
+    let file = syn::parse::parse_file(content).unwrap();
     snapshot!(file, @r###"
-    File {
+    item::File {
         attrs: [
             attr::Attr {
                 style: attr::Style::Inner,

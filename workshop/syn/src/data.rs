@@ -102,7 +102,13 @@ pub enum Visibility {
     Inherited,
 }
 impl Visibility {
-    fn is_inherited(&self) -> bool {
+    pub fn is_some(&self) -> bool {
+        match self {
+            Visibility::Inherited => false,
+            _ => true,
+        }
+    }
+    pub fn is_inherited(&self) -> bool {
         match self {
             Visibility::Inherited => true,
             _ => false,
@@ -138,12 +144,6 @@ impl Visibility {
             }
         }
         Ok(Visibility::Public(pub_))
-    }
-    pub fn is_some(&self) -> bool {
-        match self {
-            Visibility::Inherited => false,
-            _ => true,
-        }
     }
 }
 impl Parse for Visibility {

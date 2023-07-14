@@ -196,7 +196,7 @@ fn wild(x: Stream) -> Res<Wild> {
 fn verbatim(beg: Buffer, x: Stream) -> Res<Pat> {
     x.parse::<Token![box]>()?;
     Pat::parse_single(x)?;
-    Ok(Pat::Verbatim(verbatim_between(&beg, x)))
+    Ok(Pat::Verbatim(parse::parse_verbatim(&beg, x)))
 }
 fn ident(x: Stream) -> Res<Ident> {
     Ok(Ident {
@@ -299,7 +299,7 @@ fn field(x: Stream) -> Res<Field> {
         Member::Unnamed(_) => unreachable!(),
     };
     let pat = if box_.is_some() {
-        Pat::Verbatim(verbatim_between(&beg, x))
+        Pat::Verbatim(parse::parse_verbatim(&beg, x))
     } else {
         Pat::Ident(Ident {
             attrs: Vec::new(),
@@ -494,7 +494,7 @@ fn const_(x: Stream) -> Res<pm2::Stream> {
     braced!(gist in x);
     gist.call(attr::Attr::parse_inner)?;
     gist.call(Block::parse_within)?;
-    Ok(verbatim_between(&beg, x))
+    Ok(parse::parse_verbatim(&beg, x))
 }
 
 impl ToTokens for Ident {
@@ -549,7 +549,7 @@ impl ToTokens for Slice {
 impl ToTokens for Struct {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(self.attrs.outer());
-        print_path(ys, &self.qself, &self.path);
+        path::lower_path(ys, &self.qself, &self.path);
         self.brace.surround(ys, |ys| {
             self.fields.to_tokens(ys);
             if !self.fields.empty_or_trailing() && self.rest.is_some() {
@@ -570,7 +570,7 @@ impl ToTokens for Tuple {
 impl ToTokens for TupleStruct {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(self.attrs.outer());
-        print_path(ys, &self.qself, &self.path);
+        path::lower_path(ys, &self.qself, &self.path);
         self.paren.surround(ys, |ys| {
             self.elems.to_tokens(ys);
         });

@@ -1044,9 +1044,9 @@ impl Debug for data::Unnamed {
         self.debug(formatter, "data::Unnamed")
     }
 }
-impl Debug for File {
+impl Debug for item::File {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("File");
+        let mut f = f.debug_struct("item::File");
         f.field("shebang", &self.shebang);
         f.field("attrs", &self.attrs);
         f.field("items", &self.items);
@@ -1327,7 +1327,7 @@ impl Debug for Item {
         match self {
             Item::Const(v0) => v0.debug(formatter, "Const"),
             Item::Enum(v0) => v0.debug(formatter, "Enum"),
-            Item::ExternCrate(v0) => v0.debug(formatter, "ExternCrate"),
+            Item::Extern(v0) => v0.debug(formatter, "Extern"),
             Item::Fn(v0) => v0.debug(formatter, "Fn"),
             Item::Foreign(v0) => v0.debug(formatter, "Foreign"),
             Item::Impl(v0) => v0.debug(formatter, "Impl"),
@@ -1387,9 +1387,9 @@ impl Debug for item::Enum {
         self.debug(formatter, "item::Enum")
     }
 }
-impl Debug for item::ExternCrate {
+impl Debug for item::Extern {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl item::ExternCrate {
+        impl item::Extern {
             fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut f = f.debug_struct(name);
                 f.field("attrs", &self.attrs);
@@ -1402,7 +1402,7 @@ impl Debug for item::ExternCrate {
                 f.finish()
             }
         }
-        self.debug(formatter, "item::ExternCrate")
+        self.debug(formatter, "item::Extern")
     }
 }
 impl Debug for item::Fn {

@@ -207,7 +207,7 @@ pub trait VisitMut {
     fn visit_fields_unnamed_mut(&mut self, i: &mut data::Unnamed) {
         visit_fields_unnamed_mut(self, i);
     }
-    fn visit_file_mut(&mut self, i: &mut File) {
+    fn visit_file_mut(&mut self, i: &mut item::File) {
         visit_file_mut(self, i);
     }
     fn visit_fn_arg_mut(&mut self, i: &mut item::FnArg) {
@@ -270,7 +270,7 @@ pub trait VisitMut {
     fn visit_item_enum_mut(&mut self, i: &mut item::Enum) {
         visit_item_enum_mut(self, i);
     }
-    fn visit_item_extern_crate_mut(&mut self, i: &mut item::ExternCrate) {
+    fn visit_item_extern_crate_mut(&mut self, i: &mut item::Extern) {
         visit_item_extern_crate_mut(self, i);
     }
     fn visit_item_fn_mut(&mut self, i: &mut item::Fn) {
@@ -1538,7 +1538,7 @@ where
         v.visit_field_mut(it);
     }
 }
-pub fn visit_file_mut<V>(v: &mut V, node: &mut File)
+pub fn visit_file_mut<V>(v: &mut V, node: &mut item::File)
 where
     V: VisitMut + ?Sized,
 {
@@ -1799,7 +1799,7 @@ where
         Item::Enum(_binding_0) => {
             v.visit_item_enum_mut(_binding_0);
         },
-        Item::ExternCrate(_binding_0) => {
+        Item::Extern(_binding_0) => {
             v.visit_item_extern_crate_mut(_binding_0);
         },
         Item::Fn(_binding_0) => {
@@ -1877,7 +1877,7 @@ where
         v.visit_variant_mut(it);
     }
 }
-pub fn visit_item_extern_crate_mut<V>(v: &mut V, node: &mut item::ExternCrate)
+pub fn visit_item_extern_crate_mut<V>(v: &mut V, node: &mut item::Extern)
 where
     V: VisitMut + ?Sized,
 {

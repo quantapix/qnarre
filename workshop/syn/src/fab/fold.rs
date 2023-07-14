@@ -205,7 +205,7 @@ pub trait Fold {
     fn fold_fields_unnamed(&mut self, i: data::Unnamed) -> data::Unnamed {
         fold_fields_unnamed(self, i)
     }
-    fn fold_file(&mut self, i: File) -> File {
+    fn fold_file(&mut self, i: item::File) -> item::File {
         fold_file(self, i)
     }
     fn fold_fn_arg(&mut self, i: item::FnArg) -> item::FnArg {
@@ -268,7 +268,7 @@ pub trait Fold {
     fn fold_item_enum(&mut self, i: item::Enum) -> item::Enum {
         fold_item_enum(self, i)
     }
-    fn fold_item_extern_crate(&mut self, i: item::ExternCrate) -> item::ExternCrate {
+    fn fold_item_extern_crate(&mut self, i: item::Extern) -> item::Extern {
         fold_item_extern_crate(self, i)
     }
     fn fold_item_fn(&mut self, i: item::Fn) -> item::Fn {
@@ -1320,11 +1320,11 @@ where
         fields: FoldHelper::lift(node.fields, |it| f.fold_field(it)),
     }
 }
-pub fn fold_file<F>(f: &mut F, node: File) -> File
+pub fn fold_file<F>(f: &mut F, node: item::File) -> item::File
 where
     F: Fold + ?Sized,
 {
-    File {
+    item::File {
         shebang: node.shebang,
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         items: FoldHelper::lift(node.items, |it| f.fold_item(it)),
@@ -1533,7 +1533,7 @@ where
     match node {
         Item::Const(_binding_0) => Item::Const(f.fold_item_const(_binding_0)),
         Item::Enum(_binding_0) => Item::Enum(f.fold_item_enum(_binding_0)),
-        Item::ExternCrate(_binding_0) => Item::ExternCrate(f.fold_item_extern_crate(_binding_0)),
+        Item::Extern(_binding_0) => Item::Extern(f.fold_item_extern_crate(_binding_0)),
         Item::Fn(_binding_0) => Item::Fn(f.fold_item_fn(_binding_0)),
         Item::Foreign(_binding_0) => Item::Foreign(f.fold_item_foreign_mod(_binding_0)),
         Item::Impl(_binding_0) => Item::Impl(f.fold_item_impl(_binding_0)),
@@ -1580,11 +1580,11 @@ where
         variants: FoldHelper::lift(node.variants, |it| f.fold_variant(it)),
     }
 }
-pub fn fold_item_extern_crate<F>(f: &mut F, node: item::ExternCrate) -> item::ExternCrate
+pub fn fold_item_extern_crate<F>(f: &mut F, node: item::Extern) -> item::Extern
 where
     F: Fold + ?Sized,
 {
-    item::ExternCrate {
+    item::Extern {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         vis: f.fold_visibility(node.vis),
         extern_: node.extern_,

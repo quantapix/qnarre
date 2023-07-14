@@ -22,6 +22,6 @@ fn test_struct() {
 #[test]
 fn test_literal_mangling() {
     let code = "0_4";
-    let parsed: Lit = syn::parse_str(code).unwrap();
+    let parsed: Lit = syn::parse::parse_str(code).unwrap();
     assert_eq!(code, quote!(#parsed).to_string());
 }

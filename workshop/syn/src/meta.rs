@@ -32,10 +32,7 @@ impl Meta {
             Path(x) => Err(err::new2(
                 x.segs.first().unwrap().ident.span(),
                 x.segs.last().unwrap().ident.span(),
-                format!(
-                    "expected attribute arguments in parentheses: `{}(...)`",
-                    parsing::DisplayPath(x),
-                ),
+                format!("expected attribute arguments in parentheses: `{}(...)`", DisplayPath(x),),
             )),
             NameValue(x) => Err(Err::new(x.eq.span, "expected `(`")),
         }
@@ -47,10 +44,7 @@ impl Meta {
             Path(x) => Err(err::new2(
                 x.segs.first().unwrap().ident.span(),
                 x.segs.last().unwrap().ident.span(),
-                format!(
-                    "expected a value for this attribute: `{} = ...`",
-                    parsing::DisplayPath(x),
-                ),
+                format!("expected a value for this attribute: `{} = ...`", DisplayPath(x),),
             )),
             List(x) => Err(Err::new(x.delim.span().open(), "expected `=`")),
         }

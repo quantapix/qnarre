@@ -22,7 +22,7 @@ impl Lit {
         let repr = tok.to_string();
         match byte(&repr, 0) {
             b'"' | b'r' => {
-                let (_, suff) = parse_str(&repr);
+                let (_, suff) = parse::parse_str(&repr);
                 return Lit::Str(Str {
                     repr: Box::new(Repr { tok, suff }),
                 });
@@ -146,7 +146,7 @@ impl Str {
     }
     pub fn value(&self) -> String {
         let repr = self.repr.tok.to_string();
-        let (value, _) = parse_str(&repr);
+        let (value, _) = parse::parse_str(&repr);
         String::from(value)
     }
     pub fn parse<T: parse::Parse>(&self) -> Res<T> {
@@ -570,7 +570,7 @@ pub fn Bool(x: look::Marker) -> Bool {
     match x {}
 }
 
-pub fn parse_str(x: &str) -> (Box<str>, Box<str>) {
+pub fn parse::parse_str(x: &str) -> (Box<str>, Box<str>) {
     match byte(x, 0) {
         b'"' => parse_str_cooked(x),
         b'r' => parse_str_raw(x),

@@ -5,7 +5,7 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use rayon::ThreadPoolBuilder;
 use std::env;
 use std::ffi::OsStr;
-use std::fs::{self, File};
+use std::fs::{self, item::File};
 use std::io::{BufReader, Read};
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -40,7 +40,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 fn parse(path: &Path, oversize_count: &AtomicUsize) -> Result<()> {
-    let file = File::open(path)?;
+    let file = item::File::open(path)?;
     let reader = BufReader::new(file);
     let tar = GzDecoder::new(reader);
     let mut archive = Archive::new(tar);
@@ -58,7 +58,7 @@ fn parse(path: &Path, oversize_count: &AtomicUsize) -> Result<()> {
         if entry.read_to_string(&mut contents).is_err() {
             break;
         }
-        let _ = syn::parse_file(&contents);
+        let _ = syn::parse::parse_file(&contents);
     }
     Ok(())
 }

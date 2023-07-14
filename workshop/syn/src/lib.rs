@@ -351,9 +351,8 @@ mod fab {
 pub use fab::*;
 pub mod __private {
     pub use super::{
-        lower::punct as print_punct,
         parse::parse_quote_fn,
-        parsing::{peek_punct, punct as parse_punct},
+        tok::{lower_punct, parse_punct, peek_punct},
     };
     pub use proc_macro::TokenStream;
     pub use proc_macro2::TokenStream as TokenStream2;
@@ -379,175 +378,9 @@ pub mod __private {
     pub struct private(pub ());
 }
 
-pub struct File {
-    pub shebang: Option<String>,
-    pub attrs: Vec<attr::Attr>,
-    pub items: Vec<Item>,
-}
-impl Parse for File {
-    fn parse(x: Stream) -> Res<Self> {
-        Ok(File {
-            shebang: None,
-            attrs: x.call(attr::Attr::parse_inner)?,
-            items: {
-                let mut ys = Vec::new();
-                while !x.is_empty() {
-                    ys.push(x.parse()?);
-                }
-                ys
-            },
-        })
-    }
-}
-impl ToTokens for File {
-    fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.inner());
-        ys.append_all(&self.items);
-    }
-}
-
-pub fn parse_file(mut x: &str) -> Res<File> {
-    const BOM: &str = "\u{feff}";
-    if x.starts_with(BOM) {
-        x = &x[BOM.len()..];
-    }
-    let mut shebang = None;
-    if x.starts_with("#!") {
-        let rest = whitespace::ws_skip(&x[2..]);
-        if !rest.starts_with('[') {
-            if let Some(i) = x.find('\n') {
-                shebang = Some(x[..i].to_string());
-                x = &x[i..];
-            } else {
-                shebang = Some(x.to_string());
-                x = "";
-            }
-        }
-    }
-    let mut y: File = parse_str(x)?;
-    y.shebang = shebang;
-    Ok(y)
-}
-pub fn parse_str<T: parse::Parse>(s: &str) -> Res<T> {
-    Parser::parse_str(T::parse, s)
-}
-
 pub fn parse<T: parse::Parse>(s: Stream) -> Res<T> {
     Parser::parse(T::parse, s)
 }
 pub fn parse2<T: parse::Parse>(s: Stream) -> Res<T> {
     Parser::parse2(T::parse, s)
-}
-
-fn wrap_bare_struct(ys: &mut Stream, e: &Expr) {
-    if let Expr::Struct(_) = *e {
-        tok::Paren::default().surround(ys, |ys| {
-            e.to_tokens(ys);
-        });
-    } else {
-        e.to_tokens(ys);
-    }
-}
-pub fn verbatim_between<'a>(begin: parse::Stream<'a>, end: parse::Stream<'a>) -> pm2::Stream {
-    let end = end.cursor();
-    let mut cursor = begin.cursor();
-    assert!(same_buffer(end, cursor));
-    let mut tokens = pm2::Stream::new();
-    while cursor != end {
-        let (tt, next) = cursor.token_tree().unwrap();
-        if cmp_assuming_same_buffer(end, next) == Ordering::Less {
-            if let Some((inside, _span, after)) = cursor.group(pm2::Delim::None) {
-                assert!(next == after);
-                cursor = inside;
-                continue;
-            } else {
-                panic!("verbatim end must not be inside a delimited group");
-            }
-        }
-        tokens.extend(iter::once(tt));
-        cursor = next;
-    }
-    tokens
-}
-
-pub fn ws_skip(mut s: &str) -> &str {
-    'skip: while !s.is_empty() {
-        let byte = s.as_bytes()[0];
-        if byte == b'/' {
-            if s.starts_with("//") && (!s.starts_with("///") || s.starts_with("////")) && !s.starts_with("//!") {
-                if let Some(i) = s.find('\n') {
-                    s = &s[i + 1..];
-                    continue;
-                } else {
-                    return "";
-                }
-            } else if s.starts_with("/**/") {
-                s = &s[4..];
-                continue;
-            } else if s.starts_with("/*") && (!s.starts_with("/**") || s.starts_with("/***")) && !s.starts_with("/*!") {
-                let mut depth = 0;
-                let bytes = s.as_bytes();
-                let mut i = 0;
-                let upper = bytes.len() - 1;
-                while i < upper {
-                    if bytes[i] == b'/' && bytes[i + 1] == b'*' {
-                        depth += 1;
-                        i += 1; // eat '*'
-                    } else if bytes[i] == b'*' && bytes[i + 1] == b'/' {
-                        depth -= 1;
-                        if depth == 0 {
-                            s = &s[i + 2..];
-                            continue 'skip;
-                        }
-                        i += 1; // eat '/'
-                    }
-                    i += 1;
-                }
-                return s;
-            }
-        }
-        match byte {
-            b' ' | 0x09..=0x0d => {
-                s = &s[1..];
-                continue;
-            },
-            b if b <= 0x7f => {},
-            _ => {
-                let ch = s.chars().next().unwrap();
-                if is_whitespace(ch) {
-                    s = &s[ch.len_utf8()..];
-                    continue;
-                }
-            },
-        }
-        return s;
-    }
-    s
-}
-fn is_whitespace(x: char) -> bool {
-    x.is_whitespace() || x == '\u{200e}' || x == '\u{200f}'
-}
-
-pub fn punct(s: &str, spans: &[pm2::Span], ys: &mut Stream) {
-    assert_eq!(s.len(), spans.len());
-    let mut chars = s.chars();
-    let mut spans = spans.iter();
-    let ch = chars.next_back().unwrap();
-    let span = spans.next_back().unwrap();
-    for (ch, span) in chars.zip(spans) {
-        let mut op = Punct::new(ch, pm2::Spacing::Joint);
-        op.set_span(*span);
-        ys.append(op);
-    }
-    let mut op = Punct::new(ch, pm2::Spacing::Alone);
-    op.set_span(*span);
-    ys.append(op);
-}
-pub fn keyword(x: &str, s: pm2::Span, ys: &mut Stream) {
-    ys.append(Ident::new(x, s));
-}
-pub fn delim(d: pm2::Delim, s: pm2::Span, ys: &mut Stream, inner: pm2::Stream) {
-    let mut g = Group::new(d, inner);
-    g.set_span(s);
-    ys.append(g);
 }

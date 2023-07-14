@@ -2082,7 +2082,7 @@
       }
     },
     {
-      "ident": "File",
+      "ident": "item::File",
       "features": {
         "any": [
           "full"
@@ -2600,9 +2600,9 @@
             "syn": "item::Enum"
           }
         ],
-        "ExternCrate": [
+        "Extern": [
           {
-            "syn": "item::ExternCrate"
+            "syn": "item::Extern"
           }
         ],
         "Fn": [
@@ -2758,7 +2758,7 @@
       }
     },
     {
-      "ident": "item::ExternCrate",
+      "ident": "item::Extern",
       "features": {
         "any": [
           "full"

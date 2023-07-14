@@ -18,19 +18,19 @@ fn test_pat_path() {
 }
 #[test]
 fn test_leading_vert() {
-    syn::parse_str::<Item>("fn f() {}").unwrap();
-    syn::parse_str::<Item>("fn fun1(| A: E) {}").unwrap_err();
-    syn::parse_str::<Item>("fn fun2(|| A: E) {}").unwrap_err();
-    syn::parse_str::<stmt::Stmt>("let | () = ();").unwrap_err();
-    syn::parse_str::<stmt::Stmt>("let (| A): E;").unwrap();
-    syn::parse_str::<stmt::Stmt>("let (|| A): (E);").unwrap_err();
-    syn::parse_str::<stmt::Stmt>("let (| A,): (E,);").unwrap();
-    syn::parse_str::<stmt::Stmt>("let [| A]: [E; 1];").unwrap();
-    syn::parse_str::<stmt::Stmt>("let [|| A]: [E; 1];").unwrap_err();
-    syn::parse_str::<stmt::Stmt>("let TS(| A): TS;").unwrap();
-    syn::parse_str::<stmt::Stmt>("let TS(|| A): TS;").unwrap_err();
-    syn::parse_str::<stmt::Stmt>("let NS { f: | A }: NS;").unwrap();
-    syn::parse_str::<stmt::Stmt>("let NS { f: || A }: NS;").unwrap_err();
+    syn::parse::parse_str::<Item>("fn f() {}").unwrap();
+    syn::parse::parse_str::<Item>("fn fun1(| A: E) {}").unwrap_err();
+    syn::parse::parse_str::<Item>("fn fun2(|| A: E) {}").unwrap_err();
+    syn::parse::parse_str::<stmt::Stmt>("let | () = ();").unwrap_err();
+    syn::parse::parse_str::<stmt::Stmt>("let (| A): E;").unwrap();
+    syn::parse::parse_str::<stmt::Stmt>("let (|| A): (E);").unwrap_err();
+    syn::parse::parse_str::<stmt::Stmt>("let (| A,): (E,);").unwrap();
+    syn::parse::parse_str::<stmt::Stmt>("let [| A]: [E; 1];").unwrap();
+    syn::parse::parse_str::<stmt::Stmt>("let [|| A]: [E; 1];").unwrap_err();
+    syn::parse::parse_str::<stmt::Stmt>("let TS(| A): TS;").unwrap();
+    syn::parse::parse_str::<stmt::Stmt>("let TS(|| A): TS;").unwrap_err();
+    syn::parse::parse_str::<stmt::Stmt>("let NS { f: | A }: NS;").unwrap();
+    syn::parse::parse_str::<stmt::Stmt>("let NS { f: || A }: NS;").unwrap_err();
 }
 #[test]
 fn test_group() {
@@ -54,26 +54,26 @@ fn test_group() {
 }
 #[test]
 fn test_ranges() {
-    patt::Patt::parse_single.parse_str("..").unwrap();
-    patt::Patt::parse_single.parse_str("..hi").unwrap();
-    patt::Patt::parse_single.parse_str("lo..").unwrap();
-    patt::Patt::parse_single.parse_str("lo..hi").unwrap();
-    patt::Patt::parse_single.parse_str("..=").unwrap_err();
-    patt::Patt::parse_single.parse_str("..=hi").unwrap();
-    patt::Patt::parse_single.parse_str("lo..=").unwrap_err();
-    patt::Patt::parse_single.parse_str("lo..=hi").unwrap();
-    patt::Patt::parse_single.parse_str("...").unwrap_err();
-    patt::Patt::parse_single.parse_str("...hi").unwrap_err();
-    patt::Patt::parse_single.parse_str("lo...").unwrap_err();
-    patt::Patt::parse_single.parse_str("lo...hi").unwrap();
-    patt::Patt::parse_single.parse_str("[lo..]").unwrap_err();
-    patt::Patt::parse_single.parse_str("[..=hi]").unwrap_err();
-    patt::Patt::parse_single.parse_str("[(lo..)]").unwrap();
-    patt::Patt::parse_single.parse_str("[(..=hi)]").unwrap();
-    patt::Patt::parse_single.parse_str("[lo..=hi]").unwrap();
-    patt::Patt::parse_single.parse_str("[_, lo.., _]").unwrap_err();
-    patt::Patt::parse_single.parse_str("[_, ..=hi, _]").unwrap_err();
-    patt::Patt::parse_single.parse_str("[_, (lo..), _]").unwrap();
-    patt::Patt::parse_single.parse_str("[_, (..=hi), _]").unwrap();
-    patt::Patt::parse_single.parse_str("[_, lo..=hi, _]").unwrap();
+    patt::Patt::parse_single.parse::parse_str("..").unwrap();
+    patt::Patt::parse_single.parse::parse_str("..hi").unwrap();
+    patt::Patt::parse_single.parse::parse_str("lo..").unwrap();
+    patt::Patt::parse_single.parse::parse_str("lo..hi").unwrap();
+    patt::Patt::parse_single.parse::parse_str("..=").unwrap_err();
+    patt::Patt::parse_single.parse::parse_str("..=hi").unwrap();
+    patt::Patt::parse_single.parse::parse_str("lo..=").unwrap_err();
+    patt::Patt::parse_single.parse::parse_str("lo..=hi").unwrap();
+    patt::Patt::parse_single.parse::parse_str("...").unwrap_err();
+    patt::Patt::parse_single.parse::parse_str("...hi").unwrap_err();
+    patt::Patt::parse_single.parse::parse_str("lo...").unwrap_err();
+    patt::Patt::parse_single.parse::parse_str("lo...hi").unwrap();
+    patt::Patt::parse_single.parse::parse_str("[lo..]").unwrap_err();
+    patt::Patt::parse_single.parse::parse_str("[..=hi]").unwrap_err();
+    patt::Patt::parse_single.parse::parse_str("[(lo..)]").unwrap();
+    patt::Patt::parse_single.parse::parse_str("[(..=hi)]").unwrap();
+    patt::Patt::parse_single.parse::parse_str("[lo..=hi]").unwrap();
+    patt::Patt::parse_single.parse::parse_str("[_, lo.., _]").unwrap_err();
+    patt::Patt::parse_single.parse::parse_str("[_, ..=hi, _]").unwrap_err();
+    patt::Patt::parse_single.parse::parse_str("[_, (lo..), _]").unwrap();
+    patt::Patt::parse_single.parse::parse_str("[_, (..=hi), _]").unwrap();
+    patt::Patt::parse_single.parse::parse_str("[_, lo..=hi, _]").unwrap();
 }

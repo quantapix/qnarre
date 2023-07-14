@@ -2,7 +2,7 @@ macro_rules! should_parse {
     ($name:ident, { $($in:tt)* }) => {
         #[test]
         fn $name() {
-            syn::parse_file(stringify!($($in)*)).unwrap();
+            syn::parse::parse_file(stringify!($($in)*)).unwrap();
         }
     }
 }

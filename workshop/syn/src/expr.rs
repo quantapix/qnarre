@@ -790,7 +790,7 @@ impl Parse for Path {
 impl ToTokens for Path {
     fn to_tokens(&self, ys: &mut Stream) {
         outer_attrs_to_tokens(&self.attrs, ys);
-        print_path(ys, &self.qself, &self.path);
+        path::lower_path(ys, &self.qself, &self.path);
     }
 }
 
@@ -902,7 +902,7 @@ impl Parse for Struct {
 impl ToTokens for Struct {
     fn to_tokens(&self, ys: &mut Stream) {
         outer_attrs_to_tokens(&self.attrs, ys);
-        print_path(ys, &self.qself, &self.path);
+        path::lower_path(ys, &self.qself, &self.path);
         self.brace.surround(ys, |ys| {
             self.fields.to_tokens(ys);
             if let Some(dot2) = &self.dot2 {
@@ -1757,7 +1757,7 @@ fn unary_expr(x: Stream, allow: AllowStruct) -> Res<Expr> {
         }
         let expr = Box::new(unary_expr(x, allow)?);
         if raw.is_some() {
-            Ok(Expr::Verbatim(verbatim_between(&beg, x)))
+            Ok(Expr::Verbatim(parse::parse_verbatim(&beg, x)))
         } else {
             Ok(Expr::Reference(Ref { attrs, and, mut_, expr }))
         }
@@ -1771,7 +1771,7 @@ fn trailer_expr(beg: Buffer, mut attrs: Vec<attr::Attr>, x: Stream, allow: Allow
     let atom = atom_expr(x, allow)?;
     let mut y = trailer_helper(x, atom)?;
     if let Expr::Verbatim(tokens) = &mut y {
-        *tokens = verbatim_between(&beg, x);
+        *tokens = parse::parse_verbatim(&beg, x);
     } else {
         let inner_attrs = y.replace_attrs(Vec::new());
         attrs.extend(inner_attrs);
@@ -1956,7 +1956,7 @@ fn expr_builtin(x: Stream) -> Res<Expr> {
     let args;
     parenthesized!(args in x);
     args.parse::<pm2::Stream>()?;
-    Ok(Expr::Verbatim(verbatim_between(&begin, x)))
+    Ok(Expr::Verbatim(parse::parse_verbatim(&begin, x)))
 }
 fn path_or_macro_or_struct(x: Stream, allow: AllowStruct) -> Res<Expr> {
     let (qself, path) = qpath(x, true)?;
@@ -2312,7 +2312,7 @@ fn multi_index(e: &mut Expr, dot: &mut Token![.], float: lit::Float) -> Res<bool
     }
     let mut offset = 0;
     for part in float_repr.split('.') {
-        let mut index: Index = super::parse_str(part).map_err(|err| Err::new(float_span, err))?;
+        let mut index: Index = parse::parse_str(part).map_err(|err| Err::new(float_span, err))?;
         let part_end = offset + part.len();
         index.span = float_token.subspan(offset..part_end).unwrap_or(float_span);
         let base = mem::replace(e, Expr::DUMMY);
@@ -2389,5 +2389,14 @@ fn parse_binop(x: Stream) -> Res<BinOp> {
         x.parse().map(BinOp::Gt)
     } else {
         Err(x.error("expected binary operator"))
+    }
+}
+fn wrap_bare_struct(ys: &mut Stream, e: &Expr) {
+    if let Expr::Struct(_) = *e {
+        tok::Paren::default().surround(ys, |ys| {
+            e.to_tokens(ys);
+        });
+    } else {
+        e.to_tokens(ys);
     }
 }

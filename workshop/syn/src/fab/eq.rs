@@ -519,8 +519,8 @@ impl PartialEq for data::Unnamed {
         self.fields == other.fields
     }
 }
-impl Eq for File {}
-impl PartialEq for File {
+impl Eq for item::File {}
+impl PartialEq for item::File {
     fn eq(&self, other: &Self) -> bool {
         self.shebang == other.shebang && self.attrs == other.attrs && self.items == other.items
     }
@@ -675,7 +675,7 @@ impl PartialEq for Item {
         match (self, other) {
             (Item::Const(self0), Item::Const(other0)) => self0 == other0,
             (Item::Enum(self0), Item::Enum(other0)) => self0 == other0,
-            (Item::ExternCrate(self0), Item::ExternCrate(other0)) => self0 == other0,
+            (Item::Extern(self0), Item::Extern(other0)) => self0 == other0,
             (Item::Fn(self0), Item::Fn(other0)) => self0 == other0,
             (Item::Foreign(self0), Item::Foreign(other0)) => self0 == other0,
             (Item::Impl(self0), Item::Impl(other0)) => self0 == other0,
@@ -714,8 +714,8 @@ impl PartialEq for item::Enum {
             && self.variants == other.variants
     }
 }
-impl Eq for item::ExternCrate {}
-impl PartialEq for item::ExternCrate {
+impl Eq for item::Extern {}
+impl PartialEq for item::Extern {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.vis == other.vis && self.ident == other.ident && self.rename == other.rename
     }

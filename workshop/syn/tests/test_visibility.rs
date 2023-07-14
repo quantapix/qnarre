@@ -21,7 +21,7 @@ macro_rules! assert_vis_parse {
     };
     ($input:expr, Ok($p:pat) + $rest:expr) => {
         let expected = $rest.parse::<pm2::Stream>().unwrap();
-        let parse: VisRest = syn::parse_str($input).unwrap();
+        let parse: VisRest = syn::parse::parse_str($input).unwrap();
         match parse.vis {
             $p => {},
             _ => panic!("Expected {}, got {:?}", stringify!($p), parse.vis),

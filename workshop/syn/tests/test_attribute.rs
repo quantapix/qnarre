@@ -191,7 +191,7 @@ fn test_negative_lit() {
     "###);
 }
 fn test(x: &str) -> meta::Meta {
-    let ys = attr::Attr::parse_outer.parse_str(x).unwrap();
+    let ys = attr::Attr::parse_outer.parse::parse_str(x).unwrap();
     assert_eq!(ys.len(), 1);
     let y = ys.into_iter().next().unwrap();
     y.meta

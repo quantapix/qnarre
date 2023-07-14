@@ -51,7 +51,7 @@ pub mod bound {
             let mut y: Trait = y.parse()?;
             y.paren = paren;
             if is_tilde_const {
-                Ok(Type::Stream(verbatim_between(&beg, s)))
+                Ok(Type::Stream(parse::parse_verbatim(&beg, s)))
             } else {
                 Ok(Type::Trait(y))
             }

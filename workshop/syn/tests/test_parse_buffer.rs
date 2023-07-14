@@ -10,10 +10,10 @@ fn smuggled_speculative_cursor_between_sources() {
                 input1.advance_to(input2);
                 Ok(Self)
             };
-            nested.parse_str("")
+            nested.parse::parse_str("")
         }
     }
-    syn::parse_str::<BreakRules>("").unwrap();
+    syn::parse::parse_str::<BreakRules>("").unwrap();
 }
 #[test]
 #[should_panic(expected = "Fork was not derived from the advancing parse stream")]
@@ -29,7 +29,7 @@ fn smuggled_speculative_cursor_between_brackets() {
             Ok(Self)
         }
     }
-    syn::parse_str::<BreakRules>("()()").unwrap();
+    syn::parse::parse_str::<BreakRules>("()()").unwrap();
 }
 #[test]
 #[should_panic(expected = "Fork was not derived from the advancing parse stream")]
@@ -43,7 +43,7 @@ fn smuggled_speculative_cursor_into_brackets() {
             Ok(Self)
         }
     }
-    syn::parse_str::<BreakRules>("()").unwrap();
+    syn::parse::parse_str::<BreakRules>("()").unwrap();
 }
 #[test]
 fn trailing_empty_none_group() {

@@ -14,6 +14,7 @@ pub fn parse_parens<'a>(x: &Buffer<'a>) -> Res<Parens<'a>> {
         buf,
     })
 }
+
 pub struct Braces<'a> {
     pub tok: tok::Brace,
     pub buf: Buffer<'a>,
@@ -24,6 +25,7 @@ pub fn parse_braces<'a>(x: &Buffer<'a>) -> Res<Braces<'a>> {
         buf,
     })
 }
+
 pub struct Brackets<'a> {
     pub tok: tok::Bracket,
     pub buf: Buffer<'a>,
@@ -34,6 +36,7 @@ pub fn parse_brackets<'a>(x: &Buffer<'a>) -> Res<Brackets<'a>> {
         buf,
     })
 }
+
 pub struct Group<'a> {
     pub tok: tok::Group,
     pub buf: Buffer<'a>,
@@ -261,7 +264,6 @@ impl Quote for Vec<Stmt> {
         Block::parse_within(s)
     }
 }
-
 pub fn parse_quote_fn<T: Quote>(s: Stream) -> T {
     let y = T::parse;
     match y.parse2(s) {
@@ -374,66 +376,6 @@ where
     }
 }
 
-pub fn advance_step_cursor<'c, 'a>(_: Step<'c, 'a>, to: Cursor<'c>) -> Cursor<'a> {
-    unsafe { mem::transmute::<Cursor<'c>, Cursor<'a>>(to) }
-}
-pub fn new_parse_buffer(scope: Span, cur: Cursor, unexp: Rc<Cell<Unexpected>>) -> Buffer {
-    Buffer {
-        scope,
-        cur: Cell::new(unsafe { mem::transmute::<Cursor, Cursor<'static>>(cur) }),
-        _marker: PhantomData,
-        unexp: Cell::new(Some(unexp)),
-    }
-}
-
-fn cell_clone<T: Default + Clone>(x: &Cell<T>) -> T {
-    let prev = x.take();
-    let y = prev.clone();
-    x.set(prev);
-    y
-}
-fn inner_unexpected(x: &Buffer) -> (Rc<Cell<Unexpected>>, Option<Span>) {
-    let mut y = get_unexpected(x);
-    loop {
-        use Unexpected::*;
-        match cell_clone(&y) {
-            None => return (y, None),
-            Some(x) => return (y, Some(x)),
-            Chain(x) => y = x,
-        }
-    }
-}
-pub fn get_unexpected(x: &Buffer) -> Rc<Cell<Unexpected>> {
-    cell_clone(&x.unexp).unwrap()
-}
-fn span_of_unexpected_ignoring_nones(mut x: Cursor) -> Option<Span> {
-    if x.eof() {
-        return None;
-    }
-    while let Some((inner, _span, rest)) = x.group(Delim::None) {
-        if let Some(x) = span_of_unexpected_ignoring_nones(inner) {
-            return Some(x);
-        }
-        x = rest;
-    }
-    if x.eof() {
-        None
-    } else {
-        Some(x.span())
-    }
-}
-
-fn tokens_to_parse_buffer(x: &cur::Buffer) -> Buffer {
-    let scope = Span::call_site();
-    let cur = x.begin();
-    let unexp = Rc::new(Cell::new(Unexpected::None));
-    new_parse_buffer(scope, cur, unexp)
-}
-
-pub fn parse_scoped<F: Parser>(f: F, s: Span, xs: pm2::Stream) -> Res<F::Output> {
-    f.__parse_scoped(s, xs)
-}
-
 pub struct Nothing;
 impl Parse for Nothing {
     fn parse(_: Stream) -> Res<Self> {
@@ -500,4 +442,171 @@ pub mod discouraged {
             })
         }
     }
+}
+
+pub fn advance_step_cursor<'c, 'a>(_: Step<'c, 'a>, to: Cursor<'c>) -> Cursor<'a> {
+    unsafe { mem::transmute::<Cursor<'c>, Cursor<'a>>(to) }
+}
+pub fn new_parse_buffer(scope: Span, cur: Cursor, unexp: Rc<Cell<Unexpected>>) -> Buffer {
+    Buffer {
+        scope,
+        cur: Cell::new(unsafe { mem::transmute::<Cursor, Cursor<'static>>(cur) }),
+        _marker: PhantomData,
+        unexp: Cell::new(Some(unexp)),
+    }
+}
+
+fn cell_clone<T: Default + Clone>(x: &Cell<T>) -> T {
+    let prev = x.take();
+    let y = prev.clone();
+    x.set(prev);
+    y
+}
+fn inner_unexpected(x: &Buffer) -> (Rc<Cell<Unexpected>>, Option<Span>) {
+    let mut y = get_unexpected(x);
+    loop {
+        use Unexpected::*;
+        match cell_clone(&y) {
+            None => return (y, None),
+            Some(x) => return (y, Some(x)),
+            Chain(x) => y = x,
+        }
+    }
+}
+pub fn get_unexpected(x: &Buffer) -> Rc<Cell<Unexpected>> {
+    cell_clone(&x.unexp).unwrap()
+}
+fn span_of_unexpected_ignoring_nones(mut x: Cursor) -> Option<Span> {
+    if x.eof() {
+        return None;
+    }
+    while let Some((inner, _span, rest)) = x.group(Delim::None) {
+        if let Some(x) = span_of_unexpected_ignoring_nones(inner) {
+            return Some(x);
+        }
+        x = rest;
+    }
+    if x.eof() {
+        None
+    } else {
+        Some(x.span())
+    }
+}
+
+fn tokens_to_parse_buffer(x: &cur::Buffer) -> Buffer {
+    let scope = Span::call_site();
+    let cur = x.begin();
+    let unexp = Rc::new(Cell::new(Unexpected::None));
+    new_parse_buffer(scope, cur, unexp)
+}
+
+pub fn parse_scoped<F: Parser>(f: F, s: Span, xs: pm2::Stream) -> Res<F::Output> {
+    f.__parse_scoped(s, xs)
+}
+
+pub fn parse_verbatim<'a>(beg: Stream<'a>, end: Stream<'a>) -> Stream {
+    let end = end.cursor();
+    let mut cur = beg.cursor();
+    assert!(same_buffer(end, cur));
+    let mut ys = Stream::new();
+    while cur != end {
+        let (tt, next) = cur.token_tree().unwrap();
+        if cmp_assuming_same_buffer(end, next) == Ordering::Less {
+            if let Some((inside, _span, after)) = cur.group(pm2::Delim::None) {
+                assert!(next == after);
+                cur = inside;
+                continue;
+            } else {
+                panic!("verbatim end must not be inside a delimited group");
+            }
+        }
+        ys.extend(iter::once(tt));
+        cur = next;
+    }
+    ys
+}
+
+pub fn parse_file(mut x: &str) -> Res<item::File> {
+    const BOM: &str = "\u{feff}";
+    if x.starts_with(BOM) {
+        x = &x[BOM.len()..];
+    }
+    let mut shebang = None;
+    if x.starts_with("#!") {
+        let rest = ws_skip(&x[2..]);
+        if !rest.starts_with('[') {
+            if let Some(i) = x.find('\n') {
+                shebang = Some(x[..i].to_string());
+                x = &x[i..];
+            } else {
+                shebang = Some(x.to_string());
+                x = "";
+            }
+        }
+    }
+    let mut y: item::File = parse_str(x)?;
+    y.shebang = shebang;
+    Ok(y)
+}
+
+pub fn parse_str<T: Parse>(x: &str) -> Res<T> {
+    Parser::parse_str(T::parse, x)
+}
+
+fn ws_skip(mut x: &str) -> &str {
+    fn is_ws(x: char) -> bool {
+        x.is_whitespace() || x == '\u{200e}' || x == '\u{200f}'
+    }
+    'skip: while !x.is_empty() {
+        let byte = x.as_bytes()[0];
+        if byte == b'/' {
+            if x.starts_with("//") && (!x.starts_with("///") || x.starts_with("////")) && !x.starts_with("//!") {
+                if let Some(i) = x.find('\n') {
+                    x = &x[i + 1..];
+                    continue;
+                } else {
+                    return "";
+                }
+            } else if x.starts_with("/**/") {
+                x = &x[4..];
+                continue;
+            } else if x.starts_with("/*") && (!x.starts_with("/**") || x.starts_with("/***")) && !x.starts_with("/*!") {
+                let mut depth = 0;
+                let bytes = x.as_bytes();
+                let mut i = 0;
+                let upper = bytes.len() - 1;
+                while i < upper {
+                    if bytes[i] == b'/' && bytes[i + 1] == b'*' {
+                        depth += 1;
+                        i += 1;
+                    } else if bytes[i] == b'*' && bytes[i + 1] == b'/' {
+                        depth -= 1;
+                        if depth == 0 {
+                            x = &x[i + 2..];
+                            continue 'skip;
+                        }
+                        i += 1;
+                    }
+                    i += 1;
+                }
+                return x;
+            }
+        }
+        match byte {
+            b' ' | 0x09..=0x0d => {
+                x = &x[1..];
+                continue;
+            },
+            b if b <= 0x7f => {},
+            _ => {
+                let ch = x.chars().next().unwrap();
+                if is_ws(ch) {
+                    x = &x[ch.len_utf8()..];
+                    continue;
+                }
+            },
+        }
+        return x;
+    }
+    x
 }

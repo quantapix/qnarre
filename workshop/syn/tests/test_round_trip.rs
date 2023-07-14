@@ -60,7 +60,7 @@ fn test_round_trip() {
 fn test(path: &Path, failed: &AtomicUsize, abort_after: usize) {
     let content = fs::read_to_string(path).unwrap();
     let start = Instant::now();
-    let (krate, elapsed) = match syn::parse_file(&content) {
+    let (krate, elapsed) = match syn::parse::parse_file(&content) {
         Ok(krate) => (krate, start.elapsed()),
         Err(msg) => {
             errorf!("=== {}: syn failed to parse\n{:?}\n", path.display(), msg);

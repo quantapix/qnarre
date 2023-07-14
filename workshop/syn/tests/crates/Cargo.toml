@@ -13,5 +13,5 @@ path = "main.rs"
 anyhow = "1"
 flate2 = "1"
 rayon = "1"
-syn = { path = "../..", default-features = false, features = ["full", "parsing"] }
+syn = { path = "../.." }
 tar = "0.4"

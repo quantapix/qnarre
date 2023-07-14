@@ -279,7 +279,7 @@ impl Parse for Path {
 }
 impl ToTokens for Path {
     fn to_tokens(&self, ys: &mut Stream) {
-        print_path(ys, &self.qself, &self.path);
+        path::lower_path(ys, &self.qself, &self.path);
     }
 }
 
@@ -774,7 +774,7 @@ pub fn parse_ambig_typ(s: Stream, plus: bool, gen: bool) -> Res<Type> {
         let star: Option<Token![*]> = s.parse()?;
         let bounds = Trait::parse_bounds(dyn_span, s, plus)?;
         return Ok(if star.is_some() {
-            Type::Verbatim(verbatim_between(&beg, s))
+            Type::Verbatim(parse::parse_verbatim(&beg, s))
         } else {
             Type::TraitObject(Trait {
                 dyn_: Some(dyn_),
@@ -849,7 +849,7 @@ fn parse_fn_arg(s: Stream, self_: bool) -> Res<FnArg> {
         Some(ty) if !has_mut_self => ty,
         _ => {
             name = None;
-            Type::Verbatim(verbatim_between(&beg, s))
+            Type::Verbatim(parse::parse_verbatim(&beg, s))
         },
     };
     Ok(FnArg { attrs, name, ty })

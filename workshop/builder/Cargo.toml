@@ -18,4 +18,4 @@ trybuild = { version = "1", features = ["diff"] }
 [dependencies]
 proc-macro2 = "1"
 quote = "1"
-syn = { path = "../syn", features = ["full"] }
+syn = { path = "../syn" }

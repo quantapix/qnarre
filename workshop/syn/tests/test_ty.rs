@@ -4,12 +4,12 @@ mod macros;
 use syn::*;
 #[test]
 fn test_mut_self() {
-    syn::parse_str::<typ::Type>("fn(mut self)").unwrap();
-    syn::parse_str::<typ::Type>("fn(mut self,)").unwrap();
-    syn::parse_str::<typ::Type>("fn(mut self: ())").unwrap();
-    syn::parse_str::<typ::Type>("fn(mut self: ...)").unwrap_err();
-    syn::parse_str::<typ::Type>("fn(mut self: mut self)").unwrap_err();
-    syn::parse_str::<typ::Type>("fn(mut self::T)").unwrap_err();
+    syn::parse::parse_str::<typ::Type>("fn(mut self)").unwrap();
+    syn::parse::parse_str::<typ::Type>("fn(mut self,)").unwrap();
+    syn::parse::parse_str::<typ::Type>("fn(mut self: ())").unwrap();
+    syn::parse::parse_str::<typ::Type>("fn(mut self: ...)").unwrap_err();
+    syn::parse::parse_str::<typ::Type>("fn(mut self: mut self)").unwrap_err();
+    syn::parse::parse_str::<typ::Type>("fn(mut self::T)").unwrap_err();
 }
 #[test]
 fn test_macro_variable_type() {
@@ -251,8 +251,8 @@ fn test_trait_object() {
         ],
     }
     "###);
-    syn::parse_str::<typ::Type>("for<'a> dyn Trait<'a>").unwrap_err();
-    syn::parse_str::<typ::Type>("dyn for<'a> 'a + Trait").unwrap_err();
+    syn::parse::parse_str::<typ::Type>("for<'a> dyn Trait<'a>").unwrap_err();
+    syn::parse::parse_str::<typ::Type>("dyn for<'a> 'a + Trait").unwrap_err();
 }
 #[test]
 fn test_trailing_plus() {

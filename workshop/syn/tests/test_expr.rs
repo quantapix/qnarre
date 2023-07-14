@@ -71,7 +71,7 @@ fn test_tuple_multi_index() {
         "tuple.0. 0",
         "tuple . 0 . 0",
     ] {
-        assert_eq!(expected, syn::parse_str(input).unwrap());
+        assert_eq!(expected, syn::parse::parse_str(input).unwrap());
     }
     for tokens in [
         quote!(tuple.0.0),
@@ -260,21 +260,21 @@ fn test_closure_vs_rangefull() {
 }
 #[test]
 fn test_postfix_operator_after_cast() {
-    syn::parse_str::<Expr>("|| &x as T[0]").unwrap_err();
-    syn::parse_str::<Expr>("|| () as ()()").unwrap_err();
+    syn::parse::parse_str::<Expr>("|| &x as T[0]").unwrap_err();
+    syn::parse::parse_str::<Expr>("|| () as ()()").unwrap_err();
 }
 #[test]
 fn test_ranges() {
-    syn::parse_str::<Expr>("..").unwrap();
-    syn::parse_str::<Expr>("..hi").unwrap();
-    syn::parse_str::<Expr>("lo..").unwrap();
-    syn::parse_str::<Expr>("lo..hi").unwrap();
-    syn::parse_str::<Expr>("..=").unwrap_err();
-    syn::parse_str::<Expr>("..=hi").unwrap();
-    syn::parse_str::<Expr>("lo..=").unwrap_err();
-    syn::parse_str::<Expr>("lo..=hi").unwrap();
-    syn::parse_str::<Expr>("...").unwrap_err();
-    syn::parse_str::<Expr>("...hi").unwrap_err();
-    syn::parse_str::<Expr>("lo...").unwrap_err();
-    syn::parse_str::<Expr>("lo...hi").unwrap_err();
+    syn::parse::parse_str::<Expr>("..").unwrap();
+    syn::parse::parse_str::<Expr>("..hi").unwrap();
+    syn::parse::parse_str::<Expr>("lo..").unwrap();
+    syn::parse::parse_str::<Expr>("lo..hi").unwrap();
+    syn::parse::parse_str::<Expr>("..=").unwrap_err();
+    syn::parse::parse_str::<Expr>("..=hi").unwrap();
+    syn::parse::parse_str::<Expr>("lo..=").unwrap_err();
+    syn::parse::parse_str::<Expr>("lo..=hi").unwrap();
+    syn::parse::parse_str::<Expr>("...").unwrap_err();
+    syn::parse::parse_str::<Expr>("...hi").unwrap_err();
+    syn::parse::parse_str::<Expr>("lo...").unwrap_err();
+    syn::parse::parse_str::<Expr>("lo...hi").unwrap_err();
 }

@@ -207,7 +207,7 @@ pub trait Visit<'ast> {
     fn visit_fields_unnamed(&mut self, i: &'ast data::Unnamed) {
         visit_fields_unnamed(self, i);
     }
-    fn visit_file(&mut self, i: &'ast File) {
+    fn visit_file(&mut self, i: &'ast item::File) {
         visit_file(self, i);
     }
     fn visit_fn_arg(&mut self, i: &'ast item::FnArg) {
@@ -270,7 +270,7 @@ pub trait Visit<'ast> {
     fn visit_item_enum(&mut self, i: &'ast item::Enum) {
         visit_item_enum(self, i);
     }
-    fn visit_item_extern_crate(&mut self, i: &'ast item::ExternCrate) {
+    fn visit_item_extern_crate(&mut self, i: &'ast item::Extern) {
         visit_item_extern_crate(self, i);
     }
     fn visit_item_fn(&mut self, i: &'ast item::Fn) {
@@ -1538,7 +1538,7 @@ where
         v.visit_field(it);
     }
 }
-pub fn visit_file<'ast, V>(v: &mut V, node: &'ast File)
+pub fn visit_file<'ast, V>(v: &mut V, node: &'ast item::File)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -1797,7 +1797,7 @@ where
         Item::Enum(_binding_0) => {
             v.visit_item_enum(_binding_0);
         },
-        Item::ExternCrate(_binding_0) => {
+        Item::Extern(_binding_0) => {
             v.visit_item_extern_crate(_binding_0);
         },
         Item::Fn(_binding_0) => {
@@ -1875,7 +1875,7 @@ where
         v.visit_variant(it);
     }
 }
-pub fn visit_item_extern_crate<'ast, V>(v: &mut V, node: &'ast item::ExternCrate)
+pub fn visit_item_extern_crate<'ast, V>(v: &mut V, node: &'ast item::Extern)
 where
     V: Visit<'ast> + ?Sized,
 {

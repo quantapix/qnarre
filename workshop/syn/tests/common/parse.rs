@@ -38,7 +38,7 @@ pub fn librustc_expr(input: &str) -> Option<P<ast::Expr>> {
     }
 }
 pub fn syn_expr(input: &str) -> Option<syn::Expr> {
-    match syn::parse_str(input) {
+    match syn::parse::parse_str(input) {
         Ok(e) => Some(e),
         Err(msg) => {
             errorf!("syn failed to parse\n{:?}\n", msg);

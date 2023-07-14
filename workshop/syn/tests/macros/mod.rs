@@ -68,7 +68,7 @@ pub trait Tokens {
 }
 impl<'a> Tokens for &'a str {
     fn parse<T: Parse>(self) -> Res<T> {
-        syn::parse_str(self)
+        syn::parse::parse_str(self)
     }
 }
 impl Tokens for proc_macro2::pm2::Stream {

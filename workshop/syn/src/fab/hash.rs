@@ -912,7 +912,7 @@ impl Hash for data::Unnamed {
         self.fields.hash(state);
     }
 }
-impl Hash for File {
+impl Hash for item::File {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -1176,7 +1176,7 @@ impl Hash for Item {
                 state.write_u8(1u8);
                 v0.hash(state);
             },
-            Item::ExternCrate(v0) => {
+            Item::Extern(v0) => {
                 state.write_u8(2u8);
                 v0.hash(state);
             },
@@ -1260,7 +1260,7 @@ impl Hash for item::Enum {
         self.variants.hash(state);
     }
 }
-impl Hash for item::ExternCrate {
+impl Hash for item::Extern {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,

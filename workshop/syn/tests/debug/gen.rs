@@ -1812,9 +1812,9 @@ impl Debug for Lite<syn::FieldsUnnamed> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::File> {
+impl Debug for Lite<syn::item::File> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("File");
+        let mut formatter = formatter.debug_struct("item::File");
         if let Some(val) = &self.value.shebang {
             #[derive(RefCast)]
             #[repr(transparent)]
@@ -2245,8 +2245,8 @@ impl Debug for Lite<syn::Item> {
                 }
                 formatter.finish()
             },
-            syn::Item::ExternCrate(_val) => {
-                let mut formatter = formatter.debug_struct("Item::ExternCrate");
+            syn::Item::Extern(_val) => {
+                let mut formatter = formatter.debug_struct("Item::Extern");
                 if !_val.attrs.is_empty() {
                     formatter.field("attrs", Lite(&_val.attrs));
                 }
@@ -2543,9 +2543,9 @@ impl Debug for Lite<syn::item::Enum> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::item::ExternCrate> {
+impl Debug for Lite<syn::item::Extern> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatter = formatter.debug_struct("item::ExternCrate");
+        let mut formatter = formatter.debug_struct("item::Extern");
         if !self.value.attrs.is_empty() {
             formatter.field("attrs", Lite(&self.value.attrs));
         }
