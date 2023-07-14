@@ -1307,7 +1307,7 @@ pub enum UnOp {
 }
 impl Parse for UnOp {
     fn parse(x: Stream) -> Res<Self> {
-        let look = x.lookahead1();
+        let look = x.look1();
         if look.peek(Token![*]) {
             x.parse().map(UnOp::Deref)
         } else if look.peek(Token![!]) {
@@ -1459,7 +1459,7 @@ pub enum RangeLimits {
 }
 impl RangeLimits {
     pub fn parse_obsolete(x: Stream) -> Res<Self> {
-        let look = x.lookahead1();
+        let look = x.look1();
         let dot2 = look.peek(Token![..]);
         let dot2_eq = dot2 && look.peek(Token![..=]);
         let dot3 = dot2 && x.peek(Token![...]);
@@ -1477,7 +1477,7 @@ impl RangeLimits {
 }
 impl Parse for RangeLimits {
     fn parse(x: Stream) -> Res<Self> {
-        let look = x.lookahead1();
+        let look = x.look1();
         let dot2 = look.peek(Token![..]);
         let dot2_eq = dot2 && look.peek(Token![..=]);
         let dot3 = dot2 && x.peek(Token![...]);
@@ -2115,7 +2115,7 @@ fn expr_paren(x: Stream) -> Res<Paren> {
 }
 fn else_block(x: Stream) -> Res<(Token![else], Box<Expr>)> {
     let else_: Token![else] = x.parse()?;
-    let look = x.lookahead1();
+    let look = x.look1();
     let branch = if x.peek(Token![if]) {
         x.parse().map(Expr::If)?
     } else if x.peek(tok::Brace) {

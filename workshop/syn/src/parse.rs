@@ -113,7 +113,7 @@ impl<'a> Buffer<'a> {
     pub fn is_empty(&self) -> bool {
         self.cursor().eof()
     }
-    pub fn lookahead1(&self) -> Look1<'a> {
+    pub fn look1(&self) -> Look1<'a> {
         look::new(self.scope, self.cursor())
     }
     pub fn fork(&self) -> Self {
@@ -321,8 +321,8 @@ impl Parse for Punct {
     }
 }
 impl Parse for pm2::Lit {
-    fn parse(x: Stream) -> Res<Self> {
-        x.step(|x| match x.literal() {
+    fn parse(s: Stream) -> Res<Self> {
+        s.step(|x| match x.literal() {
             Some((y, rest)) => Ok((y, rest)),
             None => Err(x.err("expected literal token")),
         })

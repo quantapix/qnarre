@@ -580,7 +580,7 @@ where
     }
 }
 
-pub(crate) fn empty_punctuated_iter<'a, T>() -> Iter<'a, T> {
+pub fn empty_punctuated_iter<'a, T>() -> Iter<'a, T> {
     Iter {
         inner: Box::new(NoDrop::new(iter::empty())),
     }
@@ -645,7 +645,7 @@ where
 {
 }
 
-pub(crate) fn empty_punctuated_iter_mut<'a, T>() -> IterMut<'a, T> {
+pub fn empty_punctuated_iter_mut<'a, T>() -> IterMut<'a, T> {
     IterMut {
         inner: Box::new(NoDrop::new(iter::empty())),
     }
@@ -743,9 +743,9 @@ where
 }
 
 #[repr(transparent)]
-pub(crate) struct NoDrop<T: ?Sized>(ManuallyDrop<T>);
+pub struct NoDrop<T: ?Sized>(ManuallyDrop<T>);
 impl<T> NoDrop<T> {
-    pub(crate) fn new(value: T) -> Self
+    pub fn new(value: T) -> Self
     where
         T: TrivialDrop,
     {
@@ -764,7 +764,7 @@ impl<T: ?Sized> DerefMut for NoDrop<T> {
     }
 }
 
-pub(crate) trait TrivialDrop {}
+pub trait TrivialDrop {}
 impl<T> TrivialDrop for iter::Empty<T> {}
 impl<'a, T> TrivialDrop for slice::Iter<'a, T> {}
 impl<'a, T> TrivialDrop for slice::IterMut<'a, T> {}

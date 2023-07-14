@@ -57,7 +57,7 @@ fn test_struct() {
         gens: gen::Gens,
         data: Data::Struct {
             fields: Fields::Named {
-                named: [
+                fields: [
                     Field {
                         vis: Visibility::Public,
                         ident: Some("ident"),
@@ -140,8 +140,8 @@ fn test_union() {
             gt: Some,
         },
         data: Data::Union {
-            fields: FieldsNamed {
-                named: [
+            fields: Named {
+                fields: [
                     Field {
                         vis: Visibility::Inherited,
                         ident: Some("uninit"),
@@ -227,7 +227,7 @@ fn test_enum() {
                 Variant {
                     ident: "Ok",
                     fields: Fields::Unnamed {
-                        unnamed: [
+                        fields: [
                             Field {
                                 vis: Visibility::Inherited,
                                 ty: Type::Path {
@@ -246,7 +246,7 @@ fn test_enum() {
                 Variant {
                     ident: "Err",
                     fields: Fields::Unnamed {
-                        unnamed: [
+                        fields: [
                             Field {
                                 vis: Visibility::Inherited,
                                 ty: Type::Path {
@@ -391,7 +391,7 @@ fn test_pub_restricted() {
         gens: gen::Gens,
         data: Data::Struct {
             fields: Fields::Unnamed {
-                unnamed: [
+                fields: [
                     Field {
                         vis: Visibility::Restricted {
                             in_: Some,
@@ -426,7 +426,7 @@ fn test_pub_restricted() {
 #[test]
 fn test_pub_restricted_crate() {
     let input = quote! {
-        pub(crate) struct S;
+        pub struct S;
     };
     snapshot!(input as DeriveInput, @r###"
     DeriveInput {
@@ -535,8 +535,8 @@ fn test_fields_on_named_struct() {
         ident: "S",
         gens: gen::Gens,
         data: Data::Struct {
-            fields: Fields::Named {
-                named: [
+            fields: Named {
+                fields: [
                     Field {
                         vis: Visibility::Inherited,
                         ident: Some("foo"),
@@ -619,7 +619,7 @@ fn test_fields_on_tuple_struct() {
         gens: gen::Gens,
         data: Data::Struct {
             fields: Fields::Unnamed {
-                unnamed: [
+                fields: [
                     Field {
                         vis: Visibility::Inherited,
                         ty: Type::Path {
@@ -695,7 +695,7 @@ fn test_ambiguous_crate() {
         gens: gen::Gens,
         data: Data::Struct {
             fields: Fields::Unnamed {
-                unnamed: [
+                fields: [
                     Field {
                         vis: Visibility::Inherited,
                         ty: Type::Path {

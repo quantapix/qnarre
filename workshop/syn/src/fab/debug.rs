@@ -329,7 +329,7 @@ impl Debug for data::Union {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("union_", &self.union_);
-                formatter.field("fields", &self.named);
+                formatter.field("fields", &self.fields);
                 formatter.finish()
             }
         }
@@ -984,7 +984,7 @@ impl Debug for data::Field {
 }
 impl Debug for data::Mut {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("FieldMutability::")?;
+        formatter.write_str("Mut::")?;
         match self {
             data::Mut::None => formatter.write_str("None"),
         }
@@ -1026,7 +1026,7 @@ impl Debug for data::Named {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("brace", &self.brace);
-                formatter.field("named", &self.field);
+                formatter.field("fields", &self.fields);
                 formatter.finish()
             }
         }
@@ -1039,7 +1039,7 @@ impl Debug for data::Unnamed {
             fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut formatter = formatter.debug_struct(name);
                 formatter.field("paren", &self.paren);
-                formatter.field("unnamed", &self.field);
+                formatter.field("fields", &self.fields);
                 formatter.finish()
             }
         }
@@ -2408,7 +2408,7 @@ impl Debug for gen::bound::Type {
                 formatter.finish()
             },
             gen::bound::Type::Life(v0) => v0.debug(formatter, "Life"),
-            gen::bound::Type::Verbatim(v0) => {
+            gen::bound::Type::Stream(v0) => {
                 let mut formatter = formatter.debug_tuple("Verbatim");
                 formatter.field(v0);
                 formatter.finish()
@@ -2621,7 +2621,7 @@ impl Debug for data::Variant {
         formatter.field("attrs", &self.attrs);
         formatter.field("ident", &self.ident);
         formatter.field("fields", &self.fields);
-        formatter.field("discriminant", &self.discriminant);
+        formatter.field("discriminant", &self.discrim);
         formatter.finish()
     }
 }

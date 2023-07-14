@@ -773,7 +773,7 @@ where
 {
     data::Union {
         union_: node.union_,
-        named: f.fold_fields_named(node.named),
+        fields: f.fold_fields_named(node.fields),
     }
 }
 pub fn fold_derive_input<F>(f: &mut F, node: DeriveInput) -> DeriveInput
@@ -1312,7 +1312,7 @@ where
 {
     data::Named {
         brace: node.brace,
-        field: FoldHelper::lift(node.field, |it| f.fold_field(it)),
+        fields: FoldHelper::lift(node.fields, |it| f.fold_field(it)),
     }
 }
 pub fn fold_fields_unnamed<F>(f: &mut F, node: data::Unnamed) -> data::Unnamed
@@ -1321,7 +1321,7 @@ where
 {
     data::Unnamed {
         paren: node.paren,
-        field: FoldHelper::lift(node.field, |it| f.fold_field(it)),
+        fields: FoldHelper::lift(node.fields, |it| f.fold_field(it)),
     }
 }
 pub fn fold_file<F>(f: &mut F, node: File) -> File
@@ -2445,7 +2445,7 @@ where
     match node {
         gen::bound::Type::Trait(_binding_0) => gen::bound::Type::Trait(f.fold_trait_bound(_binding_0)),
         gen::bound::Type::Life(_binding_0) => gen::bound::Type::Life(f.fold_lifetime(_binding_0)),
-        gen::bound::Type::Verbatim(_binding_0) => gen::bound::Type::Verbatim(_binding_0),
+        gen::bound::Type::Stream(_binding_0) => gen::bound::Type::Stream(_binding_0),
     }
 }
 pub fn fold_type_paren<F>(f: &mut F, node: typ::Paren) -> typ::Paren
@@ -2601,7 +2601,7 @@ where
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         ident: f.fold_ident(node.ident),
         fields: f.fold_fields(node.fields),
-        discriminant: (node.discriminant).map(|it| ((it).0, f.fold_expr((it).1))),
+        discrim: (node.discrim).map(|it| ((it).0, f.fold_expr((it).1))),
     }
 }
 pub fn fold_vis_restricted<F>(f: &mut F, node: VisRestricted) -> VisRestricted

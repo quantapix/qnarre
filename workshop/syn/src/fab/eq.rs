@@ -152,7 +152,7 @@ impl PartialEq for data::Struct {
 impl Eq for data::Union {}
 impl PartialEq for data::Union {
     fn eq(&self, other: &Self) -> bool {
-        self.named == other.named
+        self.fields == other.fields
     }
 }
 impl Eq for DeriveInput {}
@@ -509,13 +509,13 @@ impl PartialEq for data::Fields {
 impl Eq for data::Named {}
 impl PartialEq for data::Named {
     fn eq(&self, other: &Self) -> bool {
-        self.field == other.field
+        self.fields == other.fields
     }
 }
 impl Eq for data::Unnamed {}
 impl PartialEq for data::Unnamed {
     fn eq(&self, other: &Self) -> bool {
-        self.field == other.field
+        self.fields == other.fields
     }
 }
 impl Eq for File {}
@@ -1302,7 +1302,7 @@ impl PartialEq for gen::bound::Type {
         match (self, other) {
             (gen::bound::Type::Trait(self0), gen::bound::Type::Trait(other0)) => self0 == other0,
             (gen::bound::Type::Life(self0), gen::bound::Type::Life(other0)) => self0 == other0,
-            (gen::bound::Type::Verbatim(self0), gen::bound::Type::Verbatim(other0)) => {
+            (gen::bound::Type::Stream(self0), gen::bound::Type::Stream(other0)) => {
                 TokenStreamHelper(self0) == TokenStreamHelper(other0)
             },
             _ => false,
@@ -1417,7 +1417,7 @@ impl PartialEq for data::Variant {
         self.attrs == other.attrs
             && self.ident == other.ident
             && self.fields == other.fields
-            && self.discriminant == other.discriminant
+            && self.discrim == other.discrim
     }
 }
 impl Eq for VisRestricted {}

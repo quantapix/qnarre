@@ -1740,7 +1740,7 @@ impl Debug for Lite<syn::Field> {
 impl Debug for Lite<syn::FieldMut> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match &self.value {
-            syn::FieldMut::None => formatter.write_str("FieldMutability::None"),
+            syn::FieldMut::None => formatter.write_str("Mut::None"),
             _ => unreachable!(),
         }
     }
@@ -1779,14 +1779,14 @@ impl Debug for Lite<syn::Fields> {
             syn::Fields::Named(_val) => {
                 let mut formatter = formatter.debug_struct("Fields::Named");
                 if !_val.field.is_empty() {
-                    formatter.field("named", Lite(&_val.named));
+                    formatter.field("fields", Lite(&_val.fields));
                 }
                 formatter.finish()
             },
             syn::Fields::Unnamed(_val) => {
                 let mut formatter = formatter.debug_struct("Fields::Unnamed");
                 if !_val.field.is_empty() {
-                    formatter.field("unnamed", Lite(&_val.unnamed));
+                    formatter.field("fields", Lite(&_val.fields));
                 }
                 formatter.finish()
             },
@@ -1798,7 +1798,7 @@ impl Debug for Lite<syn::FieldsNamed> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("FieldsNamed");
         if !self.value.field.is_empty() {
-            formatter.field("named", Lite(&self.value.named));
+            formatter.field("fields", Lite(&self.value.fields));
         }
         formatter.finish()
     }
@@ -1807,7 +1807,7 @@ impl Debug for Lite<syn::FieldsUnnamed> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut formatter = formatter.debug_struct("FieldsUnnamed");
         if !self.value.field.is_empty() {
-            formatter.field("unnamed", Lite(&self.value.unnamed));
+            formatter.field("fields", Lite(&self.value.fields));
         }
         formatter.finish()
     }
@@ -4334,7 +4334,7 @@ impl Debug for Lite<syn::gen::bound::Type> {
                 formatter.field("ident", Lite(&_val.ident));
                 formatter.finish()
             },
-            syn::gen::bound::Type::Verbatim(_val) => {
+            syn::gen::bound::Type::Stream(_val) => {
                 formatter.write_str("gen::bound::Type::Verbatim")?;
                 formatter.write_str("(`")?;
                 Display::fmt(_val, formatter)?;

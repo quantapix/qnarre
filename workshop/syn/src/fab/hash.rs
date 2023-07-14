@@ -268,7 +268,7 @@ impl Hash for data::Union {
     where
         H: Hasher,
     {
-        self.named.hash(state);
+        self.fields.hash(state);
     }
 }
 impl Hash for DeriveInput {
@@ -903,7 +903,7 @@ impl Hash for data::Named {
     where
         H: Hasher,
     {
-        self.field.hash(state);
+        self.fields.hash(state);
     }
 }
 impl Hash for data::Unnamed {
@@ -911,7 +911,7 @@ impl Hash for data::Unnamed {
     where
         H: Hasher,
     {
-        self.field.hash(state);
+        self.fields.hash(state);
     }
 }
 impl Hash for File {
@@ -2206,7 +2206,7 @@ impl Hash for gen::bound::Type {
                 state.write_u8(1u8);
                 v0.hash(state);
             },
-            gen::bound::Type::Verbatim(v0) => {
+            gen::bound::Type::Stream(v0) => {
                 state.write_u8(2u8);
                 TokenStreamHelper(v0).hash(state);
             },
@@ -2381,7 +2381,7 @@ impl Hash for data::Variant {
         self.attrs.hash(state);
         self.ident.hash(state);
         self.fields.hash(state);
-        self.discriminant.hash(state);
+        self.discrim.hash(state);
     }
 }
 impl Hash for VisRestricted {

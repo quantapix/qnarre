@@ -163,7 +163,7 @@ impl Clone for data::Union {
     fn clone(&self) -> Self {
         data::Union {
             union_: self.union_.clone(),
-            named: self.named.clone(),
+            fields: self.fields.clone(),
         }
     }
 }
@@ -658,7 +658,7 @@ impl Clone for data::Named {
     fn clone(&self) -> Self {
         data::Named {
             brace: self.brace.clone(),
-            field: self.field.clone(),
+            fields: self.fields.clone(),
         }
     }
 }
@@ -666,7 +666,7 @@ impl Clone for data::Unnamed {
     fn clone(&self) -> Self {
         data::Unnamed {
             paren: self.paren.clone(),
-            field: self.field.clone(),
+            fields: self.fields.clone(),
         }
     }
 }
@@ -1620,7 +1620,7 @@ impl Clone for gen::bound::Type {
         match self {
             gen::bound::Type::Trait(v0) => gen::bound::Type::Trait(v0.clone()),
             gen::bound::Type::Life(v0) => gen::bound::Type::Life(v0.clone()),
-            gen::bound::Type::Verbatim(v0) => gen::bound::Type::Verbatim(v0.clone()),
+            gen::bound::Type::Stream(v0) => gen::bound::Type::Stream(v0.clone()),
         }
     }
 }
@@ -1757,7 +1757,7 @@ impl Clone for data::Variant {
             attrs: self.attrs.clone(),
             ident: self.ident.clone(),
             fields: self.fields.clone(),
-            discriminant: self.discriminant.clone(),
+            discrim: self.discrim.clone(),
         }
     }
 }

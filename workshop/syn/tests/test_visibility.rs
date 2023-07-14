@@ -99,8 +99,8 @@ fn test_empty_group_vis() {
         ident: "S",
         gens: gen::Gens,
         data: Data::Struct {
-            fields: Fields::Named {
-                named: [
+            fields: Named {
+                fields: [
                     Field {
                         vis: Visibility::Inherited,
                         ident: Some("f"),

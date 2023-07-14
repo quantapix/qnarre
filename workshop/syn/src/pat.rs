@@ -94,7 +94,7 @@ pub struct Field {
 impl Pat {
     pub fn parse_single(x: Stream) -> Res<Self> {
         let begin = x.fork();
-        let look = x.lookahead1();
+        let look = x.look1();
         if look.peek(Ident)
             && (x.peek2(Token![::])
                 || x.peek2(Token![!])
@@ -438,7 +438,7 @@ fn range_bound(x: Stream) -> Res<Option<RangeBound>> {
     {
         return Ok(None);
     }
-    let look = x.lookahead1();
+    let look = x.look1();
     let y = if look.peek(Lit) {
         RangeBound::Lit(x.parse()?)
     } else if look.peek(Ident)

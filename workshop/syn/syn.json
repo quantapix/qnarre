@@ -600,7 +600,7 @@
           "token": "Union"
         },
         "fields": {
-          "syn": "FieldsNamed"
+          "syn": "Named"
         }
       }
     },
@@ -1937,7 +1937,7 @@
           "syn": "Visibility"
         },
         "mut_": {
-          "syn": "FieldMutability"
+          "syn": "Mut"
         },
         "ident": {
           "option": {
@@ -1955,7 +1955,7 @@
       }
     },
     {
-      "ident": "FieldMutability",
+      "ident": "Mut",
       "features": {
         "any": [
           "derive",
@@ -2032,19 +2032,19 @@
       "variants": {
         "Named": [
           {
-            "syn": "FieldsNamed"
+            "syn": "Named"
           }
         ],
         "Unnamed": [
           {
-            "syn": "FieldsUnnamed"
+            "syn": "Unnamed"
           }
         ],
         "Unit": []
       }
     },
     {
-      "ident": "FieldsNamed",
+      "ident": "Named",
       "features": {
         "any": [
           "derive",
@@ -2055,7 +2055,7 @@
         "brace": {
           "group": "Brace"
         },
-        "named": {
+        "fields": {
           "punctuated": {
             "element": {
               "syn": "Field"
@@ -2066,18 +2066,12 @@
       }
     },
     {
-      "ident": "FieldsUnnamed",
-      "features": {
-        "any": [
-          "derive",
-          "full"
-        ]
-      },
+      "ident": "Unnamed",
       "fields": {
         "paren": {
           "group": "Paren"
         },
-        "unnamed": {
+        "fields": {
           "punctuated": {
             "element": {
               "syn": "Field"
@@ -3248,7 +3242,7 @@
           "syn": "gen::Gens"
         },
         "fields": {
-          "syn": "FieldsNamed"
+          "syn": "Named"
         }
       }
     },

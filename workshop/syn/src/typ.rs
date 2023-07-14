@@ -153,10 +153,10 @@ pub fn ambig_ty(x: Stream, allow_plus: bool, group_gen: bool) -> Res<Type> {
         return Ok(Type::Group(y));
     }
     let mut lifes = None::<Bgen::bound::Lifes>;
-    let mut look = x.lookahead1();
+    let mut look = x.look1();
     if look.peek(Token![for]) {
         lifes = x.parse()?;
-        look = x.lookahead1();
+        look = x.look1();
         if !look.peek(Ident)
             && !look.peek(Token![fn])
             && !look.peek(Token![unsafe])
@@ -240,7 +240,7 @@ pub fn ambig_ty(x: Stream, allow_plus: bool, group_gen: bool) -> Res<Type> {
                                 paren: Some(paren),
                                 ..trait_bound
                             }),
-                            other @ (gen::bound::Type::Life(_) | gen::bound::Type::Verbatim(_)) => other,
+                            other @ (gen::bound::Type::Life(_) | gen::bound::Type::Stream(_)) => other,
                         }
                     },
                     _ => break,
@@ -385,7 +385,7 @@ impl Parse for Array {
 impl Parse for Ptr {
     fn parse(x: Stream) -> Res<Self> {
         let star: Token![*] = x.parse()?;
-        let look = x.lookahead1();
+        let look = x.look1();
         let (const_, mut_) = if look.peek(Token![const]) {
             (Some(x.parse()?), None)
         } else if look.peek(Token![mut]) {
@@ -547,7 +547,7 @@ impl Trait {
         let mut one = false;
         for y in &ys {
             match y {
-                gen::bound::Type::Trait(_) | gen::bound::Type::Verbatim(_) => {
+                gen::bound::Type::Trait(_) | gen::bound::Type::Stream(_) => {
                     one = true;
                     break;
                 },
@@ -581,7 +581,7 @@ impl Impl {
         let mut one = false;
         for x in &bounds {
             match x {
-                gen::bound::Type::Trait(_) | gen::bound::Type::Verbatim(_) => {
+                gen::bound::Type::Trait(_) | gen::bound::Type::Stream(_) => {
                     one = true;
                     break;
                 },

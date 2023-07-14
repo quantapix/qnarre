@@ -847,7 +847,7 @@ where
     V: VisitMut + ?Sized,
 {
     skip!(node.union_);
-    v.visit_fields_named_mut(&mut node.named);
+    v.visit_fields_named_mut(&mut node.fields);
 }
 pub fn visit_derive_input_mut<V>(v: &mut V, node: &mut DeriveInput)
 where
@@ -1523,7 +1523,7 @@ where
     V: VisitMut + ?Sized,
 {
     skip!(node.brace);
-    for mut el in Puncted::pairs_mut(&mut node.field) {
+    for mut el in Puncted::pairs_mut(&mut node.fields) {
         let it = el.value_mut();
         v.visit_field_mut(it);
     }
@@ -1533,7 +1533,7 @@ where
     V: VisitMut + ?Sized,
 {
     skip!(node.paren);
-    for mut el in Puncted::pairs_mut(&mut node.field) {
+    for mut el in Puncted::pairs_mut(&mut node.fields) {
         let it = el.value_mut();
         v.visit_field_mut(it);
     }
@@ -2921,7 +2921,7 @@ where
         gen::bound::Type::Life(_binding_0) => {
             v.visit_lifetime_mut(_binding_0);
         },
-        gen::bound::Type::Verbatim(_binding_0) => {
+        gen::bound::Type::Stream(_binding_0) => {
             skip!(_binding_0);
         },
     }
@@ -3088,7 +3088,7 @@ where
     }
     v.visit_ident_mut(&mut node.ident);
     v.visit_fields_mut(&mut node.fields);
-    if let Some(it) = &mut node.discriminant {
+    if let Some(it) = &mut node.discrim {
         skip!((it).0);
         v.visit_expr_mut(&mut (it).1);
     }

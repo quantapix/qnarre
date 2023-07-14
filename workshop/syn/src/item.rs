@@ -21,7 +21,7 @@ ast_enum_of_structs! {
     }
 }
 impl Item {
-    pub(crate) fn replace_attrs(&mut self, y: Vec<attr::Attr>) -> Vec<attr::Attr> {
+    pub fn replace_attrs(&mut self, ys: Vec<attr::Attr>) -> Vec<attr::Attr> {
         match self {
             Const(Const { attrs, .. })
             | Enum(Enum { attrs, .. })
@@ -37,7 +37,7 @@ impl Item {
             | TraitAlias(TraitAlias { attrs, .. })
             | Type(Type { attrs, .. })
             | Union(Union { attrs, .. })
-            | Use(Use { attrs, .. }) => mem::replace(attrs, y),
+            | Use(Use { attrs, .. }) => mem::replace(attrs, ys),
             Verbatim(_) => Vec::new(),
         }
     }
@@ -45,7 +45,7 @@ impl Item {
 impl From<DeriveInput> for Item {
     fn from(x: DeriveInput) -> Item {
         match x.data {
-            Data::Struct(y) => Item::Struct(Struct {
+            data::Data::Struct(y) => Item::Struct(Struct {
                 attrs: x.attrs,
                 vis: x.vis,
                 struct_: y.struct_,
@@ -54,7 +54,7 @@ impl From<DeriveInput> for Item {
                 fields: y.fields,
                 semi: y.semi,
             }),
-            Data::Enum(y) => Item::Enum(Enum {
+            data::Data::Enum(y) => Item::Enum(Enum {
                 attrs: x.attrs,
                 vis: x.vis,
                 enum_: y.enum_,
@@ -63,7 +63,7 @@ impl From<DeriveInput> for Item {
                 brace: y.brace,
                 elems: y.variants,
             }),
-            Data::Union(y) => Item::Union(Union {
+            data::Data::Union(y) => Item::Union(Union {
                 attrs: x.attrs,
                 vis: x.vis,
                 union_: y.union_,
@@ -101,7 +101,7 @@ impl Parse for Const {
             vis: x.parse()?,
             const_: x.parse()?,
             ident: {
-                let look = x.lookahead1();
+                let look = x.look1();
                 if look.peek(Ident) || look.peek(Token![_]) {
                     x.call(Ident::parse_any)?
                 } else {
@@ -162,7 +162,7 @@ impl Parse for Enum {
         let enum_ = x.parse::<Token![enum]>()?;
         let ident = x.parse::<Ident>()?;
         let gens = x.parse::<gen::Gens>()?;
-        let (where_, brace, elems) = data_enum(x)?;
+        let (where_, brace, elems) = data::parse_enum(x)?;
         Ok(Enum {
             attrs,
             vis,
@@ -419,7 +419,7 @@ impl Parse for Mod {
         } else {
             x.parse()
         }?;
-        let look = x.lookahead1();
+        let look = x.look1();
         if look.peek(Token![;]) {
             Ok(Mod {
                 attrs,
@@ -544,7 +544,7 @@ impl Parse for Struct {
         let struct_ = x.parse::<Token![struct]>()?;
         let ident = x.parse::<Ident>()?;
         let gens = x.parse::<gen::Gens>()?;
-        let (where_, fields, semi) = data_struct(x)?;
+        let (where_, fields, semi) = data::parse_struct(x)?;
         Ok(Struct {
             attrs,
             vis,
@@ -729,7 +729,7 @@ impl Parse for Union {
         let union_ = x.parse::<Token![union]>()?;
         let ident = x.parse::<Ident>()?;
         let gens = x.parse::<gen::Gens>()?;
-        let (where_, fields) = data_union(x)?;
+        let (where_, fields) = data::parse_union(x)?;
         Ok(Union {
             attrs,
             vis,
@@ -1031,7 +1031,7 @@ pub mod Foreign {
             let mut attrs = x.call(attr::Attr::parse_outer)?;
             let ahead = x.fork();
             let vis: Visibility = ahead.parse()?;
-            let look = ahead.lookahead1();
+            let look = ahead.look1();
             let mut y = if look.peek(Token![fn]) || peek_signature(&ahead) {
                 let vis: Visibility = x.parse()?;
                 let sig: Sig = x.parse()?;
@@ -1233,10 +1233,10 @@ pub mod Impl {
             let mut attrs = x.call(attr::Attr::parse_outer)?;
             let ahead = x.fork();
             let vis: Visibility = ahead.parse()?;
-            let mut look = ahead.lookahead1();
+            let mut look = ahead.look1();
             let default_ = if look.peek(Token![default]) && !ahead.peek2(Token![!]) {
                 let y: Token![default] = ahead.parse()?;
-                look = ahead.lookahead1();
+                look = ahead.look1();
                 Some(y)
             } else {
                 None
@@ -1251,7 +1251,7 @@ pub mod Impl {
             } else if look.peek(Token![const]) {
                 x.advance_to(&ahead);
                 let const_: Token![const] = x.parse()?;
-                let look = x.lookahead1();
+                let look = x.look1();
                 let ident = if look.peek(Ident) || look.peek(Token![_]) {
                     x.call(Ident::parse_any)?
                 } else {
@@ -1325,7 +1325,7 @@ pub mod Impl {
                 default_: x.parse()?,
                 const_: x.parse()?,
                 ident: {
-                    let look = x.lookahead1();
+                    let look = x.look1();
                     if look.peek(Ident) || look.peek(Token![_]) {
                         x.call(Ident::parse_any)?
                     } else {
@@ -1473,12 +1473,12 @@ pub mod Trait {
             let vis: Visibility = x.parse()?;
             let default_: Option<Token![default]> = x.parse()?;
             let ahead = x.fork();
-            let look = ahead.lookahead1();
+            let look = ahead.look1();
             let mut y = if look.peek(Token![fn]) || peek_signature(&ahead) {
                 x.parse().map(Item::Fn)
             } else if look.peek(Token![const]) {
                 ahead.parse::<Token![const]>()?;
-                let look = ahead.lookahead1();
+                let look = ahead.look1();
                 if look.peek(Ident) || look.peek(Token![_]) {
                     x.parse().map(Item::Const)
                 } else if look.peek(Token![async])
@@ -1537,7 +1537,7 @@ pub mod Trait {
                 attrs: x.call(attr::Attr::parse_outer)?,
                 const_: x.parse()?,
                 ident: {
-                    let look = x.lookahead1();
+                    let look = x.look1();
                     if look.peek(Ident) || look.peek(Token![_]) {
                         x.call(Ident::parse_any)?
                     } else {
@@ -1585,7 +1585,7 @@ pub mod Trait {
         fn parse(x: Stream) -> Res<Self> {
             let mut attrs = x.call(attr::Attr::parse_outer)?;
             let sig: Sig = x.parse()?;
-            let look = x.lookahead1();
+            let look = x.look1();
             let (brace, stmts, semi) = if look.peek(tok::Brace) {
                 let y;
                 let brace = braced!(y in x);
@@ -1713,7 +1713,7 @@ pub mod Use {
         }
     }
     fn parse_tree(x: Stream, root: bool) -> Res<Option<Tree>> {
-        let look = x.lookahead1();
+        let look = x.look1();
         if look.peek(Ident)
             || look.peek(Token![self])
             || look.peek(Token![super])
@@ -1923,7 +1923,7 @@ impl FlexibleItemType {
 pub fn parse_rest_of_item(begin: Buffer, mut attrs: Vec<attr::Attr>, x: Stream) -> Res<Item> {
     let ahead = x.fork();
     let vis: Visibility = ahead.parse()?;
-    let look = ahead.lookahead1();
+    let look = ahead.look1();
     let mut item = if look.peek(Token![fn]) || peek_signature(&ahead) {
         let vis: Visibility = x.parse()?;
         let sig: Sig = x.parse()?;
@@ -1935,14 +1935,14 @@ pub fn parse_rest_of_item(begin: Buffer, mut attrs: Vec<attr::Attr>, x: Stream) 
         }
     } else if look.peek(Token![extern]) {
         ahead.parse::<Token![extern]>()?;
-        let look = ahead.lookahead1();
+        let look = ahead.look1();
         if look.peek(Token![crate]) {
             x.parse().map(Item::ExternCrate)
         } else if look.peek(tok::Brace) {
             x.parse().map(Item::Foreign)
         } else if look.peek(lit::Str) {
             ahead.parse::<lit::Str>()?;
-            let look = ahead.lookahead1();
+            let look = ahead.look1();
             if look.peek(tok::Brace) {
                 x.parse().map(Item::Foreign)
             } else {
@@ -1991,7 +1991,7 @@ pub fn parse_rest_of_item(begin: Buffer, mut attrs: Vec<attr::Attr>, x: Stream) 
     } else if look.peek(Token![const]) {
         let vis = x.parse()?;
         let const_: Token![const] = x.parse()?;
-        let look = x.lookahead1();
+        let look = x.look1();
         let ident = if look.peek(Ident) || look.peek(Token![_]) {
             x.call(Ident::parse_any)?
         } else {
@@ -2018,7 +2018,7 @@ pub fn parse_rest_of_item(begin: Buffer, mut attrs: Vec<attr::Attr>, x: Stream) 
         }
     } else if look.peek(Token![unsafe]) {
         ahead.parse::<Token![unsafe]>()?;
-        let look = ahead.lookahead1();
+        let look = ahead.look1();
         if look.peek(Token![trait]) || look.peek(Token![auto]) && ahead.peek2(Token![trait]) {
             x.parse().map(Item::Trait)
         } else if look.peek(Token![impl]) {
@@ -2077,12 +2077,12 @@ pub fn parse_rest_of_item(begin: Buffer, mut attrs: Vec<attr::Attr>, x: Stream) 
 fn parse_macro2(begin: Buffer, _vis: Visibility, x: Stream) -> Res<Item> {
     x.parse::<Token![macro]>()?;
     x.parse::<Ident>()?;
-    let mut look = x.lookahead1();
+    let mut look = x.look1();
     if look.peek(tok::Paren) {
         let y;
         parenthesized!(y in x);
         y.parse::<Stream>()?;
-        look = x.lookahead1();
+        look = x.look1();
     }
     if look.peek(tok::Brace) {
         let y;
@@ -2250,7 +2250,7 @@ fn parse_item_type(beg: Buffer, x: Stream) -> Res<Item> {
 }
 fn parse_trait_or_trait_alias(x: Stream) -> Res<Item> {
     let (attrs, vis, trait_, ident, gens) = parse_start_of_trait_alias(x)?;
-    let look = x.lookahead1();
+    let look = x.look1();
     if look.peek(tok::Brace) || look.peek(Token![:]) || look.peek(Token![where]) {
         let unsafe_ = None;
         let auto_ = None;

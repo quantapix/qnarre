@@ -341,7 +341,7 @@ impl Parse for Arg {
     }
 }
 pub fn const_argument(x: Stream) -> Res<Expr> {
-    let y = x.lookahead1();
+    let y = x.look1();
     if x.peek(Lit) {
         let y = x.parse()?;
         return Ok(Expr::Lit(y));
@@ -530,7 +530,7 @@ impl ToTokens for ParenthesizedArgs {
         self.ret.to_tokens(ys);
     }
 }
-pub(crate) fn print_path(ys: &mut Stream, qself: &Option<QSelf>, path: &Path) {
+pub fn print_path(ys: &mut Stream, qself: &Option<QSelf>, path: &Path) {
     let qself = match qself {
         Some(qself) => qself,
         None => {
