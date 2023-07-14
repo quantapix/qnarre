@@ -352,7 +352,7 @@ pub use fab::*;
 pub mod __private {
     pub use super::{
         parse::parse_quote_fn,
-        tok::{lower_punct, parse_punct, peek_punct},
+        tok::{parse_punct, peek_punct, punct_to_tokens},
     };
     pub use proc_macro::TokenStream;
     pub use proc_macro2::TokenStream as TokenStream2;

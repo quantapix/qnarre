@@ -242,7 +242,7 @@ fn struct_(x: Stream, qself: Option<QSelf>, path: Path) -> Res<Struct> {
     let mut fields = Puncted::new();
     let mut rest = None;
     while !gist.is_empty() {
-        let attrs = gist.call(attr::Attr::parse_outer)?;
+        let attrs = gist.call(attr::Attr::parse_outers)?;
         if gist.peek(Token![..]) {
             rest = Some(Rest {
                 attrs,
@@ -492,14 +492,14 @@ fn const_(x: Stream) -> Res<pm2::Stream> {
     x.parse::<Token![const]>()?;
     let gist;
     braced!(gist in x);
-    gist.call(attr::Attr::parse_inner)?;
+    gist.call(attr::Attr::parse_inners)?;
     gist.call(Block::parse_within)?;
     Ok(parse::parse_verbatim(&beg, x))
 }
 
 impl ToTokens for Ident {
     fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outer());
+        ys.append_all(self.attrs.outers());
         self.ref_.to_tokens(ys);
         self.mut_.to_tokens(ys);
         self.ident.to_tokens(ys);
@@ -511,14 +511,14 @@ impl ToTokens for Ident {
 }
 impl ToTokens for Or {
     fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outer());
+        ys.append_all(self.attrs.outers());
         self.vert.to_tokens(ys);
         self.cases.to_tokens(ys);
     }
 }
 impl ToTokens for Paren {
     fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outer());
+        ys.append_all(self.attrs.outers());
         self.paren.surround(ys, |ys| {
             self.pat.to_tokens(ys);
         });
@@ -526,7 +526,7 @@ impl ToTokens for Paren {
 }
 impl ToTokens for Ref {
     fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outer());
+        ys.append_all(self.attrs.outers());
         self.and.to_tokens(ys);
         self.mut_.to_tokens(ys);
         self.pat.to_tokens(ys);
@@ -534,13 +534,13 @@ impl ToTokens for Ref {
 }
 impl ToTokens for Rest {
     fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outer());
+        ys.append_all(self.attrs.outers());
         self.dot2.to_tokens(ys);
     }
 }
 impl ToTokens for Slice {
     fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outer());
+        ys.append_all(self.attrs.outers());
         self.bracket.surround(ys, |ys| {
             self.elems.to_tokens(ys);
         });
@@ -548,8 +548,8 @@ impl ToTokens for Slice {
 }
 impl ToTokens for Struct {
     fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outer());
-        path::lower_path(ys, &self.qself, &self.path);
+        ys.append_all(self.attrs.outers());
+        path::path_to_tokens(ys, &self.qself, &self.path);
         self.brace.surround(ys, |ys| {
             self.fields.to_tokens(ys);
             if !self.fields.empty_or_trailing() && self.rest.is_some() {
@@ -561,7 +561,7 @@ impl ToTokens for Struct {
 }
 impl ToTokens for Tuple {
     fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outer());
+        ys.append_all(self.attrs.outers());
         self.paren.surround(ys, |ys| {
             self.elems.to_tokens(ys);
         });
@@ -569,8 +569,8 @@ impl ToTokens for Tuple {
 }
 impl ToTokens for TupleStruct {
     fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outer());
-        path::lower_path(ys, &self.qself, &self.path);
+        ys.append_all(self.attrs.outers());
+        path::path_to_tokens(ys, &self.qself, &self.path);
         self.paren.surround(ys, |ys| {
             self.elems.to_tokens(ys);
         });
@@ -578,7 +578,7 @@ impl ToTokens for TupleStruct {
 }
 impl ToTokens for Type {
     fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outer());
+        ys.append_all(self.attrs.outers());
         self.pat.to_tokens(ys);
         self.colon.to_tokens(ys);
         self.typ.to_tokens(ys);
@@ -586,13 +586,13 @@ impl ToTokens for Type {
 }
 impl ToTokens for Wild {
     fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outer());
+        ys.append_all(self.attrs.outers());
         self.underscore.to_tokens(ys);
     }
 }
 impl ToTokens for Field {
     fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outer());
+        ys.append_all(self.attrs.outers());
         if let Some(x) = &self.colon {
             self.member.to_tokens(ys);
             x.to_tokens(ys);

@@ -84,7 +84,7 @@ impl<T: Custom> Tok for T {
     }
 }
 
-pub fn lower_keyword(x: &str, s: pm2::Span, ys: &mut Stream) {
+pub fn kw_to_tokens(x: &str, s: pm2::Span, ys: &mut Stream) {
     ys.append(Ident::new(x, s));
 }
 
@@ -136,7 +136,7 @@ macro_rules! def_keywords {
             }
             impl ToTokens for $n {
                 fn to_tokens(&self, ys: &mut pm2::Stream) {
-                    crate::tok::lower_keyword($t, self.span, ys);
+                    crate::tok::kw_to_tokens($t, self.span, ys);
                 }
             }
             impl Tok for $n {
@@ -307,20 +307,20 @@ impl Tok for Underscore {
 }
 impl private::Sealed for Underscore {}
 
-pub fn lower_punct(x: &str, spans: &[pm2::Span], ys: &mut Stream) {
+pub fn punct_to_tokens(x: &str, spans: &[pm2::Span], ys: &mut Stream) {
     assert_eq!(x.len(), spans.len());
     let mut chars = x.chars();
     let mut spans = spans.iter();
     let ch = chars.next_back().unwrap();
     let span = spans.next_back().unwrap();
     for (ch, span) in chars.zip(spans) {
-        let mut op = Punct::new(ch, pm2::Spacing::Joint);
-        op.set_span(*span);
-        ys.append(op);
+        let mut y = Punct::new(ch, pm2::Spacing::Joint);
+        y.set_span(*span);
+        ys.append(y);
     }
-    let mut op = Punct::new(ch, pm2::Spacing::Alone);
-    op.set_span(*span);
-    ys.append(op);
+    let mut y = Punct::new(ch, pm2::Spacing::Alone);
+    y.set_span(*span);
+    ys.append(y);
 }
 
 macro_rules! def_punct {
@@ -346,7 +346,7 @@ macro_rules! def_punct {
             }
             impl ToTokens for $n {
                 fn to_tokens(&self, ts: &mut pm2::Stream) {
-                    crate::tok::lower_punct($t, &self.spans, ts);
+                    crate::tok::punct_to_tokens($t, &self.spans, ts);
                 }
             }
             impl private::Sealed for $n {}
@@ -402,10 +402,10 @@ def_punct! {
     "~"           pub struct Tilde/1
 }
 
-pub fn lower_delim(d: pm2::Delim, s: pm2::Span, ys: &mut Stream, inner: pm2::Stream) {
-    let mut g = Group::new(d, inner);
-    g.set_span(s);
-    ys.append(g);
+pub fn delim_to_tokens(d: pm2::Delim, s: pm2::Span, ys: &mut Stream, inner: pm2::Stream) {
+    let mut y = Group::new(d, inner);
+    y.set_span(s);
+    ys.append(y);
 }
 
 macro_rules! def_delims {
@@ -421,7 +421,7 @@ macro_rules! def_delims {
                 {
                     let mut inner = pm2::Stream::new();
                     f(&mut inner);
-                    crate::tok::lower_delim(pm2::Delim::$d, self.span.join(), ts, inner);
+                    crate::tok::delim_to_tokens(pm2::Delim::$d, self.span.join(), ts, inner);
                 }
             }
             #[allow(non_snake_case)]
@@ -509,7 +509,7 @@ impl Delim {
             tok::Delim::Brace(x) => (pm2::Delim::Brace, x.span),
             tok::Delim::Bracket(x) => (pm2::Delim::Bracket, x.span),
         };
-        lower_delim(delim, span.join(), ys, inner);
+        delim_to_tokens(delim, span.join(), ys, inner);
     }
     pub fn is_brace(&self) -> bool {
         match self {
@@ -529,7 +529,7 @@ impl Group {
     {
         let mut inner = pm2::Stream::new();
         f(&mut inner);
-        lower_delim(pm2::Delim::None, self.span, ts, inner);
+        delim_to_tokens(pm2::Delim::None, self.span, ts, inner);
     }
 }
 impl std::default::Default for Group {

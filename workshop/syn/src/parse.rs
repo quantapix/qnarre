@@ -238,9 +238,9 @@ impl<T: Parse> Quote for T {
 impl Quote for attr::Attr {
     fn parse(s: Stream) -> Res<Self> {
         if s.peek(Token![#]) && s.peek2(Token![!]) {
-            attr::single_inner(s)
+            attr::parse_one_inner(s)
         } else {
-            attr::single_outer(s)
+            attr::parse_one_outer(s)
         }
     }
 }

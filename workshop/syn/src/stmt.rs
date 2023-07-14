@@ -87,7 +87,7 @@ pub struct Local {
 }
 impl ToTokens for Local {
     fn to_tokens(&self, ys: &mut Stream) {
-        attr::outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.let_.to_tokens(ys);
         self.pat.to_tokens(ys);
         if let Some(x) = &self.init {
@@ -115,7 +115,7 @@ pub struct Mac {
 }
 impl ToTokens for Mac {
     fn to_tokens(&self, ys: &mut Stream) {
-        attr::outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.mac.to_tokens(ys);
         self.semi.to_tokens(ys);
     }
@@ -123,7 +123,7 @@ impl ToTokens for Mac {
 
 fn parse_stmt(s: Stream, nosemi: NoSemi) -> Res<Stmt> {
     let beg = s.fork();
-    let attrs = s.call(attr::Attr::parse_outer)?;
+    let attrs = s.call(attr::Attr::parse_outers)?;
     let ahead = s.fork();
     let mut is_mac = false;
     if let Ok(x) = ahead.call(Path::parse_mod_style) {

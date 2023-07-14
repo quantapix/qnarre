@@ -9,7 +9,7 @@ pub struct DeriveInput {
 }
 impl Parse for DeriveInput {
     fn parse(s: Stream) -> Res<Self> {
-        let attrs = s.call(attr::Attr::parse_outer)?;
+        let attrs = s.call(attr::Attr::parse_outers)?;
         let vis = s.parse::<Visibility>()?;
         let look = s.look1();
         if look.peek(Token![struct]) {
@@ -55,7 +55,7 @@ impl Parse for DeriveInput {
 }
 impl ToTokens for DeriveInput {
     fn to_tokens(&self, ys: &mut Stream) {
-        for x in self.attrs.outer() {
+        for x in self.attrs.outers() {
             x.to_tokens(ys);
         }
         self.vis.to_tokens(ys);
@@ -218,7 +218,7 @@ pub struct Variant {
 }
 impl Parse for Variant {
     fn parse(s: Stream) -> Res<Self> {
-        let attrs = s.call(attr::Attr::parse_outer)?;
+        let attrs = s.call(attr::Attr::parse_outers)?;
         let _: Visibility = s.parse()?;
         let ident: Ident = s.parse()?;
         let fields = if s.peek(tok::Brace) {
@@ -376,7 +376,7 @@ pub struct Field {
 impl Field {
     pub fn parse_named(s: Stream) -> Res<Self> {
         Ok(Field {
-            attrs: s.call(attr::Attr::parse_outer)?,
+            attrs: s.call(attr::Attr::parse_outers)?,
             vis: s.parse()?,
             mut_: Mut::None,
             ident: Some(if s.peek(Token![_]) {
@@ -390,7 +390,7 @@ impl Field {
     }
     pub fn parse_unnamed(s: Stream) -> Res<Self> {
         Ok(Field {
-            attrs: s.call(attr::Attr::parse_outer)?,
+            attrs: s.call(attr::Attr::parse_outers)?,
             vis: s.parse()?,
             mut_: Mut::None,
             ident: None,

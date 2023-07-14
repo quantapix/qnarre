@@ -296,7 +296,7 @@ macro_rules! impl_to_tokens_for_custom_punctuation {
     ($ident:ident, $($tt:tt)+) => {
         impl $crate::__private::ToTokens for $ident {
             fn to_tokens(&self, ys: &mut $crate::__private::TokenStream2) {
-                $crate::__private::lower_punct($crate::stringify_punct!($($tt)+), &self.spans, ys)
+                $crate::__private::punct_to_tokens($crate::stringify_punct!($($tt)+), &self.spans, ys)
             }
         }
     };

@@ -530,9 +530,9 @@ impl ToTokens for ParenthesizedArgs {
         self.ret.to_tokens(ys);
     }
 }
-pub fn lower_path(ys: &mut Stream, qself: &Option<QSelf>, path: &Path) {
+pub fn path_to_tokens(ys: &mut Stream, qself: &Option<QSelf>, path: &Path) {
     let qself = match qself {
-        Some(qself) => qself,
+        Some(x) => x,
         None => {
             path.to_tokens(ys);
             return;

@@ -25,35 +25,35 @@ impl Attr {
                 x.segs.first().unwrap().ident.span(),
                 x.segs.last().unwrap().ident.span(),
                 format!(
-                    "expected attribute arguments in parentheses: {}[{}(...)]",
+                    "expected args in parentheses: {}[{}(...)]",
                     DisplayStyle(&self.style),
-                    DisplayPath(x),
+                    path::DisplayPath(x),
                 ),
             )),
-            NameValue(x) => Err(Err::new(
+            Meta::NameValue(x) => Err(Err::new(
                 x.eq.span,
                 format_args!(
                     "expected parentheses: {}[{}(...)]",
                     DisplayStyle(&self.style),
-                    DisplayPath(&meta.path),
+                    path::DisplayPath(&x.path),
                 ),
             )),
-            List(x) => x.parse_args_with(p),
+            Meta::List(x) => x.parse_args_with(p),
         }
     }
     pub fn parse_nested(&self, x: impl FnMut(meta::Nested) -> Res<()>) -> Res<()> {
         self.parse_args_with(meta::parser(x))
     }
-    pub fn parse_outer(x: Stream) -> Res<Vec<Self>> {
+    pub fn parse_inners(s: Stream) -> Res<Vec<Self>> {
         let mut y = Vec::new();
-        while x.peek(Token![#]) {
-            y.push(x.call(parse_single_outer)?);
-        }
+        parse_inners(s, &mut y)?;
         Ok(y)
     }
-    pub fn parse_inner(x: Stream) -> Res<Vec<Self>> {
+    pub fn parse_outers(s: Stream) -> Res<Vec<Self>> {
         let mut y = Vec::new();
-        parse_inner(x, &mut y)?;
+        while s.peek(Token![#]) {
+            y.push(s.call(parse_one_outer)?);
+        }
         Ok(y)
     }
 }
@@ -71,22 +71,12 @@ impl ToTokens for Attr {
 
 pub trait Filter<'a> {
     type Ret: Iterator<Item = &'a Attr>;
-    fn outer(self) -> Self::Ret;
-    fn inner(self) -> Self::Ret;
+    fn inners(self) -> Self::Ret;
+    fn outers(self) -> Self::Ret;
 }
 impl<'a> Filter<'a> for &'a [Attr] {
     type Ret = iter::Filter<slice::Iter<'a, Attr>, fn(&&Attr) -> bool>;
-    fn outer(self) -> Self::Ret {
-        fn is_outer(x: &&Attr) -> bool {
-            use Style::*;
-            match x.style {
-                Outer => true,
-                Inner(_) => false,
-            }
-        }
-        self.iter().filter(is_outer)
-    }
-    fn inner(self) -> Self::Ret {
+    fn inners(self) -> Self::Ret {
         fn is_inner(x: &&Attr) -> bool {
             use Style::*;
             match x.style {
@@ -95,6 +85,16 @@ impl<'a> Filter<'a> for &'a [Attr] {
             }
         }
         self.iter().filter(is_inner)
+    }
+    fn outers(self) -> Self::Ret {
+        fn is_outer(x: &&Attr) -> bool {
+            use Style::*;
+            match x.style {
+                Outer => true,
+                Inner(_) => false,
+            }
+        }
+        self.iter().filter(is_outer)
     }
 }
 
@@ -108,34 +108,34 @@ impl<'a> Display for DisplayStyle<'a> {
     }
 }
 
-pub fn parse_inner(x: Stream, ys: &mut Vec<Attr>) -> Res<()> {
-    while x.peek(Token![#]) && x.peek2(Token![!]) {
-        ys.push(x.call(parse_single_inner)?);
+pub fn parse_inners(s: Stream, ys: &mut Vec<Attr>) -> Res<()> {
+    while s.peek(Token![#]) && s.peek2(Token![!]) {
+        ys.push(s.call(parse_one_inner)?);
     }
     Ok(())
 }
-pub fn parse_single_inner(x: Stream) -> Res<Attr> {
+pub fn parse_one_inner(s: Stream) -> Res<Attr> {
     let y;
     Ok(Attr {
-        pound: x.parse()?,
-        style: Style::Inner(x.parse()?),
-        bracket: bracketed!(y in x),
+        pound: s.parse()?,
+        style: Style::Inner(s.parse()?),
+        bracket: bracketed!(y in s),
         meta: y.parse()?,
     })
 }
-pub fn parse_single_outer(x: Stream) -> Res<Attr> {
+pub fn parse_one_outer(s: Stream) -> Res<Attr> {
     let y;
     Ok(Attr {
-        pound: x.parse()?,
+        pound: s.parse()?,
         style: Style::Outer,
-        bracket: bracketed!(y in x),
+        bracket: bracketed!(y in s),
         meta: y.parse()?,
     })
 }
 
-pub fn outer_attrs_to_tokens(xs: &[Attr], ys: &mut Stream) {
-    ys.append_all(xs.outer());
+pub fn inners_to_tokens(xs: &[Attr], ys: &mut Stream) {
+    ys.append_all(xs.inners());
 }
-fn inner_attrs_to_tokens(xs: &[Attr], ys: &mut Stream) {
-    ys.append_all(xs.inner());
+pub fn outers_to_tokens(xs: &[Attr], ys: &mut Stream) {
+    ys.append_all(xs.outers());
 }

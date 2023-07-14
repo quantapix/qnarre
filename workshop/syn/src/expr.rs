@@ -171,7 +171,7 @@ impl Parse for Array {
 }
 impl ToTokens for Array {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.bracket.surround(ys, |ys| {
             self.elems.to_tokens(ys);
         });
@@ -186,7 +186,7 @@ pub struct Assign {
 }
 impl ToTokens for Assign {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.left.to_tokens(ys);
         self.eq.to_tokens(ys);
         self.right.to_tokens(ys);
@@ -211,7 +211,7 @@ impl Parse for Async {
 }
 impl ToTokens for Async {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.async_.to_tokens(ys);
         self.move_.to_tokens(ys);
         self.block.to_tokens(ys);
@@ -226,7 +226,7 @@ pub struct Await {
 }
 impl ToTokens for Await {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.expr.to_tokens(ys);
         self.dot.to_tokens(ys);
         self.await_.to_tokens(ys);
@@ -241,7 +241,7 @@ pub struct Binary {
 }
 impl ToTokens for Binary {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.left.to_tokens(ys);
         self.op.to_tokens(ys);
         self.right.to_tokens(ys);
@@ -255,11 +255,11 @@ pub struct Block {
 }
 impl Parse for Block {
     fn parse(x: Stream) -> Res<Self> {
-        let mut attrs = x.call(attr::Attr::parse_outer)?;
+        let mut attrs = x.call(attr::Attr::parse_outers)?;
         let label: Option<Label> = x.parse()?;
         let y;
         let brace = braced!(y in x);
-        attr::inner(&y, &mut attrs)?;
+        attr::parse_inners(&y, &mut attrs)?;
         let stmts = y.call(Block::parse_within)?;
         Ok(Block {
             attrs,
@@ -270,10 +270,10 @@ impl Parse for Block {
 }
 impl ToTokens for Block {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.label.to_tokens(ys);
         self.block.brace.surround(ys, |ys| {
-            inner_attrs_to_tokens(&self.attrs, ys);
+            attr::inners_to_tokens(&self.attrs, ys);
             ys.append_all(&self.block.stmts);
         });
     }
@@ -293,7 +293,7 @@ impl Parse for Break {
 }
 impl ToTokens for Break {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.break_.to_tokens(ys);
         self.label.to_tokens(ys);
         self.expr.to_tokens(ys);
@@ -308,7 +308,7 @@ pub struct Call {
 }
 impl ToTokens for Call {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.func.to_tokens(ys);
         self.paren.surround(ys, |ys| {
             self.args.to_tokens(ys);
@@ -324,7 +324,7 @@ pub struct Cast {
 }
 impl ToTokens for Cast {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.expr.to_tokens(ys);
         self.as_.to_tokens(ys);
         self.typ.to_tokens(ys);
@@ -352,7 +352,7 @@ impl Parse for Closure {
 }
 impl ToTokens for Closure {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.lifes.to_tokens(ys);
         self.const_.to_tokens(ys);
         self.static_.to_tokens(ys);
@@ -376,7 +376,7 @@ impl Parse for Const {
         let const_: Token![const] = x.parse()?;
         let y;
         let brace = braced!(y in x);
-        let attrs = y.call(attr::Attr::parse_inner)?;
+        let attrs = y.call(attr::Attr::parse_inners)?;
         let stmts = y.call(Block::parse_within)?;
         Ok(Const {
             attrs,
@@ -387,10 +387,10 @@ impl Parse for Const {
 }
 impl ToTokens for Const {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.const_.to_tokens(ys);
         self.block.brace.surround(ys, |ys| {
-            inner_attrs_to_tokens(&self.attrs, ys);
+            attr::inners_to_tokens(&self.attrs, ys);
             ys.append_all(&self.block.stmts);
         });
     }
@@ -412,7 +412,7 @@ impl Parse for Continue {
 }
 impl ToTokens for Continue {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.continue_.to_tokens(ys);
         self.label.to_tokens(ys);
     }
@@ -426,7 +426,7 @@ pub struct Field {
 }
 impl ToTokens for Field {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.base.to_tokens(ys);
         self.dot.to_tokens(ys);
         self.memb.to_tokens(ys);
@@ -444,7 +444,7 @@ pub struct ForLoop {
 }
 impl Parse for ForLoop {
     fn parse(x: Stream) -> Res<Self> {
-        let mut attrs = x.call(attr::Attr::parse_outer)?;
+        let mut attrs = x.call(attr::Attr::parse_outers)?;
         let label: Option<Label> = x.parse()?;
         let for_: Token![for] = x.parse()?;
         let pat = pat::Pat::parse_multi(x)?;
@@ -452,7 +452,7 @@ impl Parse for ForLoop {
         let expr: Expr = x.call(Expr::parse_without_eager_brace)?;
         let y;
         let brace = braced!(y in x);
-        attr::inner(&y, &mut attrs)?;
+        attr::parse_inners(&y, &mut attrs)?;
         let stmts = y.call(Block::parse_within)?;
         Ok(ForLoop {
             attrs,
@@ -467,14 +467,14 @@ impl Parse for ForLoop {
 }
 impl ToTokens for ForLoop {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.label.to_tokens(ys);
         self.for_.to_tokens(ys);
         self.pat.to_tokens(ys);
         self.in_.to_tokens(ys);
         wrap_bare_struct(ys, &self.expr);
         self.body.brace.surround(ys, |ys| {
-            inner_attrs_to_tokens(&self.attrs, ys);
+            attr::inners_to_tokens(&self.attrs, ys);
             ys.append_all(&self.body.stmts);
         });
     }
@@ -487,7 +487,7 @@ pub struct Group {
 }
 impl ToTokens for Group {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.group.surround(ys, |ys| {
             self.expr.to_tokens(ys);
         });
@@ -503,7 +503,7 @@ pub struct If {
 }
 impl Parse for If {
     fn parse(x: Stream) -> Res<Self> {
-        let attrs = x.call(attr::Attr::parse_outer)?;
+        let attrs = x.call(attr::Attr::parse_outers)?;
         Ok(If {
             attrs,
             if_: x.parse()?,
@@ -521,7 +521,7 @@ impl Parse for If {
 }
 impl ToTokens for If {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.if_.to_tokens(ys);
         wrap_bare_struct(ys, &self.cond);
         self.then_branch.to_tokens(ys);
@@ -556,7 +556,7 @@ impl Parse for Index {
 }
 impl ToTokens for Index {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.expr.to_tokens(ys);
         self.bracket.surround(ys, |ys| {
             self.idx.to_tokens(ys);
@@ -571,14 +571,14 @@ pub struct Infer {
 impl Parse for Infer {
     fn parse(x: Stream) -> Res<Self> {
         Ok(Infer {
-            attrs: x.call(attr::Attr::parse_outer)?,
+            attrs: x.call(attr::Attr::parse_outers)?,
             underscore: x.parse()?,
         })
     }
 }
 impl ToTokens for Infer {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.underscore.to_tokens(ys);
     }
 }
@@ -607,7 +607,7 @@ impl Parse for Let {
 }
 impl ToTokens for Let {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.let_.to_tokens(ys);
         self.pat.to_tokens(ys);
         self.eq.to_tokens(ys);
@@ -629,7 +629,7 @@ impl Parse for Lit {
 }
 impl ToTokens for Lit {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.lit.to_tokens(ys);
     }
 }
@@ -642,12 +642,12 @@ pub struct Loop {
 }
 impl Parse for Loop {
     fn parse(x: Stream) -> Res<Self> {
-        let mut attrs = x.call(attr::Attr::parse_outer)?;
+        let mut attrs = x.call(attr::Attr::parse_outers)?;
         let label: Option<Label> = x.parse()?;
         let loop_: Token![loop] = x.parse()?;
         let y;
         let brace = braced!(y in x);
-        attr::inner(&y, &mut attrs)?;
+        attr::parse_inners(&y, &mut attrs)?;
         let stmts = y.call(Block::parse_within)?;
         Ok(Loop {
             attrs,
@@ -659,11 +659,11 @@ impl Parse for Loop {
 }
 impl ToTokens for Loop {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.label.to_tokens(ys);
         self.loop_.to_tokens(ys);
         self.body.brace.surround(ys, |ys| {
-            inner_attrs_to_tokens(&self.attrs, ys);
+            attr::inners_to_tokens(&self.attrs, ys);
             ys.append_all(&self.body.stmts);
         });
     }
@@ -683,7 +683,7 @@ impl Parse for Mac {
 }
 impl ToTokens for Mac {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.mac.to_tokens(ys);
     }
 }
@@ -697,12 +697,12 @@ pub struct Match {
 }
 impl Parse for Match {
     fn parse(x: Stream) -> Res<Self> {
-        let mut attrs = x.call(attr::Attr::parse_outer)?;
+        let mut attrs = x.call(attr::Attr::parse_outers)?;
         let match_: Token![match] = x.parse()?;
         let expr = Expr::parse_without_eager_brace(x)?;
         let y;
         let brace = braced!(y in x);
-        attr::inner(&y, &mut attrs)?;
+        attr::parse_inners(&y, &mut attrs)?;
         let mut arms = Vec::new();
         while !y.is_empty() {
             arms.push(y.call(Arm::parse)?);
@@ -718,11 +718,11 @@ impl Parse for Match {
 }
 impl ToTokens for Match {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.match_.to_tokens(ys);
         wrap_bare_struct(ys, &self.expr);
         self.brace.surround(ys, |ys| {
-            inner_attrs_to_tokens(&self.attrs, ys);
+            attr::inners_to_tokens(&self.attrs, ys);
             for (i, arm) in self.arms.iter().enumerate() {
                 arm.to_tokens(ys);
                 let is_last = i == self.arms.len() - 1;
@@ -745,7 +745,7 @@ pub struct MethodCall {
 }
 impl ToTokens for MethodCall {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.expr.to_tokens(ys);
         self.dot.to_tokens(ys);
         self.method.to_tokens(ys);
@@ -768,7 +768,7 @@ impl Parse for Paren {
 }
 impl ToTokens for Paren {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.paren.surround(ys, |ys| {
             self.expr.to_tokens(ys);
         });
@@ -782,15 +782,15 @@ pub struct Path {
 }
 impl Parse for Path {
     fn parse(x: Stream) -> Res<Self> {
-        let attrs = x.call(attr::Attr::parse_outer)?;
+        let attrs = x.call(attr::Attr::parse_outers)?;
         let (qself, path) = qpath(x, true)?;
         Ok(Path { attrs, qself, path })
     }
 }
 impl ToTokens for Path {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
-        path::lower_path(ys, &self.qself, &self.path);
+        attr::outers_to_tokens(&self.attrs, ys);
+        path::path_to_tokens(ys, &self.qself, &self.path);
     }
 }
 
@@ -802,7 +802,7 @@ pub struct Range {
 }
 impl ToTokens for Range {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.beg.to_tokens(ys);
         self.limits.to_tokens(ys);
         self.end.to_tokens(ys);
@@ -828,7 +828,7 @@ impl Parse for Ref {
 }
 impl ToTokens for Ref {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.and.to_tokens(ys);
         self.mut_.to_tokens(ys);
         self.expr.to_tokens(ys);
@@ -856,7 +856,7 @@ impl Parse for Repeat {
 }
 impl ToTokens for Repeat {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.bracket.surround(ys, |ys| {
             self.expr.to_tokens(ys);
             self.semi.to_tokens(ys);
@@ -878,7 +878,7 @@ impl Parse for Return {
 }
 impl ToTokens for Return {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.return_.to_tokens(ys);
         self.expr.to_tokens(ys);
     }
@@ -901,8 +901,8 @@ impl Parse for Struct {
 }
 impl ToTokens for Struct {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
-        path::lower_path(ys, &self.qself, &self.path);
+        attr::outers_to_tokens(&self.attrs, ys);
+        path::path_to_tokens(ys, &self.qself, &self.path);
         self.brace.surround(ys, |ys| {
             self.fields.to_tokens(ys);
             if let Some(dot2) = &self.dot2 {
@@ -922,7 +922,7 @@ pub struct Try {
 }
 impl ToTokens for Try {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.expr.to_tokens(ys);
         self.question.to_tokens(ys);
     }
@@ -944,7 +944,7 @@ impl Parse for TryBlock {
 }
 impl ToTokens for TryBlock {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.try_.to_tokens(ys);
         self.block.to_tokens(ys);
     }
@@ -957,7 +957,7 @@ pub struct Tuple {
 }
 impl ToTokens for Tuple {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.paren.surround(ys, |ys| {
             self.elems.to_tokens(ys);
             if self.elems.len() == 1 && !self.elems.trailing_punct() {
@@ -981,7 +981,7 @@ impl Parse for Unary {
 }
 impl ToTokens for Unary {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.op.to_tokens(ys);
         self.expr.to_tokens(ys);
     }
@@ -997,7 +997,7 @@ impl Parse for Unsafe {
         let unsafe_: Token![unsafe] = x.parse()?;
         let y;
         let brace = braced!(y in x);
-        let attrs = y.call(attr::Attr::parse_inner)?;
+        let attrs = y.call(attr::Attr::parse_inners)?;
         let stmts = y.call(Block::parse_within)?;
         Ok(Unsafe {
             attrs,
@@ -1008,10 +1008,10 @@ impl Parse for Unsafe {
 }
 impl ToTokens for Unsafe {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.unsafe_.to_tokens(ys);
         self.block.brace.surround(ys, |ys| {
-            inner_attrs_to_tokens(&self.attrs, ys);
+            attr::inners_to_tokens(&self.attrs, ys);
             ys.append_all(&self.block.stmts);
         });
     }
@@ -1026,13 +1026,13 @@ pub struct While {
 }
 impl Parse for While {
     fn parse(x: Stream) -> Res<Self> {
-        let mut attrs = x.call(attr::Attr::parse_outer)?;
+        let mut attrs = x.call(attr::Attr::parse_outers)?;
         let label: Option<Label> = x.parse()?;
         let while_: Token![while] = x.parse()?;
         let cond = Expr::parse_without_eager_brace(x)?;
         let y;
         let brace = braced!(y in x);
-        attr::inner(&y, &mut attrs)?;
+        attr::parse_inners(&y, &mut attrs)?;
         let stmts = y.call(Block::parse_within)?;
         Ok(While {
             attrs,
@@ -1045,12 +1045,12 @@ impl Parse for While {
 }
 impl ToTokens for While {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.label.to_tokens(ys);
         self.while_.to_tokens(ys);
         wrap_bare_struct(ys, &self.cond);
         self.block.brace.surround(ys, |ys| {
-            inner_attrs_to_tokens(&self.attrs, ys);
+            attr::inners_to_tokens(&self.attrs, ys);
             ys.append_all(&self.block.stmts);
         });
     }
@@ -1078,7 +1078,7 @@ impl Parse for Yield {
 }
 impl ToTokens for Yield {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.yield_.to_tokens(ys);
         self.expr.to_tokens(ys);
     }
@@ -1337,7 +1337,7 @@ pub struct FieldValue {
 }
 impl Parse for FieldValue {
     fn parse(x: Stream) -> Res<Self> {
-        let attrs = x.call(attr::Attr::parse_outer)?;
+        let attrs = x.call(attr::Attr::parse_outers)?;
         let memb: Member = x.parse()?;
         let (colon, val) = if x.peek(Token![:]) || !memb.is_named() {
             let colon: Token![:] = x.parse()?;
@@ -1363,7 +1363,7 @@ impl Parse for FieldValue {
 }
 impl ToTokens for FieldValue {
     fn to_tokens(&self, ys: &mut Stream) {
-        outer_attrs_to_tokens(&self.attrs, ys);
+        attr::outers_to_tokens(&self.attrs, ys);
         self.member.to_tokens(ys);
         if let Some(colon) = &self.colon {
             colon.to_tokens(ys);
@@ -1412,7 +1412,7 @@ impl Parse for Arm {
     fn parse(x: Stream) -> Res<Arm> {
         let comma;
         Ok(Arm {
-            attrs: x.call(attr::Attr::parse_outer)?,
+            attrs: x.call(attr::Attr::parse_outers)?,
             pat: pat::Pat::parse_multi(x)?,
             guard: {
                 if x.peek(Token![if]) {
@@ -2187,7 +2187,7 @@ fn expr_closure(x: Stream, allow: AllowStruct) -> Res<Closure> {
     })
 }
 fn closure_arg(x: Stream) -> Res<pat::Pat> {
-    let attrs = x.call(attr::Attr::parse_outer)?;
+    let attrs = x.call(attr::Attr::parse_outers)?;
     let mut y = pat::Pat::parse_single(x)?;
     if x.peek(Token![:]) {
         Ok(pat::Pat::Type(pat::Type {

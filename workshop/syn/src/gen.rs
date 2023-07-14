@@ -146,7 +146,7 @@ pub mod bound {
                 lifes: {
                     let mut ys = Puncted::new();
                     while !s.peek(Token![>]) {
-                        let attrs = s.call(attr::Attr::parse_outer)?;
+                        let attrs = s.call(attr::Attr::parse_outers)?;
                         let life: Life = s.parse()?;
                         ys.push_value(param::Param::Life(param::Life {
                             attrs,
@@ -194,7 +194,7 @@ pub mod param {
     }
     impl Parse for Param {
         fn parse(s: Stream) -> Res<Self> {
-            let attrs = s.call(attr::Attr::parse_outer)?;
+            let attrs = s.call(attr::Attr::parse_outers)?;
             let look = s.look1();
             if look.peek(Ident) {
                 Ok(Param::Type(Type { attrs, ..s.parse()? }))
@@ -228,7 +228,7 @@ pub mod param {
         fn parse(s: Stream) -> Res<Self> {
             let colon;
             Ok(Life {
-                attrs: s.call(attr::Attr::parse_outer)?,
+                attrs: s.call(attr::Attr::parse_outers)?,
                 life: s.parse()?,
                 colon: {
                     if s.peek(Token![:]) {
@@ -262,7 +262,7 @@ pub mod param {
     }
     impl ToTokens for Life {
         fn to_tokens(&self, ys: &mut Stream) {
-            ys.append_all(self.attrs.outer());
+            ys.append_all(self.attrs.outers());
             self.life.to_tokens(ys);
             if !self.bounds.is_empty() {
                 TokensOrDefault(&self.colon).to_tokens(ys);
@@ -324,7 +324,7 @@ pub mod param {
     }
     impl Parse for Type {
         fn parse(s: Stream) -> Res<Self> {
-            let attrs = s.call(attr::Attr::parse_outer)?;
+            let attrs = s.call(attr::Attr::parse_outers)?;
             let ident: Ident = s.parse()?;
             let colon: Option<Token![:]> = s.parse()?;
             let mut ys = Puncted::new();
@@ -360,7 +360,7 @@ pub mod param {
     }
     impl ToTokens for Type {
         fn to_tokens(&self, ys: &mut Stream) {
-            ys.append_all(self.attrs.outer());
+            ys.append_all(self.attrs.outers());
             self.ident.to_tokens(ys);
             if !self.bounds.is_empty() {
                 TokensOrDefault(&self.colon).to_tokens(ys);
@@ -416,7 +416,7 @@ pub mod param {
         fn parse(x: Stream) -> Res<Self> {
             let mut default = None;
             Ok(Const {
-                attrs: x.call(attr::Attr::parse_outer)?,
+                attrs: x.call(attr::Attr::parse_outers)?,
                 const_: x.parse()?,
                 ident: x.parse()?,
                 colon: x.parse()?,
@@ -436,7 +436,7 @@ pub mod param {
     }
     impl ToTokens for Const {
         fn to_tokens(&self, ys: &mut Stream) {
-            ys.append_all(self.attrs.outer());
+            ys.append_all(self.attrs.outers());
             self.const_.to_tokens(ys);
             self.ident.to_tokens(ys);
             self.colon.to_tokens(ys);
@@ -686,7 +686,7 @@ impl Parse for Gens {
             if s.peek(Token![>]) {
                 break;
             }
-            let attrs = s.call(attr::Attr::parse_outer)?;
+            let attrs = s.call(attr::Attr::parse_outers)?;
             let look = s.look1();
             if look.peek(Life) {
                 ys.push_value(Param::Life(param::Life { attrs, ..s.parse()? }));
@@ -801,7 +801,7 @@ impl<'a> ToTokens for Impl<'a> {
             match x.value() {
                 Param::Life(_) => unreachable!(),
                 Param::Type(x) => {
-                    ys.append_all(x.attrs.outer());
+                    ys.append_all(x.attrs.outers());
                     x.ident.to_tokens(ys);
                     if !x.bounds.is_empty() {
                         TokensOrDefault(&x.colon).to_tokens(ys);
@@ -809,7 +809,7 @@ impl<'a> ToTokens for Impl<'a> {
                     }
                 },
                 Param::Const(x) => {
-                    ys.append_all(x.attrs.outer());
+                    ys.append_all(x.attrs.outers());
                     x.const_.to_tokens(ys);
                     x.ident.to_tokens(ys);
                     x.colon.to_tokens(ys);

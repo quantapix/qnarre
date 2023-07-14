@@ -84,7 +84,7 @@ impl Parse for Fn {
             args: {
                 let mut ys = Puncted::new();
                 while !args.is_empty() {
-                    let attrs = args.call(attr::Attr::parse_outer)?;
+                    let attrs = args.call(attr::Attr::parse_outers)?;
                     if ys.empty_or_trailing()
                         && (args.peek(Token![...])
                             || args.peek(Ident) && args.peek2(Token![:]) && args.peek3(Token![...]))
@@ -279,7 +279,7 @@ impl Parse for Path {
 }
 impl ToTokens for Path {
     fn to_tokens(&self, ys: &mut Stream) {
-        path::lower_path(ys, &self.qself, &self.path);
+        path::path_to_tokens(ys, &self.qself, &self.path);
     }
 }
 
@@ -505,7 +505,7 @@ impl Parse for FnArg {
 }
 impl ToTokens for FnArg {
     fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outer());
+        ys.append_all(self.attrs.outers());
         if let Some((name, colon)) = &self.name {
             name.to_tokens(ys);
             colon.to_tokens(ys);
@@ -522,7 +522,7 @@ pub struct Variadic {
 }
 impl ToTokens for Variadic {
     fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outer());
+        ys.append_all(self.attrs.outers());
         if let Some((name, colon)) = &self.name {
             name.to_tokens(ys);
             colon.to_tokens(ys);
@@ -815,7 +815,7 @@ pub fn parse_ambig_typ(s: Stream, plus: bool, gen: bool) -> Res<Type> {
     }
 }
 fn parse_fn_arg(s: Stream, self_: bool) -> Res<FnArg> {
-    let attrs = s.call(attr::Attr::parse_outer)?;
+    let attrs = s.call(attr::Attr::parse_outers)?;
     let beg = s.fork();
     let has_mut_self = self_ && s.peek(Token![mut]) && s.peek2(Token![self]);
     if has_mut_self {
