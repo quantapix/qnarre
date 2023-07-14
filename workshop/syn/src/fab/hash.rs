@@ -1259,7 +1259,7 @@ impl Hash for item::Enum {
         self.vis.hash(state);
         self.ident.hash(state);
         self.gens.hash(state);
-        self.elems.hash(state);
+        self.variants.hash(state);
     }
 }
 impl Hash for item::ExternCrate {
@@ -1329,7 +1329,7 @@ impl Hash for item::Mod {
         self.vis.hash(state);
         self.unsafe_.hash(state);
         self.ident.hash(state);
-        self.gist.hash(state);
+        self.items.hash(state);
         self.semi.hash(state);
     }
 }

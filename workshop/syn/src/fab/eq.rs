@@ -710,7 +710,7 @@ impl PartialEq for item::Enum {
             && self.vis == other.vis
             && self.ident == other.ident
             && self.gens == other.gens
-            && self.elems == other.elems
+            && self.variants == other.variants
     }
 }
 impl Eq for item::ExternCrate {}
@@ -756,7 +756,7 @@ impl PartialEq for item::Mod {
             && self.vis == other.vis
             && self.unsafe_ == other.unsafe_
             && self.ident == other.ident
-            && self.gist == other.gist
+            && self.items == other.items
             && self.semi == other.semi
     }
 }

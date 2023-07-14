@@ -1870,7 +1870,7 @@ where
     v.visit_ident(&node.ident);
     v.visit_generics(&node.gens);
     skip!(node.brace);
-    for el in Puncted::pairs(&node.elems) {
+    for el in Puncted::pairs(&node.variants) {
         let it = el.value();
         v.visit_variant(it);
     }
@@ -1963,7 +1963,7 @@ where
     skip!(node.unsafe_);
     skip!(node.mod_);
     v.visit_ident(&node.ident);
-    if let Some(it) = &node.gist {
+    if let Some(it) = &node.items {
         skip!((it).0);
         for it in &(it).1 {
             v.visit_item(it);

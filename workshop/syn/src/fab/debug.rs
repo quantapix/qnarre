@@ -1382,7 +1382,7 @@ impl Debug for item::Enum {
                 formatter.field("ident", &self.ident);
                 formatter.field("gens", &self.gens);
                 formatter.field("brace", &self.brace);
-                formatter.field("variants", &self.elems);
+                formatter.field("variants", &self.variants);
                 formatter.finish()
             }
         }
@@ -1483,7 +1483,7 @@ impl Debug for item::Mod {
                 formatter.field("unsafe_", &self.unsafe_);
                 formatter.field("mod_", &self.mod_);
                 formatter.field("ident", &self.ident);
-                formatter.field("content", &self.gist);
+                formatter.field("content", &self.items);
                 formatter.field("semi", &self.semi);
                 formatter.finish()
             }

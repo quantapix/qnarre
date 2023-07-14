@@ -1,4 +1,4 @@
-use proc_macro2::Ident;
+use super::*;
 
 pub trait Tok: private::Sealed {
     fn peek(x: Cursor) -> bool;

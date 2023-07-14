@@ -56,7 +56,6 @@ pub use std::{
 use quote::{quote, spanned, TokenStreamExt};
 use std::{
     cmp::{self, Ordering},
-    mem,
     thread::{self, ThreadId},
 };
 

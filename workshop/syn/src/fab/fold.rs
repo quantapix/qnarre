@@ -1581,7 +1581,7 @@ where
         ident: f.fold_ident(node.ident),
         gens: f.fold_generics(node.gens),
         brace: node.brace,
-        elems: FoldHelper::lift(node.elems, |it| f.fold_variant(it)),
+        variants: FoldHelper::lift(node.variants, |it| f.fold_variant(it)),
     }
 }
 pub fn fold_item_extern_crate<F>(f: &mut F, node: item::ExternCrate) -> item::ExternCrate
@@ -1658,7 +1658,7 @@ where
         unsafe_: node.unsafe_,
         mod_: node.mod_,
         ident: f.fold_ident(node.ident),
-        gist: (node.gist).map(|it| ((it).0, FoldHelper::lift((it).1, |it| f.fold_item(it)))),
+        items: (node.items).map(|it| ((it).0, FoldHelper::lift((it).1, |it| f.fold_item(it)))),
         semi: node.semi,
     }
 }

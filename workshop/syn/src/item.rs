@@ -1,4 +1,5 @@
 use super::*;
+use std::mem;
 
 ast_enum_of_structs! {
     pub enum Item {
@@ -11,13 +12,13 @@ ast_enum_of_structs! {
         Mac(Mac),
         Mod(Mod),
         Static(Static),
+        Stream(Stream),
         Struct(Struct),
         Trait(Trait),
         TraitAlias(TraitAlias),
         Type(Type),
         Union(Union),
         Use(Use),
-        Verbatim(Stream),
     }
 }
 impl Item {
@@ -38,7 +39,7 @@ impl Item {
             | Type(Type { attrs, .. })
             | Union(Union { attrs, .. })
             | Use(Use { attrs, .. }) => mem::replace(attrs, ys),
-            Verbatim(_) => Vec::new(),
+            Stream(_) => Vec::new(),
         }
     }
 }
@@ -61,7 +62,7 @@ impl From<DeriveInput> for Item {
                 ident: x.ident,
                 gens: x.gens,
                 brace: y.brace,
-                elems: y.variants,
+                variants: y.variants,
             }),
             data::Data::Union(y) => Item::Union(Union {
                 attrs: x.attrs,
@@ -75,10 +76,10 @@ impl From<DeriveInput> for Item {
     }
 }
 impl Parse for Item {
-    fn parse(x: Stream) -> Res<Self> {
-        let beg = x.fork();
-        let attrs = x.call(attr::Attr::parse_outer)?;
-        parse_rest_of_item(beg, attrs, x)
+    fn parse(s: Stream) -> Res<Self> {
+        let beg = s.fork();
+        let attrs = s.call(attr::Attr::parse_outer)?;
+        parse_rest_of_item(beg, attrs, s)
     }
 }
 
@@ -91,29 +92,29 @@ pub struct Const {
     pub colon: Token![:],
     pub typ: Box<typ::Type>,
     pub eq: Token![=],
-    pub expr: Box<Expr>,
+    pub expr: Box<expr::Expr>,
     pub semi: Token![;],
 }
 impl Parse for Const {
-    fn parse(x: Stream) -> Res<Self> {
+    fn parse(s: Stream) -> Res<Self> {
         Ok(Const {
-            attrs: x.call(attr::Attr::parse_outer)?,
-            vis: x.parse()?,
-            const_: x.parse()?,
+            attrs: s.call(attr::Attr::parse_outer)?,
+            vis: s.parse()?,
+            const_: s.parse()?,
             ident: {
-                let look = x.look1();
-                if look.peek(Ident) || look.peek(Token![_]) {
-                    x.call(Ident::parse_any)?
+                let y = s.look1();
+                if y.peek(Ident) || y.peek(Token![_]) {
+                    s.call(Ident::parse_any)?
                 } else {
-                    return Err(look.error());
+                    return Err(y.error());
                 }
             },
             gens: gen::Gens::default(),
-            colon: x.parse()?,
-            typ: x.parse()?,
-            eq: x.parse()?,
-            expr: x.parse()?,
-            semi: x.parse()?,
+            colon: s.parse()?,
+            typ: s.parse()?,
+            eq: s.parse()?,
+            expr: s.parse()?,
+            semi: s.parse()?,
         })
     }
 }
@@ -138,7 +139,7 @@ pub struct Enum {
     pub ident: Ident,
     pub gens: gen::Gens,
     pub brace: tok::Brace,
-    pub elems: Puncted<data::Variant, Token![,]>,
+    pub variants: Puncted<data::Variant, Token![,]>,
 }
 impl From<Enum> for DeriveInput {
     fn from(x: Enum) -> DeriveInput {
@@ -147,22 +148,22 @@ impl From<Enum> for DeriveInput {
             vis: x.vis,
             ident: x.ident,
             gens: x.gens,
-            data: Data::Enum(data::Enum {
+            data: data::Data::Enum(data::Enum {
                 enum_: x.enum_,
                 brace: x.brace,
-                variants: x.elems,
+                variants: x.variants,
             }),
         }
     }
 }
 impl Parse for Enum {
-    fn parse(x: Stream) -> Res<Self> {
-        let attrs = x.call(attr::Attr::parse_outer)?;
-        let vis = x.parse::<Visibility>()?;
-        let enum_ = x.parse::<Token![enum]>()?;
-        let ident = x.parse::<Ident>()?;
-        let gens = x.parse::<gen::Gens>()?;
-        let (where_, brace, elems) = data::parse_enum(x)?;
+    fn parse(s: Stream) -> Res<Self> {
+        let attrs = s.call(attr::Attr::parse_outer)?;
+        let vis = s.parse::<Visibility>()?;
+        let enum_ = s.parse::<Token![enum]>()?;
+        let ident = s.parse::<Ident>()?;
+        let gens = s.parse::<gen::Gens>()?;
+        let (where_, brace, variants) = data::parse_enum(s)?;
         Ok(Enum {
             attrs,
             vis,
@@ -170,7 +171,7 @@ impl Parse for Enum {
             ident,
             gens: gen::Gens { where_, ..gens },
             brace,
-            elems,
+            variants,
         })
     }
 }
@@ -183,7 +184,7 @@ impl ToTokens for Enum {
         self.gens.to_tokens(ys);
         self.gens.where_.to_tokens(ys);
         self.brace.surround(ys, |ys| {
-            self.elems.to_tokens(ys);
+            self.variants.to_tokens(ys);
         });
     }
 }
@@ -198,33 +199,33 @@ pub struct ExternCrate {
     pub semi: Token![;],
 }
 impl Parse for ExternCrate {
-    fn parse(x: Stream) -> Res<Self> {
+    fn parse(s: Stream) -> Res<Self> {
         Ok(ExternCrate {
-            attrs: x.call(attr::Attr::parse_outer)?,
-            vis: x.parse()?,
-            extern_: x.parse()?,
-            crate_: x.parse()?,
+            attrs: s.call(attr::Attr::parse_outer)?,
+            vis: s.parse()?,
+            extern_: s.parse()?,
+            crate_: s.parse()?,
             ident: {
-                if x.peek(Token![self]) {
-                    x.call(Ident::parse_any)?
+                if s.peek(Token![self]) {
+                    s.call(Ident::parse_any)?
                 } else {
-                    x.parse()?
+                    s.parse()?
                 }
             },
             rename: {
-                if x.peek(Token![as]) {
-                    let as_: Token![as] = x.parse()?;
-                    let y: Ident = if x.peek(Token![_]) {
-                        Ident::from(x.parse::<Token![_]>()?)
+                if s.peek(Token![as]) {
+                    let as_: Token![as] = s.parse()?;
+                    let y: Ident = if s.peek(Token![_]) {
+                        Ident::from(s.parse::<Token![_]>()?)
                     } else {
-                        x.parse()?
+                        s.parse()?
                     };
                     Some((as_, y))
                 } else {
                     None
                 }
             },
-            semi: x.parse()?,
+            semi: s.parse()?,
         })
     }
 }
@@ -247,14 +248,14 @@ pub struct Fn {
     pub attrs: Vec<attr::Attr>,
     pub vis: Visibility,
     pub sig: Sig,
-    pub block: Box<Block>,
+    pub block: Box<stmt::Block>,
 }
 impl Parse for Fn {
-    fn parse(x: Stream) -> Res<Self> {
-        let attrs = x.call(attr::Attr::parse_outer)?;
-        let vis: Visibility = x.parse()?;
-        let sig: Sig = x.parse()?;
-        parse_rest_of_fn(x, attrs, vis, sig)
+    fn parse(s: Stream) -> Res<Self> {
+        let attrs = s.call(attr::Attr::parse_outer)?;
+        let vis: Visibility = s.parse()?;
+        let sig: Sig = s.parse()?;
+        parse_rest_of_fn(s, attrs, vis, sig)
     }
 }
 impl ToTokens for Fn {
@@ -277,12 +278,12 @@ pub struct Foreign {
     pub items: Vec<Foreign::Item>,
 }
 impl Parse for Foreign {
-    fn parse(x: Stream) -> Res<Self> {
-        let mut attrs = x.call(attr::Attr::parse_outer)?;
-        let unsafe_: Option<Token![unsafe]> = x.parse()?;
-        let abi: Abi = x.parse()?;
+    fn parse(s: Stream) -> Res<Self> {
+        let mut attrs = s.call(attr::Attr::parse_outer)?;
+        let unsafe_: Option<Token![unsafe]> = s.parse()?;
+        let abi: Abi = s.parse()?;
         let y;
-        let brace = braced!(y in x);
+        let brace = braced!(y in s);
         attr::inner(&y, &mut attrs)?;
         let mut items = Vec::new();
         while !y.is_empty() {
@@ -321,9 +322,9 @@ pub struct Impl {
     pub items: Vec<Impl::Item>,
 }
 impl Parse for Impl {
-    fn parse(x: Stream) -> Res<Self> {
+    fn parse(s: Stream) -> Res<Self> {
         let verbatim = false;
-        parse_impl(x, verbatim).map(Option::unwrap)
+        parse_impl(s, verbatim).map(Option::unwrap)
     }
 }
 impl ToTokens for Impl {
@@ -354,17 +355,17 @@ pub struct Mac {
     pub semi: Option<Token![;]>,
 }
 impl Parse for Mac {
-    fn parse(x: Stream) -> Res<Self> {
-        let attrs = x.call(attr::Attr::parse_outer)?;
-        let path = x.call(Path::parse_mod_style)?;
-        let bang: Token![!] = x.parse()?;
-        let ident: Option<Ident> = if x.peek(Token![try]) {
-            x.call(Ident::parse_any).map(Some)
+    fn parse(s: Stream) -> Res<Self> {
+        let attrs = s.call(attr::Attr::parse_outer)?;
+        let path = s.call(Path::parse_mod_style)?;
+        let bang: Token![!] = s.parse()?;
+        let ident: Option<Ident> = if s.peek(Token![try]) {
+            s.call(Ident::parse_any).map(Some)
         } else {
-            x.parse()
+            s.parse()
         }?;
-        let (delim, toks) = x.call(mac::parse_delim)?;
-        let semi: Option<Token![;]> = if !delim.is_brace() { Some(x.parse()?) } else { None };
+        let (delim, toks) = s.call(mac::parse_delim)?;
+        let semi: Option<Token![;]> = if !delim.is_brace() { Some(s.parse()?) } else { None };
         Ok(Mac {
             attrs,
             ident,
@@ -405,21 +406,21 @@ pub struct Mod {
     pub unsafe_: Option<Token![unsafe]>,
     pub mod_: Token![mod],
     pub ident: Ident,
-    pub gist: Option<(tok::Brace, Vec<Item>)>,
+    pub items: Option<(tok::Brace, Vec<Item>)>,
     pub semi: Option<Token![;]>,
 }
 impl Parse for Mod {
-    fn parse(x: Stream) -> Res<Self> {
-        let mut attrs = x.call(attr::Attr::parse_outer)?;
-        let vis: Visibility = x.parse()?;
-        let unsafe_: Option<Token![unsafe]> = x.parse()?;
-        let mod_: Token![mod] = x.parse()?;
-        let ident: Ident = if x.peek(Token![try]) {
-            x.call(Ident::parse_any)
+    fn parse(s: Stream) -> Res<Self> {
+        let mut attrs = s.call(attr::Attr::parse_outer)?;
+        let vis: Visibility = s.parse()?;
+        let unsafe_: Option<Token![unsafe]> = s.parse()?;
+        let mod_: Token![mod] = s.parse()?;
+        let ident: Ident = if s.peek(Token![try]) {
+            s.call(Ident::parse_any)
         } else {
-            x.parse()
+            s.parse()
         }?;
-        let look = x.look1();
+        let look = s.look1();
         if look.peek(Token![;]) {
             Ok(Mod {
                 attrs,
@@ -427,12 +428,12 @@ impl Parse for Mod {
                 unsafe_,
                 mod_,
                 ident,
-                gist: None,
-                semi: Some(x.parse()?),
+                items: None,
+                semi: Some(s.parse()?),
             })
         } else if look.peek(tok::Brace) {
             let y;
-            let brace = braced!(y in x);
+            let brace = braced!(y in s);
             attr::inner(&y, &mut attrs)?;
             let mut items = Vec::new();
             while !y.is_empty() {
@@ -444,7 +445,7 @@ impl Parse for Mod {
                 unsafe_,
                 mod_,
                 ident,
-                gist: Some((brace, items)),
+                items: Some((brace, items)),
                 semi: None,
             })
         } else {
@@ -459,10 +460,10 @@ impl ToTokens for Mod {
         self.unsafe_.to_tokens(ys);
         self.mod_.to_tokens(ys);
         self.ident.to_tokens(ys);
-        if let Some((brace, items)) = &self.gist {
+        if let Some((brace, xs)) = &self.items {
             brace.surround(ys, |ys| {
                 ys.append_all(self.attrs.inner());
-                ys.append_all(items);
+                ys.append_all(xs);
             });
         } else {
             TokensOrDefault(&self.semi).to_tokens(ys);
@@ -479,22 +480,22 @@ pub struct Static {
     pub colon: Token![:],
     pub typ: Box<typ::Type>,
     pub eq: Token![=],
-    pub expr: Box<Expr>,
+    pub expr: Box<expr::Expr>,
     pub semi: Token![;],
 }
 impl Parse for Static {
-    fn parse(x: Stream) -> Res<Self> {
+    fn parse(s: Stream) -> Res<Self> {
         Ok(Static {
-            attrs: x.call(attr::Attr::parse_outer)?,
-            vis: x.parse()?,
-            static_: x.parse()?,
-            mut_: x.parse()?,
-            ident: x.parse()?,
-            colon: x.parse()?,
-            typ: x.parse()?,
-            eq: x.parse()?,
-            expr: x.parse()?,
-            semi: x.parse()?,
+            attrs: s.call(attr::Attr::parse_outer)?,
+            vis: s.parse()?,
+            static_: s.parse()?,
+            mut_: s.parse()?,
+            ident: s.parse()?,
+            colon: s.parse()?,
+            typ: s.parse()?,
+            eq: s.parse()?,
+            expr: s.parse()?,
+            semi: s.parse()?,
         })
     }
 }
@@ -529,7 +530,7 @@ impl From<Struct> for DeriveInput {
             vis: x.vis,
             ident: x.ident,
             gens: x.gens,
-            data: Data::Struct(data::Struct {
+            data: data::Data::Struct(data::Struct {
                 struct_: x.struct_,
                 fields: x.fields,
                 semi: x.semi,
@@ -538,13 +539,13 @@ impl From<Struct> for DeriveInput {
     }
 }
 impl Parse for Struct {
-    fn parse(x: Stream) -> Res<Self> {
-        let attrs = x.call(attr::Attr::parse_outer)?;
-        let vis = x.parse::<Visibility>()?;
-        let struct_ = x.parse::<Token![struct]>()?;
-        let ident = x.parse::<Ident>()?;
-        let gens = x.parse::<gen::Gens>()?;
-        let (where_, fields, semi) = data::parse_struct(x)?;
+    fn parse(s: Stream) -> Res<Self> {
+        let attrs = s.call(attr::Attr::parse_outer)?;
+        let vis = s.parse::<Visibility>()?;
+        let struct_ = s.parse::<Token![struct]>()?;
+        let ident = s.parse::<Ident>()?;
+        let gens = s.parse::<gen::Gens>()?;
+        let (where_, fields, semi) = data::parse_struct(s)?;
         Ok(Struct {
             attrs,
             vis,
@@ -596,15 +597,15 @@ pub struct Trait {
     pub items: Vec<Trait::Item>,
 }
 impl Parse for Trait {
-    fn parse(x: Stream) -> Res<Self> {
-        let attrs = x.call(attr::Attr::parse_outer)?;
-        let vis: Visibility = x.parse()?;
-        let unsafe_: Option<Token![unsafe]> = x.parse()?;
-        let auto_: Option<Token![auto]> = x.parse()?;
-        let trait_: Token![trait] = x.parse()?;
-        let ident: Ident = x.parse()?;
-        let gens: gen::Gens = x.parse()?;
-        parse_rest_of_trait(x, attrs, vis, unsafe_, auto_, trait_, ident, gens)
+    fn parse(s: Stream) -> Res<Self> {
+        let attrs = s.call(attr::Attr::parse_outer)?;
+        let vis: Visibility = s.parse()?;
+        let unsafe_: Option<Token![unsafe]> = s.parse()?;
+        let auto_: Option<Token![auto]> = s.parse()?;
+        let trait_: Token![trait] = s.parse()?;
+        let ident: Ident = s.parse()?;
+        let gens: gen::Gens = s.parse()?;
+        parse_rest_of_trait(s, attrs, vis, unsafe_, auto_, trait_, ident, gens)
     }
 }
 impl ToTokens for Trait {
@@ -639,9 +640,9 @@ pub struct TraitAlias {
     pub semi: Token![;],
 }
 impl Parse for TraitAlias {
-    fn parse(x: Stream) -> Res<Self> {
-        let (attrs, vis, trait_, ident, gens) = parse_start_of_trait_alias(x)?;
-        parse_rest_of_trait_alias(x, attrs, vis, trait_, ident, gens)
+    fn parse(s: Stream) -> Res<Self> {
+        let (attrs, vis, trait_, ident, gens) = parse_start_of_trait_alias(s)?;
+        parse_rest_of_trait_alias(s, attrs, vis, trait_, ident, gens)
     }
 }
 impl ToTokens for TraitAlias {
@@ -669,20 +670,20 @@ pub struct Type {
     pub semi: Token![;],
 }
 impl Parse for Type {
-    fn parse(x: Stream) -> Res<Self> {
+    fn parse(s: Stream) -> Res<Self> {
         Ok(Type {
-            attrs: x.call(attr::Attr::parse_outer)?,
-            vis: x.parse()?,
-            type_: x.parse()?,
-            ident: x.parse()?,
+            attrs: s.call(attr::Attr::parse_outer)?,
+            vis: s.parse()?,
+            type_: s.parse()?,
+            ident: s.parse()?,
             gens: {
-                let mut y: gen::Gens = x.parse()?;
-                y.where_ = x.parse()?;
+                let mut y: gen::Gens = s.parse()?;
+                y.where_ = s.parse()?;
                 y
             },
-            eq: x.parse()?,
-            typ: x.parse()?,
-            semi: x.parse()?,
+            eq: s.parse()?,
+            typ: s.parse()?,
+            semi: s.parse()?,
         })
     }
 }
@@ -715,7 +716,7 @@ impl From<Union> for DeriveInput {
             vis: x.vis,
             ident: x.ident,
             gens: x.gens,
-            data: Data::Union(data::Union {
+            data: data::Data::Union(data::Union {
                 union_: x.union_,
                 fields: x.fields,
             }),
@@ -723,13 +724,13 @@ impl From<Union> for DeriveInput {
     }
 }
 impl Parse for Union {
-    fn parse(x: Stream) -> Res<Self> {
-        let attrs = x.call(attr::Attr::parse_outer)?;
-        let vis = x.parse::<Visibility>()?;
-        let union_ = x.parse::<Token![union]>()?;
-        let ident = x.parse::<Ident>()?;
-        let gens = x.parse::<gen::Gens>()?;
-        let (where_, fields) = data::parse_union(x)?;
+    fn parse(s: Stream) -> Res<Self> {
+        let attrs = s.call(attr::Attr::parse_outer)?;
+        let vis = s.parse::<Visibility>()?;
+        let union_ = s.parse::<Token![union]>()?;
+        let ident = s.parse::<Ident>()?;
+        let gens = s.parse::<gen::Gens>()?;
+        let (where_, fields) = data::parse_union(s)?;
         Ok(Union {
             attrs,
             vis,
@@ -761,9 +762,9 @@ pub struct Use {
     pub semi: Token![;],
 }
 impl Parse for Use {
-    fn parse(x: Stream) -> Res<Self> {
+    fn parse(s: Stream) -> Res<Self> {
         let root = false;
-        parse_item_use(x, root).map(Option::unwrap)
+        parse_item_use(s, root).map(Option::unwrap)
     }
 }
 impl ToTokens for Use {
@@ -776,13 +777,13 @@ impl ToTokens for Use {
         self.semi.to_tokens(ys);
     }
 }
-fn parse_item_use(x: Stream, root: bool) -> Res<Option<Use>> {
-    let attrs = x.call(attr::Attr::parse_outer)?;
-    let vis: Visibility = x.parse()?;
-    let use_: Token![use] = x.parse()?;
-    let colon: Option<Token![::]> = x.parse()?;
-    let tree = Use::parse_tree(x, root && colon.is_none())?;
-    let semi: Token![;] = x.parse()?;
+fn parse_item_use(s: Stream, root: bool) -> Res<Option<Use>> {
+    let attrs = s.call(attr::Attr::parse_outer)?;
+    let vis: Visibility = s.parse()?;
+    let use_: Token![use] = s.parse()?;
+    let colon: Option<Token![::]> = s.parse()?;
+    let tree = Use::parse_tree(s, root && colon.is_none())?;
+    let semi: Token![;] = s.parse()?;
     let tree = match tree {
         Some(x) => x,
         None => return Ok(None),
@@ -811,19 +812,19 @@ impl Receiver {
     }
 }
 impl Parse for Receiver {
-    fn parse(x: Stream) -> Res<Self> {
-        let ref_ = if x.peek(Token![&]) {
-            let amper: Token![&] = x.parse()?;
-            let life: Option<Life> = x.parse()?;
+    fn parse(s: Stream) -> Res<Self> {
+        let ref_ = if s.peek(Token![&]) {
+            let amper: Token![&] = s.parse()?;
+            let life: Option<Life> = s.parse()?;
             Some((amper, life))
         } else {
             None
         };
-        let mut_: Option<Token![mut]> = x.parse()?;
-        let self_: Token![self] = x.parse()?;
-        let colon: Option<Token![:]> = if ref_.is_some() { None } else { x.parse()? };
+        let mut_: Option<Token![mut]> = s.parse()?;
+        let self_: Token![self] = s.parse()?;
+        let colon: Option<Token![:]> = if ref_.is_some() { None } else { s.parse()? };
         let typ: typ::Type = if colon.is_some() {
-            x.parse()?
+            s.parse()?
         } else {
             let mut y = typ::Type::Path(typ::Path {
                 qself: None,
@@ -858,19 +859,19 @@ impl ToTokens for Receiver {
         }
         self.mut_.to_tokens(ys);
         self.self_.to_tokens(ys);
-        if let Some(colon) = &self.colon {
-            colon.to_tokens(ys);
+        if let Some(x) = &self.colon {
+            x.to_tokens(ys);
             self.typ.to_tokens(ys);
         } else {
             let consistent = match (&self.ref_, &self.mut_, &*self.typ) {
-                (Some(_), mut_, typ::Type::Ref(ty)) => {
-                    mut_.is_some() == ty.mut_.is_some()
-                        && match &*ty.elem {
-                            typ::Type::Path(ty) => ty.qself.is_none() && ty.path.is_ident("Self"),
+                (Some(_), mut_, typ::Type::Ref(x)) => {
+                    mut_.is_some() == x.mut_.is_some()
+                        && match &*x.elem {
+                            typ::Type::Path(x) => x.qself.is_none() && x.path.is_ident("Self"),
                             _ => false,
                         }
                 },
-                (None, _, typ::Type::Path(ty)) => ty.qself.is_none() && ty.path.is_ident("Self"),
+                (None, _, typ::Type::Path(x)) => x.qself.is_none() && x.path.is_ident("Self"),
                 _ => false,
             };
             if !consistent {
@@ -888,11 +889,11 @@ ast_enum_of_structs! {
     }
 }
 impl Parse for FnArg {
-    fn parse(x: Stream) -> Res<Self> {
+    fn parse(s: Stream) -> Res<Self> {
         let variadic = false;
-        let attrs = x.call(attr::Attr::parse_outer)?;
+        let attrs = s.call(attr::Attr::parse_outer)?;
         use FnArgOrVariadic::*;
-        match parse_fn_arg_or_variadic(x, attrs, variadic)? {
+        match parse_fn_arg_or_variadic(s, attrs, variadic)? {
             FnArg(x) => Ok(x),
             Variadic(_) => unreachable!(),
         }
@@ -927,19 +928,19 @@ impl Sig {
     }
 }
 impl Parse for Sig {
-    fn parse(x: Stream) -> Res<Self> {
-        let const_: Option<Token![const]> = x.parse()?;
-        let async_: Option<Token![async]> = x.parse()?;
-        let unsafe_: Option<Token![unsafe]> = x.parse()?;
-        let abi: Option<Abi> = x.parse()?;
-        let fn_: Token![fn] = x.parse()?;
-        let ident: Ident = x.parse()?;
-        let mut gens: gen::Gens = x.parse()?;
+    fn parse(s: Stream) -> Res<Self> {
+        let const_: Option<Token![const]> = s.parse()?;
+        let async_: Option<Token![async]> = s.parse()?;
+        let unsafe_: Option<Token![unsafe]> = s.parse()?;
+        let abi: Option<Abi> = s.parse()?;
+        let fn_: Token![fn] = s.parse()?;
+        let ident: Ident = s.parse()?;
+        let mut gens: gen::Gens = s.parse()?;
         let y;
-        let paren = parenthesized!(y in x);
+        let paren = parenthesized!(y in s);
         let (args, vari) = parse_fn_args(&y)?;
-        let ret: typ::Ret = x.parse()?;
-        gens.where_ = x.parse()?;
+        let ret: typ::Ret = s.parse()?;
+        gens.where_ = s.parse()?;
         Ok(Sig {
             const_,
             async_,
@@ -1001,8 +1002,8 @@ pub enum StaticMut {
     None,
 }
 impl Parse for StaticMut {
-    fn parse(x: Stream) -> Res<Self> {
-        let mut_: Option<Token![mut]> = x.parse()?;
+    fn parse(s: Stream) -> Res<Self> {
+        let mut_: Option<Token![mut]> = s.parse()?;
         Ok(mut_.map_or(StaticMut::None, StaticMut::Mut))
     }
 }
@@ -1016,13 +1017,14 @@ impl ToTokens for StaticMut {
 }
 
 pub mod Foreign {
+    use super::*;
     ast_enum_of_structs! {
         pub enum Item {
             Fn(Fn),
-            Static(Static),
-            Type(Type),
             Mac(Mac),
-            Verbatim(Stream),
+            Static(Static),
+            Stream(Stream),
+            Type(Type),
         }
     }
     impl Parse for Item {
@@ -1040,7 +1042,7 @@ pub mod Foreign {
                     braced!(y in x);
                     y.call(attr::Attr::parse_inner)?;
                     y.call(Block::parse_within)?;
-                    Ok(Item::Verbatim(verbatim_between(&beg, x)))
+                    Ok(Item::Stream(verbatim_between(&beg, x)))
                 } else {
                     Ok(Item::Fn(Fn {
                         attrs: Vec::new(),
@@ -1058,9 +1060,9 @@ pub mod Foreign {
                 let typ = x.parse()?;
                 if x.peek(Token![=]) {
                     x.parse::<Token![=]>()?;
-                    x.parse::<Expr>()?;
+                    x.parse::<expr::Expr>()?;
                     x.parse::<Token![;]>()?;
-                    Ok(Item::Verbatim(verbatim_between(&beg, x)))
+                    Ok(Item::Stream(verbatim_between(&beg, x)))
                 } else {
                     Ok(Item::Static(Static {
                         attrs: Vec::new(),
@@ -1091,7 +1093,7 @@ pub mod Foreign {
                 Item::Static(x) => &mut x.attrs,
                 Item::Type(x) => &mut x.attrs,
                 Item::Mac(x) => &mut x.attrs,
-                Item::Verbatim(_) => return Ok(y),
+                Item::Stream(_) => return Ok(y),
             };
             attrs.append(ys);
             *ys = attrs;
@@ -1218,13 +1220,14 @@ pub mod Foreign {
     }
 }
 pub mod Impl {
+    use super::*;
     ast_enum_of_structs! {
         pub enum Item {
             Const(Const),
             Fn(Fn),
-            Type(Type),
             Mac(Mac),
-            Verbatim(Stream),
+            Stream(Stream),
+            Type(Type),
         }
     }
     impl Parse for Item {
@@ -1246,7 +1249,7 @@ pub mod Impl {
                 if let Some(x) = parse_impl_item_fn(x, omitted)? {
                     Ok(Item::Fn(x))
                 } else {
-                    Ok(Item::Verbatim(verbatim_between(&beg, x)))
+                    Ok(Item::Stream(verbatim_between(&beg, x)))
                 }
             } else if look.peek(Token![const]) {
                 x.advance_to(&ahead);
@@ -1275,7 +1278,7 @@ pub mod Impl {
                     }));
                 } else {
                     x.parse::<Token![;]>()?;
-                    return Ok(Item::Verbatim(verbatim_between(&beg, x)));
+                    return Ok(Item::Stream(verbatim_between(&beg, x)));
                 }
             } else if look.peek(Token![type]) {
                 parse_impl_item_type(beg, x)
@@ -1296,7 +1299,7 @@ pub mod Impl {
                 Item::Fn(x) => &mut x.attrs,
                 Item::Type(x) => &mut x.attrs,
                 Item::Mac(x) => &mut x.attrs,
-                Item::Verbatim(_) => return Ok(y),
+                Item::Stream(_) => return Ok(y),
             };
             attrs.append(ys);
             *ys = attrs;
@@ -1314,7 +1317,7 @@ pub mod Impl {
         pub colon: Token![:],
         pub typ: typ::Type,
         pub eq: Token![=],
-        pub expr: Expr,
+        pub expr: expr::Expr,
         pub semi: Token![;],
     }
     impl Parse for Const {
@@ -1457,13 +1460,14 @@ pub mod Impl {
     pub enum Restriction {}
 }
 pub mod Trait {
+    use super::*;
     ast_enum_of_structs! {
         pub enum Item {
             Const(Const),
             Fn(Fn),
             Type(Type),
             Mac(Mac),
-            Verbatim(Stream),
+            Stream(Stream),
         }
     }
     impl Parse for Item {
@@ -1506,14 +1510,14 @@ pub mod Trait {
             }?;
             match (vis, default_) {
                 (Visibility::Inherited, None) => {},
-                _ => return Ok(Item::Verbatim(verbatim_between(&beg, x))),
+                _ => return Ok(Item::Stream(verbatim_between(&beg, x))),
             }
             let ys = match &mut y {
                 Item::Const(item) => &mut item.attrs,
                 Item::Fn(item) => &mut item.attrs,
                 Item::Type(item) => &mut item.attrs,
                 Item::Mac(item) => &mut item.attrs,
-                Item::Verbatim(_) => unreachable!(),
+                Item::Stream(_) => unreachable!(),
             };
             attrs.append(ys);
             *ys = attrs;
@@ -1528,7 +1532,7 @@ pub mod Trait {
         pub gens: gen::Gens,
         pub colon: Token![:],
         pub typ: typ::Type,
-        pub default: Option<(Token![=], Expr)>,
+        pub default: Option<(Token![=], expr::Expr)>,
         pub semi: Token![;],
     }
     impl Parse for Const {
@@ -1550,7 +1554,7 @@ pub mod Trait {
                 default: {
                     if x.peek(Token![=]) {
                         let eq: Token![=] = x.parse()?;
-                        let default: Expr = x.parse()?;
+                        let default: expr::Expr = x.parse()?;
                         Some((eq, default))
                     } else {
                         None
@@ -1697,13 +1701,14 @@ pub mod Trait {
     }
 }
 pub mod Use {
+    use super::*;
     ast_enum_of_structs! {
         pub enum Tree {
-            Path(Path),
-            Name(Name),
-            Rename(Rename),
             Glob(Glob),
             Group(Group),
+            Name(Name),
+            Path(Path),
+            Rename(Rename),
         }
     }
     impl Parse for Tree {
@@ -1929,7 +1934,7 @@ pub fn parse_rest_of_item(begin: Buffer, mut attrs: Vec<attr::Attr>, x: Stream) 
         let sig: Sig = x.parse()?;
         if x.peek(Token![;]) {
             x.parse::<Token![;]>()?;
-            Ok(Item::Verbatim(verbatim_between(&begin, x)))
+            Ok(Item::Stream(verbatim_between(&begin, x)))
         } else {
             parse_rest_of_fn(x, Vec::new(), vis, sig).map(Item::Fn)
         }
@@ -1955,7 +1960,7 @@ pub fn parse_rest_of_item(begin: Buffer, mut attrs: Vec<attr::Attr>, x: Stream) 
         let allow_crate_root_in_path = true;
         match parse_item_use(x, allow_crate_root_in_path)? {
             Some(item_use) => Ok(Item::Use(item_use)),
-            None => Ok(Item::Verbatim(verbatim_between(&begin, x))),
+            None => Ok(Item::Stream(verbatim_between(&begin, x))),
         }
     } else if look.peek(Token![static]) {
         let vis = x.parse()?;
@@ -1964,15 +1969,15 @@ pub fn parse_rest_of_item(begin: Buffer, mut attrs: Vec<attr::Attr>, x: Stream) 
         let ident = x.parse()?;
         if x.peek(Token![=]) {
             x.parse::<Token![=]>()?;
-            x.parse::<Expr>()?;
+            x.parse::<expr::Expr>()?;
             x.parse::<Token![;]>()?;
-            Ok(Item::Verbatim(verbatim_between(&begin, x)))
+            Ok(Item::Stream(verbatim_between(&begin, x)))
         } else {
             let colon = x.parse()?;
             let ty = x.parse()?;
             if x.peek(Token![;]) {
                 x.parse::<Token![;]>()?;
-                Ok(Item::Verbatim(verbatim_between(&begin, x)))
+                Ok(Item::Stream(verbatim_between(&begin, x)))
             } else {
                 Ok(Item::Static(Static {
                     attrs: Vec::new(),
@@ -2001,7 +2006,7 @@ pub fn parse_rest_of_item(begin: Buffer, mut attrs: Vec<attr::Attr>, x: Stream) 
         let ty = x.parse()?;
         if x.peek(Token![;]) {
             x.parse::<Token![;]>()?;
-            Ok(Item::Verbatim(verbatim_between(&begin, x)))
+            Ok(Item::Stream(verbatim_between(&begin, x)))
         } else {
             Ok(Item::Const(Const {
                 attrs: Vec::new(),
@@ -2026,7 +2031,7 @@ pub fn parse_rest_of_item(begin: Buffer, mut attrs: Vec<attr::Attr>, x: Stream) 
             if let Some(item) = parse_impl(x, allow_verbatim_impl)? {
                 Ok(Item::Impl(item))
             } else {
-                Ok(Item::Verbatim(verbatim_between(&begin, x)))
+                Ok(Item::Stream(verbatim_between(&begin, x)))
             }
         } else if look.peek(Token![extern]) {
             x.parse().map(Item::Foreign)
@@ -2054,7 +2059,7 @@ pub fn parse_rest_of_item(begin: Buffer, mut attrs: Vec<attr::Attr>, x: Stream) 
         if let Some(item) = parse_impl(x, allow_verbatim_impl)? {
             Ok(Item::Impl(item))
         } else {
-            Ok(Item::Verbatim(verbatim_between(&begin, x)))
+            Ok(Item::Stream(verbatim_between(&begin, x)))
         }
     } else if look.peek(Token![macro]) {
         x.advance_to(&ahead);
@@ -2091,7 +2096,7 @@ fn parse_macro2(begin: Buffer, _vis: Visibility, x: Stream) -> Res<Item> {
     } else {
         return Err(look.error());
     }
-    Ok(Item::Verbatim(verbatim_between(&begin, x)))
+    Ok(Item::Stream(verbatim_between(&begin, x)))
 }
 fn peek_signature(x: Stream) -> bool {
     let y = x.fork();
@@ -2209,7 +2214,7 @@ fn parse_foreign_item_type(beg: Buffer, x: Stream) -> Res<Foreign::Item> {
         semi,
     } = FlexibleItemTy::parse(x, TypeDefault::Disallowed, WhereLoc::Both)?;
     if colon.is_some() || typ.is_some() {
-        Ok(Foreign::Item::Verbatim(verbatim_between(&beg, x)))
+        Ok(Foreign::Item::Stream(verbatim_between(&beg, x)))
     } else {
         Ok(Foreign::Item::Type(Foreign::Type {
             attrs: Vec::new(),
@@ -2235,7 +2240,7 @@ fn parse_item_type(beg: Buffer, x: Stream) -> Res<Item> {
     } = FlexibleItemTy::parse(x, TypeDefault::Disallowed, WhereLoc::BeforeEq)?;
     let (eq, typ) = match typ {
         Some(x) if colon.is_none() => x,
-        _ => return Ok(Item::Verbatim(verbatim_between(&beg, x))),
+        _ => return Ok(Item::Stream(verbatim_between(&beg, x))),
     };
     Ok(Item::Type(Type {
         attrs: Vec::new(),
@@ -2362,7 +2367,7 @@ fn parse_trait_item_type(beg: Buffer, x: Stream) -> Res<Trait::Item> {
         semi,
     } = FlexibleItemTy::parse(x, TypeDefault::Disallowed, WhereLoc::AfterEq)?;
     if vis.is_some() {
-        Ok(Trait::Item::Verbatim(verbatim_between(&beg, x)))
+        Ok(Trait::Item::Stream(verbatim_between(&beg, x)))
     } else {
         Ok(Trait::Item::Type(Trait::Type {
             attrs: Vec::new(),
@@ -2430,7 +2435,7 @@ fn parse_impl(x: Stream, verbatim: bool) -> Res<Option<Impl>> {
         self_ty = if polarity.is_none() {
             first
         } else {
-            typ::Type::Verbatim(verbatim_between(&begin, x))
+            typ::Type::Stream(verbatim_between(&begin, x))
         };
     }
     gens.where_ = x.parse()?;
@@ -2494,7 +2499,7 @@ fn parse_impl_item_type(begin: Buffer, x: Stream) -> Res<Impl::Item> {
     } = FlexibleItemTy::parse(x, TypeDefault::Optional, WhereLoc::AfterEq)?;
     let (eq, typ) = match typ {
         Some(x) if colon.is_none() => x,
-        _ => return Ok(Impl::Item::Verbatim(verbatim_between(&begin, x))),
+        _ => return Ok(Impl::Item::Stream(verbatim_between(&begin, x))),
     };
     Ok(Impl::Item::Type(Impl::Type {
         attrs: Vec::new(),

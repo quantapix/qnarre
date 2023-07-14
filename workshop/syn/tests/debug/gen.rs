@@ -2537,8 +2537,8 @@ impl Debug for Lite<syn::item::Enum> {
         formatter.field("vis", Lite(&self.value.vis));
         formatter.field("ident", Lite(&self.value.ident));
         formatter.field("gens", Lite(&self.value.gens));
-        if !self.value.elems.is_empty() {
-            formatter.field("variants", Lite(&self.value.elems));
+        if !self.value.variants.is_empty() {
+            formatter.field("variants", Lite(&self.value.variants));
         }
         formatter.finish()
     }
@@ -2676,7 +2676,7 @@ impl Debug for Lite<syn::item::Mod> {
             formatter.field("unsafe_", &Present);
         }
         formatter.field("ident", Lite(&self.value.ident));
-        if let Some(val) = &self.value.gist {
+        if let Some(val) = &self.value.items {
             #[derive(RefCast)]
             #[repr(transparent)]
             struct Print((syn::tok::Brace, Vec<syn::Item>));

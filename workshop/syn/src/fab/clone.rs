@@ -897,7 +897,7 @@ impl Clone for item::Enum {
             ident: self.ident.clone(),
             gens: self.gens.clone(),
             brace: self.brace.clone(),
-            elems: self.elems.clone(),
+            variants: self.variants.clone(),
         }
     }
 }
@@ -968,7 +968,7 @@ impl Clone for item::Mod {
             unsafe_: self.unsafe_.clone(),
             mod_: self.mod_.clone(),
             ident: self.ident.clone(),
-            gist: self.gist.clone(),
+            items: self.items.clone(),
             semi: self.semi.clone(),
         }
     }

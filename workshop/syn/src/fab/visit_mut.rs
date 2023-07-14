@@ -1872,7 +1872,7 @@ where
     v.visit_ident_mut(&mut node.ident);
     v.visit_generics_mut(&mut node.gens);
     skip!(node.brace);
-    for mut el in Puncted::pairs_mut(&mut node.elems) {
+    for mut el in Puncted::pairs_mut(&mut node.variants) {
         let it = el.value_mut();
         v.visit_variant_mut(it);
     }
@@ -1965,7 +1965,7 @@ where
     skip!(node.unsafe_);
     skip!(node.mod_);
     v.visit_ident_mut(&mut node.ident);
-    if let Some(it) = &mut node.gist {
+    if let Some(it) = &mut node.items {
         skip!((it).0);
         for it in &mut (it).1 {
             v.visit_item_mut(it);
