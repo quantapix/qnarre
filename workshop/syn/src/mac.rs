@@ -101,27 +101,23 @@ macro_rules! ast_enum_from_struct {
 macro_rules! generate_to_tokens {
     (
         ($($arms:tt)*) $ys:ident $name:ident {
-            $(#[cfg $cfg_attr:tt])*
-            $(#[doc $($doc_attr:tt)*])*
             $variant:ident,
             $($next:tt)*
         }
     ) => {
         generate_to_tokens!(
-            ($($arms)* $(#[cfg $cfg_attr])* $name::$variant => {})
+            ($($arms)* $name::$variant => {})
             $ys $name { $($next)* }
         );
     };
     (
         ($($arms:tt)*) $ys:ident $name:ident {
-            $(#[cfg $cfg_attr:tt])*
-            $(#[doc $($doc_attr:tt)*])*
             $variant:ident $member:ident,
             $($next:tt)*
         }
     ) => {
         generate_to_tokens!(
-            ($($arms)* $(#[cfg $cfg_attr])* $name::$variant(_e) => _e.to_tokens($ys),)
+            ($($arms)* $name::$variant(_e) => _e.to_tokens($ys),)
             $ys $name { $($next)* }
         );
     };

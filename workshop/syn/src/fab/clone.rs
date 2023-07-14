@@ -1,5 +1,6 @@
 #![allow(clippy::clone_on_copy, clippy::expl_impl_clone_on_copy)]
 use crate::*;
+
 impl Clone for Abi {
     fn clone(&self) -> Self {
         Abi {
@@ -220,8 +221,6 @@ impl Clone for Expr {
             Expr::Verbatim(v0) => Expr::Verbatim(v0.clone()),
             Expr::While(v0) => Expr::While(v0.clone()),
             Expr::Yield(v0) => Expr::Yield(v0.clone()),
-            #[cfg(not(feature = "full"))]
-            _ => unreachable!(),
         }
     }
 }
@@ -323,7 +322,7 @@ impl Clone for expr::Closure {
             async_: self.async_.clone(),
             move_: self.move_.clone(),
             or1: self.or1.clone(),
-            inputs: self.inputs.clone(),
+            ins: self.inputs.clone(),
             or2: self.or2.clone(),
             ret: self.ret.clone(),
             body: self.body.clone(),
@@ -386,8 +385,8 @@ impl Clone for expr::If {
             attrs: self.attrs.clone(),
             if_: self.if_.clone(),
             cond: self.cond.clone(),
-            then_branch: self.then_branch.clone(),
-            else_branch: self.else_branch.clone(),
+            then_: self.then_branch.clone(),
+            else_: self.else_branch.clone(),
         }
     }
 }
@@ -397,7 +396,7 @@ impl Clone for expr::Index {
             attrs: self.attrs.clone(),
             expr: self.expr.clone(),
             bracket: self.bracket.clone(),
-            index: self.index.clone(),
+            idx: self.idx.clone(),
         }
     }
 }
@@ -593,7 +592,7 @@ impl Clone for expr::While {
             label: self.label.clone(),
             while_: self.while_.clone(),
             cond: self.cond.clone(),
-            body: self.body.clone(),
+            block: self.block.clone(),
         }
     }
 }
@@ -736,7 +735,7 @@ impl Clone for item::Foreign::Type {
         item::Foreign::Type {
             attrs: self.attrs.clone(),
             vis: self.vis.clone(),
-            type: self.type.clone(),
+            type_: self.type_.clone(),
             ident: self.ident.clone(),
             gens: self.gens.clone(),
             semi: self.semi.clone(),
@@ -768,7 +767,7 @@ impl Clone for gen::Gens {
     fn clone(&self) -> Self {
         gen::Gens {
             lt: self.lt.clone(),
-            params: self.params.clone(),
+            ps: self.ps.clone(),
             gt: self.gt.clone(),
             where_: self.where_.clone(),
         }
@@ -828,7 +827,7 @@ impl Clone for item::Impl::Type {
             attrs: self.attrs.clone(),
             vis: self.vis.clone(),
             default_: self.default_.clone(),
-            type: self.type.clone(),
+            type_: self.type_.clone(),
             ident: self.ident.clone(),
             gens: self.gens.clone(),
             eq: self.eq.clone(),
@@ -1039,7 +1038,7 @@ impl Clone for item::Type {
         item::Type {
             attrs: self.attrs.clone(),
             vis: self.vis.clone(),
-            type: self.type.clone(),
+            type_: self.type_.clone(),
             ident: self.ident.clone(),
             gens: self.gens.clone(),
             eq: self.eq.clone(),
@@ -1513,7 +1512,7 @@ impl Clone for item::Trait::Type {
     fn clone(&self) -> Self {
         item::Trait::Type {
             attrs: self.attrs.clone(),
-            type: self.type.clone(),
+            type_: self.type_.clone(),
             ident: self.ident.clone(),
             gens: self.gens.clone(),
             colon: self.colon.clone(),

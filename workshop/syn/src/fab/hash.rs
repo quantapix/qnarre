@@ -445,8 +445,6 @@ impl Hash for Expr {
                 state.write_u8(38u8);
                 v0.hash(state);
             },
-            #[cfg(not(feature = "full"))]
-            _ => unreachable!(),
         }
     }
 }

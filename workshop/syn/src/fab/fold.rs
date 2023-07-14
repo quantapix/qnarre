@@ -2,17 +2,13 @@
 #![allow(clippy::match_wildcard_for_single_variants, clippy::needless_match)]
 
 use crate::*;
+
 macro_rules! full {
     ($e:expr) => {
         $e
     };
 }
-#[cfg(all(feature = "derive", not(feature = "full")))]
-macro_rules! full {
-    ($e:expr) => {
-        unreachable!()
-    };
-}
+
 pub trait Fold {
     fn fold_abi(&mut self, i: Abi) -> Abi {
         fold_abi(self, i)
@@ -194,7 +190,7 @@ pub trait Fold {
     fn fold_field_mutability(&mut self, i: data::Mut) -> data::Mut {
         fold_field_mutability(self, i)
     }
-    fn fold_field_pat(&mut self, i: pat::Fieldeld) pat::Field:Field {
+    fn fold_field_pat(&mut self, i: pat::Fieldeld) -> pat::Field {
         fold_field_pat(self, i)
     }
     fn fold_field_value(&mut self, i: FieldValue) -> FieldValue {
@@ -386,7 +382,7 @@ pub trait Fold {
     fn fold_pat_reference(&mut self, i: pat::Ref) -> pat::Ref {
         fold_pat_reference(self, i)
     }
-    fn fold_pat_rest(&mut self, i: pat::Restest) pat::Rest::Rest {
+    fn fold_pat_rest(&mut self, i: pat::Restest) -> pat::Rest {
         fold_pat_rest(self, i)
     }
     fn fold_pat_slice(&mut self, i: pat::Slice) -> pat::Slice {
@@ -398,7 +394,7 @@ pub trait Fold {
     fn fold_pat_tuple(&mut self, i: pat::Tuple) -> pat::Tuple {
         fold_pat_tuple(self, i)
     }
-    fn fold_pat_tuple_struct(&mut self, i: pat::TupleStructuct) pat::TupleStructStruct {
+    fn fold_pat_tuple_struct(&mut self, i: pat::TupleStructuct) -> pat::TupleStruct {
         fold_pat_tuple_struct(self, i)
     }
     fn fold_pat_type(&mut self, i: pat::Type) -> pat::Type {
@@ -943,7 +939,7 @@ where
         async_: node.async_,
         move_: node.move_,
         or1: node.or1,
-        inputs: FoldHelper::lift(node.inputs, |it| f.fold_pat(it)),
+        ins: FoldHelper::lift(node.inputs, |it| f.fold_pat(it)),
         or2: node.or2,
         ret: f.fold_return_type(node.ret),
         body: Box::new(f.fold_expr(*node.body)),
@@ -1012,8 +1008,8 @@ where
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         if_: node.if_,
         cond: Box::new(f.fold_expr(*node.cond)),
-        then_branch: f.fold_block(node.then_branch),
-        else_branch: (node.else_branch).map(|it| ((it).0, Box::new(f.fold_expr(*(it).1)))),
+        then_: f.fold_block(node.then_),
+        else_: (node.else_).map(|it| ((it).0, Box::new(f.fold_expr(*(it).1)))),
     }
 }
 pub fn fold_expr_index<F>(f: &mut F, node: expr::Index) -> expr::Index
@@ -1024,7 +1020,7 @@ where
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         expr: Box::new(f.fold_expr(*node.expr)),
         bracket: node.bracket,
-        index: Box::new(f.fold_expr(*node.index)),
+        idx: Box::new(f.fold_expr(*node.idx)),
     }
 }
 pub fn fold_expr_infer<F>(f: &mut F, node: expr::Infer) -> expr::Infer
@@ -1240,7 +1236,7 @@ where
         label: (node.label).map(|it| f.fold_label(it)),
         while_: node.while_,
         cond: Box::new(f.fold_expr(*node.cond)),
-        body: f.fold_block(node.body),
+        block: f.fold_block(node.block),
     }
 }
 pub fn fold_expr_yield<F>(f: &mut F, node: expr::Yield) -> expr::Yield
@@ -1398,7 +1394,7 @@ where
     item::Foreign::Type {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         vis: f.fold_visibility(node.vis),
-        type: node.type,
+        type_: node.type_,
         ident: f.fold_ident(node.ident),
         gens: f.fold_generics(node.gens),
         semi: node.semi,
@@ -1433,7 +1429,7 @@ where
 {
     gen::Gens {
         lt: node.lt,
-        params: FoldHelper::lift(node.params, |it| f.fold_generic_param(it)),
+        ps: FoldHelper::lift(node.ps, |it| f.fold_generic_param(it)),
         gt: node.gt,
         where_: (node.where_).map(|it| f.fold_where_clause(it)),
     }
@@ -1734,7 +1730,7 @@ where
     item::Type {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         vis: f.fold_visibility(node.vis),
-        type: node.type,
+        type_: node.type_,
         ident: f.fold_ident(node.ident),
         gens: f.fold_generics(node.gens),
         eq: node.eq,
@@ -2034,7 +2030,7 @@ where
         pat: Box::new(f.fold_pat(*node.pat)),
     }
 }
-pub fn fold_pat_rest<F>(f: &mut F, node: pat::Restest) pat::Rest::Rest
+pub fn fold_pat_rest<F>(f: &mut F, node: pat::Rest) -> pat::Rest
 where
     F: Fold + ?Sized,
 {
@@ -2076,7 +2072,7 @@ where
         elems: FoldHelper::lift(node.elems, |it| f.fold_pat(it)),
     }
 }
-pub fn fold_pat_tuple_struct<F>(f: &mut F, node: pat::TupleStructuct) pat::TupleStructStruct
+pub fn fold_pat_tuple_struct<F>(f: &mut F, node: pat::TupleStruct) -> pat::TupleStruct
 where
     F: Fold + ?Sized,
 {
@@ -2328,7 +2324,7 @@ where
 {
     item::Trait::Type {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        type: node.type,
+        type_: node.type_,
         ident: f.fold_ident(node.ident),
         gens: f.fold_generics(node.gens),
         colon: node.colon,
@@ -2529,9 +2525,7 @@ pub fn fold_use_glob<F>(f: &mut F, node: item::Use::Glob) -> item::Use::Glob
 where
     F: Fold + ?Sized,
 {
-    item::Use::Glob {
-        star: node.star,
-    }
+    item::Use::Glob { star: node.star }
 }
 pub fn fold_use_group<F>(f: &mut F, node: item::Use::Group) -> item::Use::Group
 where

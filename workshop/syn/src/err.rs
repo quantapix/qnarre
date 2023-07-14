@@ -1,33 +1,23 @@
-use proc_macro2::{LexError, Punct};
+use super::*;
 use std::{
-    fmt::{self, Debug, Display},
-    slice, vec,
+    slice,
+    thread::{self, ThreadId},
+    vec,
 };
+
+pub type Res<T> = std::result::Result<T, Err>;
 
 pub struct Err {
     msgs: Vec<ErrMsg>,
 }
-pub type Res<T> = std::result::Result<T, Err>;
-struct ErrMsg {
-    span: ThreadBound<SpanRange>,
-    message: String,
-}
-struct SpanRange {
-    start: pm2::Span,
-    end: pm2::Span,
-}
-#[cfg(test)]
-struct _Test
-where
-    Err: Send + Sync;
 impl Err {
     pub fn new<T: Display>(span: pm2::Span, message: T) -> Self {
         return new(span, message.to_string());
         fn new(span: pm2::Span, message: String) -> Err {
             Err {
                 msgs: vec![ErrMsg {
-                    span: ThreadBound::new(SpanRange { start: span, end: span }),
-                    message,
+                    span: ThreadBound::new(SpanRange { beg: span, end: span }),
+                    msg,
                 }],
             }
         }
@@ -40,14 +30,14 @@ impl Err {
             let end = iter.last().map_or(start, |t| t.span());
             Err {
                 msgs: vec![ErrMsg {
-                    span: ThreadBound::new(SpanRange { start, end }),
-                    message,
+                    span: ThreadBound::new(SpanRange { beg, end }),
+                    msg,
                 }],
             }
         }
     }
     pub fn span(&self) -> pm2::Span {
-        let SpanRange { start, end } = match self.msgs[0].span.get() {
+        let SpanRange { beg: start, end } = match self.msgs[0].span.get() {
             Some(span) => *span,
             None => return pm2::Span::call_site(),
         };
@@ -63,10 +53,89 @@ impl Err {
         self.msgs.extend(another.msgs);
     }
 }
+impl Clone for Err {
+    fn clone(&self) -> Self {
+        Err {
+            msgs: self.msgs.clone(),
+        }
+    }
+}
+impl Debug for Err {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.msgs.len() == 1 {
+            f.debug_tuple("Error").field(&self.msgs[0]).finish()
+        } else {
+            f.debug_tuple("Error").field(&self.msgs).finish()
+        }
+    }
+}
+impl Display for Err {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(&self.msgs[0].msg)
+    }
+}
+impl std::error::Error for Err {}
+impl From<pm2::LexError> for Err {
+    fn from(x: LexError) -> Self {
+        Err::new(x.span(), "lex error")
+    }
+}
+impl IntoIterator for Err {
+    type Item = Err;
+    type IntoIter = IntoIter;
+    fn into_iter(self) -> Self::IntoIter {
+        IntoIter {
+            msgs: self.msgs.into_iter(),
+        }
+    }
+}
+impl Extend<Err> for Err {
+    fn extend<T: IntoIterator<Item = Err>>(&mut self, iter: T) {
+        for err in iter {
+            self.combine(err);
+        }
+    }
+}
+
+pub struct Iter<'a> {
+    msgs: slice::Iter<'a, ErrMsg>,
+}
+impl<'a> Iterator for Iter<'a> {
+    type Item = Err;
+    fn next(&mut self) -> Option<Self::Item> {
+        Some(Err {
+            msgs: vec![self.msgs.next()?.clone()],
+        })
+    }
+}
+
+pub struct IntoIter {
+    msgs: vec::IntoIter<ErrMsg>,
+}
+impl Iterator for IntoIter {
+    type Item = Err;
+    fn next(&mut self) -> Option<Self::Item> {
+        Some(Err {
+            msgs: vec![self.msgs.next()?],
+        })
+    }
+}
+impl<'a> IntoIterator for &'a Err {
+    type Item = Err;
+    type IntoIter = Iter<'a>;
+    fn into_iter(self) -> Self::IntoIter {
+        Iter { msgs: self.msgs.iter() }
+    }
+}
+
+struct ErrMsg {
+    span: ThreadBound<SpanRange>,
+    msg: String,
+}
 impl ErrMsg {
     fn to_compile_error(&self) -> pm2::Stream {
         let (start, end) = match self.span.get() {
-            Some(range) => (range.start, range.end),
+            Some(range) => (range.beg, range.end),
             None => (pm2::Span::call_site(), pm2::Span::call_site()),
         };
         use pm2::{Spacing::*, Tree::*};
@@ -101,7 +170,7 @@ impl ErrMsg {
             pm2::Tree::Group({
                 let y = Group::new(pm2::Delim::Brace, {
                     pm2::Stream::from_iter(vec![pm2::Tree::Literal({
-                        let y = pm2::Lit::string(&self.message);
+                        let y = pm2::Lit::string(&self.msg);
                         y.set_span(end);
                         y
                     })])
@@ -112,58 +181,59 @@ impl ErrMsg {
         ])
     }
 }
-pub fn new_at<T: Display>(scope: pm2::Span, cursor: Cursor, message: T) -> Err {
-    if cursor.eof() {
-        Err::new(scope, format!("unexpected end of input, {}", message))
-    } else {
-        let span = super::open_span_of_group(cursor);
-        Err::new(span, message)
-    }
-}
-pub fn new2<T: Display>(start: pm2::Span, end: pm2::Span, message: T) -> Err {
-    return new2(start, end, message.to_string());
-    fn new2(start: pm2::Span, end: pm2::Span, message: String) -> Err {
-        Err {
-            msgs: vec![ErrMsg {
-                span: ThreadBound::new(SpanRange { start, end }),
-                message,
-            }],
-        }
-    }
-}
-impl Debug for Err {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.msgs.len() == 1 {
-            f.debug_tuple("Error").field(&self.msgs[0]).finish()
-        } else {
-            f.debug_tuple("Error").field(&self.msgs).finish()
+impl Clone for ErrMsg {
+    fn clone(&self) -> Self {
+        ErrMsg {
+            span: self.span,
+            msg: self.msg.clone(),
         }
     }
 }
 impl Debug for ErrMsg {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        Debug::fmt(&self.message, f)
+        Debug::fmt(&self.msg, f)
     }
 }
-impl Display for Err {
+
+struct ThreadBound<T> {
+    val: T,
+    id: ThreadId,
+}
+impl<T> ThreadBound<T> {
+    pub fn new(val: T) -> Self {
+        ThreadBound {
+            val,
+            id: thread::current().id(),
+        }
+    }
+    pub fn get(&self) -> Option<&T> {
+        if thread::current().id() == self.id {
+            Some(&self.val)
+        } else {
+            None
+        }
+    }
+}
+impl<T: Debug> Debug for ThreadBound<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str(&self.msgs[0].message)
-    }
-}
-impl Clone for Err {
-    fn clone(&self) -> Self {
-        Err {
-            msgs: self.msgs.clone(),
+        match self.get() {
+            Some(x) => Debug::fmt(x, f),
+            None => f.write_str("unknown"),
         }
     }
 }
-impl Clone for ErrMsg {
+impl<T: Copy> Copy for ThreadBound<T> {}
+impl<T: Copy> Clone for ThreadBound<T> {
     fn clone(&self) -> Self {
-        ErrMsg {
-            span: self.span,
-            message: self.message.clone(),
-        }
+        *self
     }
+}
+unsafe impl<T> Sync for ThreadBound<T> {}
+unsafe impl<T: Copy> Send for ThreadBound<T> {}
+
+struct SpanRange {
+    beg: pm2::Span,
+    end: pm2::Span,
 }
 impl Clone for SpanRange {
     fn clone(&self) -> Self {
@@ -171,56 +241,28 @@ impl Clone for SpanRange {
     }
 }
 impl Copy for SpanRange {}
-impl std::error::Error for Err {}
-impl From<LexError> for Err {
-    fn from(x: LexError) -> Self {
-        Err::new(x.span(), "lex error")
+
+pub fn new_at<T: Display>(scope: pm2::Span, cursor: Cursor, msg: T) -> Err {
+    if cursor.eof() {
+        Err::new(scope, format!("unexpected end of input, {}", msg))
+    } else {
+        let span = super::open_span_of_group(cursor);
+        Err::new(span, msg)
     }
 }
-impl IntoIterator for Err {
-    type Item = Err;
-    type IntoIter = IntoIter;
-    fn into_iter(self) -> Self::IntoIter {
-        IntoIter {
-            messages: self.msgs.into_iter(),
+pub fn new2<T: Display>(beg: pm2::Span, end: pm2::Span, msg: T) -> Err {
+    fn doit(beg: pm2::Span, end: pm2::Span, msg: String) -> Err {
+        Err {
+            msgs: vec![ErrMsg {
+                span: ThreadBound::new(SpanRange { beg, end }),
+                msg,
+            }],
         }
     }
+    return doit(beg, end, msg.to_string());
 }
-pub struct IntoIter {
-    messages: vec::IntoIter<ErrMsg>,
-}
-impl Iterator for IntoIter {
-    type Item = Err;
-    fn next(&mut self) -> Option<Self::Item> {
-        Some(Err {
-            msgs: vec![self.messages.next()?],
-        })
-    }
-}
-impl<'a> IntoIterator for &'a Err {
-    type Item = Err;
-    type IntoIter = Iter<'a>;
-    fn into_iter(self) -> Self::IntoIter {
-        Iter {
-            messages: self.msgs.iter(),
-        }
-    }
-}
-pub struct Iter<'a> {
-    messages: slice::Iter<'a, ErrMsg>,
-}
-impl<'a> Iterator for Iter<'a> {
-    type Item = Err;
-    fn next(&mut self) -> Option<Self::Item> {
-        Some(Err {
-            msgs: vec![self.messages.next()?.clone()],
-        })
-    }
-}
-impl Extend<Err> for Err {
-    fn extend<T: IntoIterator<Item = Err>>(&mut self, iter: T) {
-        for err in iter {
-            self.combine(err);
-        }
-    }
-}
+
+#[cfg(test)]
+struct _Test
+where
+    Err: Send + Sync;

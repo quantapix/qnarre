@@ -2,7 +2,7 @@ use super::{
     pm2::{Delim, DelimSpan, Span},
     *,
 };
-use std::{cell::Cell, mem, rc::Rc, str::FromStr};
+use std::{cell::Cell, mem, rc::Rc};
 
 pub struct Parens<'a> {
     pub tok: tok::Paren,

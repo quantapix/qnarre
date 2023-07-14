@@ -47,6 +47,7 @@ extern crate proc_macro;
 
 pub use quote::ToTokens;
 pub use std::{
+    cmp::{self, Ordering},
     fmt::{self, Debug, Display},
     hash::{Hash, Hasher},
     marker::PhantomData,
@@ -54,14 +55,10 @@ pub use std::{
 };
 
 use quote::{quote, spanned, TokenStreamExt};
-use std::{
-    cmp::{self, Ordering},
-    thread::{self, ThreadId},
-};
 
 mod pm2 {
     pub use proc_macro2::{
-        extra::DelimSpan, Delimiter as Delim, Group, Ident, Literal as Lit, Punct, Spacing, Span,
+        extra::DelimSpan, Delimiter as Delim, Group, Ident, LexError, Literal as Lit, Punct, Spacing, Span,
         TokenStream as Stream, TokenTree as Tree,
     };
 }
@@ -347,42 +344,6 @@ impl<T: ?Sized + spanned::Spanned> Spanned for T {
 mod private {
     pub trait Sealed {}
     impl<T: ?Sized + spanned::Spanned> Sealed for T {}
-}
-
-struct ThreadBound<T> {
-    val: T,
-    id: ThreadId,
-}
-unsafe impl<T> Sync for ThreadBound<T> {}
-unsafe impl<T: Copy> Send for ThreadBound<T> {}
-impl<T> ThreadBound<T> {
-    pub fn new(val: T) -> Self {
-        ThreadBound {
-            val,
-            id: thread::current().id(),
-        }
-    }
-    pub fn get(&self) -> Option<&T> {
-        if thread::current().id() == self.id {
-            Some(&self.val)
-        } else {
-            None
-        }
-    }
-}
-impl<T: Debug> Debug for ThreadBound<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.get() {
-            Some(x) => Debug::fmt(x, f),
-            None => f.write_str("unknown"),
-        }
-    }
-}
-impl<T: Copy> Copy for ThreadBound<T> {}
-impl<T: Copy> Clone for ThreadBound<T> {
-    fn clone(&self) -> Self {
-        *self
-    }
 }
 
 struct TokenTreeHelper<'a>(pub &'a pm2::Tree);

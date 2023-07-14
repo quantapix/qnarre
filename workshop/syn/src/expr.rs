@@ -1958,7 +1958,7 @@ fn expr_builtin(x: Stream) -> Res<Expr> {
     args.parse::<pm2::Stream>()?;
     Ok(Expr::Verbatim(verbatim_between(&begin, x)))
 }
-fn path_or_macro_or_struct(x: Stream, #[cfg(feature = "full")] allow: AllowStruct) -> Res<Expr> {
+fn path_or_macro_or_struct(x: Stream, allow: AllowStruct) -> Res<Expr> {
     let (qself, path) = qpath(x, true)?;
     if qself.is_none() && x.peek(Token![!]) && !x.peek(Token![!=]) && path.is_mod_style() {
         let bang: Token![!] = x.parse()?;
