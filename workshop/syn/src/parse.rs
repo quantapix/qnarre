@@ -261,7 +261,7 @@ impl<T: Parse, P: Parse> Quote for Puncted<T, P> {
 }
 impl Quote for Vec<Stmt> {
     fn parse(s: Stream) -> Res<Self> {
-        Block::parse_within(s)
+        stmt::Block::parse_within(s)
     }
 }
 pub fn parse_quote_fn<T: Quote>(s: Stream) -> T {

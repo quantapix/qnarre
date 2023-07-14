@@ -7,37 +7,37 @@ pub struct Block {
     pub stmts: Vec<Stmt>,
 }
 impl Block {
-    pub fn parse_within(x: Stream) -> Res<Vec<Stmt>> {
+    pub fn parse_within(s: Stream) -> Res<Vec<Stmt>> {
         let mut ys = Vec::new();
         loop {
-            while let semi @ Some(_) = x.parse()? {
+            while let semi @ Some(_) = s.parse()? {
                 ys.push(Stmt::Expr(Expr::Verbatim(pm2::Stream::new()), semi));
             }
-            if x.is_empty() {
+            if s.is_empty() {
                 break;
             }
-            let y = parse_stmt(x, NoSemi(true))?;
+            let y = parse_stmt(s, NoSemi(true))?;
             let semi = match &y {
                 Stmt::Expr(x, None) => expr::requires_terminator(x),
                 Stmt::Mac(x) => x.semi.is_none() && !x.mac.delim.is_brace(),
                 Stmt::Local(_) | Stmt::Item(_) | Stmt::Expr(_, Some(_)) => false,
             };
             ys.push(y);
-            if x.is_empty() {
+            if s.is_empty() {
                 break;
             } else if semi {
-                return Err(x.error("unexpected token, expected `;`"));
+                return Err(s.error("unexpected token, expected `;`"));
             }
         }
         Ok(ys)
     }
 }
 impl Parse for Block {
-    fn parse(x: Stream) -> Res<Self> {
+    fn parse(s: Stream) -> Res<Self> {
         let y;
         Ok(Block {
-            brace: braced!(y in x),
-            stmts: y.call(Block::parse_within)?,
+            brace: braced!(y in s),
+            stmts: y.call(stmt::Block::parse_within)?,
         })
     }
 }

@@ -628,7 +628,7 @@ impl Clone for pat::Field {
     fn clone(&self) -> Self {
         pat::Field {
             attrs: self.attrs.clone(),
-            member: self.member.clone(),
+            memb: self.memb.clone(),
             colon: self.colon.clone(),
             pat: self.pat.clone(),
         }
@@ -1212,7 +1212,7 @@ impl Clone for pat::Pat {
             pat::Pat::Tuple(v0) => pat::Pat::Tuple(v0.clone()),
             pat::Pat::TupleStruct(v0) => pat::Pat::TupleStruct(v0.clone()),
             pat::Pat::Type(v0) => pat::Pat::Type(v0.clone()),
-            pat::Pat::Verbatim(v0) => pat::Pat::Verbatim(v0.clone()),
+            pat::Pat::Stream(v0) => pat::Pat::Stream(v0.clone()),
             pat::Pat::Wild(v0) => pat::Pat::Wild(v0.clone()),
         }
     }
@@ -1378,8 +1378,8 @@ impl Clone for path::QSelf {
         }
     }
 }
-impl Copy for RangeLimits {}
-impl Clone for RangeLimits {
+impl Copy for expr::Limits {}
+impl Clone for expr::Limits {
     fn clone(&self) -> Self {
         *self
     }

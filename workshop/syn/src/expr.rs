@@ -260,7 +260,7 @@ impl Parse for Block {
         let y;
         let brace = braced!(y in x);
         attr::parse_inners(&y, &mut attrs)?;
-        let stmts = y.call(Block::parse_within)?;
+        let stmts = y.call(stmt::Block::parse_within)?;
         Ok(Block {
             attrs,
             label,
@@ -377,7 +377,7 @@ impl Parse for Const {
         let y;
         let brace = braced!(y in x);
         let attrs = y.call(attr::Attr::parse_inners)?;
-        let stmts = y.call(Block::parse_within)?;
+        let stmts = y.call(stmt::Block::parse_within)?;
         Ok(Const {
             attrs,
             const_,
@@ -453,7 +453,7 @@ impl Parse for ForLoop {
         let y;
         let brace = braced!(y in x);
         attr::parse_inners(&y, &mut attrs)?;
-        let stmts = y.call(Block::parse_within)?;
+        let stmts = y.call(stmt::Block::parse_within)?;
         Ok(ForLoop {
             attrs,
             label,
@@ -648,7 +648,7 @@ impl Parse for Loop {
         let y;
         let brace = braced!(y in x);
         attr::parse_inners(&y, &mut attrs)?;
-        let stmts = y.call(Block::parse_within)?;
+        let stmts = y.call(stmt::Block::parse_within)?;
         Ok(Loop {
             attrs,
             label,
@@ -797,7 +797,7 @@ impl ToTokens for Path {
 pub struct Range {
     pub attrs: Vec<attr::Attr>,
     pub beg: Option<Box<Expr>>,
-    pub limits: RangeLimits,
+    pub limits: Limits,
     pub end: Option<Box<Expr>>,
 }
 impl ToTokens for Range {
@@ -998,7 +998,7 @@ impl Parse for Unsafe {
         let y;
         let brace = braced!(y in x);
         let attrs = y.call(attr::Attr::parse_inners)?;
-        let stmts = y.call(Block::parse_within)?;
+        let stmts = y.call(stmt::Block::parse_within)?;
         Ok(Unsafe {
             attrs,
             unsafe_,
@@ -1033,7 +1033,7 @@ impl Parse for While {
         let y;
         let brace = braced!(y in x);
         attr::parse_inners(&y, &mut attrs)?;
-        let stmts = y.call(Block::parse_within)?;
+        let stmts = y.call(stmt::Block::parse_within)?;
         Ok(While {
             attrs,
             label,
@@ -1453,48 +1453,48 @@ impl ToTokens for Arm {
     }
 }
 
-pub enum RangeLimits {
+pub enum Limits {
     HalfOpen(Token![..]),
     Closed(Token![..=]),
 }
-impl RangeLimits {
+impl Limits {
     pub fn parse_obsolete(x: Stream) -> Res<Self> {
         let look = x.look1();
         let dot2 = look.peek(Token![..]);
         let dot2_eq = dot2 && look.peek(Token![..=]);
         let dot3 = dot2 && x.peek(Token![...]);
         if dot2_eq {
-            x.parse().map(RangeLimits::Closed)
+            x.parse().map(Limits::Closed)
         } else if dot3 {
             let y: Token![...] = x.parse()?;
-            Ok(RangeLimits::Closed(Token![..=](y.spans)))
+            Ok(Limits::Closed(Token![..=](y.spans)))
         } else if dot2 {
-            x.parse().map(RangeLimits::HalfOpen)
+            x.parse().map(Limits::HalfOpen)
         } else {
             Err(look.err())
         }
     }
 }
-impl Parse for RangeLimits {
+impl Parse for Limits {
     fn parse(x: Stream) -> Res<Self> {
         let look = x.look1();
         let dot2 = look.peek(Token![..]);
         let dot2_eq = dot2 && look.peek(Token![..=]);
         let dot3 = dot2 && x.peek(Token![...]);
         if dot2_eq {
-            x.parse().map(RangeLimits::Closed)
+            x.parse().map(Limits::Closed)
         } else if dot2 && !dot3 {
-            x.parse().map(RangeLimits::HalfOpen)
+            x.parse().map(Limits::HalfOpen)
         } else {
             Err(look.err())
         }
     }
 }
-impl ToTokens for RangeLimits {
+impl ToTokens for Limits {
     fn to_tokens(&self, ys: &mut Stream) {
         match self {
-            RangeLimits::HalfOpen(x) => x.to_tokens(ys),
-            RangeLimits::Closed(x) => x.to_tokens(ys),
+            Limits::HalfOpen(x) => x.to_tokens(ys),
+            Limits::Closed(x) => x.to_tokens(ys),
         }
     }
 }
@@ -1657,8 +1657,8 @@ fn parse_expr(x: Stream, mut lhs: Expr, allow: AllowStruct, base: Precedence) ->
                 right: Box::new(rhs),
             });
         } else if Precedence::Range >= base && x.peek(Token![..]) {
-            let limits: RangeLimits = x.parse()?;
-            let rhs = if matches!(limits, RangeLimits::HalfOpen(_))
+            let limits: Limits = x.parse()?;
+            let rhs = if matches!(limits, Limits::HalfOpen(_))
                 && (x.is_empty()
                     || x.peek(Token![,])
                     || x.peek(Token![;])
@@ -1963,9 +1963,9 @@ fn path_or_macro_or_struct(x: Stream, allow: AllowStruct) -> Res<Expr> {
     if qself.is_none() && x.peek(Token![!]) && !x.peek(Token![!=]) && path.is_mod_style() {
         let bang: Token![!] = x.parse()?;
         let (delim, toks) = mac::parse_delim(x)?;
-        return Ok(Expr::Macro(Mac {
+        return Ok(Expr::Mac(Mac {
             attrs: Vec::new(),
-            mac: Macro {
+            mac: mac::Mac {
                 path,
                 bang,
                 delim,
@@ -2201,19 +2201,19 @@ fn closure_arg(x: Stream) -> Res<pat::Pat> {
             pat::Pat::Const(x) => x.attrs = attrs,
             pat::Pat::Ident(x) => x.attrs = attrs,
             pat::Pat::Lit(x) => x.attrs = attrs,
-            pat::Pat::Macro(x) => x.attrs = attrs,
+            pat::Pat::Mac(x) => x.attrs = attrs,
             pat::Pat::Or(x) => x.attrs = attrs,
             pat::Pat::Paren(x) => x.attrs = attrs,
             pat::Pat::Path(x) => x.attrs = attrs,
             pat::Pat::Range(x) => x.attrs = attrs,
-            pat::Pat::Reference(x) => x.attrs = attrs,
+            pat::Pat::Ref(x) => x.attrs = attrs,
             pat::Pat::Rest(x) => x.attrs = attrs,
             pat::Pat::Slice(x) => x.attrs = attrs,
             pat::Pat::Struct(x) => x.attrs = attrs,
             pat::Pat::Tuple(x) => x.attrs = attrs,
             pat::Pat::TupleStruct(x) => x.attrs = attrs,
             pat::Pat::Type(_) => unreachable!(),
-            pat::Pat::Verbatim(_) => {},
+            pat::Pat::Stream(_) => {},
             pat::Pat::Wild(x) => x.attrs = attrs,
         }
         Ok(y)
@@ -2282,8 +2282,8 @@ fn expr_struct_helper(x: Stream, qself: Option<QSelf>, path: Path) -> Res<Struct
     })
 }
 fn expr_range(x: Stream, allow: AllowStruct) -> Res<Range> {
-    let limits: RangeLimits = x.parse()?;
-    let end = if matches!(limits, RangeLimits::HalfOpen(_))
+    let limits: Limits = x.parse()?;
+    let end = if matches!(limits, Limits::HalfOpen(_))
         && (x.is_empty()
             || x.peek(Token![,])
             || x.peek(Token![;])

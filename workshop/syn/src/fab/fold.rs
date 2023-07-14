@@ -421,7 +421,7 @@ pub trait Fold {
     fn fold_qself(&mut self, i: QSelf) -> QSelf {
         fold_qself(self, i)
     }
-    fn fold_range_limits(&mut self, i: RangeLimits) -> RangeLimits {
+    fn fold_range_limits(&mut self, i: expr::Limits) -> expr::Limits {
         fold_range_limits(self, i)
     }
     fn fold_receiver(&mut self, i: item::Receiver) -> item::Receiver {
@@ -1276,7 +1276,7 @@ where
 {
     pat::Fieldeld {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        member: f.fold_member(node.member),
+        member: f.fold_member(node.memb),
         colon: node.colon,
         pat: Box::new(f.fold_pat(*node.pat)),
     }
@@ -1983,7 +1983,7 @@ where
         pat::Pat::Tuple(_binding_0) => pat::Pat::Tuple(f.fold_pat_tuple(_binding_0)),
         pat::Pat::TupleStruct(_binding_0) => pat::Pat::TupleStruct(f.fold_pat_tuple_struct(_binding_0)),
         pat::Pat::Type(_binding_0) => pat::Pat::Type(f.fold_pat_type(_binding_0)),
-        pat::Pat::Verbatim(_binding_0) => pat::Pat::Verbatim(_binding_0),
+        pat::Pat::Stream(_binding_0) => pat::Pat::Stream(_binding_0),
         pat::Pat::Wild(_binding_0) => pat::Pat::Wild(f.fold_pat_wild(_binding_0)),
     }
 }
@@ -2165,13 +2165,13 @@ where
         gt: node.gt,
     }
 }
-pub fn fold_range_limits<F>(f: &mut F, node: RangeLimits) -> RangeLimits
+pub fn fold_range_limits<F>(f: &mut F, node: expr::Limits) -> expr::Limits
 where
     F: Fold + ?Sized,
 {
     match node {
-        RangeLimits::HalfOpen(_binding_0) => RangeLimits::HalfOpen(_binding_0),
-        RangeLimits::Closed(_binding_0) => RangeLimits::Closed(_binding_0),
+        expr::Limits::HalfOpen(_binding_0) => expr::Limits::HalfOpen(_binding_0),
+        expr::Limits::Closed(_binding_0) => expr::Limits::Closed(_binding_0),
     }
 }
 pub fn fold_receiver<F>(f: &mut F, node: item::Receiver) -> item::Receiver

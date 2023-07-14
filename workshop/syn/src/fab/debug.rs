@@ -992,7 +992,7 @@ impl Debug for pat::Field {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut f = f.debug_struct("pat::Field");
         f.field("attrs", &self.attrs);
-        f.field("member", &self.member);
+        f.field("member", &self.memb);
         f.field("colon", &self.colon);
         f.field("pat", &self.pat);
         f.finish()
@@ -1818,7 +1818,7 @@ impl Debug for pat::Pat {
             pat::Pat::Tuple(v0) => v0.debug(formatter, "Tuple"),
             pat::Pat::TupleStruct(v0) => v0.debug(formatter, "TupleStruct"),
             pat::Pat::Type(v0) => v0.debug(formatter, "Type"),
-            pat::Pat::Verbatim(v0) => {
+            pat::Pat::Stream(v0) => {
                 let mut f = f.debug_tuple("Verbatim");
                 f.field(v0);
                 f.finish()
@@ -2049,16 +2049,16 @@ impl Debug for QSelf {
         f.finish()
     }
 }
-impl Debug for RangeLimits {
+impl Debug for expr::Limits {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("RangeLimits::")?;
+        f.write_str("expr::Limits::")?;
         match self {
-            RangeLimits::HalfOpen(v0) => {
+            expr::Limits::HalfOpen(v0) => {
                 let mut f = f.debug_tuple("HalfOpen");
                 f.field(v0);
                 f.finish()
             },
-            RangeLimits::Closed(v0) => {
+            expr::Limits::Closed(v0) => {
                 let mut f = f.debug_tuple("Closed");
                 f.field(v0);
                 f.finish()

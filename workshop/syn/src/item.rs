@@ -1070,7 +1070,7 @@ pub mod Foreign {
                     let y;
                     braced!(y in s);
                     y.call(attr::Attr::parse_inners)?;
-                    y.call(Block::parse_within)?;
+                    y.call(stmt::Block::parse_within)?;
                     Ok(Item::Stream(parse::parse_verbatim(&beg, s)))
                 } else {
                     Ok(Item::Fn(Fn {
@@ -1623,7 +1623,7 @@ pub mod Trait {
                 let y;
                 let brace = braced!(y in s);
                 attr::parse_inners(&y, &mut attrs)?;
-                let stmts = y.call(Block::parse_within)?;
+                let stmts = y.call(stmt::Block::parse_within)?;
                 (Some(brace), stmts, None)
             } else if look.peek(Token![;]) {
                 let semi: Token![;] = s.parse()?;
@@ -2139,7 +2139,7 @@ fn parse_rest_of_fn(s: Stream, mut attrs: Vec<attr::Attr>, vis: data::Visibility
     let y;
     let brace = braced!(y in s);
     attr::parse_inners(&y, &mut attrs)?;
-    let stmts = y.call(Block::parse_within)?;
+    let stmts = y.call(stmt::Block::parse_within)?;
     Ok(Fn {
         attrs,
         vis,
@@ -2504,7 +2504,7 @@ fn parse_impl_item_fn(s: Stream, omitted: bool) -> Res<Option<Impl::Fn>> {
     attrs.extend(y.call(attr::Attr::parse_inners)?);
     let block = Block {
         brace,
-        stmts: y.call(Block::parse_within)?,
+        stmts: y.call(stmt::Block::parse_within)?,
     };
     Ok(Some(Impl::Fn {
         attrs,

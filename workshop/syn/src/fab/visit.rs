@@ -423,7 +423,7 @@ pub trait Visit<'ast> {
     fn visit_qself(&mut self, i: &'ast QSelf) {
         visit_qself(self, i);
     }
-    fn visit_range_limits(&mut self, i: &'ast RangeLimits) {
+    fn visit_range_limits(&mut self, i: &'ast expr::Limits) {
         visit_range_limits(self, i);
     }
     fn visit_receiver(&mut self, i: &'ast item::Receiver) {
@@ -1489,7 +1489,7 @@ where
     for it in &node.attrs {
         v.visit_attribute(it);
     }
-    v.visit_member(&node.member);
+    v.visit_member(&node.memb);
     skip!(node.colon);
     v.visit_pat(&*node.pat);
 }
@@ -2339,7 +2339,7 @@ where
         pat::Pat::Type(_binding_0) => {
             v.visit_pat_type(_binding_0);
         },
-        pat::Pat::Verbatim(_binding_0) => {
+        pat::Pat::Stream(_binding_0) => {
             skip!(_binding_0);
         },
         pat::Pat::Wild(_binding_0) => {
@@ -2554,15 +2554,15 @@ where
     skip!(node.as_);
     skip!(node.gt);
 }
-pub fn visit_range_limits<'ast, V>(v: &mut V, node: &'ast RangeLimits)
+pub fn visit_range_limits<'ast, V>(v: &mut V, node: &'ast expr::Limits)
 where
     V: Visit<'ast> + ?Sized,
 {
     match node {
-        RangeLimits::HalfOpen(_binding_0) => {
+        expr::Limits::HalfOpen(_binding_0) => {
             skip!(_binding_0);
         },
-        RangeLimits::Closed(_binding_0) => {
+        expr::Limits::Closed(_binding_0) => {
             skip!(_binding_0);
         },
     }

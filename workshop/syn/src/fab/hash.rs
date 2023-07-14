@@ -860,7 +860,7 @@ impl Hash for pat::Field {
         H: Hasher,
     {
         self.attrs.hash(state);
-        self.member.hash(state);
+        self.memb.hash(state);
         self.colon.hash(state);
         self.pat.hash(state);
     }
@@ -1651,7 +1651,7 @@ impl Hash for pat::Pat {
                 state.write_u8(14u8);
                 v0.hash(state);
             },
-            pat::Pat::Verbatim(v0) => {
+            pat::Pat::Stream(v0) => {
                 state.write_u8(15u8);
                 TokenStreamHelper(v0).hash(state);
             },
@@ -1837,16 +1837,16 @@ impl Hash for QSelf {
         self.as_.hash(state);
     }
 }
-impl Hash for RangeLimits {
+impl Hash for expr::Limits {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         match self {
-            RangeLimits::HalfOpen(_) => {
+            expr::Limits::HalfOpen(_) => {
                 state.write_u8(0u8);
             },
-            RangeLimits::Closed(_) => {
+            expr::Limits::Closed(_) => {
                 state.write_u8(1u8);
             },
         }

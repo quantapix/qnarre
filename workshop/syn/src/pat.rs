@@ -1,5 +1,5 @@
 use super::*;
-pub use expr::{Const, Lit, Macro as Mac, Path, Range};
+pub use expr::{Const, Lit, Mac, Member, Path, Range};
 
 ast_enum_of_structs! {
     pub enum Pat {
@@ -14,83 +14,14 @@ ast_enum_of_structs! {
         Ref(Ref),
         Rest(Rest),
         Slice(Slice),
+        Stream(Stream),
         Struct(Struct),
         Tuple(Tuple),
         TupleStruct(TupleStruct),
         Type(Type),
-        Verbatim(Stream),
         Wild(Wild),
     }
 }
-pub struct Ident {
-    pub attrs: Vec<attr::Attr>,
-    pub ref_: Option<Token![ref]>,
-    pub mut_: Option<Token![mut]>,
-    pub ident: super::Ident,
-    pub sub: Option<(Token![@], Box<Pat>)>,
-}
-pub struct Or {
-    pub attrs: Vec<attr::Attr>,
-    pub vert: Option<Token![|]>,
-    pub cases: Puncted<Pat, Token![|]>,
-}
-pub struct Paren {
-    pub attrs: Vec<attr::Attr>,
-    pub paren: tok::Paren,
-    pub pat: Box<Pat>,
-}
-pub struct Ref {
-    pub attrs: Vec<attr::Attr>,
-    pub and: Token![&],
-    pub mut_: Option<Token![mut]>,
-    pub pat: Box<Pat>,
-}
-pub struct Rest {
-    pub attrs: Vec<attr::Attr>,
-    pub dot2: Token![..],
-}
-pub struct Slice {
-    pub attrs: Vec<attr::Attr>,
-    pub bracket: tok::Bracket,
-    pub elems: Puncted<Pat, Token![,]>,
-}
-pub struct Struct {
-    pub attrs: Vec<attr::Attr>,
-    pub qself: Option<QSelf>,
-    pub path: Path,
-    pub brace: tok::Brace,
-    pub fields: Puncted<Field, Token![,]>,
-    pub rest: Option<Rest>,
-}
-pub struct Tuple {
-    pub attrs: Vec<attr::Attr>,
-    pub paren: tok::Paren,
-    pub elems: Puncted<Pat, Token![,]>,
-}
-pub struct TupleStruct {
-    pub attrs: Vec<attr::Attr>,
-    pub qself: Option<QSelf>,
-    pub path: Path,
-    pub paren: tok::Paren,
-    pub elems: Puncted<Pat, Token![,]>,
-}
-pub struct Type {
-    pub attrs: Vec<attr::Attr>,
-    pub pat: Box<Pat>,
-    pub colon: Token![:],
-    pub typ: Box<typ::Type>,
-}
-pub struct Wild {
-    pub attrs: Vec<attr::Attr>,
-    pub underscore: Token![_],
-}
-pub struct Field {
-    pub attrs: Vec<attr::Attr>,
-    pub member: Member,
-    pub colon: Option<Token![:]>,
-    pub pat: Box<Pat>,
-}
-
 impl Pat {
     pub fn parse_single(x: Stream) -> Res<Self> {
         let begin = x.fork();
@@ -112,21 +43,21 @@ impl Pat {
         } else if look.peek(Token![_]) {
             x.call(wild).map(Pat::Wild)
         } else if x.peek(Token![box]) {
-            verbatim(begin, x)
+            parse_verbatim(begin, x)
         } else if x.peek(Token![-]) || look.peek(Lit) || look.peek(Token![const]) {
             lit_or_range(x)
         } else if look.peek(Token![ref]) || look.peek(Token![mut]) || x.peek(Token![self]) || x.peek(Ident) {
             x.call(ident).map(Pat::Ident)
         } else if look.peek(Token![&]) {
-            x.call(ref_).map(Pat::Ref)
+            x.call(parse_ref).map(Pat::Ref)
         } else if look.peek(tok::Paren) {
             x.call(paren_or_tuple)
         } else if look.peek(tok::Bracket) {
-            x.call(slice).map(Pat::Slice)
+            x.call(parse_slice).map(Pat::Slice)
         } else if look.peek(Token![..]) && !x.peek(Token![...]) {
             range_half_open(x)
         } else if look.peek(Token![const]) {
-            x.call(const_).map(Pat::Verbatim)
+            x.call(parse_const).map(Pat::Stream)
         } else {
             Err(look.error())
         }
@@ -139,6 +70,221 @@ impl Pat {
         multi_impl(x, vert)
     }
 }
+
+pub struct Ident {
+    pub attrs: Vec<attr::Attr>,
+    pub ref_: Option<Token![ref]>,
+    pub mut_: Option<Token![mut]>,
+    pub ident: super::Ident,
+    pub sub: Option<(Token![@], Box<Pat>)>,
+}
+impl ToTokens for Ident {
+    fn to_tokens(&self, ys: &mut Stream) {
+        ys.append_all(self.attrs.outers());
+        self.ref_.to_tokens(ys);
+        self.mut_.to_tokens(ys);
+        self.ident.to_tokens(ys);
+        if let Some((at_, sub)) = &self.sub {
+            at_.to_tokens(ys);
+            sub.to_tokens(ys);
+        }
+    }
+}
+
+pub struct Or {
+    pub attrs: Vec<attr::Attr>,
+    pub vert: Option<Token![|]>,
+    pub cases: Puncted<Pat, Token![|]>,
+}
+impl ToTokens for Or {
+    fn to_tokens(&self, ys: &mut Stream) {
+        ys.append_all(self.attrs.outers());
+        self.vert.to_tokens(ys);
+        self.cases.to_tokens(ys);
+    }
+}
+
+pub struct Paren {
+    pub attrs: Vec<attr::Attr>,
+    pub paren: tok::Paren,
+    pub pat: Box<Pat>,
+}
+impl ToTokens for Paren {
+    fn to_tokens(&self, ys: &mut Stream) {
+        ys.append_all(self.attrs.outers());
+        self.paren.surround(ys, |ys| {
+            self.pat.to_tokens(ys);
+        });
+    }
+}
+
+pub struct Ref {
+    pub attrs: Vec<attr::Attr>,
+    pub and: Token![&],
+    pub mut_: Option<Token![mut]>,
+    pub pat: Box<Pat>,
+}
+impl ToTokens for Ref {
+    fn to_tokens(&self, ys: &mut Stream) {
+        ys.append_all(self.attrs.outers());
+        self.and.to_tokens(ys);
+        self.mut_.to_tokens(ys);
+        self.pat.to_tokens(ys);
+    }
+}
+
+pub struct Rest {
+    pub attrs: Vec<attr::Attr>,
+    pub dot2: Token![..],
+}
+impl ToTokens for Rest {
+    fn to_tokens(&self, ys: &mut Stream) {
+        ys.append_all(self.attrs.outers());
+        self.dot2.to_tokens(ys);
+    }
+}
+
+pub struct Slice {
+    pub attrs: Vec<attr::Attr>,
+    pub bracket: tok::Bracket,
+    pub elems: Puncted<Pat, Token![,]>,
+}
+impl ToTokens for Slice {
+    fn to_tokens(&self, ys: &mut Stream) {
+        ys.append_all(self.attrs.outers());
+        self.bracket.surround(ys, |ys| {
+            self.elems.to_tokens(ys);
+        });
+    }
+}
+
+pub struct Struct {
+    pub attrs: Vec<attr::Attr>,
+    pub qself: Option<QSelf>,
+    pub path: Path,
+    pub brace: tok::Brace,
+    pub fields: Puncted<Field, Token![,]>,
+    pub rest: Option<Rest>,
+}
+impl ToTokens for Struct {
+    fn to_tokens(&self, ys: &mut Stream) {
+        ys.append_all(self.attrs.outers());
+        path::path_to_tokens(ys, &self.qself, &self.path);
+        self.brace.surround(ys, |ys| {
+            self.fields.to_tokens(ys);
+            if !self.fields.empty_or_trailing() && self.rest.is_some() {
+                <Token![,]>::default().to_tokens(ys);
+            }
+            self.rest.to_tokens(ys);
+        });
+    }
+}
+
+pub struct Field {
+    pub attrs: Vec<attr::Attr>,
+    pub memb: Member,
+    pub colon: Option<Token![:]>,
+    pub pat: Box<Pat>,
+}
+impl ToTokens for Field {
+    fn to_tokens(&self, ys: &mut Stream) {
+        ys.append_all(self.attrs.outers());
+        if let Some(x) = &self.colon {
+            self.memb.to_tokens(ys);
+            x.to_tokens(ys);
+        }
+        self.pat.to_tokens(ys);
+    }
+}
+
+impl Member {
+    fn is_unnamed(&self) -> bool {
+        match self {
+            Member::Named(_) => false,
+            Member::Unnamed(_) => true,
+        }
+    }
+}
+
+pub struct Tuple {
+    pub attrs: Vec<attr::Attr>,
+    pub paren: tok::Paren,
+    pub elems: Puncted<Pat, Token![,]>,
+}
+impl ToTokens for Tuple {
+    fn to_tokens(&self, ys: &mut Stream) {
+        ys.append_all(self.attrs.outers());
+        self.paren.surround(ys, |ys| {
+            self.elems.to_tokens(ys);
+        });
+    }
+}
+
+pub struct TupleStruct {
+    pub attrs: Vec<attr::Attr>,
+    pub qself: Option<QSelf>,
+    pub path: Path,
+    pub paren: tok::Paren,
+    pub elems: Puncted<Pat, Token![,]>,
+}
+impl ToTokens for TupleStruct {
+    fn to_tokens(&self, ys: &mut Stream) {
+        ys.append_all(self.attrs.outers());
+        path::path_to_tokens(ys, &self.qself, &self.path);
+        self.paren.surround(ys, |ys| {
+            self.elems.to_tokens(ys);
+        });
+    }
+}
+
+pub struct Type {
+    pub attrs: Vec<attr::Attr>,
+    pub pat: Box<Pat>,
+    pub colon: Token![:],
+    pub typ: Box<typ::Type>,
+}
+impl ToTokens for Type {
+    fn to_tokens(&self, ys: &mut Stream) {
+        ys.append_all(self.attrs.outers());
+        self.pat.to_tokens(ys);
+        self.colon.to_tokens(ys);
+        self.typ.to_tokens(ys);
+    }
+}
+
+pub struct Wild {
+    pub attrs: Vec<attr::Attr>,
+    pub underscore: Token![_],
+}
+impl ToTokens for Wild {
+    fn to_tokens(&self, ys: &mut Stream) {
+        ys.append_all(self.attrs.outers());
+        self.underscore.to_tokens(ys);
+    }
+}
+
+enum RangeBound {
+    Const(Const),
+    Lit(Lit),
+    Path(Path),
+}
+impl RangeBound {
+    fn into_expr(self) -> Box<Expr> {
+        Box::new(match self {
+            RangeBound::Const(x) => Expr::Const(x),
+            RangeBound::Lit(x) => Expr::Lit(x),
+            RangeBound::Path(x) => Expr::Path(x),
+        })
+    }
+    fn into_pat(self) -> Pat {
+        match self {
+            RangeBound::Const(x) => Pat::Const(x),
+            RangeBound::Lit(x) => Pat::Lit(x),
+            RangeBound::Path(x) => Pat::Path(x),
+        }
+    }
+}
+
 fn multi_impl(x: Stream, vert: Option<Token![|]>) -> Res<Pat> {
     let mut y = Pat::parse_single(x)?;
     if vert.is_some() || x.peek(Token![|]) && !x.peek(Token![||]) && !x.peek(Token![|=]) {
@@ -174,7 +320,7 @@ fn path_or_mac_or_struct_or_range(x: Stream) -> Res<Pat> {
         }));
     }
     if x.peek(tok::Brace) {
-        struct_(x, qself, path).map(Pat::Struct)
+        parse_struct(x, qself, path).map(Pat::Struct)
     } else if x.peek(tok::Paren) {
         tuple_struct(x, qself, path).map(Pat::TupleStruct)
     } else if x.peek(Token![..]) {
@@ -192,11 +338,6 @@ fn wild(x: Stream) -> Res<Wild> {
         attrs: Vec::new(),
         underscore: x.parse()?,
     })
-}
-fn verbatim(beg: Buffer, x: Stream) -> Res<Pat> {
-    x.parse::<Token![box]>()?;
-    Pat::parse_single(x)?;
-    Ok(Pat::Verbatim(parse::parse_verbatim(&beg, x)))
 }
 fn ident(x: Stream) -> Res<Ident> {
     Ok(Ident {
@@ -236,27 +377,27 @@ fn tuple_struct(x: Stream, qself: Option<QSelf>, path: Path) -> Res<TupleStruct>
         elems,
     })
 }
-fn struct_(x: Stream, qself: Option<QSelf>, path: Path) -> Res<Struct> {
-    let gist;
-    let brace = braced!(gist in x);
+fn parse_struct(s: Stream, qself: Option<QSelf>, path: Path) -> Res<Struct> {
+    let y;
+    let brace = braced!(y in s);
     let mut fields = Puncted::new();
     let mut rest = None;
-    while !gist.is_empty() {
-        let attrs = gist.call(attr::Attr::parse_outers)?;
-        if gist.peek(Token![..]) {
+    while !y.is_empty() {
+        let attrs = y.call(attr::Attr::parse_outers)?;
+        if y.peek(Token![..]) {
             rest = Some(Rest {
                 attrs,
-                dot2: gist.parse()?,
+                dot2: y.parse()?,
             });
             break;
         }
-        let mut y = gist.call(field)?;
+        let mut y = y.call(field)?;
         y.attrs = attrs;
         fields.push_value(y);
-        if gist.is_empty() {
+        if y.is_empty() {
             break;
         }
-        let y: Token![,] = gist.parse()?;
+        let y: Token![,] = y.parse()?;
         fields.push_punct(y);
     }
     Ok(Struct {
@@ -267,14 +408,6 @@ fn struct_(x: Stream, qself: Option<QSelf>, path: Path) -> Res<Struct> {
         fields,
         rest,
     })
-}
-impl Member {
-    fn is_unnamed(&self) -> bool {
-        match self {
-            Member::Named(_) => false,
-            Member::Unnamed(_) => true,
-        }
-    }
 }
 fn field(x: Stream) -> Res<Field> {
     let beg = x.fork();
@@ -289,7 +422,7 @@ fn field(x: Stream) -> Res<Field> {
     if box_.is_none() && ref_.is_none() && mut_.is_none() && x.peek(Token![:]) || member.is_unnamed() {
         return Ok(Field {
             attrs: Vec::new(),
-            member,
+            memb: member,
             colon: Some(x.parse()?),
             pat: Box::new(Pat::parse_multi(x)?),
         });
@@ -299,7 +432,7 @@ fn field(x: Stream) -> Res<Field> {
         Member::Unnamed(_) => unreachable!(),
     };
     let pat = if box_.is_some() {
-        Pat::Verbatim(parse::parse_verbatim(&beg, x))
+        Pat::Stream(parse::parse_verbatim(&beg, x))
     } else {
         Pat::Ident(Ident {
             attrs: Vec::new(),
@@ -311,15 +444,15 @@ fn field(x: Stream) -> Res<Field> {
     };
     Ok(Field {
         attrs: Vec::new(),
-        member: Member::Named(ident),
+        memb: Member::Named(ident),
         colon: None,
         pat: Box::new(pat),
     })
 }
 fn range(x: Stream, qself: Option<QSelf>, path: Path) -> Res<Pat> {
-    let limits = RangeLimits::parse_obsolete(x)?;
-    let end = x.call(range_bound)?;
-    if let (RangeLimits::Closed(_), None) = (&limits, &end) {
+    let limits = expr::Limits::parse_obsolete(x)?;
+    let end = x.call(parse_range_bound)?;
+    if let (expr::Limits::Closed(_), None) = (&limits, &end) {
         return Err(x.error("expected range upper bound"));
     }
     Ok(Pat::Range(expr::Range {
@@ -334,8 +467,8 @@ fn range(x: Stream, qself: Option<QSelf>, path: Path) -> Res<Pat> {
     }))
 }
 fn range_half_open(x: Stream) -> Res<Pat> {
-    let limits: RangeLimits = x.parse()?;
-    let end = x.call(range_bound)?;
+    let limits: expr::Limits = x.parse()?;
+    let end = x.call(parse_range_bound)?;
     if end.is_some() {
         Ok(Pat::Range(expr::Range {
             attrs: Vec::new(),
@@ -345,11 +478,11 @@ fn range_half_open(x: Stream) -> Res<Pat> {
         }))
     } else {
         match limits {
-            RangeLimits::HalfOpen(dot2) => Ok(Pat::Rest(Rest {
+            expr::Limits::HalfOpen(dot2) => Ok(Pat::Rest(Rest {
                 attrs: Vec::new(),
                 dot2,
             })),
-            RangeLimits::Closed(_) => Err(x.error("expected range upper bound")),
+            expr::Limits::Closed(_) => Err(x.error("expected range upper bound")),
         }
     }
 }
@@ -380,20 +513,12 @@ fn paren_or_tuple(x: Stream) -> Res<Pat> {
         elems,
     }))
 }
-fn ref_(x: Stream) -> Res<Ref> {
-    Ok(Ref {
-        attrs: Vec::new(),
-        and: x.parse()?,
-        mut_: x.parse()?,
-        pat: Box::new(Pat::parse_single(x)?),
-    })
-}
 fn lit_or_range(x: Stream) -> Res<Pat> {
-    let beg = x.call(range_bound)?.unwrap();
+    let beg = x.call(parse_range_bound)?.unwrap();
     if x.peek(Token![..]) {
-        let limits = RangeLimits::parse_obsolete(x)?;
-        let end = x.call(range_bound)?;
-        if let (RangeLimits::Closed(_), None) = (&limits, &end) {
+        let limits = expr::Limits::parse_obsolete(x)?;
+        let end = x.call(parse_range_bound)?;
+        if let (expr::Limits::Closed(_), None) = (&limits, &end) {
             return Err(x.error("expected range upper bound"));
         }
         Ok(Pat::Range(expr::Range {
@@ -406,41 +531,29 @@ fn lit_or_range(x: Stream) -> Res<Pat> {
         Ok(beg.into_pat())
     }
 }
-enum RangeBound {
-    Const(expr::Const),
-    Lit(expr::Lit),
-    Path(expr::Path),
+fn parse_const(s: Stream) -> Res<pm2::Stream> {
+    let beg = s.fork();
+    s.parse::<Token![const]>()?;
+    let y;
+    braced!(y in s);
+    y.call(attr::Attr::parse_inners)?;
+    y.call(stmt::Block::parse_within)?;
+    Ok(parse::parse_verbatim(&beg, s))
 }
-impl RangeBound {
-    fn into_expr(self) -> Box<Expr> {
-        Box::new(match self {
-            RangeBound::Const(x) => Expr::Const(x),
-            RangeBound::Lit(x) => Expr::Lit(x),
-            RangeBound::Path(x) => Expr::Path(x),
-        })
-    }
-    fn into_pat(self) -> Pat {
-        match self {
-            RangeBound::Const(x) => Pat::Const(x),
-            RangeBound::Lit(x) => Pat::Lit(x),
-            RangeBound::Path(x) => Pat::Path(x),
-        }
-    }
-}
-fn range_bound(x: Stream) -> Res<Option<RangeBound>> {
-    if x.is_empty()
-        || x.peek(Token![|])
-        || x.peek(Token![=])
-        || x.peek(Token![:]) && !x.peek(Token![::])
-        || x.peek(Token![,])
-        || x.peek(Token![;])
-        || x.peek(Token![if])
+fn parse_range_bound(s: Stream) -> Res<Option<RangeBound>> {
+    if s.is_empty()
+        || s.peek(Token![|])
+        || s.peek(Token![=])
+        || s.peek(Token![:]) && !s.peek(Token![::])
+        || s.peek(Token![,])
+        || s.peek(Token![;])
+        || s.peek(Token![if])
     {
         return Ok(None);
     }
-    let look = x.look1();
+    let look = s.look1();
     let y = if look.peek(Lit) {
-        RangeBound::Lit(x.parse()?)
+        RangeBound::Lit(s.parse()?)
     } else if look.peek(Ident)
         || look.peek(Token![::])
         || look.peek(Token![<])
@@ -449,25 +562,33 @@ fn range_bound(x: Stream) -> Res<Option<RangeBound>> {
         || look.peek(Token![super])
         || look.peek(Token![crate])
     {
-        RangeBound::Path(x.parse()?)
+        RangeBound::Path(s.parse()?)
     } else if look.peek(Token![const]) {
-        RangeBound::Const(x.parse()?)
+        RangeBound::Const(s.parse()?)
     } else {
         return Err(look.error());
     };
     Ok(Some(y))
 }
-fn slice(x: Stream) -> Res<Slice> {
-    let gist;
-    let bracket = bracketed!(gist in x);
+fn parse_ref(s: Stream) -> Res<Ref> {
+    Ok(Ref {
+        attrs: Vec::new(),
+        and: s.parse()?,
+        mut_: s.parse()?,
+        pat: Box::new(Pat::parse_single(s)?),
+    })
+}
+fn parse_slice(s: Stream) -> Res<Slice> {
+    let y;
+    let bracket = bracketed!(y in s);
     let mut elems = Puncted::new();
-    while !gist.is_empty() {
-        let y = Pat::parse_multi(&gist)?;
+    while !y.is_empty() {
+        let y = Pat::parse_multi(&y)?;
         match y {
             Pat::Range(x) if x.beg.is_none() || x.end.is_none() => {
                 let (start, end) = match x.limits {
-                    RangeLimits::HalfOpen(x) => (x.spans[0], x.spans[1]),
-                    RangeLimits::Closed(x) => (x.spans[0], x.spans[2]),
+                    expr::Limits::HalfOpen(x) => (x.spans[0], x.spans[1]),
+                    expr::Limits::Closed(x) => (x.spans[0], x.spans[2]),
                 };
                 let m = "range pattern is not allowed unparenthesized inside slice pattern";
                 return Err(err::new2(start, end, m));
@@ -475,10 +596,10 @@ fn slice(x: Stream) -> Res<Slice> {
             _ => {},
         }
         elems.push_value(y);
-        if gist.is_empty() {
+        if y.is_empty() {
             break;
         }
-        let y = gist.parse()?;
+        let y = y.parse()?;
         elems.push_punct(y);
     }
     Ok(Slice {
@@ -487,116 +608,8 @@ fn slice(x: Stream) -> Res<Slice> {
         elems,
     })
 }
-fn const_(x: Stream) -> Res<pm2::Stream> {
-    let beg = x.fork();
-    x.parse::<Token![const]>()?;
-    let gist;
-    braced!(gist in x);
-    gist.call(attr::Attr::parse_inners)?;
-    gist.call(Block::parse_within)?;
-    Ok(parse::parse_verbatim(&beg, x))
-}
-
-impl ToTokens for Ident {
-    fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outers());
-        self.ref_.to_tokens(ys);
-        self.mut_.to_tokens(ys);
-        self.ident.to_tokens(ys);
-        if let Some((at_, sub)) = &self.subpat {
-            at_.to_tokens(ys);
-            sub.to_tokens(ys);
-        }
-    }
-}
-impl ToTokens for Or {
-    fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outers());
-        self.vert.to_tokens(ys);
-        self.cases.to_tokens(ys);
-    }
-}
-impl ToTokens for Paren {
-    fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outers());
-        self.paren.surround(ys, |ys| {
-            self.pat.to_tokens(ys);
-        });
-    }
-}
-impl ToTokens for Ref {
-    fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outers());
-        self.and.to_tokens(ys);
-        self.mut_.to_tokens(ys);
-        self.pat.to_tokens(ys);
-    }
-}
-impl ToTokens for Rest {
-    fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outers());
-        self.dot2.to_tokens(ys);
-    }
-}
-impl ToTokens for Slice {
-    fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outers());
-        self.bracket.surround(ys, |ys| {
-            self.elems.to_tokens(ys);
-        });
-    }
-}
-impl ToTokens for Struct {
-    fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outers());
-        path::path_to_tokens(ys, &self.qself, &self.path);
-        self.brace.surround(ys, |ys| {
-            self.fields.to_tokens(ys);
-            if !self.fields.empty_or_trailing() && self.rest.is_some() {
-                <Token![,]>::default().to_tokens(ys);
-            }
-            self.rest.to_tokens(ys);
-        });
-    }
-}
-impl ToTokens for Tuple {
-    fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outers());
-        self.paren.surround(ys, |ys| {
-            self.elems.to_tokens(ys);
-        });
-    }
-}
-impl ToTokens for TupleStruct {
-    fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outers());
-        path::path_to_tokens(ys, &self.qself, &self.path);
-        self.paren.surround(ys, |ys| {
-            self.elems.to_tokens(ys);
-        });
-    }
-}
-impl ToTokens for Type {
-    fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outers());
-        self.pat.to_tokens(ys);
-        self.colon.to_tokens(ys);
-        self.typ.to_tokens(ys);
-    }
-}
-impl ToTokens for Wild {
-    fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outers());
-        self.underscore.to_tokens(ys);
-    }
-}
-impl ToTokens for Field {
-    fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outers());
-        if let Some(x) = &self.colon {
-            self.member.to_tokens(ys);
-            x.to_tokens(ys);
-        }
-        self.pat.to_tokens(ys);
-    }
+fn parse_verbatim(beg: parse::Buffer, s: Stream) -> Res<Pat> {
+    s.parse::<Token![box]>()?;
+    Pat::parse_single(s)?;
+    Ok(Pat::Stream(parse::parse_verbatim(&beg, s)))
 }

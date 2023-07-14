@@ -487,7 +487,7 @@ impl PartialEq for data::Mut {
 impl Eq for pat::Field {}
 impl PartialEq for pat::Field {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs && self.member == other.member && self.colon == other.colon && self.pat == other.pat
+        self.attrs == other.attrs && self.memb == other.memb && self.colon == other.colon && self.pat == other.pat
     }
 }
 impl Eq for FieldValue {}
@@ -955,7 +955,7 @@ impl PartialEq for pat::Pat {
             (pat::Pat::Tuple(self0), pat::Pat::Tuple(other0)) => self0 == other0,
             (pat::Pat::TupleStruct(self0), pat::Pat::TupleStruct(other0)) => self0 == other0,
             (pat::Pat::Type(self0), pat::Pat::Type(other0)) => self0 == other0,
-            (pat::Pat::Verbatim(self0), pat::Pat::Verbatim(other0)) => {
+            (pat::Pat::Stream(self0), pat::Pat::Stream(other0)) => {
                 TokenStreamHelper(self0) == TokenStreamHelper(other0)
             },
             (pat::Pat::Wild(self0), pat::Pat::Wild(other0)) => self0 == other0,
@@ -1078,12 +1078,12 @@ impl PartialEq for QSelf {
         self.ty == other.ty && self.pos == other.pos && self.as_ == other.as_
     }
 }
-impl Eq for RangeLimits {}
-impl PartialEq for RangeLimits {
+impl Eq for expr::Limits {}
+impl PartialEq for expr::Limits {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (RangeLimits::HalfOpen(_), RangeLimits::HalfOpen(_)) => true,
-            (RangeLimits::Closed(_), RangeLimits::Closed(_)) => true,
+            (expr::Limits::HalfOpen(_), expr::Limits::HalfOpen(_)) => true,
+            (expr::Limits::Closed(_), expr::Limits::Closed(_)) => true,
             _ => false,
         }
     }

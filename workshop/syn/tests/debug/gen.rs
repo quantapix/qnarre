@@ -3567,15 +3567,15 @@ impl Debug for Lite<syn::QSelf> {
         formatter.finish()
     }
 }
-impl Debug for Lite<syn::RangeLimits> {
+impl Debug for Lite<syn::expr::Limits> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match &self.value {
-            syn::RangeLimits::HalfOpen(_val) => {
-                formatter.write_str("RangeLimits::HalfOpen")?;
+            syn::expr::Limits::HalfOpen(_val) => {
+                formatter.write_str("expr::Limits::HalfOpen")?;
                 Ok(())
             },
-            syn::RangeLimits::Closed(_val) => {
-                formatter.write_str("RangeLimits::Closed")?;
+            syn::expr::Limits::Closed(_val) => {
+                formatter.write_str("expr::Limits::Closed")?;
                 Ok(())
             },
         }

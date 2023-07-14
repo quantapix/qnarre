@@ -7,7 +7,7 @@ fn test_expr_parse() {
     let tokens = quote!(..100u32);
     snapshot!(tokens as Expr, @r###"
     Expr::Range {
-        limits: RangeLimits::HalfOpen,
+        limits: expr::Limits::HalfOpen,
         end: Some(Expr::Lit {
             lit: 100u32,
         }),
@@ -16,7 +16,7 @@ fn test_expr_parse() {
     let tokens = quote!(..100u32);
     snapshot!(tokens as expr::Range, @r###"
     expr::Range {
-        limits: RangeLimits::HalfOpen,
+        limits: expr::Limits::HalfOpen,
         end: Some(Expr::Lit {
             lit: 100u32,
         }),
@@ -251,7 +251,7 @@ fn test_closure_vs_rangefull() {
         receiver: Expr::Closure {
             ret: typ::Ret::Default,
             body: Expr::Range {
-                limits: RangeLimits::HalfOpen,
+                limits: expr::Limits::HalfOpen,
             },
         },
         method: "method",

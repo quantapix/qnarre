@@ -1607,7 +1607,7 @@
           }
         },
         "limits": {
-          "syn": "RangeLimits"
+          "syn": "expr::Limits"
         },
         "end": {
           "option": {
@@ -4216,7 +4216,7 @@
       }
     },
     {
-      "ident": "RangeLimits",
+      "ident": "expr::Limits",
       "features": {
         "any": [
           "full"
