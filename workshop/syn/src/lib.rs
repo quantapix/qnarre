@@ -307,13 +307,13 @@ mod fab {
     pub mod visit;
     #[rustfmt::skip]
     pub mod visit_mut;
-        #[rustfmt::skip]
+    #[rustfmt::skip]
     mod clone;
-        #[rustfmt::skip]
+    #[rustfmt::skip]
     mod debug;
-        #[rustfmt::skip]
+    #[rustfmt::skip]
     mod eq;
-        #[rustfmt::skip]
+    #[rustfmt::skip]
     mod hash;
     mod helper {
         pub mod fold {
