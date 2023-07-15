@@ -16,7 +16,6 @@ fn test_fmt_group() {
     let none_empty = Group::new(Delimiter::None, TokenStream::new());
     let none_nonempty = Group::new(Delimiter::None, inner);
 
-    // Matches libproc_macro.
     assert_eq!("()", parens_empty.to_string());
     assert_eq!("(x)", parens_nonempty.to_string());
     assert_eq!("[]", brackets_empty.to_string());

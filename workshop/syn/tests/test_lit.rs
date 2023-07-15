@@ -27,7 +27,7 @@ fn strings() {
     test_string("\"\\n\"", "\n");
     test_string("\"\\r\"", "\r");
     test_string("\"\\t\"", "\t");
-    test_string("\"🐕\"", "🐕"); // NOTE: This is an emoji
+    test_string("\"🐕\"", "🐕");
     test_string("\"\\\"\"", "\"");
     test_string("\"'\"", "'");
     test_string("\"\"", "");
@@ -114,7 +114,7 @@ fn chars() {
     test_char("'\\n'", '\n');
     test_char("'\\r'", '\r');
     test_char("'\\t'", '\t');
-    test_char("'🐕'", '🐕'); // NOTE: This is an emoji
+    test_char("'🐕'", '🐕');
     test_char("'\\''", '\'');
     test_char("'\"'", '"');
     test_char("'\\u{1F415}'", '\u{1F415}');

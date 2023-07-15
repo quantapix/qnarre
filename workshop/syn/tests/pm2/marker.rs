@@ -1,8 +1,6 @@
 #![allow(clippy::extra_unused_type_parameters)]
 
-use proc_macro2::{
-    Delimiter, Group, Ident, LexError, Literal, Punct, Spacing, Span, TokenStream, TokenTree,
-};
+use proc_macro2::{Delimiter, Group, Ident, LexError, Literal, Punct, Spacing, Span, TokenStream, TokenTree};
 
 macro_rules! assert_impl {
     ($ty:ident is $($marker:ident) and +) => {
@@ -20,20 +18,14 @@ macro_rules! assert_impl {
         fn $ty() {
             $(
                 {
-                    // Implemented for types that implement $marker.
                     trait IsNotImplemented {
                         fn assert_not_implemented() {}
                     }
                     impl<T: $marker> IsNotImplemented for T {}
-
-                    // Implemented for the type being tested.
                     trait IsImplemented {
                         fn assert_not_implemented() {}
                     }
                     impl IsImplemented for $ty {}
-
-                    // If $ty does not implement $marker, there is no ambiguity
-                    // in the following trait method call.
                     <$ty>::assert_not_implemented();
                 }
             )+
@@ -64,9 +56,7 @@ mod semver_exempt {
 
 #[cfg(not(no_libprocmacro_unwind_safe))]
 mod unwind_safe {
-    use proc_macro2::{
-        Delimiter, Group, Ident, LexError, Literal, Punct, Spacing, Span, TokenStream, TokenTree,
-    };
+    use proc_macro2::{Delimiter, Group, Ident, LexError, Literal, Punct, Spacing, Span, TokenStream, TokenTree};
     #[cfg(procmacro2_semver_exempt)]
     use proc_macro2::{LineColumn, SourceFile};
     use std::panic::{RefUnwindSafe, UnwindSafe};

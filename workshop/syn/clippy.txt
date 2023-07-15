@@ -16,6 +16,7 @@
     clippy::inherent_to_string,
     clippy::items_after_statements,
     clippy::large_enum_variant,
+    clippy::let_underscore_untyped,
     clippy::let_underscore_untyped, // https://github.com/rust-lang/rust-clippy/issues/10410
     clippy::manual_assert,
     clippy::manual_let_else,
@@ -30,9 +31,11 @@
     clippy::needless_doctest_main,
     clippy::needless_pass_by_value,
     clippy::never_loop,
+    clippy::new_without_default,
     clippy::range_plus_one,
     clippy::redundant_else,
     clippy::return_self_not_must_use,
+    clippy::shadow_unrelated,
     clippy::similar_names,
     clippy::single_match_else,
     clippy::too_many_arguments,
@@ -41,7 +44,18 @@
     clippy::uninlined_format_args,
     clippy::unnecessary_box_returns,
     clippy::unnecessary_unwrap,
+    clippy::unnecessary_wraps,
+    clippy::unused_self,
     clippy::used_underscore_binding,
+    clippy::vec_init_then_push
     clippy::wildcard_imports,
+    clippy::wrong_self_convention,
+    clippy::cast_lossless,
+    clippy::let_underscore_untyped,
+    clippy::manual_let_else,
+    clippy::match_like_matches_macro,
+    clippy::uninlined_format_args,
+    clippy::unnecessary_wraps
+
 )]
 

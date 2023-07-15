@@ -182,8 +182,7 @@ fn test_integer() {
         #ii8 #ii16 #ii32 #ii64 #ii128 #iisize
         #uu8 #uu16 #uu32 #uu64 #uu128 #uusize
     };
-    let expected =
-        "1 1i32 1u256 - 1i8 - 1i16 - 1i32 - 1i64 - 1i128 - 1isize 1u8 1u16 1u32 1u64 1u128 1usize";
+    let expected = "1 1i32 1u256 - 1i8 - 1i16 - 1i32 - 1i64 - 1i128 - 1isize 1u8 1u16 1u32 1u64 1u128 1usize";
     assert_eq!(expected, tokens.to_string());
 }
 
@@ -352,8 +351,6 @@ fn test_btreeset_repetition() {
 
 #[test]
 fn test_variable_name_conflict() {
-    // The implementation of `#(...),*` uses the variable `_i` but it should be
-    // fine, if a little confusing when debugging.
     let _i = vec!['a', 'b'];
     let tokens = quote! { #(#_i),* };
     let expected = "'a' , 'b'";
@@ -403,9 +400,7 @@ fn test_closure() {
         format_ident!("__field{}", i)
     }
 
-    let fields = (0usize..3)
-        .map(field_i as fn(_) -> _)
-        .map(|var| quote! { #var });
+    let fields = (0usize..3).map(field_i as fn(_) -> _).map(|var| quote! { #var });
 
     let tokens = quote! { #(#fields)* };
     assert_eq!("__field0 __field1 __field2", tokens.to_string());
@@ -449,18 +444,14 @@ fn test_format_ident_strip_raw() {
 
 #[test]
 fn test_outer_line_comment() {
-    let tokens = quote! {
-        /// doc
-    };
+    let tokens = quote! {};
     let expected = "# [doc = r\" doc\"]";
     assert_eq!(expected, tokens.to_string());
 }
 
 #[test]
 fn test_inner_line_comment() {
-    let tokens = quote! {
-        //! doc
-    };
+    let tokens = quote! {};
     let expected = "# ! [doc = r\" doc\"]";
     assert_eq!(expected, tokens.to_string());
 }

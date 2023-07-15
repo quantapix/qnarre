@@ -244,7 +244,7 @@ fn test_macro_variable_match_arm() {
 }
 #[test]
 fn test_closure_vs_rangefull() {
-    #[rustfmt::skip] // rustfmt bug: https://github.com/rust-lang/rustfmt/issues/4808
+    #[rustfmt::skip]
     let tokens = quote!(|| .. .method());
     snapshot!(tokens as Expr, @r###"
     Expr::MethodCall {

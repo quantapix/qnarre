@@ -1577,7 +1577,8 @@ pub fn requires_terminator(x: &Expr) -> bool {
     match x {
         Expr::If(_)
         | Expr::Match(_)
-        | Expr::Block(_) | Expr::Unsafe(_) // both under ExprKind::Block in rustc
+        | Expr::Block(_)
+        | Expr::Unsafe(_)
         | Expr::While(_)
         | Expr::Loop(_)
         | Expr::ForLoop(_)
@@ -1612,7 +1613,7 @@ pub fn requires_terminator(x: &Expr) -> bool {
         | Expr::Tuple(_)
         | Expr::Unary(_)
         | Expr::Yield(_)
-        | Expr::Stream(_) => true
+        | Expr::Stream(_) => true,
     }
 }
 fn parse_expr(x: Stream, mut lhs: Expr, allow: AllowStruct, base: Precedence) -> Res<Expr> {

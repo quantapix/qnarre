@@ -12,20 +12,14 @@ use std::str::{self, FromStr};
 
 #[test]
 fn idents() {
-    assert_eq!(
-        Ident::new("String", Span::call_site()).to_string(),
-        "String"
-    );
+    assert_eq!(Ident::new("String", Span::call_site()).to_string(), "String");
     assert_eq!(Ident::new("fn", Span::call_site()).to_string(), "fn");
     assert_eq!(Ident::new("_", Span::call_site()).to_string(), "_");
 }
 
 #[test]
 fn raw_idents() {
-    assert_eq!(
-        Ident::new_raw("String", Span::call_site()).to_string(),
-        "r#String"
-    );
+    assert_eq!(Ident::new_raw("String", Span::call_site()).to_string(), "r#String");
     assert_eq!(Ident::new_raw("fn", Span::call_site()).to_string(), "r#fn");
 }
 
@@ -105,7 +99,7 @@ fn lifetime_invalid() {
                 message,
                 expected2,
             );
-        }
+        },
         Ok(_) => panic!("test did not panic as expected"),
     }
 }
@@ -138,14 +132,9 @@ fn literal_raw_string() {
         literal
     }
 
-    raw_string_literal_with_hashes(255)
-        .parse::<TokenStream>()
-        .unwrap();
+    raw_string_literal_with_hashes(255).parse::<TokenStream>().unwrap();
 
-    // https://github.com/rust-lang/rust/pull/95251
-    raw_string_literal_with_hashes(256)
-        .parse::<TokenStream>()
-        .unwrap_err();
+    raw_string_literal_with_hashes(256).parse::<TokenStream>().unwrap_err();
 }
 
 #[test]
@@ -186,7 +175,7 @@ fn literal_c_string() {
         match tokens.next().unwrap() {
             TokenTree::Literal(literal) => {
                 assert_eq!(literal.to_string(), *expected);
-            }
+            },
             unexpected => panic!("unexpected token: {:?}", unexpected),
         }
     }
@@ -284,13 +273,13 @@ fn literal_iter_negative() {
         TokenTree::Punct(punct) => {
             assert_eq!(punct.as_char(), '-');
             assert_eq!(punct.spacing(), Spacing::Alone);
-        }
+        },
         unexpected => panic!("unexpected token {:?}", unexpected),
     }
     match iter.next().unwrap() {
         TokenTree::Literal(literal) => {
             assert_eq!(literal.to_string(), "3i32");
-        }
+        },
         unexpected => panic!("unexpected token {:?}", unexpected),
     }
     assert!(iter.next().is_none());
@@ -457,10 +446,7 @@ fn span_join() {
         .collect::<Vec<_>>();
 
     assert!(source1[0].span().source_file() != source2[0].span().source_file());
-    assert_eq!(
-        source1[0].span().source_file(),
-        source1[1].span().source_file()
-    );
+    assert_eq!(source1[0].span().source_file(), source1[1].span().source_file());
 
     let joined1 = source1[0].span().join(source1[1].span());
     let joined2 = source1[0].span().join(source2[0].span());
@@ -474,10 +460,7 @@ fn span_join() {
     assert_eq!(end.line, 2);
     assert_eq!(end.column, 3);
 
-    assert_eq!(
-        joined1.unwrap().source_file(),
-        source1[0].span().source_file()
-    );
+    assert_eq!(joined1.unwrap().source_file(), source1[0].span().source_file());
 }
 
 #[test]
@@ -493,18 +476,13 @@ fn punct_before_comment() {
         TokenTree::Punct(tt) => {
             assert_eq!(tt.as_char(), '~');
             assert_eq!(tt.spacing(), Spacing::Alone);
-        }
+        },
         wrong => panic!("wrong token {:?}", wrong),
     }
 }
 
 #[test]
 fn joint_last_token() {
-    // This test verifies that we match the behavior of libproc_macro *not* in
-    // the range nightly-2020-09-06 through nightly-2020-09-10, in which this
-    // behavior was temporarily broken.
-    // See https://github.com/rust-lang/rust/issues/76399
-
     let joint_punct = Punct::new(':', Spacing::Joint);
     let stream = TokenStream::from(TokenTree::Punct(joint_punct));
     let punct = match stream.into_iter().next().unwrap() {
@@ -657,7 +635,6 @@ fn tokenstream_size_hint() {
 
 #[test]
 fn tuple_indexing() {
-    // This behavior may change depending on https://github.com/rust-lang/rust/pull/71322
     let mut tokens = "tuple.0.0".parse::<TokenStream>().unwrap().into_iter();
     assert_eq!("tuple", tokens.next().unwrap().to_string());
     assert_eq!(".", tokens.next().unwrap().to_string());
@@ -733,8 +710,6 @@ fn check_spans_internal(ts: TokenStream, lines: &mut &[(usize, usize, usize, usi
 
 #[test]
 fn whitespace() {
-    // space, horizontal tab, vertical tab, form feed, carriage return, line
-    // feed, non-breaking space, left-to-right mark, right-to-left mark
     let various_spaces = " \t\u{b}\u{c}\r\n\u{a0}\u{200e}\u{200f}";
     let tokens = various_spaces.parse::<TokenStream>().unwrap();
     assert_eq!(tokens.into_iter().count(), 0);

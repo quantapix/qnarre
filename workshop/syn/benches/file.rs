@@ -1,5 +1,3 @@
-// $ cargo bench --features full,test --bench file
-
 #![feature(rustc_private, test)]
 #![recursion_limit = "1024"]
 #![allow(

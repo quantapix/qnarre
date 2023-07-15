@@ -1,18 +1,4 @@
-// $ cargo bench --features full,test --bench rust
-//
-// Syn only, useful for profiling:
-// $ RUSTFLAGS='--cfg syn_only' cargo build --release --features full,test --bench rust
-
-#![cfg_attr(not(syn_only), feature(rustc_private))]
 #![recursion_limit = "1024"]
-#![allow(
-    clippy::cast_lossless,
-    clippy::let_underscore_untyped,
-    clippy::manual_let_else,
-    clippy::match_like_matches_macro,
-    clippy::uninlined_format_args,
-    clippy::unnecessary_wraps
-)]
 
 #[macro_use]
 #[path = "../tests/macros/mod.rs"]
@@ -171,11 +157,7 @@ fn main() {
     ) {
         eprint!("{:20}", format!("{}:", name));
         let elapsed = exec(f);
-        eprintln!(
-            "elapsed={}.{:03}s",
-            elapsed.as_secs(),
-            elapsed.subsec_millis(),
-        );
+        eprintln!("elapsed={}.{:03}s", elapsed.as_secs(), elapsed.subsec_millis(),);
     }
     eprintln!();
 }

@@ -2,12 +2,10 @@
 
 use proc_macro2::{Delimiter, Literal, Spacing, TokenStream, TokenTree};
 
-// #[doc = "..."] -> "..."
 fn lit_of_outer_doc_comment(tokens: &TokenStream) -> Literal {
     lit_of_doc_comment(tokens, false)
 }
 
-// #![doc = "..."] -> "..."
 fn lit_of_inner_doc_comment(tokens: &TokenStream) -> Literal {
     lit_of_doc_comment(tokens, true)
 }
@@ -18,7 +16,7 @@ fn lit_of_doc_comment(tokens: &TokenStream, inner: bool) -> Literal {
         TokenTree::Punct(punct) => {
             assert_eq!(punct.as_char(), '#');
             assert_eq!(punct.spacing(), Spacing::Alone);
-        }
+        },
         _ => panic!("wrong token {:?}", tokens),
     }
     if inner {
@@ -26,7 +24,7 @@ fn lit_of_doc_comment(tokens: &TokenStream, inner: bool) -> Literal {
             TokenTree::Punct(punct) => {
                 assert_eq!(punct.as_char(), '!');
                 assert_eq!(punct.spacing(), Spacing::Alone);
-            }
+            },
             _ => panic!("wrong token {:?}", tokens),
         }
     }
@@ -35,7 +33,7 @@ fn lit_of_doc_comment(tokens: &TokenStream, inner: bool) -> Literal {
             assert_eq!(group.delimiter(), Delimiter::Bracket);
             assert!(iter.next().is_none(), "unexpected token {:?}", tokens);
             group.stream().into_iter()
-        }
+        },
         _ => panic!("wrong token {:?}", tokens),
     };
     match iter.next().unwrap() {
@@ -46,14 +44,14 @@ fn lit_of_doc_comment(tokens: &TokenStream, inner: bool) -> Literal {
         TokenTree::Punct(punct) => {
             assert_eq!(punct.as_char(), '=');
             assert_eq!(punct.spacing(), Spacing::Alone);
-        }
+        },
         _ => panic!("wrong token {:?}", tokens),
     }
     match iter.next().unwrap() {
         TokenTree::Literal(literal) => {
             assert!(iter.next().is_none(), "unexpected token {:?}", tokens);
             literal
-        }
+        },
         _ => panic!("wrong token {:?}", tokens),
     }
 }

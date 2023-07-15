@@ -204,7 +204,7 @@ impl<'a> Hash for TokenTreeHelper<'a> {
                 for item in g.stream() {
                     TokenTreeHelper(&item).hash(h);
                 }
-                0xffu8.hash(h); // terminator w/ a variant we don't normally hash
+                0xffu8.hash(h);
             },
             pm2::Tree::Punct(op) => {
                 1u8.hash(h);
