@@ -30,7 +30,7 @@ macro_rules! impl_tok {
     };
 }
 impl_tok!("life" Life);
-impl_tok!("literal" Lit);
+impl_tok!("literal" lit::Lit);
 impl_tok!("string literal" lit::Str);
 impl_tok!("byte string literal" lit::ByteStr);
 impl_tok!("byte literal" lit::Byte);
@@ -38,7 +38,7 @@ impl_tok!("character literal" lit::Char);
 impl_tok!("integer literal" lit::Int);
 impl_tok!("floating point literal" lit::Float);
 impl_tok!("boolean literal" lit::Bool);
-impl_tok!("group" proc_macro2::Group);
+impl_tok!("group" pm2::Group);
 
 macro_rules! impl_low_level {
     ($d:literal $ty:ident $get:ident) => {
@@ -57,7 +57,7 @@ impl_low_level!("punctuation token" Punct punct);
 impl_low_level!("literal" pm2::Lit literal);
 impl_low_level!("token" pm2::Tree token_tree);
 
-impl Token for Ident {
+impl Tok for Ident {
     fn peek(x: Cursor) -> bool {
         if let Some((ident, _)) = x.ident() {
             accept_as_ident(&ident)
@@ -130,7 +130,7 @@ macro_rules! def_keywords {
             impl Parse for $n {
                 fn parse(x: parse::Stream) -> Res<Self> {
                     Ok($n {
-                        span: crate::tok::keyword(x, $t)?,
+                        span: crate::tok::kw_to_tokens(x, $t)?,
                     })
                 }
             }
@@ -340,7 +340,7 @@ macro_rules! def_punct {
             impl Parse for $n {
                 fn parse(x: Stream) -> Res<Self> {
                     Ok($n {
-                        spans: crate::tok::punct(x, $t)?,
+                        spans: crate::tok::parse_punct(x, $t)?,
                     })
                 }
             }
@@ -466,7 +466,7 @@ def_delims! {
 }
 impl Tok for Paren {
     fn peek(x: Cursor) -> bool {
-        look::is_delimiter(x, pm2::Delim::Parenthesis)
+        look::is_delim(x, pm2::Delim::Parenthesis)
     }
     fn display() -> &'static str {
         "parentheses"
@@ -474,7 +474,7 @@ impl Tok for Paren {
 }
 impl Tok for Brace {
     fn peek(x: Cursor) -> bool {
-        look::is_delimiter(x, pm2::Delim::Brace)
+        look::is_delim(x, pm2::Delim::Brace)
     }
     fn display() -> &'static str {
         "curly braces"
@@ -482,7 +482,7 @@ impl Tok for Brace {
 }
 impl Tok for Bracket {
     fn peek(x: Cursor) -> bool {
-        look::is_delimiter(x, pm2::Delim::Bracket)
+        look::is_delim(x, pm2::Delim::Bracket)
     }
     fn display() -> &'static str {
         "square brackets"
@@ -496,7 +496,7 @@ pub enum Delim {
 }
 impl Delim {
     pub fn span(&self) -> &pm2::DelimSpan {
-        use MacroDelim::*;
+        use Delim::*;
         match self {
             Paren(x) => &x.span,
             Brace(x) => &x.span,
@@ -562,7 +562,7 @@ impl Hash for Group {
 impl private::Sealed for Group {}
 impl Tok for Group {
     fn peek(x: Cursor) -> bool {
-        look::is_delimiter(x, pm2::Delim::None)
+        look::is_delim(x, pm2::Delim::None)
     }
     fn display() -> &'static str {
         "invisible group"
@@ -575,6 +575,7 @@ pub fn Group<S: IntoSpans<pm2::Span>>(s: S) -> Group {
 }
 
 mod private {
+    use super::*;
     pub trait Sealed {}
     #[repr(transparent)]
     pub struct WithSpan {

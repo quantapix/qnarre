@@ -335,10 +335,10 @@ pub trait Parser: Sized {
     type Output;
     fn parse2(self, tokens: pm2::Stream) -> Res<Self::Output>;
     fn parse(self, tokens: pm2::Stream) -> Res<Self::Output> {
-        self.parse2(proc_macro2::pm2::Stream::from(tokens))
+        self.parse2(pm2::Stream::from(tokens))
     }
     fn parse_str(self, s: &str) -> Res<Self::Output> {
-        self.parse2(proc_macro2::pm2::Stream::from_str(s)?)
+        self.parse2(pm2::Stream::from_str(s)?)
     }
     fn __parse_scoped(self, scope: Span, tokens: pm2::Stream) -> Res<Self::Output> {
         let _ = scope;

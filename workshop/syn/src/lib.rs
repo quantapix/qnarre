@@ -13,63 +13,6 @@ mod quote;
 pub use quote::ToTokens;
 use quote::{spanned, TokenStreamExt};
 
-mod pm2 {
-    pub use proc_macro2::{
-        extra::DelimSpan, Delimiter as Delim, Group, Ident, LexError, Literal as Lit, Punct, Spacing, Span,
-        TokenStream as Stream, TokenTree as Tree,
-    };
-    pub trait IntoSpans<S> {
-        fn into_spans(self) -> S;
-    }
-    impl IntoSpans<Span> for Span {
-        fn into_spans(self) -> Span {
-            self
-        }
-    }
-    impl IntoSpans<[Span; 1]> for Span {
-        fn into_spans(self) -> [Span; 1] {
-            [self]
-        }
-    }
-    impl IntoSpans<[Span; 2]> for Span {
-        fn into_spans(self) -> [Span; 2] {
-            [self, self]
-        }
-    }
-    impl IntoSpans<[Span; 3]> for Span {
-        fn into_spans(self) -> [Span; 3] {
-            [self, self, self]
-        }
-    }
-    impl IntoSpans<[Span; 1]> for [Span; 1] {
-        fn into_spans(self) -> [Span; 1] {
-            self
-        }
-    }
-    impl IntoSpans<[Span; 2]> for [Span; 2] {
-        fn into_spans(self) -> [Span; 2] {
-            self
-        }
-    }
-    impl IntoSpans<[Span; 3]> for [Span; 3] {
-        fn into_spans(self) -> [Span; 3] {
-            self
-        }
-    }
-    impl IntoSpans<DelimSpan> for Span {
-        fn into_spans(self) -> DelimSpan {
-            let mut y = Group::new(Delim::None, Stream::new());
-            y.set_span(self);
-            y.delim_span()
-        }
-    }
-    impl IntoSpans<DelimSpan> for DelimSpan {
-        fn into_spans(self) -> DelimSpan {
-            self
-        }
-    }
-}
-
 #[macro_use]
 mod mac;
 
@@ -86,6 +29,7 @@ mod meta;
 mod parse;
 mod pat;
 mod path;
+mod pm2;
 mod punct;
 mod stmt;
 mod tok;
@@ -355,11 +299,11 @@ pub use fab::*;
 pub mod __private {
     pub use super::{
         parse::parse_quote_fn,
+        pm2::TokenStream as TokenStream2,
+        quote::{ToTokens, TokenStreamExt},
         tok::{parse_punct, peek_punct, punct_to_tokens},
     };
     pub use proc_macro::TokenStream;
-    pub use proc_macro2::TokenStream as TokenStream2;
-    pub use quote::{self, ToTokens, TokenStreamExt};
     pub use std::{
         clone::Clone,
         cmp::{Eq, PartialEq},
