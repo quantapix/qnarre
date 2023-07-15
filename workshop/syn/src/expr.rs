@@ -777,13 +777,13 @@ impl ToTokens for Paren {
 
 pub struct Path {
     pub attrs: Vec<attr::Attr>,
-    pub qself: Option<QSelf>,
+    pub qself: Option<path::QSelf>,
     pub path: path::Path,
 }
 impl Parse for Path {
     fn parse(x: Stream) -> Res<Self> {
         let attrs = x.call(attr::Attr::parse_outers)?;
-        let (qself, path) = qpath(x, true)?;
+        let (qself, path) = path::qpath(x, true)?;
         Ok(Path { attrs, qself, path })
     }
 }
@@ -886,7 +886,7 @@ impl ToTokens for Return {
 
 pub struct Struct {
     pub attrs: Vec<attr::Attr>,
-    pub qself: Option<QSelf>,
+    pub qself: Option<path::QSelf>,
     pub path: path::Path,
     pub brace: tok::Brace,
     pub fields: Puncted<FieldValue, Token![,]>,
@@ -895,7 +895,7 @@ pub struct Struct {
 }
 impl Parse for Struct {
     fn parse(x: Stream) -> Res<Self> {
-        let (qself, path) = qpath(x, true)?;
+        let (qself, path) = path::qpath(x, true)?;
         expr_struct_helper(x, qself, path)
     }
 }
@@ -1959,7 +1959,7 @@ fn expr_builtin(x: Stream) -> Res<Expr> {
     Ok(Expr::Stream(parse::parse_verbatim(&begin, x)))
 }
 fn path_or_macro_or_struct(x: Stream, allow: AllowStruct) -> Res<Expr> {
-    let (qself, path) = qpath(x, true)?;
+    let (qself, path) = path::qpath(x, true)?;
     if qself.is_none() && x.peek(Token![!]) && !x.peek(Token![!=]) && path.is_mod_style() {
         let bang: Token![!] = x.parse()?;
         let (delim, toks) = mac::parse_delim(x)?;

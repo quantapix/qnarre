@@ -170,6 +170,7 @@ impl tok::Custom for private::IdentAny {
 }
 impl look::Sealed for private::PeekFn {}
 mod private {
+    use super::*;
     pub trait Sealed {}
     impl Sealed for Ident {}
     pub struct PeekFn;

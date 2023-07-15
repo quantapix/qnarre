@@ -90,7 +90,7 @@ impl ToTokens for List {
 pub struct NameValue {
     pub path: Path,
     pub eq: Token![=],
-    pub expr: Expr,
+    pub expr: expr::Expr,
 }
 impl Parse for NameValue {
     fn parse(x: Stream) -> Res<Self> {
@@ -166,10 +166,10 @@ pub fn parse_list_after_path(path: Path, s: Stream) -> Res<List> {
 pub fn parse_name_value_after_path(path: Path, s: Stream) -> Res<NameValue> {
     let eq: Token![=] = s.parse()?;
     let ahead = s.fork();
-    let lit: Option<Lit> = ahead.parse()?;
+    let lit: Option<lit::Lit> = ahead.parse()?;
     let expr = if let (Some(lit), true) = (lit, ahead.is_empty()) {
         s.advance_to(&ahead);
-        Expr::Lit(expr::Lit { attrs: Vec::new(), lit })
+        expr::Expr::Lit(expr::Lit { attrs: Vec::new(), lit })
     } else if s.peek(Token![#]) && s.peek2(tok::Bracket) {
         return Err(s.error("unexpected attribute inside of attribute"));
     } else {

@@ -4,14 +4,7 @@ version.workspace = true
 edition.workspace = true
 license = "https://github.com/dtolnay/syn (a36a1f7f)"
 
-[features]
-default = ["proc-macro"]
-proc-macro = ["proc-macro2/proc-macro", "quote/proc-macro"]
-test = ["syn-test-suite/all-features"]
-
 [dependencies]
-proc-macro2 = { version = "1", default-features = false }
-quote = { version = "1", default-features = false }
 unicode-ident = "1"
 
 [dev-dependencies]

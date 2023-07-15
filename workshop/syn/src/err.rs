@@ -76,7 +76,7 @@ impl Display for Err {
 }
 impl std::error::Error for Err {}
 impl From<pm2::LexError> for Err {
-    fn from(x: LexError) -> Self {
+    fn from(x: pm2::LexError) -> Self {
         Err::new(x.span(), "lex error")
     }
 }

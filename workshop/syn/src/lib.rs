@@ -1,7 +1,5 @@
 extern crate proc_macro;
 
-pub use quote::ToTokens;
-use quote::{quote, spanned, TokenStreamExt};
 pub use std::{
     cmp::{self, Ordering},
     fmt::{self, Debug, Display},
@@ -9,6 +7,11 @@ pub use std::{
     marker::PhantomData,
     ops::{self, Deref, DerefMut},
 };
+
+#[macro_use]
+mod quote;
+pub use quote::ToTokens;
+use quote::{spanned, TokenStreamExt};
 
 mod pm2 {
     pub use proc_macro2::{

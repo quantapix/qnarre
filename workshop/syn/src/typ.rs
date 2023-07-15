@@ -273,7 +273,7 @@ pub struct Path {
 impl Parse for Path {
     fn parse(x: Stream) -> Res<Self> {
         let expr_style = false;
-        let (qself, path) = qpath(x, expr_style)?;
+        let (qself, path) = path::qpath(x, expr_style)?;
         Ok(Path { qself, path })
     }
 }

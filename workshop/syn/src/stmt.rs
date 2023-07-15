@@ -193,7 +193,7 @@ fn parse_local(s: Stream, attrs: Vec<attr::Attr>) -> Res<Local> {
     let mut pat = pat::Pat::parse_one(s)?;
     if s.peek(Token![:]) {
         let colon: Token![:] = s.parse()?;
-        let typ: Type = s.parse()?;
+        let typ: typ::Type = s.parse()?;
         pat = pat::Pat::Type(pat::Type {
             attrs: Vec::new(),
             pat: Box::new(pat),

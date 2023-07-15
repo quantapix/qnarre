@@ -259,7 +259,7 @@ impl<T: Parse, P: Parse> Quote for Puncted<T, P> {
         Self::parse_terminated(s)
     }
 }
-impl Quote for Vec<Stmt> {
+impl Quote for Vec<stmt::Stmt> {
     fn parse(s: Stream) -> Res<Self> {
         stmt::Block::parse_within(s)
     }

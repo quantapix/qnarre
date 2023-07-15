@@ -153,7 +153,7 @@ impl Str {
         self.parse_with(T::parse)
     }
     pub fn parse_with<F: parse::Parser>(&self, parser: F) -> Res<F::Output> {
-        use proc_macro2::Group;
+        use pm2::Group;
         fn respan_token_stream(x: pm2::Stream, s: pm2::Span) -> pm2::Stream {
             x.into_iter().map(|x| respan_token_tree(x, s)).collect()
         }

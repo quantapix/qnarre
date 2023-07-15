@@ -44,7 +44,7 @@ impl Pat {
             s.call(parse_wild).map(Pat::Wild)
         } else if s.peek(Token![box]) {
             parse_verbatim(beg, s)
-        } else if s.peek(Token![-]) || look.peek(Lit) || look.peek(Token![const]) {
+        } else if s.peek(Token![-]) || look.peek(lit::Lit) || look.peek(Token![const]) {
             parse_lit_or_range(s)
         } else if look.peek(Token![ref]) || look.peek(Token![mut]) || s.peek(Token![self]) || s.peek(Ident) {
             s.call(parse_ident).map(Pat::Ident)
@@ -160,7 +160,7 @@ impl ToTokens for Slice {
 
 pub struct Struct {
     pub attrs: Vec<attr::Attr>,
-    pub qself: Option<QSelf>,
+    pub qself: Option<path::QSelf>,
     pub path: Path,
     pub brace: tok::Brace,
     pub fields: Puncted<Field, Token![,]>,
@@ -222,7 +222,7 @@ impl ToTokens for Tuple {
 
 pub struct TupleStruct {
     pub attrs: Vec<attr::Attr>,
-    pub qself: Option<QSelf>,
+    pub qself: Option<path::QSelf>,
     pub path: Path,
     pub paren: tok::Paren,
     pub elems: Puncted<Pat, Token![,]>,
@@ -269,11 +269,11 @@ enum RangeBound {
     Path(Path),
 }
 impl RangeBound {
-    fn into_expr(self) -> Box<Expr> {
+    fn into_expr(self) -> Box<expr::Expr> {
         Box::new(match self {
-            RangeBound::Const(x) => Expr::Const(x),
-            RangeBound::Lit(x) => Expr::Lit(x),
-            RangeBound::Path(x) => Expr::Path(x),
+            RangeBound::Const(x) => expr::Expr::Const(x),
+            RangeBound::Lit(x) => expr::Expr::Lit(x),
+            RangeBound::Path(x) => expr::Expr::Path(x),
         })
     }
     fn into_pat(self) -> Pat {
@@ -389,7 +389,7 @@ fn parse_many(s: Stream, vert: Option<Token![|]>) -> Res<Pat> {
     Ok(y)
 }
 fn parse_path_or_mac_or_struct_or_range(s: Stream) -> Res<Pat> {
-    let (qself, path) = qpath(s, true)?;
+    let (qself, path) = path::qpath(s, true)?;
     if qself.is_none() && s.peek(Token![!]) && !s.peek(Token![!=]) && path.is_mod_style() {
         let bang: Token![!] = s.parse()?;
         let (delim, toks) = mac::parse_delim(s)?;
@@ -444,7 +444,7 @@ fn parse_paren_or_tuple(s: Stream) -> Res<Pat> {
         elems,
     }))
 }
-fn parse_range(s: Stream, qself: Option<QSelf>, path: Path) -> Res<Pat> {
+fn parse_range(s: Stream, qself: Option<path::QSelf>, path: Path) -> Res<Pat> {
     let limits = expr::Limits::parse_obsolete(s)?;
     let end = s.call(parse_range_bound)?;
     if let (expr::Limits::Closed(_), None) = (&limits, &end) {
@@ -452,7 +452,7 @@ fn parse_range(s: Stream, qself: Option<QSelf>, path: Path) -> Res<Pat> {
     }
     Ok(Pat::Range(expr::Range {
         attrs: Vec::new(),
-        beg: Some(Box::new(Expr::Path(expr::Path {
+        beg: Some(Box::new(expr::Expr::Path(expr::Path {
             attrs: Vec::new(),
             qself,
             path,
@@ -473,7 +473,7 @@ fn parse_range_bound(s: Stream) -> Res<Option<RangeBound>> {
         return Ok(None);
     }
     let look = s.look1();
-    let y = if look.peek(Lit) {
+    let y = if look.peek(lit::Lit) {
         RangeBound::Lit(s.parse()?)
     } else if look.peek(Ident)
         || look.peek(Token![::])
@@ -549,7 +549,7 @@ fn parse_slice(s: Stream) -> Res<Slice> {
         elems,
     })
 }
-fn parse_struct(s: Stream, qself: Option<QSelf>, path: Path) -> Res<Struct> {
+fn parse_struct(s: Stream, qself: Option<path::QSelf>, path: Path) -> Res<Struct> {
     let y;
     let brace = braced!(y in s);
     let mut fields = Puncted::new();
@@ -581,7 +581,7 @@ fn parse_struct(s: Stream, qself: Option<QSelf>, path: Path) -> Res<Struct> {
         rest,
     })
 }
-fn parse_tuple_struct(s: Stream, qself: Option<QSelf>, path: Path) -> Res<TupleStruct> {
+fn parse_tuple_struct(s: Stream, qself: Option<path::QSelf>, path: Path) -> Res<TupleStruct> {
     let y;
     let paren = parenthesized!(y in s);
     let mut elems = Puncted::new();

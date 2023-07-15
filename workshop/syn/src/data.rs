@@ -214,7 +214,7 @@ pub struct Variant {
     pub attrs: Vec<attr::Attr>,
     pub ident: Ident,
     pub fields: Fields,
-    pub discrim: Option<(Token![=], Expr)>,
+    pub discrim: Option<(Token![=], expr::Expr)>,
 }
 impl Parse for Variant {
     fn parse(s: Stream) -> Res<Self> {
@@ -230,7 +230,7 @@ impl Parse for Variant {
         };
         let discrim = if s.peek(Token![=]) {
             let eq: Token![=] = s.parse()?;
-            let y: Expr = s.parse()?;
+            let y: expr::Expr = s.parse()?;
             Some((eq, y))
         } else {
             None
