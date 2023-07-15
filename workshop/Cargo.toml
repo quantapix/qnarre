@@ -14,3 +14,4 @@ derive_debug = { path = "debug" }
 seq = { path = "seq" }
 sorted = { path = "sorted" }
 syn = { path = "syn" }
+syngen = { path = "syngen" }
