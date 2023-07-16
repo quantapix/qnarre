@@ -1569,8 +1569,8 @@ impl Clone for AllowStruct {
 }
 
 mod kw {
-    crate::custom_keyword!(builtin);
-    crate::custom_keyword!(raw);
+    crate::custom_kw!(builtin);
+    crate::custom_kw!(raw);
 }
 
 pub fn requires_terminator(x: &Expr) -> bool {

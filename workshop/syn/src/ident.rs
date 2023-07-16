@@ -2,15 +2,15 @@ use super::*;
 
 impl Parse for Ident {
     fn parse(x: Stream) -> Res<Self> {
-        x.step(|cursor| {
-            if let Some((ident, rest)) = cursor.ident() {
-                if accept_as_ident(&ident) {
-                    Ok((ident, rest))
+        x.step(|c| {
+            if let Some((x, rest)) = c.ident() {
+                if tok::accept_as_ident(&x) {
+                    Ok((x, rest))
                 } else {
-                    Err(cursor.err(format_args!("expected identifier, found keyword `{}`", ident,)))
+                    Err(c.err(format_args!("expected identifier, found keyword `{}`", x,)))
                 }
             } else {
-                Err(cursor.err("expected identifier"))
+                Err(c.err("expected identifier"))
             }
         })
     }
@@ -135,9 +135,7 @@ pub fn Life(x: look::Marker) -> Life {
     match x {}
 }
 
-pub trait IdentExt: Sized + private::Sealed {
-    #[allow(non_upper_case_globals)]
-    const peek_any: private::PeekFn = private::PeekFn;
+pub trait IdentExt: Sized {
     fn parse_any(x: parse::Stream) -> Res<Self>;
     fn unraw(&self) -> Ident;
 }
@@ -154,31 +152,6 @@ impl IdentExt for Ident {
             Ident::new(x, self.span())
         } else {
             self.clone()
-        }
-    }
-}
-impl parse::Peek for private::PeekFn {
-    type Token = private::IdentAny;
-}
-impl tok::Custom for private::IdentAny {
-    fn peek(x: Cursor) -> bool {
-        x.ident().is_some()
-    }
-    fn display() -> &'static str {
-        "identifier"
-    }
-}
-impl look::Sealed for private::PeekFn {}
-mod private {
-    use super::*;
-    pub trait Sealed {}
-    impl Sealed for Ident {}
-    pub struct PeekFn;
-    pub struct IdentAny;
-    impl Copy for PeekFn {}
-    impl Clone for PeekFn {
-        fn clone(&self) -> Self {
-            *self
         }
     }
 }

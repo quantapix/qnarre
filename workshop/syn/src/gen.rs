@@ -752,24 +752,24 @@ impl ToTokens for Gens {
 
 pub struct Impl<'a>(pub &'a Gens);
 macro_rules! gens_impls {
-    ($ty:ident) => {
-        impl<'a> Clone for $ty<'a> {
+    ($n:ident) => {
+        impl<'a> Clone for $n<'a> {
             fn clone(&self) -> Self {
-                $ty(self.0)
+                $n(self.0)
             }
         }
-        impl<'a> Debug for $ty<'a> {
+        impl<'a> Debug for $n<'a> {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                f.debug_tuple(stringify!($ty)).field(self.0).finish()
+                f.debug_tuple(stringify!($n)).field(self.0).finish()
             }
         }
-        impl<'a> Eq for $ty<'a> {}
-        impl<'a> PartialEq for $ty<'a> {
+        impl<'a> Eq for $n<'a> {}
+        impl<'a> PartialEq for $n<'a> {
             fn eq(&self, x: &Self) -> bool {
                 self.0 == x.0
             }
         }
-        impl<'a> Hash for $ty<'a> {
+        impl<'a> Hash for $n<'a> {
             fn hash<H: Hasher>(&self, x: &mut H) {
                 self.0.hash(x);
             }

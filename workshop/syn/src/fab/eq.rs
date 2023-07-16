@@ -535,35 +535,35 @@ impl PartialEq for item::FnArg {
         }
     }
 }
-impl Eq for item::Foreign::Item {}
-impl PartialEq for item::Foreign::Item {
+impl Eq for item::foreign::Item {}
+impl PartialEq for item::foreign::Item {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (item::Foreign::Item::Fn(self0), item::Foreign::Item::Fn(other0)) => self0 == other0,
-            (item::Foreign::Item::Static(self0), item::Foreign::Item::Static(other0)) => self0 == other0,
-            (item::Foreign::Item::Type(self0), item::Foreign::Item::Type(other0)) => self0 == other0,
-            (item::Foreign::Item::Macro(self0), item::Foreign::Item::Macro(other0)) => self0 == other0,
-            (item::Foreign::Item::Stream(self0), item::Foreign::Item::Stream(other0)) => {
+            (item::foreign::Item::Fn(self0), item::foreign::Item::Fn(other0)) => self0 == other0,
+            (item::foreign::Item::Static(self0), item::foreign::Item::Static(other0)) => self0 == other0,
+            (item::foreign::Item::Type(self0), item::foreign::Item::Type(other0)) => self0 == other0,
+            (item::foreign::Item::Macro(self0), item::foreign::Item::Macro(other0)) => self0 == other0,
+            (item::foreign::Item::Stream(self0), item::foreign::Item::Stream(other0)) => {
                 TokenStreamHelper(self0) == TokenStreamHelper(other0)
             },
             _ => false,
         }
     }
 }
-impl Eq for item::Foreign::Fn {}
-impl PartialEq for item::Foreign::Fn {
+impl Eq for item::foreign::Fn {}
+impl PartialEq for item::foreign::Fn {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.vis == other.vis && self.sig == other.sig
     }
 }
-impl Eq for item::Foreign::Mac {}
-impl PartialEq for item::Foreign::Mac {
+impl Eq for item::foreign::Mac {}
+impl PartialEq for item::foreign::Mac {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.mac == other.mac && self.semi == other.semi
     }
 }
-impl Eq for item::Foreign::Static {}
-impl PartialEq for item::Foreign::Static {
+impl Eq for item::foreign::Static {}
+impl PartialEq for item::foreign::Static {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
             && self.vis == other.vis
@@ -572,8 +572,8 @@ impl PartialEq for item::Foreign::Static {
             && self.typ == other.typ
     }
 }
-impl Eq for item::Foreign::Type {}
-impl PartialEq for item::Foreign::Type {
+impl Eq for item::foreign::Type {}
+impl PartialEq for item::foreign::Type {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.vis == other.vis && self.ident == other.ident && self.gens == other.gens
     }
@@ -609,23 +609,23 @@ impl PartialEq for gen::Gens {
         self.lt == other.lt && self.params == other.params && self.gt == other.gt && self.where_ == other.where_
     }
 }
-impl Eq for item::Impl::Item {}
-impl PartialEq for item::Impl::Item {
+impl Eq for item::impl_::Item {}
+impl PartialEq for item::impl_::Item {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (item::Impl::Item::Const(self0), item::Impl::Item::Const(other0)) => self0 == other0,
-            (item::Impl::Item::Fn(self0), item::Impl::Item::Fn(other0)) => self0 == other0,
-            (item::Impl::Item::Type(self0), item::Impl::Item::Type(other0)) => self0 == other0,
-            (item::Impl::Item::Macro(self0), item::Impl::Item::Macro(other0)) => self0 == other0,
-            (item::Impl::Item::Stream(self0), item::Impl::Item::Stream(other0)) => {
+            (item::impl_::Item::Const(self0), item::impl_::Item::Const(other0)) => self0 == other0,
+            (item::impl_::Item::Fn(self0), item::impl_::Item::Fn(other0)) => self0 == other0,
+            (item::impl_::Item::Type(self0), item::impl_::Item::Type(other0)) => self0 == other0,
+            (item::impl_::Item::Macro(self0), item::impl_::Item::Macro(other0)) => self0 == other0,
+            (item::impl_::Item::Stream(self0), item::impl_::Item::Stream(other0)) => {
                 TokenStreamHelper(self0) == TokenStreamHelper(other0)
             },
             _ => false,
         }
     }
 }
-impl Eq for item::Impl::Const {}
-impl PartialEq for item::Impl::Const {
+impl Eq for item::impl_::Const {}
+impl PartialEq for item::impl_::Const {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
             && self.vis == other.vis
@@ -636,8 +636,8 @@ impl PartialEq for item::Impl::Const {
             && self.expr == other.expr
     }
 }
-impl Eq for item::Impl::Fn {}
-impl PartialEq for item::Impl::Fn {
+impl Eq for item::impl_::Fn {}
+impl PartialEq for item::impl_::Fn {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
             && self.vis == other.vis
@@ -646,14 +646,14 @@ impl PartialEq for item::Impl::Fn {
             && self.block == other.block
     }
 }
-impl Eq for item::Impl::Mac {}
-impl PartialEq for item::Impl::Mac {
+impl Eq for item::impl_::Mac {}
+impl PartialEq for item::impl_::Mac {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.mac == other.mac && self.semi == other.semi
     }
 }
-impl Eq for item::Impl::Type {}
-impl PartialEq for item::Impl::Type {
+impl Eq for item::impl_::Type {}
+impl PartialEq for item::impl_::Type {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
             && self.vis == other.vis
@@ -663,8 +663,8 @@ impl PartialEq for item::Impl::Type {
             && self.typ == other.typ
     }
 }
-impl Eq for item::Impl::Restriction {}
-impl PartialEq for item::Impl::Restriction {
+impl Eq for item::impl_::Restriction {}
+impl PartialEq for item::impl_::Restriction {
     fn eq(&self, _other: &Self) -> bool {
         match *self {}
     }
@@ -1166,23 +1166,23 @@ impl PartialEq for gen::bound::Modifier {
         }
     }
 }
-impl Eq for item::Trait::Item {}
-impl PartialEq for item::Trait::Item {
+impl Eq for item::trait_::Item {}
+impl PartialEq for item::trait_::Item {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (item::Trait::Item::Const(self0), item::Trait::Item::Const(other0)) => self0 == other0,
-            (item::Trait::Item::Fn(self0), item::Trait::Item::Fn(other0)) => self0 == other0,
-            (item::Trait::Item::Type(self0), item::Trait::Item::Type(other0)) => self0 == other0,
-            (item::Trait::Item::Macro(self0), item::Trait::Item::Macro(other0)) => self0 == other0,
-            (item::Trait::Item::Stream(self0), item::Trait::Item::Stream(other0)) => {
+            (item::trait_::Item::Const(self0), item::trait_::Item::Const(other0)) => self0 == other0,
+            (item::trait_::Item::Fn(self0), item::trait_::Item::Fn(other0)) => self0 == other0,
+            (item::trait_::Item::Type(self0), item::trait_::Item::Type(other0)) => self0 == other0,
+            (item::trait_::Item::Macro(self0), item::trait_::Item::Macro(other0)) => self0 == other0,
+            (item::trait_::Item::Stream(self0), item::trait_::Item::Stream(other0)) => {
                 TokenStreamHelper(self0) == TokenStreamHelper(other0)
             },
             _ => false,
         }
     }
 }
-impl Eq for item::Trait::Const {}
-impl PartialEq for item::Trait::Const {
+impl Eq for item::trait_::Const {}
+impl PartialEq for item::trait_::Const {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
             && self.ident == other.ident
@@ -1191,20 +1191,20 @@ impl PartialEq for item::Trait::Const {
             && self.default == other.default
     }
 }
-impl Eq for item::Trait::Fn {}
-impl PartialEq for item::Trait::Fn {
+impl Eq for item::trait_::Fn {}
+impl PartialEq for item::trait_::Fn {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.sig == other.sig && self.default == other.default && self.semi == other.semi
     }
 }
-impl Eq for item::Trait::Mac {}
-impl PartialEq for item::Trait::Mac {
+impl Eq for item::trait_::Mac {}
+impl PartialEq for item::trait_::Mac {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs && self.mac == other.mac && self.semi == other.semi
     }
 }
-impl Eq for item::Trait::Type {}
-impl PartialEq for item::Trait::Type {
+impl Eq for item::trait_::Type {}
+impl PartialEq for item::trait_::Type {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
             && self.ident == other.ident
@@ -1363,45 +1363,45 @@ impl PartialEq for UnOp {
         }
     }
 }
-impl Eq for item::Use::Glob {}
-impl PartialEq for item::Use::Glob {
+impl Eq for item::use_::Glob {}
+impl PartialEq for item::use_::Glob {
     fn eq(&self, _other: &Self) -> bool {
         true
     }
 }
-impl Eq for item::Use::Group {}
-impl PartialEq for item::Use::Group {
+impl Eq for item::use_::Group {}
+impl PartialEq for item::use_::Group {
     fn eq(&self, other: &Self) -> bool {
         self.elems == other.elems
     }
 }
-impl Eq for item::Use::Name {}
-impl PartialEq for item::Use::Name {
+impl Eq for item::use_::Name {}
+impl PartialEq for item::use_::Name {
     fn eq(&self, other: &Self) -> bool {
         self.ident == other.ident
     }
 }
-impl Eq for item::Use::Path {}
-impl PartialEq for item::Use::Path {
+impl Eq for item::use_::Path {}
+impl PartialEq for item::use_::Path {
     fn eq(&self, other: &Self) -> bool {
         self.ident == other.ident && self.tree == other.tree
     }
 }
-impl Eq for item::Use::Rename {}
-impl PartialEq for item::Use::Rename {
+impl Eq for item::use_::Rename {}
+impl PartialEq for item::use_::Rename {
     fn eq(&self, other: &Self) -> bool {
         self.ident == other.ident && self.rename == other.rename
     }
 }
-impl Eq for item::Use::Tree {}
-impl PartialEq for item::Use::Tree {
+impl Eq for item::use_::Tree {}
+impl PartialEq for item::use_::Tree {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (item::Use::Tree::Path(self0), item::Use::Tree::Path(other0)) => self0 == other0,
-            (item::Use::Tree::Name(self0), item::Use::Tree::Name(other0)) => self0 == other0,
-            (item::Use::Tree::Rename(self0), item::Use::Tree::Rename(other0)) => self0 == other0,
-            (item::Use::Tree::Glob(self0), item::Use::Tree::Glob(other0)) => self0 == other0,
-            (item::Use::Tree::Group(self0), item::Use::Tree::Group(other0)) => self0 == other0,
+            (item::use_::Tree::Path(self0), item::use_::Tree::Path(other0)) => self0 == other0,
+            (item::use_::Tree::Name(self0), item::use_::Tree::Name(other0)) => self0 == other0,
+            (item::use_::Tree::Rename(self0), item::use_::Tree::Rename(other0)) => self0 == other0,
+            (item::use_::Tree::Glob(self0), item::use_::Tree::Glob(other0)) => self0 == other0,
+            (item::use_::Tree::Group(self0), item::use_::Tree::Group(other0)) => self0 == other0,
             _ => false,
         }
     }

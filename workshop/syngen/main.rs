@@ -1325,9 +1325,9 @@ mod parse {
             })
         }
         pub mod kw {
-            syn::custom_keyword!(hidden);
-            syn::custom_keyword!(macro_rules);
-            syn::custom_keyword!(Token);
+            syn::custom_kw!(hidden);
+            syn::custom_kw!(macro_rules);
+            syn::custom_kw!(Token);
         }
         pub fn parse_token_macro(input: ParseStream) -> Result<BTreeMap<String, String>> {
             let mut tokens = BTreeMap::new();

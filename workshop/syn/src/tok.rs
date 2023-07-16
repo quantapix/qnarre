@@ -1,6 +1,6 @@
 use super::*;
 
-pub trait Tok: private::Sealed {
+pub trait Tok {
     fn peek(x: Cursor) -> bool;
     fn display() -> &'static str;
 }
@@ -26,7 +26,6 @@ macro_rules! impl_tok {
                 $d
             }
         }
-        impl private::Sealed for $n {}
     };
 }
 impl_tok!("life" Life);
@@ -50,7 +49,6 @@ macro_rules! impl_low_level {
                 $d
             }
         }
-        impl private::Sealed for $ty {}
     };
 }
 impl_low_level!("punctuation token" Punct punct);
@@ -74,7 +72,6 @@ pub trait Custom {
     fn peek(x: Cursor) -> bool;
     fn display() -> &'static str;
 }
-impl<T: Custom> private::Sealed for T {}
 impl<T: Custom> Tok for T {
     fn peek(x: Cursor) -> bool {
         <Self as Custom>::peek(x)
@@ -88,7 +85,7 @@ pub fn kw_to_tokens(x: &str, s: pm2::Span, ys: &mut Stream) {
     ys.append(Ident::new(x, s));
 }
 
-macro_rules! def_keywords {
+macro_rules! def_kws {
     ($($t:literal pub struct $n:ident)*) => {
         $(
             pub struct $n {
@@ -141,17 +138,16 @@ macro_rules! def_keywords {
             }
             impl Tok for $n {
                 fn peek(x: Cursor) -> bool {
-                    crate::tok::peek_keyword(x, $t)
+                    crate::tok::peek_kw(x, $t)
                 }
                 fn display() -> &'static str {
                     concat!("`", $t, "`")
                 }
             }
-            impl private::Sealed for $n {}
         )*
     };
 }
-def_keywords! {
+def_kws! {
     "abstract"    pub struct Abstract
     "as"          pub struct As
     "async"       pub struct Async
@@ -209,14 +205,14 @@ def_keywords! {
 macro_rules! impl_deref_len_1 {
     ($n:ident/1) => {
         impl Deref for $n {
-            type Target = private::WithSpan;
+            type Target = WithSpan;
             fn deref(&self) -> &Self::Target {
-                unsafe { &*(self as *const Self).cast::<private::WithSpan>() }
+                unsafe { &*(self as *const Self).cast::<WithSpan>() }
             }
         }
         impl DerefMut for $n {
             fn deref_mut(&mut self) -> &mut Self::Target {
-                unsafe { &mut *(self as *mut Self).cast::<private::WithSpan>() }
+                unsafe { &mut *(self as *mut Self).cast::<WithSpan>() }
             }
         }
     };
@@ -305,7 +301,6 @@ impl Tok for Underscore {
         "`_`"
     }
 }
-impl private::Sealed for Underscore {}
 
 pub fn punct_to_tokens(x: &str, spans: &[pm2::Span], ys: &mut Stream) {
     assert_eq!(x.len(), spans.len());
@@ -349,7 +344,6 @@ macro_rules! def_punct {
                     crate::tok::punct_to_tokens($t, &self.spans, ts);
                 }
             }
-            impl private::Sealed for $n {}
         )*
     };
 }
@@ -455,22 +449,13 @@ macro_rules! def_delims {
             impl Hash for $n {
                 fn hash<H: Hasher>(&self, _: &mut H) {}
             }
-            impl private::Sealed for $n {}
         )*
     };
 }
 def_delims! {
-    Brace         pub struct Brace
-    Bracket       pub struct Bracket
-    Parenthesis   pub struct Paren
-}
-impl Tok for Paren {
-    fn peek(x: Cursor) -> bool {
-        look::is_delim(x, pm2::Delim::Parenthesis)
-    }
-    fn display() -> &'static str {
-        "parentheses"
-    }
+    Brace pub struct Brace
+    Bracket pub struct Bracket
+    Paren pub struct Paren
 }
 impl Tok for Brace {
     fn peek(x: Cursor) -> bool {
@@ -486,6 +471,14 @@ impl Tok for Bracket {
     }
     fn display() -> &'static str {
         "square brackets"
+    }
+}
+impl Tok for Paren {
+    fn peek(x: Cursor) -> bool {
+        look::is_delim(x, pm2::Delim::Parenthesis)
+    }
+    fn display() -> &'static str {
+        "parentheses"
     }
 }
 
@@ -559,7 +552,6 @@ impl PartialEq for Group {
 impl Hash for Group {
     fn hash<H: Hasher>(&self, _: &mut H) {}
 }
-impl private::Sealed for Group {}
 impl Tok for Group {
     fn peek(x: Cursor) -> bool {
         look::is_delim(x, pm2::Delim::None)
@@ -574,17 +566,11 @@ pub fn Group<S: IntoSpans<pm2::Span>>(s: S) -> Group {
     Group { span: s.into_spans() }
 }
 
-mod private {
-    use super::*;
-    pub trait Sealed {}
-    #[repr(transparent)]
-    pub struct WithSpan {
-        pub span: pm2::Span,
-    }
+pub struct WithSpan {
+    pub span: pm2::Span,
 }
-impl private::Sealed for Ident {}
 
-fn accept_as_ident(x: &Ident) -> bool {
+pub fn accept_as_ident(x: &Ident) -> bool {
     match x.to_string().as_str() {
         "_" | "abstract" | "as" | "async" | "await" | "become" | "box" | "break" | "const" | "continue" | "crate"
         | "do" | "dyn" | "else" | "enum" | "extern" | "false" | "final" | "fn" | "for" | "if" | "impl" | "in"
@@ -595,7 +581,7 @@ fn accept_as_ident(x: &Ident) -> bool {
     }
 }
 
-pub fn parse_keyword(s: Stream, token: &str) -> Res<pm2::Span> {
+pub fn parse_kw(s: Stream, token: &str) -> Res<pm2::Span> {
     s.step(|x| {
         if let Some((y, rest)) = x.ident() {
             if y == token {
@@ -605,7 +591,7 @@ pub fn parse_keyword(s: Stream, token: &str) -> Res<pm2::Span> {
         Err(x.error(format!("expected `{}`", token)))
     })
 }
-pub fn peek_keyword(c: Cursor, token: &str) -> bool {
+pub fn peek_kw(c: Cursor, token: &str) -> bool {
     if let Some((x, _)) = c.ident() {
         x == token
     } else {

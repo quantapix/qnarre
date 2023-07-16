@@ -686,20 +686,20 @@ impl Clone for item::FnArg {
         }
     }
 }
-impl Clone for item::Foreign::Item {
+impl Clone for item::foreign::Item {
     fn clone(&self) -> Self {
         match self {
-            item::Foreign::Item::Fn(v0) => item::Foreign::Item::Fn(v0.clone()),
-            item::Foreign::Item::Static(v0) => item::Foreign::Item::Static(v0.clone()),
-            item::Foreign::Item::Type(v0) => item::Foreign::Item::Type(v0.clone()),
-            item::Foreign::Item::Macro(v0) => item::Foreign::Item::Macro(v0.clone()),
-            item::Foreign::Item::Stream(v0) => item::Foreign::Item::Stream(v0.clone()),
+            item::foreign::Item::Fn(v0) => item::foreign::Item::Fn(v0.clone()),
+            item::foreign::Item::Static(v0) => item::foreign::Item::Static(v0.clone()),
+            item::foreign::Item::Type(v0) => item::foreign::Item::Type(v0.clone()),
+            item::foreign::Item::Macro(v0) => item::foreign::Item::Macro(v0.clone()),
+            item::foreign::Item::Stream(v0) => item::foreign::Item::Stream(v0.clone()),
         }
     }
 }
-impl Clone for item::Foreign::Fn {
+impl Clone for item::foreign::Fn {
     fn clone(&self) -> Self {
-        item::Foreign::Fn {
+        item::foreign::Fn {
             attrs: self.attrs.clone(),
             vis: self.vis.clone(),
             sig: self.sig.clone(),
@@ -707,18 +707,18 @@ impl Clone for item::Foreign::Fn {
         }
     }
 }
-impl Clone for item::Foreign::Mac {
+impl Clone for item::foreign::Mac {
     fn clone(&self) -> Self {
-        item::Foreign::Mac {
+        item::foreign::Mac {
             attrs: self.attrs.clone(),
             mac: self.mac.clone(),
             semi: self.semi.clone(),
         }
     }
 }
-impl Clone for item::Foreign::Static {
+impl Clone for item::foreign::Static {
     fn clone(&self) -> Self {
-        item::Foreign::Static {
+        item::foreign::Static {
             attrs: self.attrs.clone(),
             vis: self.vis.clone(),
             static_: self.static_.clone(),
@@ -730,9 +730,9 @@ impl Clone for item::Foreign::Static {
         }
     }
 }
-impl Clone for item::Foreign::Type {
+impl Clone for item::foreign::Type {
     fn clone(&self) -> Self {
-        item::Foreign::Type {
+        item::foreign::Type {
             attrs: self.attrs.clone(),
             vis: self.vis.clone(),
             type_: self.type_.clone(),
@@ -773,20 +773,20 @@ impl Clone for gen::Gens {
         }
     }
 }
-impl Clone for item::Impl::Item {
+impl Clone for item::impl_::Item {
     fn clone(&self) -> Self {
         match self {
-            item::Impl::Item::Const(v0) => item::Impl::Item::Const(v0.clone()),
-            item::Impl::Item::Fn(v0) => item::Impl::Item::Fn(v0.clone()),
-            item::Impl::Item::Type(v0) => item::Impl::Item::Type(v0.clone()),
-            item::Impl::Item::Macro(v0) => item::Impl::Item::Macro(v0.clone()),
-            item::Impl::Item::Stream(v0) => item::Impl::Item::Stream(v0.clone()),
+            item::impl_::Item::Const(v0) => item::impl_::Item::Const(v0.clone()),
+            item::impl_::Item::Fn(v0) => item::impl_::Item::Fn(v0.clone()),
+            item::impl_::Item::Type(v0) => item::impl_::Item::Type(v0.clone()),
+            item::impl_::Item::Macro(v0) => item::impl_::Item::Macro(v0.clone()),
+            item::impl_::Item::Stream(v0) => item::impl_::Item::Stream(v0.clone()),
         }
     }
 }
-impl Clone for item::Impl::Const {
+impl Clone for item::impl_::Const {
     fn clone(&self) -> Self {
-        item::Impl::Const {
+        item::impl_::Const {
             attrs: self.attrs.clone(),
             vis: self.vis.clone(),
             default_: self.default_.clone(),
@@ -801,9 +801,9 @@ impl Clone for item::Impl::Const {
         }
     }
 }
-impl Clone for item::Impl::Fn {
+impl Clone for item::impl_::Fn {
     fn clone(&self) -> Self {
-        item::Impl::Fn {
+        item::impl_::Fn {
             attrs: self.attrs.clone(),
             vis: self.vis.clone(),
             default_: self.default_.clone(),
@@ -812,18 +812,18 @@ impl Clone for item::Impl::Fn {
         }
     }
 }
-impl Clone for item::Impl::Mac {
+impl Clone for item::impl_::Mac {
     fn clone(&self) -> Self {
-        item::Impl::Mac {
+        item::impl_::Mac {
             attrs: self.attrs.clone(),
             mac: self.mac.clone(),
             semi: self.semi.clone(),
         }
     }
 }
-impl Clone for item::Impl::Type {
+impl Clone for item::impl_::Type {
     fn clone(&self) -> Self {
-        item::Impl::Type {
+        item::impl_::Type {
             attrs: self.attrs.clone(),
             vis: self.vis.clone(),
             default_: self.default_.clone(),
@@ -836,7 +836,7 @@ impl Clone for item::Impl::Type {
         }
     }
 }
-impl Clone for item::Impl::Restriction {
+impl Clone for item::impl_::Restriction {
     fn clone(&self) -> Self {
         match *self {}
     }
@@ -1464,20 +1464,20 @@ impl Clone for gen::bound::Modifier {
         *self
     }
 }
-impl Clone for item::Trait::Item {
+impl Clone for item::trait_::Item {
     fn clone(&self) -> Self {
         match self {
-            item::Trait::Item::Const(v0) => item::Trait::Item::Const(v0.clone()),
-            item::Trait::Item::Fn(v0) => item::Trait::Item::Fn(v0.clone()),
-            item::Trait::Item::Type(v0) => item::Trait::Item::Type(v0.clone()),
-            item::Trait::Item::Macro(v0) => item::Trait::Item::Macro(v0.clone()),
-            item::Trait::Item::Stream(v0) => item::Trait::Item::Stream(v0.clone()),
+            item::trait_::Item::Const(v0) => item::trait_::Item::Const(v0.clone()),
+            item::trait_::Item::Fn(v0) => item::trait_::Item::Fn(v0.clone()),
+            item::trait_::Item::Type(v0) => item::trait_::Item::Type(v0.clone()),
+            item::trait_::Item::Macro(v0) => item::trait_::Item::Macro(v0.clone()),
+            item::trait_::Item::Stream(v0) => item::trait_::Item::Stream(v0.clone()),
         }
     }
 }
-impl Clone for item::Trait::Const {
+impl Clone for item::trait_::Const {
     fn clone(&self) -> Self {
-        item::Trait::Const {
+        item::trait_::Const {
             attrs: self.attrs.clone(),
             const_: self.const_.clone(),
             ident: self.ident.clone(),
@@ -1489,9 +1489,9 @@ impl Clone for item::Trait::Const {
         }
     }
 }
-impl Clone for item::Trait::Fn {
+impl Clone for item::trait_::Fn {
     fn clone(&self) -> Self {
-        item::Trait::Fn {
+        item::trait_::Fn {
             attrs: self.attrs.clone(),
             sig: self.sig.clone(),
             default: self.default.clone(),
@@ -1499,18 +1499,18 @@ impl Clone for item::Trait::Fn {
         }
     }
 }
-impl Clone for item::Trait::Mac {
+impl Clone for item::trait_::Mac {
     fn clone(&self) -> Self {
-        item::Trait::Mac {
+        item::trait_::Mac {
             attrs: self.attrs.clone(),
             mac: self.mac.clone(),
             semi: self.semi.clone(),
         }
     }
 }
-impl Clone for item::Trait::Type {
+impl Clone for item::trait_::Type {
     fn clone(&self) -> Self {
-        item::Trait::Type {
+        item::trait_::Type {
             attrs: self.attrs.clone(),
             type_: self.type_.clone(),
             ident: self.ident.clone(),
@@ -1689,54 +1689,54 @@ impl Clone for UnOp {
         *self
     }
 }
-impl Clone for item::Use::Glob {
+impl Clone for item::use_::Glob {
     fn clone(&self) -> Self {
-        item::Use::Glob {
+        item::use_::Glob {
             star: self.star.clone(),
         }
     }
 }
-impl Clone for item::Use::Group {
+impl Clone for item::use_::Group {
     fn clone(&self) -> Self {
-        item::Use::Group {
+        item::use_::Group {
             brace: self.brace.clone(),
             elems: self.elems.clone(),
         }
     }
 }
-impl Clone for item::Use::Name {
+impl Clone for item::use_::Name {
     fn clone(&self) -> Self {
-        item::Use::Name {
+        item::use_::Name {
             ident: self.ident.clone(),
         }
     }
 }
-impl Clone for item::Use::Path {
+impl Clone for item::use_::Path {
     fn clone(&self) -> Self {
-        item::Use::Path {
+        item::use_::Path {
             ident: self.ident.clone(),
             colon2: self.colon2.clone(),
             tree: self.tree.clone(),
         }
     }
 }
-impl Clone for item::Use::Rename {
+impl Clone for item::use_::Rename {
     fn clone(&self) -> Self {
-        item::Use::Rename {
+        item::use_::Rename {
             ident: self.ident.clone(),
             as_: self.as_.clone(),
             rename: self.rename.clone(),
         }
     }
 }
-impl Clone for item::Use::Tree {
+impl Clone for item::use_::Tree {
     fn clone(&self) -> Self {
         match self {
-            item::Use::Tree::Path(v0) => item::Use::Tree::Path(v0.clone()),
-            item::Use::Tree::Name(v0) => item::Use::Tree::Name(v0.clone()),
-            item::Use::Tree::Rename(v0) => item::Use::Tree::Rename(v0.clone()),
-            item::Use::Tree::Glob(v0) => item::Use::Tree::Glob(v0.clone()),
-            item::Use::Tree::Group(v0) => item::Use::Tree::Group(v0.clone()),
+            item::use_::Tree::Path(v0) => item::use_::Tree::Path(v0.clone()),
+            item::use_::Tree::Name(v0) => item::use_::Tree::Name(v0.clone()),
+            item::use_::Tree::Rename(v0) => item::use_::Tree::Rename(v0.clone()),
+            item::use_::Tree::Glob(v0) => item::use_::Tree::Glob(v0.clone()),
+            item::use_::Tree::Group(v0) => item::use_::Tree::Group(v0.clone()),
         }
     }
 }

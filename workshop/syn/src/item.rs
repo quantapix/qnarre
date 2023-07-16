@@ -1,6 +1,5 @@
-use crate::attr::Filter;
-
 use super::*;
+use crate::attr::Filter;
 use std::mem;
 
 pub struct File {
@@ -53,22 +52,22 @@ ast_enum_of_structs! {
 impl Item {
     pub fn replace_attrs(&mut self, ys: Vec<attr::Attr>) -> Vec<attr::Attr> {
         match self {
-            Const(Const { attrs, .. })
-            | Enum(Enum { attrs, .. })
-            | Extern(Extern { attrs, .. })
-            | Fn(Fn { attrs, .. })
-            | Foreign(Foreign { attrs, .. })
-            | Impl(Impl { attrs, .. })
-            | Mac(Mac { attrs, .. })
-            | Mod(Mod { attrs, .. })
-            | Static(Static { attrs, .. })
-            | Struct(Struct { attrs, .. })
-            | Trait(Trait { attrs, .. })
-            | TraitAlias(TraitAlias { attrs, .. })
-            | Type(Type { attrs, .. })
-            | Union(Union { attrs, .. })
-            | Use(Use { attrs, .. }) => mem::replace(attrs, ys),
-            Stream(_) => Vec::new(),
+            Item::Const(Const { attrs, .. })
+            | Item::Enum(Enum { attrs, .. })
+            | Item::Extern(Extern { attrs, .. })
+            | Item::Fn(Fn { attrs, .. })
+            | Item::Foreign(Foreign { attrs, .. })
+            | Item::Impl(Impl { attrs, .. })
+            | Item::Mac(Mac { attrs, .. })
+            | Item::Mod(Mod { attrs, .. })
+            | Item::Static(Static { attrs, .. })
+            | Item::Struct(Struct { attrs, .. })
+            | Item::Trait(Trait { attrs, .. })
+            | Item::TraitAlias(TraitAlias { attrs, .. })
+            | Item::Type(Type { attrs, .. })
+            | Item::Union(Union { attrs, .. })
+            | Item::Use(Use { attrs, .. }) => mem::replace(attrs, ys),
+            Item::Stream(_) => Vec::new(),
         }
     }
 }
@@ -302,7 +301,7 @@ impl ToTokens for Fn {
 pub struct Foreign {
     pub attrs: Vec<attr::Attr>,
     pub unsafe_: Option<Token![unsafe]>,
-    pub abi: Abi,
+    pub abi: typ::Abi,
     pub brace: tok::Brace,
     pub items: Vec<Foreign::Item>,
 }
@@ -310,7 +309,7 @@ impl Parse for Foreign {
     fn parse(s: Stream) -> Res<Self> {
         let mut attrs = s.call(attr::Attr::parse_outers)?;
         let unsafe_: Option<Token![unsafe]> = s.parse()?;
-        let abi: Abi = s.parse()?;
+        let abi: typ::Abi = s.parse()?;
         let y;
         let brace = braced!(y in s);
         attr::parse_inners(&y, &mut attrs)?;
@@ -623,7 +622,7 @@ pub struct Trait {
     pub colon: Option<Token![:]>,
     pub supers: Puncted<gen::bound::Type, Token![+]>,
     pub brace: tok::Brace,
-    pub items: Vec<Trait::Item>,
+    pub items: Vec<trait_::Item>,
 }
 impl Parse for Trait {
     fn parse(s: Stream) -> Res<Self> {
@@ -787,7 +786,7 @@ pub struct Use {
     pub vis: data::Visibility,
     pub use_: Token![use],
     pub colon: Option<Token![::]>,
-    pub tree: Use::Tree,
+    pub tree: use_::Tree,
     pub semi: Token![;],
 }
 impl Parse for Use {
@@ -811,7 +810,7 @@ fn parse_item_use(s: Stream, root: bool) -> Res<Option<Use>> {
     let vis: data::Visibility = s.parse()?;
     let use_: Token![use] = s.parse()?;
     let colon: Option<Token![::]> = s.parse()?;
-    let tree = Use::parse_tree(s, root && colon.is_none())?;
+    let tree = use_::parse_tree(s, root && colon.is_none())?;
     let semi: Token![;] = s.parse()?;
     let tree = match tree {
         Some(x) => x,
@@ -938,7 +937,7 @@ pub struct Sig {
     pub const_: Option<Token![const]>,
     pub async_: Option<Token![async]>,
     pub unsafe_: Option<Token![unsafe]>,
-    pub abi: Option<Abi>,
+    pub abi: Option<typ::Abi>,
     pub fn_: Token![fn],
     pub ident: Ident,
     pub gens: gen::Gens,
@@ -961,7 +960,7 @@ impl Parse for Sig {
         let const_: Option<Token![const]> = s.parse()?;
         let async_: Option<Token![async]> = s.parse()?;
         let unsafe_: Option<Token![unsafe]> = s.parse()?;
-        let abi: Option<Abi> = s.parse()?;
+        let abi: Option<typ::Abi> = s.parse()?;
         let fn_: Token![fn] = s.parse()?;
         let ident: Ident = s.parse()?;
         let mut gens: gen::Gens = s.parse()?;
@@ -1045,7 +1044,7 @@ impl ToTokens for StaticMut {
     }
 }
 
-pub mod Foreign {
+pub mod foreign {
     use super::*;
     ast_enum_of_structs! {
         pub enum Item {
@@ -1248,7 +1247,7 @@ pub mod Foreign {
         }
     }
 }
-pub mod Impl {
+pub mod impl_ {
     use super::*;
     ast_enum_of_structs! {
         pub enum Item {
@@ -1488,7 +1487,7 @@ pub mod Impl {
 
     pub enum Restriction {}
 }
-pub mod Trait {
+pub mod trait_ {
     use super::*;
     ast_enum_of_structs! {
         pub enum Item {
@@ -1729,7 +1728,7 @@ pub mod Trait {
         }
     }
 }
-pub mod Use {
+pub mod use_ {
     use super::*;
     ast_enum_of_structs! {
         pub enum Tree {
@@ -2132,7 +2131,7 @@ fn peek_signature(s: Stream) -> bool {
     y.parse::<Option<Token![const]>>().is_ok()
         && y.parse::<Option<Token![async]>>().is_ok()
         && y.parse::<Option<Token![unsafe]>>().is_ok()
-        && y.parse::<Option<Abi>>().is_ok()
+        && y.parse::<Option<typ::Abi>>().is_ok()
         && y.peek(Token![fn])
 }
 fn parse_rest_of_fn(s: Stream, mut attrs: Vec<attr::Attr>, vis: data::Visibility, sig: Sig) -> Res<Fn> {
@@ -2144,7 +2143,7 @@ fn parse_rest_of_fn(s: Stream, mut attrs: Vec<attr::Attr>, vis: data::Visibility
         attrs,
         vis,
         sig,
-        block: Box::new(Block { brace, stmts }),
+        block: Box::new(stmt::Block { brace, stmts }),
     })
 }
 fn parse_fn_arg_or_variadic(s: Stream, attrs: Vec<attr::Attr>, variadic: bool) -> Res<FnArgOrVariadic> {
@@ -2383,7 +2382,7 @@ fn parse_rest_of_trait_alias(
         semi,
     })
 }
-fn parse_trait_item_type(beg: Buffer, s: Stream) -> Res<Trait::Item> {
+fn parse_trait_item_type(beg: Buffer, s: Stream) -> Res<trait_::Item> {
     let Flexible {
         vis,
         default_: _,
@@ -2396,9 +2395,9 @@ fn parse_trait_item_type(beg: Buffer, s: Stream) -> Res<Trait::Item> {
         semi,
     } = Flexible::parse(s, TypeDefault::Disallowed, WhereLoc::AfterEq)?;
     if vis.is_some() {
-        Ok(Trait::Item::Stream(parse::parse_verbatim(&beg, s)))
+        Ok(trait_::Item::Stream(parse::parse_verbatim(&beg, s)))
     } else {
-        Ok(Trait::Item::Type(Trait::Type {
+        Ok(trait_::Item::Type(trait_::Type {
             attrs: Vec::new(),
             type_,
             ident,

@@ -213,19 +213,19 @@ pub trait VisitMut {
     fn visit_fn_arg_mut(&mut self, i: &mut item::FnArg) {
         visit_fn_arg_mut(self, i);
     }
-    fn visit_foreign_item_mut(&mut self, i: &mut item::Foreign::Item) {
+    fn visit_foreign_item_mut(&mut self, i: &mut item::foreign::Item) {
         visit_foreign_item_mut(self, i);
     }
-    fn visit_foreign_item_fn_mut(&mut self, i: &mut item::Foreign::Fn) {
+    fn visit_foreign_item_fn_mut(&mut self, i: &mut item::foreign::Fn) {
         visit_foreign_item_fn_mut(self, i);
     }
-    fn visit_foreign_item_macro_mut(&mut self, i: &mut item::Foreign::Mac) {
+    fn visit_foreign_item_macro_mut(&mut self, i: &mut item::foreign::Mac) {
         visit_foreign_item_macro_mut(self, i);
     }
-    fn visit_foreign_item_static_mut(&mut self, i: &mut item::Foreign::Static) {
+    fn visit_foreign_item_static_mut(&mut self, i: &mut item::foreign::Static) {
         visit_foreign_item_static_mut(self, i);
     }
-    fn visit_foreign_item_type_mut(&mut self, i: &mut item::Foreign::Type) {
+    fn visit_foreign_item_type_mut(&mut self, i: &mut item::foreign::Type) {
         visit_foreign_item_type_mut(self, i);
     }
     fn visit_generic_argument_mut(&mut self, i: &mut Arg) {
@@ -240,22 +240,22 @@ pub trait VisitMut {
     fn visit_ident_mut(&mut self, i: &mut Ident) {
         visit_ident_mut(self, i);
     }
-    fn visit_impl_item_mut(&mut self, i: &mut item::Impl::Item) {
+    fn visit_impl_item_mut(&mut self, i: &mut item::impl_::Item) {
         visit_impl_item_mut(self, i);
     }
-    fn visit_impl_item_const_mut(&mut self, i: &mut item::Impl::Const) {
+    fn visit_impl_item_const_mut(&mut self, i: &mut item::impl_::Const) {
         visit_impl_item_const_mut(self, i);
     }
-    fn visit_impl_item_fn_mut(&mut self, i: &mut item::Impl::Fn) {
+    fn visit_impl_item_fn_mut(&mut self, i: &mut item::impl_::Fn) {
         visit_impl_item_fn_mut(self, i);
     }
-    fn visit_impl_item_macro_mut(&mut self, i: &mut item::Impl::Mac) {
+    fn visit_impl_item_macro_mut(&mut self, i: &mut item::impl_::Mac) {
         visit_impl_item_macro_mut(self, i);
     }
-    fn visit_impl_item_type_mut(&mut self, i: &mut item::Impl::Type) {
+    fn visit_impl_item_type_mut(&mut self, i: &mut item::impl_::Type) {
         visit_impl_item_type_mut(self, i);
     }
-    fn visit_impl_restriction_mut(&mut self, i: &mut item::Impl::Restriction) {
+    fn visit_impl_restriction_mut(&mut self, i: &mut item::impl_::Restriction) {
         visit_impl_restriction_mut(self, i);
     }
     fn visit_index_mut(&mut self, i: &mut Index) {
@@ -453,19 +453,19 @@ pub trait VisitMut {
     fn visit_trait_bound_modifier_mut(&mut self, i: &mut gen::bound::Modifier) {
         visit_trait_bound_modifier_mut(self, i);
     }
-    fn visit_trait_item_mut(&mut self, i: &mut item::Trait::Item) {
+    fn visit_trait_item_mut(&mut self, i: &mut item::trait_::Item) {
         visit_trait_item_mut(self, i);
     }
-    fn visit_trait_item_const_mut(&mut self, i: &mut item::Trait::Const) {
+    fn visit_trait_item_const_mut(&mut self, i: &mut item::trait_::Const) {
         visit_trait_item_const_mut(self, i);
     }
-    fn visit_trait_item_fn_mut(&mut self, i: &mut item::Trait::Fn) {
+    fn visit_trait_item_fn_mut(&mut self, i: &mut item::trait_::Fn) {
         visit_trait_item_fn_mut(self, i);
     }
-    fn visit_trait_item_macro_mut(&mut self, i: &mut item::Trait::Mac) {
+    fn visit_trait_item_macro_mut(&mut self, i: &mut item::trait_::Mac) {
         visit_trait_item_macro_mut(self, i);
     }
-    fn visit_trait_item_type_mut(&mut self, i: &mut item::Trait::Type) {
+    fn visit_trait_item_type_mut(&mut self, i: &mut item::trait_::Type) {
         visit_trait_item_type_mut(self, i);
     }
     fn visit_type_mut(&mut self, i: &mut typ::Type) {
@@ -522,22 +522,22 @@ pub trait VisitMut {
     fn visit_un_op_mut(&mut self, i: &mut UnOp) {
         visit_un_op_mut(self, i);
     }
-    fn visit_use_glob_mut(&mut self, i: &mut item::Use::Glob) {
+    fn visit_use_glob_mut(&mut self, i: &mut item::use_::Glob) {
         visit_use_glob_mut(self, i);
     }
-    fn visit_use_group_mut(&mut self, i: &mut item::Use::Group) {
+    fn visit_use_group_mut(&mut self, i: &mut item::use_::Group) {
         visit_use_group_mut(self, i);
     }
-    fn visit_use_name_mut(&mut self, i: &mut item::Use::Name) {
+    fn visit_use_name_mut(&mut self, i: &mut item::use_::Name) {
         visit_use_name_mut(self, i);
     }
-    fn visit_use_path_mut(&mut self, i: &mut item::Use::Path) {
+    fn visit_use_path_mut(&mut self, i: &mut item::use_::Path) {
         visit_use_path_mut(self, i);
     }
-    fn visit_use_rename_mut(&mut self, i: &mut item::Use::Rename) {
+    fn visit_use_rename_mut(&mut self, i: &mut item::use_::Rename) {
         visit_use_rename_mut(self, i);
     }
-    fn visit_use_tree_mut(&mut self, i: &mut item::Use::Tree) {
+    fn visit_use_tree_mut(&mut self, i: &mut item::use_::Tree) {
         visit_use_tree_mut(self, i);
     }
     fn visit_variadic_mut(&mut self, i: &mut item::Variadic) {
@@ -1563,29 +1563,29 @@ where
         },
     }
 }
-pub fn visit_foreign_item_mut<V>(v: &mut V, node: &mut item::Foreign::Item)
+pub fn visit_foreign_item_mut<V>(v: &mut V, node: &mut item::foreign::Item)
 where
     V: VisitMut + ?Sized,
 {
     match node {
-        item::Foreign::Item::Fn(_binding_0) => {
+        item::foreign::Item::Fn(_binding_0) => {
             v.visit_foreign_item_fn_mut(_binding_0);
         },
-        item::Foreign::Item::Static(_binding_0) => {
+        item::foreign::Item::Static(_binding_0) => {
             v.visit_foreign_item_static_mut(_binding_0);
         },
-        item::Foreign::Item::Type(_binding_0) => {
+        item::foreign::Item::Type(_binding_0) => {
             v.visit_foreign_item_type_mut(_binding_0);
         },
-        item::Foreign::Item::Macro(_binding_0) => {
+        item::foreign::Item::Macro(_binding_0) => {
             v.visit_foreign_item_macro_mut(_binding_0);
         },
-        item::Foreign::Item::Stream(_binding_0) => {
+        item::foreign::Item::Stream(_binding_0) => {
             skip!(_binding_0);
         },
     }
 }
-pub fn visit_foreign_item_fn_mut<V>(v: &mut V, node: &mut item::Foreign::Fn)
+pub fn visit_foreign_item_fn_mut<V>(v: &mut V, node: &mut item::foreign::Fn)
 where
     V: VisitMut + ?Sized,
 {
@@ -1596,7 +1596,7 @@ where
     v.visit_signature_mut(&mut node.sig);
     skip!(node.semi);
 }
-pub fn visit_foreign_item_macro_mut<V>(v: &mut V, node: &mut item::Foreign::Mac)
+pub fn visit_foreign_item_macro_mut<V>(v: &mut V, node: &mut item::foreign::Mac)
 where
     V: VisitMut + ?Sized,
 {
@@ -1606,7 +1606,7 @@ where
     v.visit_macro_mut(&mut node.mac);
     skip!(node.semi);
 }
-pub fn visit_foreign_item_static_mut<V>(v: &mut V, node: &mut item::Foreign::Static)
+pub fn visit_foreign_item_static_mut<V>(v: &mut V, node: &mut item::foreign::Static)
 where
     V: VisitMut + ?Sized,
 {
@@ -1621,7 +1621,7 @@ where
     v.visit_type_mut(&mut *node.typ);
     skip!(node.semi);
 }
-pub fn visit_foreign_item_type_mut<V>(v: &mut V, node: &mut item::Foreign::Type)
+pub fn visit_foreign_item_type_mut<V>(v: &mut V, node: &mut item::foreign::Type)
 where
     V: VisitMut + ?Sized,
 {
@@ -1697,29 +1697,29 @@ where
     v.visit_span_mut(&mut span);
     node.set_span(span);
 }
-pub fn visit_impl_item_mut<V>(v: &mut V, node: &mut item::Impl::Item)
+pub fn visit_impl_item_mut<V>(v: &mut V, node: &mut item::impl_::Item)
 where
     V: VisitMut + ?Sized,
 {
     match node {
-        item::Impl::Item::Const(_binding_0) => {
+        item::impl_::Item::Const(_binding_0) => {
             v.visit_impl_item_const_mut(_binding_0);
         },
-        item::Impl::Item::Fn(_binding_0) => {
+        item::impl_::Item::Fn(_binding_0) => {
             v.visit_impl_item_fn_mut(_binding_0);
         },
-        item::Impl::Item::Type(_binding_0) => {
+        item::impl_::Item::Type(_binding_0) => {
             v.visit_impl_item_type_mut(_binding_0);
         },
-        item::Impl::Item::Macro(_binding_0) => {
+        item::impl_::Item::Macro(_binding_0) => {
             v.visit_impl_item_macro_mut(_binding_0);
         },
-        item::Impl::Item::Stream(_binding_0) => {
+        item::impl_::Item::Stream(_binding_0) => {
             skip!(_binding_0);
         },
     }
 }
-pub fn visit_impl_item_const_mut<V>(v: &mut V, node: &mut item::Impl::Const)
+pub fn visit_impl_item_const_mut<V>(v: &mut V, node: &mut item::impl_::Const)
 where
     V: VisitMut + ?Sized,
 {
@@ -1737,7 +1737,7 @@ where
     v.visit_expr_mut(&mut node.expr);
     skip!(node.semi);
 }
-pub fn visit_impl_item_fn_mut<V>(v: &mut V, node: &mut item::Impl::Fn)
+pub fn visit_impl_item_fn_mut<V>(v: &mut V, node: &mut item::impl_::Fn)
 where
     V: VisitMut + ?Sized,
 {
@@ -1749,7 +1749,7 @@ where
     v.visit_signature_mut(&mut node.sig);
     v.visit_block_mut(&mut node.block);
 }
-pub fn visit_impl_item_macro_mut<V>(v: &mut V, node: &mut item::Impl::Mac)
+pub fn visit_impl_item_macro_mut<V>(v: &mut V, node: &mut item::impl_::Mac)
 where
     V: VisitMut + ?Sized,
 {
@@ -1759,7 +1759,7 @@ where
     v.visit_macro_mut(&mut node.mac);
     skip!(node.semi);
 }
-pub fn visit_impl_item_type_mut<V>(v: &mut V, node: &mut item::Impl::Type)
+pub fn visit_impl_item_type_mut<V>(v: &mut V, node: &mut item::impl_::Type)
 where
     V: VisitMut + ?Sized,
 {
@@ -1775,7 +1775,7 @@ where
     v.visit_type_mut(&mut node.typ);
     skip!(node.semi);
 }
-pub fn visit_impl_restriction_mut<V>(v: &mut V, node: &mut item::Impl::Restriction)
+pub fn visit_impl_restriction_mut<V>(v: &mut V, node: &mut item::impl_::Restriction)
 where
     V: VisitMut + ?Sized,
 {
@@ -2690,29 +2690,29 @@ where
         },
     }
 }
-pub fn visit_trait_item_mut<V>(v: &mut V, node: &mut item::Trait::Item)
+pub fn visit_trait_item_mut<V>(v: &mut V, node: &mut item::trait_::Item)
 where
     V: VisitMut + ?Sized,
 {
     match node {
-        item::Trait::Item::Const(_binding_0) => {
+        item::trait_::Item::Const(_binding_0) => {
             v.visit_trait_item_const_mut(_binding_0);
         },
-        item::Trait::Item::Fn(_binding_0) => {
+        item::trait_::Item::Fn(_binding_0) => {
             v.visit_trait_item_fn_mut(_binding_0);
         },
-        item::Trait::Item::Type(_binding_0) => {
+        item::trait_::Item::Type(_binding_0) => {
             v.visit_trait_item_type_mut(_binding_0);
         },
-        item::Trait::Item::Macro(_binding_0) => {
+        item::trait_::Item::Macro(_binding_0) => {
             v.visit_trait_item_macro_mut(_binding_0);
         },
-        item::Trait::Item::Stream(_binding_0) => {
+        item::trait_::Item::Stream(_binding_0) => {
             skip!(_binding_0);
         },
     }
 }
-pub fn visit_trait_item_const_mut<V>(v: &mut V, node: &mut item::Trait::Const)
+pub fn visit_trait_item_const_mut<V>(v: &mut V, node: &mut item::trait_::Const)
 where
     V: VisitMut + ?Sized,
 {
@@ -2730,7 +2730,7 @@ where
     }
     skip!(node.semi);
 }
-pub fn visit_trait_item_fn_mut<V>(v: &mut V, node: &mut item::Trait::Fn)
+pub fn visit_trait_item_fn_mut<V>(v: &mut V, node: &mut item::trait_::Fn)
 where
     V: VisitMut + ?Sized,
 {
@@ -2743,7 +2743,7 @@ where
     }
     skip!(node.semi);
 }
-pub fn visit_trait_item_macro_mut<V>(v: &mut V, node: &mut item::Trait::Mac)
+pub fn visit_trait_item_macro_mut<V>(v: &mut V, node: &mut item::trait_::Mac)
 where
     V: VisitMut + ?Sized,
 {
@@ -2753,7 +2753,7 @@ where
     v.visit_macro_mut(&mut node.mac);
     skip!(node.semi);
 }
-pub fn visit_trait_item_type_mut<V>(v: &mut V, node: &mut item::Trait::Type)
+pub fn visit_trait_item_type_mut<V>(v: &mut V, node: &mut item::trait_::Type)
 where
     V: VisitMut + ?Sized,
 {
@@ -3005,13 +3005,13 @@ where
         },
     }
 }
-pub fn visit_use_glob_mut<V>(v: &mut V, node: &mut item::Use::Glob)
+pub fn visit_use_glob_mut<V>(v: &mut V, node: &mut item::use_::Glob)
 where
     V: VisitMut + ?Sized,
 {
     skip!(node.star);
 }
-pub fn visit_use_group_mut<V>(v: &mut V, node: &mut item::Use::Group)
+pub fn visit_use_group_mut<V>(v: &mut V, node: &mut item::use_::Group)
 where
     V: VisitMut + ?Sized,
 {
@@ -3021,13 +3021,13 @@ where
         v.visit_use_tree_mut(it);
     }
 }
-pub fn visit_use_name_mut<V>(v: &mut V, node: &mut item::Use::Name)
+pub fn visit_use_name_mut<V>(v: &mut V, node: &mut item::use_::Name)
 where
     V: VisitMut + ?Sized,
 {
     v.visit_ident_mut(&mut node.ident);
 }
-pub fn visit_use_path_mut<V>(v: &mut V, node: &mut item::Use::Path)
+pub fn visit_use_path_mut<V>(v: &mut V, node: &mut item::use_::Path)
 where
     V: VisitMut + ?Sized,
 {
@@ -3035,7 +3035,7 @@ where
     skip!(node.colon2);
     v.visit_use_tree_mut(&mut *node.tree);
 }
-pub fn visit_use_rename_mut<V>(v: &mut V, node: &mut item::Use::Rename)
+pub fn visit_use_rename_mut<V>(v: &mut V, node: &mut item::use_::Rename)
 where
     V: VisitMut + ?Sized,
 {
@@ -3043,24 +3043,24 @@ where
     skip!(node.as_);
     v.visit_ident_mut(&mut node.rename);
 }
-pub fn visit_use_tree_mut<V>(v: &mut V, node: &mut item::Use::Tree)
+pub fn visit_use_tree_mut<V>(v: &mut V, node: &mut item::use_::Tree)
 where
     V: VisitMut + ?Sized,
 {
     match node {
-        item::Use::Tree::Path(_binding_0) => {
+        item::use_::Tree::Path(_binding_0) => {
             v.visit_use_path_mut(_binding_0);
         },
-        item::Use::Tree::Name(_binding_0) => {
+        item::use_::Tree::Name(_binding_0) => {
             v.visit_use_name_mut(_binding_0);
         },
-        item::Use::Tree::Rename(_binding_0) => {
+        item::use_::Tree::Rename(_binding_0) => {
             v.visit_use_rename_mut(_binding_0);
         },
-        item::Use::Tree::Glob(_binding_0) => {
+        item::use_::Tree::Glob(_binding_0) => {
             v.visit_use_glob_mut(_binding_0);
         },
-        item::Use::Tree::Group(_binding_0) => {
+        item::use_::Tree::Group(_binding_0) => {
             v.visit_use_group_mut(_binding_0);
         },
     }

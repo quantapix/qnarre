@@ -43,9 +43,9 @@ pub fn parse_delim(s: Stream) -> Res<(tok::Delim, pm2::Stream)> {
         if let Some((pm2::Tree::Group(x), rest)) = c.token_tree() {
             let s = x.delim_span();
             let delim = match x.delimiter() {
-                pm2::Delim::Parenthesis => tok::Delim::Paren(Paren(s)),
-                pm2::Delim::Brace => tok::Delim::Brace(Brace(s)),
-                pm2::Delim::Bracket => tok::Delim::Bracket(Bracket(s)),
+                pm2::Delim::Parenthesis => tok::Delim::Paren(tok::Paren(s)),
+                pm2::Delim::Brace => tok::Delim::Brace(tok::Brace(s)),
+                pm2::Delim::Bracket => tok::Delim::Bracket(tok::Bracket(s)),
                 pm2::Delim::None => {
                     return Err(c.err("expected delimiter"));
                 },
@@ -59,70 +59,70 @@ pub fn parse_delim(s: Stream) -> Res<(tok::Delim, pm2::Stream)> {
 
 macro_rules! ast_enum_of_structs {
     (
-        pub enum $name:ident $body:tt
+        pub enum $n:ident $tt:tt
         $($rest:tt)*
     ) => {
-        pub enum $name $body
-        ast_enum_of_structs_impl!($name $body $($rest)*);
+        pub enum $n $tt
+        ast_enum_of_structs_impl!($n $tt $($rest)*);
     };
 }
 macro_rules! ast_enum_of_structs_impl {
     (
-        $name:ident {
+        $n:ident {
             $(
-                $variant:ident $( ($($member:ident)::+) )*,
+                $variant:ident $( ($($m:ident)::+) )*,
             )*
         }
     ) => {
         $($(
-            ast_enum_from_struct!($name::$variant, $($member)::+);
+            ast_enum_from_struct!($n::$variant, $($m)::+);
         )*)*
         generate_to_tokens! {
             ()
             tokens
-            $name {
+            $n {
                 $(
-                    $variant $($($member)::+)*,
+                    $variant $($($m)::+)*,
                 )*
             }
         }
     };
 }
 macro_rules! ast_enum_from_struct {
-    ($name:ident::Stream, $member:ident) => {};
-    ($name:ident::$variant:ident, $member:ident) => {
-        impl From<$member> for $name {
-            fn from(e: $member) -> $name {
-                $name::$variant(e)
+    ($n:ident::Stream, $m:ident) => {};
+    ($n:ident::$variant:ident, $m:ident) => {
+        impl From<$m> for $n {
+            fn from(e: $m) -> $n {
+                $n::$variant(e)
             }
         }
     };
 }
 macro_rules! generate_to_tokens {
     (
-        ($($arms:tt)*) $ys:ident $name:ident {
+        ($($arms:tt)*) $ys:ident $n:ident {
             $variant:ident,
             $($next:tt)*
         }
     ) => {
         generate_to_tokens!(
-            ($($arms)* $name::$variant => {})
-            $ys $name { $($next)* }
+            ($($arms)* $n::$variant => {})
+            $ys $n { $($next)* }
         );
     };
     (
-        ($($arms:tt)*) $ys:ident $name:ident {
-            $variant:ident $member:ident,
+        ($($arms:tt)*) $ys:ident $n:ident {
+            $variant:ident $m:ident,
             $($next:tt)*
         }
     ) => {
         generate_to_tokens!(
-            ($($arms)* $name::$variant(_e) => _e.to_tokens($ys),)
-            $ys $name { $($next)* }
+            ($($arms)* $n::$variant(_e) => _e.to_tokens($ys),)
+            $ys $n { $($next)* }
         );
     };
-    (($($arms:tt)*) $ys:ident $name:ident {}) => {
-        impl ::quote::ToTokens for $name {
+    (($($arms:tt)*) $ys:ident $n:ident {}) => {
+        impl crate::quote::ToTokens for $n {
             fn to_tokens(&self, $ys: &mut crate::pm2::Stream) {
                 match self {
                     $($arms)*
@@ -131,89 +131,81 @@ macro_rules! generate_to_tokens {
         }
     };
 }
-macro_rules! check_keyword_matches {
-    (enum enum) => {};
-    (pub pub) => {};
-}
 
 #[macro_export]
-macro_rules! custom_keyword {
-    ($ident:ident) => {
+macro_rules! custom_kw {
+    ($n:ident) => {
         #[allow(non_camel_case_types)]
-        pub struct $ident {
-            pub span: $crate::__private::Span,
+        pub struct $n<'a> {
+            pub span: $crate::pm2::Span,
         }
         #[allow(dead_code, non_snake_case)]
-        pub fn $ident<__S: $crate::IntoSpans<$crate::__private::Span>>(span: __S) -> $ident {
-            $ident {
+        pub fn $n<__S: $crate::IntoSpans<$crate::pm2::Span>>(span: __S) -> $n {
+            $n {
                 span: $crate::IntoSpans::into_spans(span),
             }
         }
         const _: () = {
-            impl $crate::__private::Default for $ident {
+            impl<'a> Default for $n<'a> {
                 fn default() -> Self {
-                    $ident {
-                        span: $crate::__private::Span::call_site(),
+                    $n {
+                        span: $crate::pm2::Span::call_site(),
                     }
                 }
             }
-            $crate::impl_parse_for_custom_keyword!($ident);
-            $crate::impl_to_tokens_for_custom_keyword!($ident);
-            $crate::impl_clone_for_custom_keyword!($ident);
-            $crate::impl_extra_traits_for_custom_keyword!($ident);
+            $crate::impl_parse_for_custom_kw!($n);
+            $crate::impl_to_tokens_for_custom_kw!($n);
+            $crate::impl_clone_for_custom_kw!($n);
+            $crate::impl_traits_for_custom_kw!($n);
         };
     };
 }
 #[macro_export]
-macro_rules! impl_parse_for_custom_keyword {
-    ($ident:ident) => {
-        impl $crate::tok::Custom for $ident {
-            fn peek(cursor: $crate::Cursor) -> $crate::__private::bool {
-                if let $crate::__private::Some((ident, _rest)) = cursor.ident() {
-                    ident == $crate::__private::stringify!($ident)
+macro_rules! impl_parse_for_custom_kw {
+    ($n:ident) => {
+        impl<'a> $crate::tok::Custom for $n<'a> {
+            fn peek(x: $crate::Cursor) -> bool {
+                if let Some((x, _)) = x.ident() {
+                    x == std::stringify!($n)
                 } else {
                     false
                 }
             }
-            fn display() -> &'static $crate::__private::str {
-                $crate::__private::concat!("`", $crate::__private::stringify!($ident), "`")
+            fn display() -> &'static str {
+                std::concat!("`", std::stringify!($n), "`")
             }
         }
-        impl $crate::parse::Parse for $ident {
-            fn parse(input: $crate::parse::Stream) -> $crate::Res<$ident> {
-                input.step(|cursor| {
-                    if let $crate::__private::Some((ident, rest)) = cursor.ident() {
-                        if ident == $crate::__private::stringify!($ident) {
-                            return $crate::__private::Ok(($ident { span: ident.span() }, rest));
+        impl<'a> $crate::parse::Parse for $n<'a> {
+            fn parse(s: $crate::parse::Stream) -> $crate::Res<$n> {
+                s.step(|c| {
+                    if let Some((x, rest)) = c.ident() {
+                        if x == std::stringify!($n) {
+                            return Ok(($n { span: x.span() }, rest));
                         }
                     }
-                    $crate::__private::Err(cursor.error($crate::__private::concat!(
-                        "expected `",
-                        $crate::__private::stringify!($ident),
-                        "`",
-                    )))
+                    Err(c.error(std::concat!("expected `", std::stringify!($n), "`",)))
                 })
             }
         }
     };
 }
 #[macro_export]
-macro_rules! impl_to_tokens_for_custom_keyword {
-    ($ident:ident) => {
-        impl $crate::__private::ToTokens for $ident {
-            fn to_tokens(&self, ys: &mut $crate::__private::TokenStream2) {
-                let ident = $crate::Ident::new($crate::__private::stringify!($ident), self.span);
-                $crate::__private::TokenStreamExt::append(ys, ident);
+macro_rules! impl_to_tokens_for_custom_kw {
+    ($n:ident) => {
+        impl<'a> $crate::quote::ToTokens for $n<'a> {
+            fn to_tokens(&self, ys: &mut $crate::pm2::TokenStream) {
+                let y = $crate::Ident::new(std::stringify!($n), self.span);
+                $crate::quote::TokenStreamExt::append(ys, y);
             }
         }
     };
 }
 #[macro_export]
-macro_rules! impl_clone_for_custom_keyword {
-    ($ident:ident) => {
-        impl $crate::__private::Copy for $ident {}
+macro_rules! impl_clone_for_custom_kw {
+    ($n:ident) => {
+        impl<'a> Copy for $n<'a> {}
         #[allow(clippy::expl_impl_clone_on_copy)]
-        impl $crate::__private::Clone for $ident {
+        impl<'a> Clone for $n<'a> {
             fn clone(&self) -> Self {
                 *self
             }
@@ -221,92 +213,89 @@ macro_rules! impl_clone_for_custom_keyword {
     };
 }
 #[macro_export]
-macro_rules! impl_extra_traits_for_custom_keyword {
-    ($ident:ident) => {
-        impl $crate::__private::Debug for $ident {
-            fn fmt(&self, f: &mut $crate::__private::Formatter) -> $crate::__private::fmt::Result {
-                $crate::__private::Formatter::write_str(
-                    f,
-                    $crate::__private::concat!("Keyword [", $crate::__private::stringify!($ident), "]",),
-                )
+macro_rules! impl_traits_for_custom_kw {
+    ($n:ident) => {
+        impl<'a> std::fmt::Debug for $n<'a> {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                std::fmt::Formatter::write_str(f, std::concat!("Keyword [", std::stringify!($n), "]",))
             }
         }
-        impl $crate::__private::Eq for $ident {}
-        impl $crate::__private::PartialEq for $ident {
-            fn eq(&self, _other: &Self) -> $crate::__private::bool {
+        impl<'a> Eq for $n<'a> {}
+        impl<'a> PartialEq for $n<'a> {
+            fn eq(&self, _: &Self) -> bool {
                 true
             }
         }
-        impl $crate::__private::Hash for $ident {
-            fn hash<__H: $crate::__private::Hasher>(&self, _state: &mut __H) {}
+        impl<'a> std::hash::Hash for $n<'a> {
+            fn hash<__H: std::hash::Hasher>(&self, _: &mut __H) {}
         }
     };
 }
 
 #[macro_export]
 macro_rules! custom_punctuation {
-    ($ident:ident, $($tt:tt)+) => {
-        pub struct $ident {
+    ($n:ident, $($tt:tt)+) => {
+        pub struct $n {
             pub spans: $crate::custom_punctuation_repr!($($tt)+),
         }
-                #[allow(dead_code, non_snake_case)]
-        pub fn $ident<__S: $crate::IntoSpans<$crate::custom_punctuation_repr!($($tt)+)>>(
+        #[allow(dead_code, non_snake_case)]
+        pub fn $n<__S: $crate::IntoSpans<$crate::custom_punctuation_repr!($($tt)+)>>(
             spans: __S,
-        ) -> $ident {
-            let _validate_len = 0 $(+ $crate::custom_punctuation_len!(strict, $tt))*;
-            $ident {
+        ) -> $n {
+            let _ = 0 $(+ $crate::custom_punctuation_len!(strict, $tt))*;
+            $n {
                 spans: $crate::IntoSpans::into_spans(spans)
             }
         }
         const _: () = {
-            impl $crate::__private::Default for $ident {
+            impl<'a> Default for $n<'a> {
                 fn default() -> Self {
-                    $ident($crate::__private::Span::call_site())
+                    $n($crate::pm2::Span::call_site())
                 }
             }
-            $crate::impl_parse_for_custom_punctuation!($ident, $($tt)+);
-            $crate::impl_to_tokens_for_custom_punctuation!($ident, $($tt)+);
-            $crate::impl_clone_for_custom_punctuation!($ident, $($tt)+);
-            $crate::impl_extra_traits_for_custom_punctuation!($ident, $($tt)+);
+            $crate::impl_parse_for_custom_punct!($n, $($tt)+);
+            $crate::impl_to_tokens_for_custom_punct!($n, $($tt)+);
+            $crate::impl_clone_for_custom_punct!($n, $($tt)+);
+            $crate::impl_traits_for_custom_punct!($n, $($tt)+);
         };
     };
 }
 #[macro_export]
-macro_rules! impl_parse_for_custom_punctuation {
-    ($ident:ident, $($tt:tt)+) => {
-        impl $crate::tok::Custom for $ident {
-            fn peek(cursor: $crate::Cursor) -> bool {
-                $crate::__private::peek_punct(cursor, $crate::stringify_punct!($($tt)+))
+macro_rules! impl_parse_for_custom_punct {
+    ($n:ident, $($tt:tt)+) => {
+        impl $crate::tok::Custom for $n {
+            fn peek(x: $crate::Cursor) -> bool {
+                $crate::tok::peek_punct(x, $crate::stringify_punct!($($tt)+))
             }
-            fn display() -> &'static $crate::__private::str {
-                $crate::__private::concat!("`", $crate::stringify_punct!($($tt)+), "`")
-            }
-        }
-        impl $crate::parse::Parse for $ident {
-            fn parse(input: $crate::parse::Stream) -> $crate::Res<$ident> {
-                let spans: $crate::custom_punctuation_repr!($($tt)+) =
-                    $crate::__private::parse_punct(input, $crate::stringify_punct!($($tt)+))?;
-                Ok($ident(spans))
+            fn display() -> &'static str {
+                std::concat!("`", $crate::stringify_punct!($($tt)+), "`")
             }
         }
-    };
-}
-#[macro_export]
-macro_rules! impl_to_tokens_for_custom_punctuation {
-    ($ident:ident, $($tt:tt)+) => {
-        impl $crate::__private::ToTokens for $ident {
-            fn to_tokens(&self, ys: &mut $crate::__private::TokenStream2) {
-                $crate::__private::punct_to_tokens($crate::stringify_punct!($($tt)+), &self.spans, ys)
+        impl $crate::parse::Parse for $n {
+            fn parse(s: $crate::parse::Stream) -> $crate::Res<$n> {
+                let ys: $crate::custom_punctuation_repr!($($tt)+) =
+                    $crate::tok::parse_punct(s, $crate::stringify_punct!($($tt)+))?;
+                Ok($n(ys))
             }
         }
     };
 }
 #[macro_export]
-macro_rules! impl_clone_for_custom_punctuation {
-    ($ident:ident, $($tt:tt)+) => {
-        impl $crate::__private::Copy for $ident {}
+macro_rules! impl_to_tokens_for_custom_punct {
+    ($n:ident, $($tt:tt)+) => {
+        impl $crate::quote::ToTokens for $n {
+            fn to_tokens(&self, ys: &mut $crate::pm2::TokenStream) {
+                $crate::tok::punct_to_tokens($crate::stringify_punct!($($tt)+), &self.spans, ys)
+            }
+        }
+    };
+}
+#[macro_export]
+macro_rules! impl_clone_for_custom_punct {
+    ($n:ident, $($tt:tt)+) => {
+        impl<'a> Copy for $n<'a> {}
         #[allow(clippy::expl_impl_clone_on_copy)]
-        impl $crate::__private::Clone for $ident {
+        impl<'a> Clone for $n<'a> {
             fn clone(&self) -> Self {
                 *self
             }
@@ -314,28 +303,28 @@ macro_rules! impl_clone_for_custom_punctuation {
     };
 }
 #[macro_export]
-macro_rules! impl_extra_traits_for_custom_punctuation {
-    ($ident:ident, $($tt:tt)+) => {
-        impl $crate::__private::Debug for $ident {
-            fn fmt(&self, f: &mut $crate::__private::Formatter) -> $crate::__private::fmt::Result {
-                $crate::__private::Formatter::write_str(f, $crate::__private::stringify!($ident))
+macro_rules! impl_traits_for_custom_punct {
+    ($n:ident, $($tt:tt)+) => {
+        impl<'a> std::fmt::Debug for $n<'a> {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                std::fmt::Formatter::write_str(f, std::stringify!($n))
             }
         }
-        impl $crate::__private::Eq for $ident {}
-        impl $crate::__private::PartialEq for $ident {
-            fn eq(&self, _other: &Self) -> $crate::__private::bool {
+        impl<'a> Eq for $n<'a> {}
+        impl<'a> PartialEq for $n<'a> {
+            fn eq(&self, _: &Self) -> bool {
                 true
             }
         }
-        impl $crate::__private::Hash for $ident {
-            fn hash<__H: $crate::__private::Hasher>(&self, _state: &mut __H) {}
+        impl<'a> std::hash::Hash for $n<'a> {
+            fn hash<__H: std::hash::Hasher>(&self, _: &mut __H) {}
         }
     };
 }
 #[macro_export]
 macro_rules! custom_punctuation_repr {
     ($($tt:tt)+) => {
-        [$crate::__private::Span; 0 $(+ $crate::custom_punctuation_len!(lenient, $tt))+]
+        [$crate::pm2::Span; 0 $(+ $crate::custom_punctuation_len!(lenient, $tt))+]
     };
 }
 #[macro_export]
@@ -396,43 +385,43 @@ macro_rules! custom_punctuation_unexpected {
 #[macro_export]
 macro_rules! stringify_punct {
     ($($tt:tt)+) => {
-        $crate::__private::concat!($($crate::__private::stringify!($tt)),+)
+        std::concat!($(std::stringify!($tt)),+)
     };
 }
 
 #[macro_export]
 macro_rules! parse_quote {
     ($($tt:tt)*) => {
-        $crate::__private::parse_quote_fn($crate::__private::quote::quote!($($tt)*))
+        $crate::parse::parse_quote_fn($crate::quote::quote!($($tt)*))
     };
 }
 #[macro_export]
 macro_rules! parse_quote_spanned {
     ($span:expr=> $($tt:tt)*) => {
-        $crate::__private::parse_quote_fn($crate::__private::quote::quote_spanned!($span=> $($tt)*))
+        $crate::parse::parse_quote_fn($crate::quote::quote_spanned!($span=> $($tt)*))
     };
 }
 
 #[macro_export]
 macro_rules! parse_macro_input {
-    ($ys:ident as $ty:ty) => {
-        match $crate::parse::<$ty>($ys) {
-            $crate::__private::Ok(data) => data,
-            $crate::__private::Err(err) => {
-                return $crate::__private::pm2::Stream::from(err.to_compile_error());
+    ($n:ident as $ty:ty) => {
+        match $crate::parse::<$ty>($n) {
+            Ok(x) => x,
+            Err(x) => {
+                return $crate::pm2::Stream::from(x.to_compile_error());
             },
         }
     };
-    ($ys:ident with $parser:path) => {
-        match $crate::parse::Parser::parse($parser, $ys) {
-            $crate::__private::Ok(data) => data,
-            $crate::__private::Err(err) => {
-                return $crate::__private::pm2::Stream::from(err.to_compile_error());
+    ($n:ident with $p:path) => {
+        match $crate::parse::Parser::parse($p, $n) {
+            Ok(x) => x,
+            Err(x) => {
+                return $crate::pm2::Stream::from(x.to_compile_error());
             },
         }
     };
-    ($ys:ident) => {
-        $crate::parse_macro_input!($ys as _)
+    ($n:ident) => {
+        $crate::parse_macro_input!($n as _)
     };
 }
 
@@ -541,14 +530,14 @@ macro_rules! Token {
 
 #[macro_export]
 macro_rules! parenthesized {
-    ($y:ident in $s:expr) => {
+    ($n:ident in $s:expr) => {
         match $crate::parse::parse_parens(&$s) {
-            $crate::__private::Ok(x) => {
-                $y = x.buf;
+            Ok(x) => {
+                $n = x.buf;
                 x.tok
             },
-            $crate::__private::Err(x) => {
-                return $crate::__private::Err(x);
+            Err(x) => {
+                return Err(x);
             },
         }
     };
@@ -556,14 +545,14 @@ macro_rules! parenthesized {
 
 #[macro_export]
 macro_rules! braced {
-    ($y:ident in $s:expr) => {
+    ($n:ident in $s:expr) => {
         match $crate::parse::parse_braces(&$s) {
-            $crate::__private::Ok(x) => {
-                $y = x.buf;
+            Ok(x) => {
+                $n = x.buf;
                 x.tok
             },
-            $crate::__private::Err(x) => {
-                return $crate::__private::Err(x);
+            Err(x) => {
+                return Err(x);
             },
         }
     };
@@ -571,14 +560,14 @@ macro_rules! braced {
 
 #[macro_export]
 macro_rules! bracketed {
-    ($y:ident in $s:expr) => {
+    ($n:ident in $s:expr) => {
         match $crate::parse::parse_brackets(&$s) {
-            $crate::__private::Ok(x) => {
-                $y = x.buf;
+            Ok(x) => {
+                $n = x.buf;
                 x.tok
             },
-            $crate::__private::Err(x) => {
-                return $crate::__private::Err(x);
+            Err(x) => {
+                return Err(x);
             },
         }
     };

@@ -1,6 +1,6 @@
 extern crate proc_macro;
 
-pub use std::{
+use std::{
     cmp::{self, Ordering},
     fmt::{self, Debug, Display},
     hash::{Hash, Hasher},
@@ -10,8 +10,7 @@ pub use std::{
 
 #[macro_use]
 mod quote;
-pub use quote::ToTokens;
-use quote::{spanned, TokenStreamExt};
+use quote::{ToTokens, TokenStreamExt};
 
 #[macro_use]
 mod mac;
@@ -46,7 +45,7 @@ use punct::Puncted;
 use tok::Tok;
 
 mod look {
-    use super::{sealed::look::Sealed, *};
+    use super::*;
     use std::cell::RefCell;
     pub struct Look1<'a> {
         scope: pm2::Span,
@@ -99,8 +98,8 @@ mod look {
         }
     }
 
-    pub trait Peek: Sealed {
-        type Token: Tok;
+    pub trait Peek {
+        type Token: tok::Tok;
     }
     impl<F: Copy + FnOnce(Marker) -> T, T: Tok> Peek for F {
         type Token = T;
@@ -116,8 +115,6 @@ mod look {
     pub fn is_delim(x: Cursor, d: pm2::Delim) -> bool {
         x.group(d).is_some()
     }
-
-    impl<F: Copy + FnOnce(Marker) -> T, T: Tok> Sealed for F {}
 }
 use look::{Look1, Peek};
 
@@ -134,23 +131,13 @@ where
     }
 }
 
-mod sealed {
-    pub mod look {
-        pub trait Sealed: Copy {}
-    }
-}
-
-pub trait Spanned: private::Sealed {
+pub trait Spanned {
     fn span(&self) -> pm2::Span;
 }
-impl<T: ?Sized + spanned::Spanned> Spanned for T {
+impl<T: ?Sized + quote::spanned::Spanned> Spanned for T {
     fn span(&self) -> pm2::Span {
         self.__span()
     }
-}
-mod private {
-    pub trait Sealed {}
-    impl<T: ?Sized + spanned::Spanned> Sealed for T {}
 }
 
 struct TokenTreeHelper<'a>(pub &'a pm2::Tree);
@@ -296,34 +283,6 @@ mod fab {
     }
 }
 pub use fab::*;
-pub mod __private {
-    pub use super::{
-        parse::parse_quote_fn,
-        pm2::TokenStream as TokenStream2,
-        quote::{ToTokens, TokenStreamExt},
-        tok::{parse_punct, peek_punct, punct_to_tokens},
-    };
-    pub use proc_macro::TokenStream;
-    pub use std::{
-        clone::Clone,
-        cmp::{Eq, PartialEq},
-        concat,
-        default::Default,
-        fmt::{self, Debug, Formatter},
-        hash::{Hash, Hasher},
-        marker::Copy,
-        option::Option::{None, Some},
-        result::Result::{Err, Ok},
-        stringify,
-    };
-    pub type bool = help::Bool;
-    pub type str = help::Str;
-    mod help {
-        pub type Bool = bool;
-        pub type Str = str;
-    }
-    pub struct private(pub ());
-}
 
 pub fn parse<T: parse::Parse>(s: Stream) -> Res<T> {
     Parser::parse(T::parse, s)

@@ -1,5 +1,5 @@
 use super::{
-    pm2::{self, Delim, DelimSpan, Spacing, Span, Stream, Tree},
+    pm2::{self, Delim, DelimSpan, Group, Lit, Spacing, Span, Tree},
     *,
 };
 
@@ -10,11 +10,6 @@ enum Entry {
     Lit(Lit),
     End(isize),
 }
-
-pub use super::{
-    pm2::{Group, Lit},
-    Ident, Punct,
-};
 
 pub struct Cursor<'a> {
     ptr: *const Entry,

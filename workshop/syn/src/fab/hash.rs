@@ -939,36 +939,36 @@ impl Hash for item::FnArg {
         }
     }
 }
-impl Hash for item::Foreign::Item {
+impl Hash for item::foreign::Item {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         match self {
-            item::Foreign::Item::Fn(v0) => {
+            item::foreign::Item::Fn(v0) => {
                 state.write_u8(0u8);
                 v0.hash(state);
             },
-            item::Foreign::Item::Static(v0) => {
+            item::foreign::Item::Static(v0) => {
                 state.write_u8(1u8);
                 v0.hash(state);
             },
-            item::Foreign::Item::Type(v0) => {
+            item::foreign::Item::Type(v0) => {
                 state.write_u8(2u8);
                 v0.hash(state);
             },
-            item::Foreign::Item::Macro(v0) => {
+            item::foreign::Item::Macro(v0) => {
                 state.write_u8(3u8);
                 v0.hash(state);
             },
-            item::Foreign::Item::Stream(v0) => {
+            item::foreign::Item::Stream(v0) => {
                 state.write_u8(4u8);
                 TokenStreamHelper(v0).hash(state);
             },
         }
     }
 }
-impl Hash for item::Foreign::Fn {
+impl Hash for item::foreign::Fn {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -978,7 +978,7 @@ impl Hash for item::Foreign::Fn {
         self.sig.hash(state);
     }
 }
-impl Hash for item::Foreign::Mac {
+impl Hash for item::foreign::Mac {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -988,7 +988,7 @@ impl Hash for item::Foreign::Mac {
         self.semi.hash(state);
     }
 }
-impl Hash for item::Foreign::Static {
+impl Hash for item::foreign::Static {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -1000,7 +1000,7 @@ impl Hash for item::Foreign::Static {
         self.typ.hash(state);
     }
 }
-impl Hash for item::Foreign::Type {
+impl Hash for item::foreign::Type {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -1076,36 +1076,36 @@ impl Hash for gen::Gens {
         self.where_.hash(state);
     }
 }
-impl Hash for item::Impl::Item {
+impl Hash for item::impl_::Item {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         match self {
-            item::Impl::Item::Const(v0) => {
+            item::impl_::Item::Const(v0) => {
                 state.write_u8(0u8);
                 v0.hash(state);
             },
-            item::Impl::Item::Fn(v0) => {
+            item::impl_::Item::Fn(v0) => {
                 state.write_u8(1u8);
                 v0.hash(state);
             },
-            item::Impl::Item::Type(v0) => {
+            item::impl_::Item::Type(v0) => {
                 state.write_u8(2u8);
                 v0.hash(state);
             },
-            item::Impl::Item::Macro(v0) => {
+            item::impl_::Item::Macro(v0) => {
                 state.write_u8(3u8);
                 v0.hash(state);
             },
-            item::Impl::Item::Stream(v0) => {
+            item::impl_::Item::Stream(v0) => {
                 state.write_u8(4u8);
                 TokenStreamHelper(v0).hash(state);
             },
         }
     }
 }
-impl Hash for item::Impl::Const {
+impl Hash for item::impl_::Const {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -1119,7 +1119,7 @@ impl Hash for item::Impl::Const {
         self.expr.hash(state);
     }
 }
-impl Hash for item::Impl::Fn {
+impl Hash for item::impl_::Fn {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -1131,7 +1131,7 @@ impl Hash for item::Impl::Fn {
         self.block.hash(state);
     }
 }
-impl Hash for item::Impl::Mac {
+impl Hash for item::impl_::Mac {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -1141,7 +1141,7 @@ impl Hash for item::Impl::Mac {
         self.semi.hash(state);
     }
 }
-impl Hash for item::Impl::Type {
+impl Hash for item::impl_::Type {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -1154,7 +1154,7 @@ impl Hash for item::Impl::Type {
         self.typ.hash(state);
     }
 }
-impl Hash for item::Impl::Restriction {
+impl Hash for item::impl_::Restriction {
     fn hash<H>(&self, _state: &mut H)
     where
         H: Hasher,
@@ -1973,36 +1973,36 @@ impl Hash for gen::bound::Modifier {
         }
     }
 }
-impl Hash for item::Trait::Item {
+impl Hash for item::trait_::Item {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         match self {
-            item::Trait::Item::Const(v0) => {
+            item::trait_::Item::Const(v0) => {
                 state.write_u8(0u8);
                 v0.hash(state);
             },
-            item::Trait::Item::Fn(v0) => {
+            item::trait_::Item::Fn(v0) => {
                 state.write_u8(1u8);
                 v0.hash(state);
             },
-            item::Trait::Item::Type(v0) => {
+            item::trait_::Item::Type(v0) => {
                 state.write_u8(2u8);
                 v0.hash(state);
             },
-            item::Trait::Item::Macro(v0) => {
+            item::trait_::Item::Macro(v0) => {
                 state.write_u8(3u8);
                 v0.hash(state);
             },
-            item::Trait::Item::Stream(v0) => {
+            item::trait_::Item::Stream(v0) => {
                 state.write_u8(4u8);
                 TokenStreamHelper(v0).hash(state);
             },
         }
     }
 }
-impl Hash for item::Trait::Const {
+impl Hash for item::trait_::Const {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -2014,7 +2014,7 @@ impl Hash for item::Trait::Const {
         self.default.hash(state);
     }
 }
-impl Hash for item::Trait::Fn {
+impl Hash for item::trait_::Fn {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -2025,7 +2025,7 @@ impl Hash for item::Trait::Fn {
         self.semi.hash(state);
     }
 }
-impl Hash for item::Trait::Mac {
+impl Hash for item::trait_::Mac {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -2035,7 +2035,7 @@ impl Hash for item::Trait::Mac {
         self.semi.hash(state);
     }
 }
-impl Hash for item::Trait::Type {
+impl Hash for item::trait_::Type {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -2291,14 +2291,14 @@ impl Hash for UnOp {
         }
     }
 }
-impl Hash for item::Use::Glob {
+impl Hash for item::use_::Glob {
     fn hash<H>(&self, _state: &mut H)
     where
         H: Hasher,
     {
     }
 }
-impl Hash for item::Use::Group {
+impl Hash for item::use_::Group {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -2306,7 +2306,7 @@ impl Hash for item::Use::Group {
         self.elems.hash(state);
     }
 }
-impl Hash for item::Use::Name {
+impl Hash for item::use_::Name {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -2314,7 +2314,7 @@ impl Hash for item::Use::Name {
         self.ident.hash(state);
     }
 }
-impl Hash for item::Use::Path {
+impl Hash for item::use_::Path {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -2323,7 +2323,7 @@ impl Hash for item::Use::Path {
         self.tree.hash(state);
     }
 }
-impl Hash for item::Use::Rename {
+impl Hash for item::use_::Rename {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -2332,29 +2332,29 @@ impl Hash for item::Use::Rename {
         self.rename.hash(state);
     }
 }
-impl Hash for item::Use::Tree {
+impl Hash for item::use_::Tree {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         match self {
-            item::Use::Tree::Path(v0) => {
+            item::use_::Tree::Path(v0) => {
                 state.write_u8(0u8);
                 v0.hash(state);
             },
-            item::Use::Tree::Name(v0) => {
+            item::use_::Tree::Name(v0) => {
                 state.write_u8(1u8);
                 v0.hash(state);
             },
-            item::Use::Tree::Rename(v0) => {
+            item::use_::Tree::Rename(v0) => {
                 state.write_u8(2u8);
                 v0.hash(state);
             },
-            item::Use::Tree::Glob(v0) => {
+            item::use_::Tree::Glob(v0) => {
                 state.write_u8(3u8);
                 v0.hash(state);
             },
-            item::Use::Tree::Group(v0) => {
+            item::use_::Tree::Group(v0) => {
                 state.write_u8(4u8);
                 v0.hash(state);
             },
