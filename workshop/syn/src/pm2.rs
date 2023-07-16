@@ -14,7 +14,7 @@ mod marker {
 }
 mod parse {
     use super::fallback::{
-        is_ident_continue, is_ident_start, Group, LexError, Literal, Span, TokenStream, TokenStreamBuilder,
+        is_ident_continue, is_ident_start, Group, LexError, Lit, Span, TokenStream, TokenStreamBuilder,
     };
     use super::{Delimiter, Punct, Spacing, Tree};
     use std::char;
@@ -269,10 +269,10 @@ mod parse {
         }
         Ok((input.advance(end), &input.rest[..end]))
     }
-    pub fn literal(input: Cursor) -> PResult<Literal> {
+    pub fn literal(input: Cursor) -> PResult<Lit> {
         let rest = literal_nocapture(input)?;
         let end = input.len() - rest.len();
-        Ok((rest, Literal::_new(input.rest[..end].to_string())))
+        Ok((rest, Lit::_new(input.rest[..end].to_string())))
     }
     fn literal_nocapture(input: Cursor) -> Result<Cursor, Reject> {
         if let Ok(ok) = string(input) {
@@ -1071,7 +1071,7 @@ pub mod fallback {
     fn push_token_from_proc_macro(mut vec: RcVecMut<Tree>, token: Tree) {
         match token {
             Tree::Literal(super::Literal {
-                inner: super::imp::Literal::Fallback(literal),
+                inner: super::imp::Lit::Fallback(literal),
                 ..
             }) if literal.repr.starts_with('-') => {
                 push_negative_literal(vec, literal);
@@ -1079,7 +1079,7 @@ pub mod fallback {
             _ => vec.push(token),
         }
         #[cold]
-        fn push_negative_literal(mut vec: RcVecMut<Tree>, mut literal: Literal) {
+        fn push_negative_literal(mut vec: RcVecMut<Tree>, mut literal: Lit) {
             literal.repr.remove(0);
             let mut punct = super::Punct::new('-', Spacing::Alone);
             punct.set_span(super::Span::_new_fallback(literal.span));
@@ -1479,6 +1479,7 @@ pub mod fallback {
             debug.finish()
         }
     }
+
     #[derive(Clone)]
     pub struct Ident {
         sym: String,
@@ -1574,42 +1575,43 @@ pub mod fallback {
     #[allow(clippy::missing_fields_in_debug)]
     impl Debug for Ident {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            let mut debug = f.debug_struct("Ident");
-            debug.field("sym", &format_args!("{}", self));
-            debug_span_field_if_nontrivial(&mut debug, self.span);
-            debug.finish()
+            let mut y = f.debug_struct("Ident");
+            y.field("sym", &format_args!("{}", self));
+            debug_span_field_if_nontrivial(&mut y, self.span);
+            y.finish()
         }
     }
+
     #[derive(Clone)]
-    pub struct Literal {
+    pub struct Lit {
         repr: String,
         span: Span,
     }
-    macro_rules! suffixed_numbers {
-    ($($name:ident => $kind:ident,)*) => ($(
-        pub fn $name(n: $kind) -> Literal {
-            Literal::_new(format!(concat!("{}", stringify!($kind)), n))
-        }
-    )*)
-}
-    macro_rules! unsuffixed_numbers {
-    ($($name:ident => $kind:ident,)*) => ($(
-        pub fn $name(n: $kind) -> Literal {
-            Literal::_new(n.to_string())
-        }
-    )*)
-}
-    impl Literal {
+    macro_rules! suffixed_nums {
+        ($($n:ident => $kind:ident,)*) => ($(
+            pub fn $n(n: $kind) -> Lit {
+                Lit::_new(format!(concat!("{}", stringify!($kind)), n))
+            }
+        )*)
+    }
+    macro_rules! unsuffixed_nums {
+        ($($n:ident => $kind:ident,)*) => ($(
+            pub fn $n(n: $kind) -> Lit {
+                Lit::_new(n.to_string())
+            }
+        )*)
+    }
+    impl Lit {
         pub fn _new(repr: String) -> Self {
-            Literal {
+            Lit {
                 repr,
                 span: Span::call_site(),
             }
         }
         pub unsafe fn from_str_unchecked(repr: &str) -> Self {
-            Literal::_new(repr.to_owned())
+            Lit::_new(repr.to_owned())
         }
-        suffixed_numbers! {
+        suffixed_nums! {
             u8_suffixed => u8,
             u16_suffixed => u16,
             u32_suffixed => u32,
@@ -1625,7 +1627,7 @@ pub mod fallback {
             f32_suffixed => f32,
             f64_suffixed => f64,
         }
-        unsuffixed_numbers! {
+        unsuffixed_nums! {
             u8_unsuffixed => u8,
             u16_unsuffixed => u16,
             u32_unsuffixed => u32,
@@ -1639,21 +1641,21 @@ pub mod fallback {
             i128_unsuffixed => i128,
             isize_unsuffixed => isize,
         }
-        pub fn f32_unsuffixed(f: f32) -> Literal {
+        pub fn f32_unsuffixed(f: f32) -> Lit {
             let mut s = f.to_string();
             if !s.contains('.') {
                 s.push_str(".0");
             }
-            Literal::_new(s)
+            Lit::_new(s)
         }
-        pub fn f64_unsuffixed(f: f64) -> Literal {
+        pub fn f64_unsuffixed(f: f64) -> Lit {
             let mut s = f.to_string();
             if !s.contains('.') {
                 s.push_str(".0");
             }
-            Literal::_new(s)
+            Lit::_new(s)
         }
-        pub fn string(t: &str) -> Literal {
+        pub fn string(t: &str) -> Lit {
             let mut repr = String::with_capacity(t.len() + 2);
             repr.push('"');
             let mut chars = t.chars();
@@ -1673,9 +1675,9 @@ pub mod fallback {
                 }
             }
             repr.push('"');
-            Literal::_new(repr)
+            Lit::_new(repr)
         }
-        pub fn character(t: char) -> Literal {
+        pub fn character(t: char) -> Lit {
             let mut repr = String::new();
             repr.push('\'');
             if t == '"' {
@@ -1685,9 +1687,9 @@ pub mod fallback {
                 repr.extend(t.escape_debug());
             }
             repr.push('\'');
-            Literal::_new(repr)
+            Lit::_new(repr)
         }
-        pub fn byte_string(bytes: &[u8]) -> Literal {
+        pub fn byte_string(bytes: &[u8]) -> Lit {
             let mut escaped = "b\"".to_string();
             let mut bytes = bytes.iter();
             while let Some(&b) = bytes.next() {
@@ -1710,7 +1712,7 @@ pub mod fallback {
                 }
             }
             escaped.push('"');
-            Literal::_new(escaped)
+            Lit::_new(escaped)
         }
         pub fn span(&self) -> Span {
             self.span
@@ -1750,7 +1752,7 @@ pub mod fallback {
             }
         }
     }
-    impl FromStr for Literal {
+    impl FromStr for Lit {
         type Err = LexError;
         fn from_str(repr: &str) -> Result<Self, Self::Err> {
             let mut cursor = get_cursor(repr);
@@ -1774,12 +1776,12 @@ pub mod fallback {
             Err(LexError::call_site())
         }
     }
-    impl Display for Literal {
+    impl Display for Lit {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             Display::fmt(&self.repr, f)
         }
     }
-    impl Debug for Literal {
+    impl Debug for Lit {
         fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
             let mut debug = fmt.debug_struct("Literal");
             debug.field("lit", &format_args!("{}", self.repr));
@@ -2126,7 +2128,7 @@ mod imp {
                     o.into()
                 },
                 proc_macro::TokenTree::Ident(s) => super::Ident::_new(Ident::Compiler(s)).into(),
-                proc_macro::TokenTree::Literal(l) => super::Literal::_new(Literal::Compiler(l)).into(),
+                proc_macro::TokenTree::Literal(l) => super::Literal::_new(Lit::Compiler(l)).into(),
             })
         }
         fn size_hint(&self) -> (usize, Option<usize>) {
@@ -2400,42 +2402,43 @@ mod imp {
             }
         }
     }
+
     #[derive(Clone)]
-    pub enum Literal {
+    pub enum Lit {
         Compiler(proc_macro::Literal),
-        Fallback(fallback::Literal),
+        Fallback(fallback::Lit),
     }
-    macro_rules! suffixed_numbers {
-    ($($name:ident => $kind:ident,)*) => ($(
-        pub fn $name(n: $kind) -> Literal {
-            if inside_proc_macro() {
-                Literal::Compiler(proc_macro::Literal::$name(n))
-            } else {
-                Literal::Fallback(fallback::Literal::$name(n))
+    macro_rules! suffixed_nums {
+        ($($n:ident => $kind:ident,)*) => ($(
+            pub fn $n(n: $kind) -> Lit {
+                if inside_proc_macro() {
+                    Lit::Compiler(proc_macro::Literal::$n(n))
+                } else {
+                    Lit::Fallback(fallback::Lit::$n(n))
+                }
             }
-        }
-    )*)
-}
-    macro_rules! unsuffixed_integers {
-    ($($name:ident => $kind:ident,)*) => ($(
-        pub fn $name(n: $kind) -> Literal {
-            if inside_proc_macro() {
-                Literal::Compiler(proc_macro::Literal::$name(n))
-            } else {
-                Literal::Fallback(fallback::Literal::$name(n))
+        )*)
+    }
+    macro_rules! unsuffixed_nums {
+        ($($n:ident => $kind:ident,)*) => ($(
+            pub fn $n(n: $kind) -> Lit {
+                if inside_proc_macro() {
+                    Lit::Compiler(proc_macro::Literal::$n(n))
+                } else {
+                    Lit::Fallback(fallback::Lit::$n(n))
+                }
             }
-        }
-    )*)
-}
-    impl Literal {
+        )*)
+    }
+    impl Lit {
         pub unsafe fn from_str_unchecked(repr: &str) -> Self {
             if inside_proc_macro() {
-                Literal::Compiler(compiler_literal_from_str(repr).expect("invalid literal"))
+                Lit::Compiler(compiler_literal_from_str(repr).expect("invalid literal"))
             } else {
-                Literal::Fallback(fallback::Literal::from_str_unchecked(repr))
+                Lit::Fallback(fallback::Lit::from_str_unchecked(repr))
             }
         }
-        suffixed_numbers! {
+        suffixed_nums! {
             u8_suffixed => u8,
             u16_suffixed => u16,
             u32_suffixed => u32,
@@ -2451,7 +2454,7 @@ mod imp {
             f32_suffixed => f32,
             f64_suffixed => f64,
         }
-        unsuffixed_integers! {
+        unsuffixed_nums! {
             u8_unsuffixed => u8,
             u16_unsuffixed => u16,
             u32_unsuffixed => u32,
@@ -2465,99 +2468,99 @@ mod imp {
             i128_unsuffixed => i128,
             isize_unsuffixed => isize,
         }
-        pub fn f32_unsuffixed(f: f32) -> Literal {
+        pub fn f32_unsuffixed(f: f32) -> Lit {
             if inside_proc_macro() {
-                Literal::Compiler(proc_macro::Literal::f32_unsuffixed(f))
+                Lit::Compiler(proc_macro::Literal::f32_unsuffixed(f))
             } else {
-                Literal::Fallback(fallback::Literal::f32_unsuffixed(f))
+                Lit::Fallback(fallback::Lit::f32_unsuffixed(f))
             }
         }
-        pub fn f64_unsuffixed(f: f64) -> Literal {
+        pub fn f64_unsuffixed(f: f64) -> Lit {
             if inside_proc_macro() {
-                Literal::Compiler(proc_macro::Literal::f64_unsuffixed(f))
+                Lit::Compiler(proc_macro::Literal::f64_unsuffixed(f))
             } else {
-                Literal::Fallback(fallback::Literal::f64_unsuffixed(f))
+                Lit::Fallback(fallback::Lit::f64_unsuffixed(f))
             }
         }
-        pub fn string(t: &str) -> Literal {
+        pub fn string(t: &str) -> Lit {
             if inside_proc_macro() {
-                Literal::Compiler(proc_macro::Literal::string(t))
+                Lit::Compiler(proc_macro::Literal::string(t))
             } else {
-                Literal::Fallback(fallback::Literal::string(t))
+                Lit::Fallback(fallback::Lit::string(t))
             }
         }
-        pub fn character(t: char) -> Literal {
+        pub fn character(t: char) -> Lit {
             if inside_proc_macro() {
-                Literal::Compiler(proc_macro::Literal::character(t))
+                Lit::Compiler(proc_macro::Literal::character(t))
             } else {
-                Literal::Fallback(fallback::Literal::character(t))
+                Lit::Fallback(fallback::Lit::character(t))
             }
         }
-        pub fn byte_string(bytes: &[u8]) -> Literal {
+        pub fn byte_string(bytes: &[u8]) -> Lit {
             if inside_proc_macro() {
-                Literal::Compiler(proc_macro::Literal::byte_string(bytes))
+                Lit::Compiler(proc_macro::Literal::byte_string(bytes))
             } else {
-                Literal::Fallback(fallback::Literal::byte_string(bytes))
+                Lit::Fallback(fallback::Lit::byte_string(bytes))
             }
         }
         pub fn span(&self) -> Span {
             match self {
-                Literal::Compiler(lit) => Span::Compiler(lit.span()),
-                Literal::Fallback(lit) => Span::Fallback(lit.span()),
+                Lit::Compiler(lit) => Span::Compiler(lit.span()),
+                Lit::Fallback(lit) => Span::Fallback(lit.span()),
             }
         }
         pub fn set_span(&mut self, span: Span) {
             match (self, span) {
-                (Literal::Compiler(lit), Span::Compiler(s)) => lit.set_span(s),
-                (Literal::Fallback(lit), Span::Fallback(s)) => lit.set_span(s),
+                (Lit::Compiler(lit), Span::Compiler(s)) => lit.set_span(s),
+                (Lit::Fallback(lit), Span::Fallback(s)) => lit.set_span(s),
                 _ => mismatch(),
             }
         }
         pub fn subspan<R: RangeBounds<usize>>(&self, range: R) -> Option<Span> {
             match self {
-                Literal::Compiler(lit) => lit.subspan(range).map(Span::Compiler),
-                Literal::Fallback(lit) => lit.subspan(range).map(Span::Fallback),
+                Lit::Compiler(lit) => lit.subspan(range).map(Span::Compiler),
+                Lit::Fallback(lit) => lit.subspan(range).map(Span::Fallback),
             }
         }
         fn unwrap_nightly(self) -> proc_macro::Literal {
             match self {
-                Literal::Compiler(s) => s,
-                Literal::Fallback(_) => mismatch(),
+                Lit::Compiler(s) => s,
+                Lit::Fallback(_) => mismatch(),
             }
         }
     }
-    impl From<fallback::Literal> for Literal {
-        fn from(s: fallback::Literal) -> Self {
-            Literal::Fallback(s)
+    impl From<fallback::Lit> for Lit {
+        fn from(s: fallback::Lit) -> Self {
+            Lit::Fallback(s)
         }
     }
-    impl FromStr for Literal {
+    impl FromStr for Lit {
         type Err = LexError;
         fn from_str(repr: &str) -> Result<Self, Self::Err> {
             if inside_proc_macro() {
-                compiler_literal_from_str(repr).map(Literal::Compiler)
+                compiler_literal_from_str(repr).map(Lit::Compiler)
             } else {
-                let literal = fallback::Literal::from_str(repr)?;
-                Ok(Literal::Fallback(literal))
+                let literal = fallback::Lit::from_str(repr)?;
+                Ok(Lit::Fallback(literal))
             }
         }
     }
     fn compiler_literal_from_str(repr: &str) -> Result<proc_macro::Literal, LexError> {
         proc_macro::Literal::from_str(repr).map_err(LexError::Compiler)
     }
-    impl Display for Literal {
+    impl Display for Lit {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             match self {
-                Literal::Compiler(t) => Display::fmt(t, f),
-                Literal::Fallback(t) => Display::fmt(t, f),
+                Lit::Compiler(t) => Display::fmt(t, f),
+                Lit::Fallback(t) => Display::fmt(t, f),
             }
         }
     }
-    impl Debug for Literal {
+    impl Debug for Lit {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             match self {
-                Literal::Compiler(t) => Debug::fmt(t, f),
-                Literal::Fallback(t) => Debug::fmt(t, f),
+                Lit::Compiler(t) => Debug::fmt(t, f),
+                Lit::Fallback(t) => Debug::fmt(t, f),
             }
         }
     }
@@ -2919,6 +2922,7 @@ impl Debug for Punct {
         debug.finish()
     }
 }
+
 #[derive(Clone)]
 pub struct Ident {
     inner: imp::Ident,
@@ -2983,30 +2987,31 @@ impl Debug for Ident {
         Debug::fmt(&self.inner, f)
     }
 }
+
 #[derive(Clone)]
 pub struct Literal {
-    inner: imp::Literal,
+    inner: imp::Lit,
     _marker: Marker,
 }
 macro_rules! suffixed_int_literals {
-    ($($name:ident => $kind:ident,)*) => ($(
-        pub fn $name(n: $kind) -> Literal {
-            Literal::_new(imp::Literal::$name(n))
+    ($($n:ident => $kind:ident,)*) => ($(
+        pub fn $n(n: $kind) -> Literal {
+            Literal::_new(imp::Lit::$n(n))
         }
     )*)
 }
 macro_rules! unsuffixed_int_literals {
-    ($($name:ident => $kind:ident,)*) => ($(
-        pub fn $name(n: $kind) -> Literal {
-            Literal::_new(imp::Literal::$name(n))
+    ($($n:ident => $kind:ident,)*) => ($(
+        pub fn $n(n: $kind) -> Literal {
+            Literal::_new(imp::Lit::$n(n))
         }
     )*)
 }
 impl Literal {
-    fn _new(inner: imp::Literal) -> Self {
+    fn _new(inner: imp::Lit) -> Self {
         Literal { inner, _marker: Marker }
     }
-    fn _new_fallback(inner: fallback::Literal) -> Self {
+    fn _new_fallback(inner: fallback::Lit) -> Self {
         Literal {
             inner: inner.into(),
             _marker: Marker,
@@ -3042,28 +3047,28 @@ impl Literal {
     }
     pub fn f64_unsuffixed(f: f64) -> Literal {
         assert!(f.is_finite());
-        Literal::_new(imp::Literal::f64_unsuffixed(f))
+        Literal::_new(imp::Lit::f64_unsuffixed(f))
     }
     pub fn f64_suffixed(f: f64) -> Literal {
         assert!(f.is_finite());
-        Literal::_new(imp::Literal::f64_suffixed(f))
+        Literal::_new(imp::Lit::f64_suffixed(f))
     }
     pub fn f32_unsuffixed(f: f32) -> Literal {
         assert!(f.is_finite());
-        Literal::_new(imp::Literal::f32_unsuffixed(f))
+        Literal::_new(imp::Lit::f32_unsuffixed(f))
     }
     pub fn f32_suffixed(f: f32) -> Literal {
         assert!(f.is_finite());
-        Literal::_new(imp::Literal::f32_suffixed(f))
+        Literal::_new(imp::Lit::f32_suffixed(f))
     }
     pub fn string(string: &str) -> Literal {
-        Literal::_new(imp::Literal::string(string))
+        Literal::_new(imp::Lit::string(string))
     }
     pub fn character(ch: char) -> Literal {
-        Literal::_new(imp::Literal::character(ch))
+        Literal::_new(imp::Lit::character(ch))
     }
     pub fn byte_string(s: &[u8]) -> Literal {
-        Literal::_new(imp::Literal::byte_string(s))
+        Literal::_new(imp::Lit::byte_string(s))
     }
     pub fn span(&self) -> Span {
         Span::_new(self.inner.span())
@@ -3075,13 +3080,13 @@ impl Literal {
         self.inner.subspan(range).map(Span::_new)
     }
     pub unsafe fn from_str_unchecked(repr: &str) -> Self {
-        Literal::_new(imp::Literal::from_str_unchecked(repr))
+        Literal::_new(imp::Lit::from_str_unchecked(repr))
     }
 }
 impl FromStr for Literal {
     type Err = LexError;
-    fn from_str(repr: &str) -> Result<Self, LexError> {
-        repr.parse()
+    fn from_str(x: &str) -> Result<Self, LexError> {
+        x.parse()
             .map(Literal::_new)
             .map_err(|inner| LexError { inner, _marker: Marker })
     }
@@ -3096,6 +3101,7 @@ impl Display for Literal {
         Display::fmt(&self.inner, f)
     }
 }
+
 pub mod token_stream {
     use super::marker::Marker;
     pub use super::TokenStream;
@@ -3132,6 +3138,7 @@ pub mod token_stream {
         }
     }
 }
+
 pub trait IntoSpans<S> {
     fn into_spans(self) -> S;
 }
