@@ -1,5 +1,5 @@
 use super::*;
-use quote::IdentFragment;
+use quote::Fragment;
 
 ast_enum_of_structs! {
     pub enum Expr {
@@ -169,7 +169,7 @@ impl Parse for Array {
         })
     }
 }
-impl ToTokens for Array {
+impl ToStream for Array {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.bracket.surround(ys, |ys| {
@@ -184,7 +184,7 @@ pub struct Assign {
     pub eq: Token![=],
     pub right: Box<Expr>,
 }
-impl ToTokens for Assign {
+impl ToStream for Assign {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.left.to_tokens(ys);
@@ -209,7 +209,7 @@ impl Parse for Async {
         })
     }
 }
-impl ToTokens for Async {
+impl ToStream for Async {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.async_.to_tokens(ys);
@@ -224,7 +224,7 @@ pub struct Await {
     pub dot: Token![.],
     pub await_: Token![await],
 }
-impl ToTokens for Await {
+impl ToStream for Await {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.expr.to_tokens(ys);
@@ -239,7 +239,7 @@ pub struct Binary {
     pub op: BinOp,
     pub right: Box<Expr>,
 }
-impl ToTokens for Binary {
+impl ToStream for Binary {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.left.to_tokens(ys);
@@ -268,7 +268,7 @@ impl Parse for Block {
         })
     }
 }
-impl ToTokens for Block {
+impl ToStream for Block {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.label.to_tokens(ys);
@@ -291,7 +291,7 @@ impl Parse for Break {
         expr_break(x, allow)
     }
 }
-impl ToTokens for Break {
+impl ToStream for Break {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.break_.to_tokens(ys);
@@ -306,7 +306,7 @@ pub struct Call {
     pub paren: tok::Paren,
     pub args: Puncted<Expr, Token![,]>,
 }
-impl ToTokens for Call {
+impl ToStream for Call {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.func.to_tokens(ys);
@@ -322,7 +322,7 @@ pub struct Cast {
     pub as_: Token![as],
     pub typ: Box<typ::Type>,
 }
-impl ToTokens for Cast {
+impl ToStream for Cast {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.expr.to_tokens(ys);
@@ -350,7 +350,7 @@ impl Parse for Closure {
         expr_closure(x, allow)
     }
 }
-impl ToTokens for Closure {
+impl ToStream for Closure {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.lifes.to_tokens(ys);
@@ -385,7 +385,7 @@ impl Parse for Const {
         })
     }
 }
-impl ToTokens for Const {
+impl ToStream for Const {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.const_.to_tokens(ys);
@@ -410,7 +410,7 @@ impl Parse for Continue {
         })
     }
 }
-impl ToTokens for Continue {
+impl ToStream for Continue {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.continue_.to_tokens(ys);
@@ -424,7 +424,7 @@ pub struct Field {
     pub dot: Token![.],
     pub memb: Member,
 }
-impl ToTokens for Field {
+impl ToStream for Field {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.base.to_tokens(ys);
@@ -465,7 +465,7 @@ impl Parse for ForLoop {
         })
     }
 }
-impl ToTokens for ForLoop {
+impl ToStream for ForLoop {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.label.to_tokens(ys);
@@ -485,7 +485,7 @@ pub struct Group {
     pub group: tok::Group,
     pub expr: Box<Expr>,
 }
-impl ToTokens for Group {
+impl ToStream for Group {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.group.surround(ys, |ys| {
@@ -519,7 +519,7 @@ impl Parse for If {
         })
     }
 }
-impl ToTokens for If {
+impl ToStream for If {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.if_.to_tokens(ys);
@@ -554,7 +554,7 @@ impl Parse for Index {
         }
     }
 }
-impl ToTokens for Index {
+impl ToStream for Index {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.expr.to_tokens(ys);
@@ -576,7 +576,7 @@ impl Parse for Infer {
         })
     }
 }
-impl ToTokens for Infer {
+impl ToStream for Infer {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.underscore.to_tokens(ys);
@@ -605,7 +605,7 @@ impl Parse for Let {
         })
     }
 }
-impl ToTokens for Let {
+impl ToStream for Let {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.let_.to_tokens(ys);
@@ -627,7 +627,7 @@ impl Parse for Lit {
         })
     }
 }
-impl ToTokens for Lit {
+impl ToStream for Lit {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.lit.to_tokens(ys);
@@ -657,7 +657,7 @@ impl Parse for Loop {
         })
     }
 }
-impl ToTokens for Loop {
+impl ToStream for Loop {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.label.to_tokens(ys);
@@ -681,7 +681,7 @@ impl Parse for Mac {
         })
     }
 }
-impl ToTokens for Mac {
+impl ToStream for Mac {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.mac.to_tokens(ys);
@@ -716,7 +716,7 @@ impl Parse for Match {
         })
     }
 }
-impl ToTokens for Match {
+impl ToStream for Match {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.match_.to_tokens(ys);
@@ -743,7 +743,7 @@ pub struct MethodCall {
     pub paren: tok::Paren,
     pub args: Puncted<Expr, Token![,]>,
 }
-impl ToTokens for MethodCall {
+impl ToStream for MethodCall {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.expr.to_tokens(ys);
@@ -766,7 +766,7 @@ impl Parse for Paren {
         expr_paren(x)
     }
 }
-impl ToTokens for Paren {
+impl ToStream for Paren {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.paren.surround(ys, |ys| {
@@ -787,7 +787,7 @@ impl Parse for Path {
         Ok(Path { attrs, qself, path })
     }
 }
-impl ToTokens for Path {
+impl ToStream for Path {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         path::path_to_tokens(ys, &self.qself, &self.path);
@@ -800,7 +800,7 @@ pub struct Range {
     pub limits: Limits,
     pub end: Option<Box<Expr>>,
 }
-impl ToTokens for Range {
+impl ToStream for Range {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.beg.to_tokens(ys);
@@ -826,7 +826,7 @@ impl Parse for Ref {
         })
     }
 }
-impl ToTokens for Ref {
+impl ToStream for Ref {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.and.to_tokens(ys);
@@ -854,7 +854,7 @@ impl Parse for Repeat {
         })
     }
 }
-impl ToTokens for Repeat {
+impl ToStream for Repeat {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.bracket.surround(ys, |ys| {
@@ -876,7 +876,7 @@ impl Parse for Return {
         expr_ret(x, allow)
     }
 }
-impl ToTokens for Return {
+impl ToStream for Return {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.return_.to_tokens(ys);
@@ -899,7 +899,7 @@ impl Parse for Struct {
         expr_struct_helper(x, qself, path)
     }
 }
-impl ToTokens for Struct {
+impl ToStream for Struct {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         path::path_to_tokens(ys, &self.qself, &self.path);
@@ -920,7 +920,7 @@ pub struct Try {
     pub expr: Box<Expr>,
     pub question: Token![?],
 }
-impl ToTokens for Try {
+impl ToStream for Try {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.expr.to_tokens(ys);
@@ -942,7 +942,7 @@ impl Parse for TryBlock {
         })
     }
 }
-impl ToTokens for TryBlock {
+impl ToStream for TryBlock {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.try_.to_tokens(ys);
@@ -955,7 +955,7 @@ pub struct Tuple {
     pub paren: tok::Paren,
     pub elems: Puncted<Expr, Token![,]>,
 }
-impl ToTokens for Tuple {
+impl ToStream for Tuple {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.paren.surround(ys, |ys| {
@@ -979,7 +979,7 @@ impl Parse for Unary {
         expr_unary(x, attrs, allow)
     }
 }
-impl ToTokens for Unary {
+impl ToStream for Unary {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.op.to_tokens(ys);
@@ -1006,7 +1006,7 @@ impl Parse for Unsafe {
         })
     }
 }
-impl ToTokens for Unsafe {
+impl ToStream for Unsafe {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.unsafe_.to_tokens(ys);
@@ -1043,7 +1043,7 @@ impl Parse for While {
         })
     }
 }
-impl ToTokens for While {
+impl ToStream for While {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.label.to_tokens(ys);
@@ -1076,7 +1076,7 @@ impl Parse for Yield {
         })
     }
 }
-impl ToTokens for Yield {
+impl ToStream for Yield {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.yield_.to_tokens(ys);
@@ -1131,7 +1131,7 @@ impl Hash for Member {
         }
     }
 }
-impl IdentFragment for Member {
+impl Fragment for Member {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use Member::*;
         match self {
@@ -1158,7 +1158,7 @@ impl Parse for Member {
         }
     }
 }
-impl ToTokens for Member {
+impl ToStream for Member {
     fn to_tokens(&self, ys: &mut Stream) {
         match self {
             Member::Named(x) => x.to_tokens(ys),
@@ -1191,7 +1191,7 @@ impl Hash for Idx {
         self.idx.hash(y);
     }
 }
-impl IdentFragment for Idx {
+impl Fragment for Idx {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         Display::fmt(&self.idx, f)
     }
@@ -1199,7 +1199,7 @@ impl IdentFragment for Idx {
         Some(self.span)
     }
 }
-impl ToTokens for Idx {
+impl ToStream for Idx {
     fn to_tokens(&self, ys: &mut Stream) {
         let mut lit = pm2::Lit::i64_unsuffixed(i64::from(self.idx));
         lit.set_span(self.span);
@@ -1264,7 +1264,7 @@ impl Parse for BinOp {
         }
     }
 }
-impl ToTokens for BinOp {
+impl ToStream for BinOp {
     fn to_tokens(&self, ys: &mut Stream) {
         use BinOp::*;
         match self {
@@ -1319,7 +1319,7 @@ impl Parse for UnOp {
         }
     }
 }
-impl ToTokens for UnOp {
+impl ToStream for UnOp {
     fn to_tokens(&self, ys: &mut Stream) {
         match self {
             UnOp::Deref(x) => x.to_tokens(ys),
@@ -1361,7 +1361,7 @@ impl Parse for FieldValue {
         })
     }
 }
-impl ToTokens for FieldValue {
+impl ToStream for FieldValue {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.member.to_tokens(ys);
@@ -1393,7 +1393,7 @@ impl Parse for Option<Label> {
         }
     }
 }
-impl ToTokens for Label {
+impl ToStream for Label {
     fn to_tokens(&self, ys: &mut Stream) {
         self.name.to_tokens(ys);
         self.colon.to_tokens(ys);
@@ -1439,7 +1439,7 @@ impl Parse for Arm {
         })
     }
 }
-impl ToTokens for Arm {
+impl ToStream for Arm {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(&self.attrs);
         self.pat.to_tokens(ys);
@@ -1490,7 +1490,7 @@ impl Parse for Limits {
         }
     }
 }
-impl ToTokens for Limits {
+impl ToStream for Limits {
     fn to_tokens(&self, ys: &mut Stream) {
         match self {
             Limits::HalfOpen(x) => x.to_tokens(ys),

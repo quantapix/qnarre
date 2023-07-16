@@ -1190,37 +1190,37 @@ impl Parse for Bool {
     }
 }
 
-impl ToTokens for Str {
+impl ToStream for Str {
     fn to_tokens(&self, ys: &mut Stream) {
         self.repr.tok.to_tokens(ys);
     }
 }
-impl ToTokens for ByteStr {
+impl ToStream for ByteStr {
     fn to_tokens(&self, ys: &mut Stream) {
         self.repr.tok.to_tokens(ys);
     }
 }
-impl ToTokens for Byte {
+impl ToStream for Byte {
     fn to_tokens(&self, ys: &mut Stream) {
         self.repr.tok.to_tokens(ys);
     }
 }
-impl ToTokens for Char {
+impl ToStream for Char {
     fn to_tokens(&self, ys: &mut Stream) {
         self.repr.tok.to_tokens(ys);
     }
 }
-impl ToTokens for Int {
+impl ToStream for Int {
     fn to_tokens(&self, ys: &mut Stream) {
         self.repr.tok.to_tokens(ys);
     }
 }
-impl ToTokens for Float {
+impl ToStream for Float {
     fn to_tokens(&self, ys: &mut Stream) {
         self.repr.tok.to_tokens(ys);
     }
 }
-impl ToTokens for Bool {
+impl ToStream for Bool {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append(self.token());
     }

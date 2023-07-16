@@ -78,7 +78,7 @@ pub struct Ident {
     pub ident: super::Ident,
     pub sub: Option<(Token![@], Box<Pat>)>,
 }
-impl ToTokens for Ident {
+impl ToStream for Ident {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(self.attrs.outers());
         self.ref_.to_tokens(ys);
@@ -96,7 +96,7 @@ pub struct Or {
     pub vert: Option<Token![|]>,
     pub cases: Puncted<Pat, Token![|]>,
 }
-impl ToTokens for Or {
+impl ToStream for Or {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(self.attrs.outers());
         self.vert.to_tokens(ys);
@@ -109,7 +109,7 @@ pub struct Paren {
     pub paren: tok::Paren,
     pub pat: Box<Pat>,
 }
-impl ToTokens for Paren {
+impl ToStream for Paren {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(self.attrs.outers());
         self.paren.surround(ys, |ys| {
@@ -124,7 +124,7 @@ pub struct Ref {
     pub mut_: Option<Token![mut]>,
     pub pat: Box<Pat>,
 }
-impl ToTokens for Ref {
+impl ToStream for Ref {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(self.attrs.outers());
         self.and.to_tokens(ys);
@@ -137,7 +137,7 @@ pub struct Rest {
     pub attrs: Vec<attr::Attr>,
     pub dot2: Token![..],
 }
-impl ToTokens for Rest {
+impl ToStream for Rest {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(self.attrs.outers());
         self.dot2.to_tokens(ys);
@@ -149,7 +149,7 @@ pub struct Slice {
     pub bracket: tok::Bracket,
     pub elems: Puncted<Pat, Token![,]>,
 }
-impl ToTokens for Slice {
+impl ToStream for Slice {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(self.attrs.outers());
         self.bracket.surround(ys, |ys| {
@@ -166,7 +166,7 @@ pub struct Struct {
     pub fields: Puncted<Field, Token![,]>,
     pub rest: Option<Rest>,
 }
-impl ToTokens for Struct {
+impl ToStream for Struct {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(self.attrs.outers());
         path::path_to_tokens(ys, &self.qself, &self.path);
@@ -186,7 +186,7 @@ pub struct Field {
     pub colon: Option<Token![:]>,
     pub pat: Box<Pat>,
 }
-impl ToTokens for Field {
+impl ToStream for Field {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(self.attrs.outers());
         if let Some(x) = &self.colon {
@@ -211,7 +211,7 @@ pub struct Tuple {
     pub paren: tok::Paren,
     pub elems: Puncted<Pat, Token![,]>,
 }
-impl ToTokens for Tuple {
+impl ToStream for Tuple {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(self.attrs.outers());
         self.paren.surround(ys, |ys| {
@@ -227,7 +227,7 @@ pub struct TupleStruct {
     pub paren: tok::Paren,
     pub elems: Puncted<Pat, Token![,]>,
 }
-impl ToTokens for TupleStruct {
+impl ToStream for TupleStruct {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(self.attrs.outers());
         path::path_to_tokens(ys, &self.qself, &self.path);
@@ -243,7 +243,7 @@ pub struct Type {
     pub colon: Token![:],
     pub typ: Box<typ::Type>,
 }
-impl ToTokens for Type {
+impl ToStream for Type {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(self.attrs.outers());
         self.pat.to_tokens(ys);
@@ -256,7 +256,7 @@ pub struct Wild {
     pub attrs: Vec<attr::Attr>,
     pub underscore: Token![_],
 }
-impl ToTokens for Wild {
+impl ToStream for Wild {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(self.attrs.outers());
         self.underscore.to_tokens(ys);

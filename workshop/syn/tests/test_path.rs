@@ -42,45 +42,45 @@ fn parse_interpolated_leading_component() {
 #[test]
 fn print_incomplete_qpath() {
     let mut typ: typ::Path = parse_quote!(<Self as A>::Q);
-    snapshot!(typ.to_token_stream(), @r###"
+    snapshot!(typ.to_stream(), @r###"
     pm2::Stream(`< Self as A > :: Q`)
     "###);
     assert!(typ.path.segs.pop().is_some());
-    snapshot!(typ.to_token_stream(), @r###"
+    snapshot!(typ.to_stream(), @r###"
     pm2::Stream(`< Self as A > ::`)
     "###);
     assert!(typ.path.segs.pop().is_some());
-    snapshot!(typ.to_token_stream(), @r###"
+    snapshot!(typ.to_stream(), @r###"
     pm2::Stream(`< Self >`)
     "###);
     assert!(typ.path.segs.pop().is_none());
     let mut typ: typ::Path = parse_quote!(<Self>::A::B);
-    snapshot!(typ.to_token_stream(), @r###"
+    snapshot!(typ.to_stream(), @r###"
     pm2::Stream(`< Self > :: A :: B`)
     "###);
     assert!(typ.path.segs.pop().is_some());
-    snapshot!(typ.to_token_stream(), @r###"
+    snapshot!(typ.to_stream(), @r###"
     pm2::Stream(`< Self > :: A ::`)
     "###);
     assert!(typ.path.segs.pop().is_some());
-    snapshot!(typ.to_token_stream(), @r###"
+    snapshot!(typ.to_stream(), @r###"
     pm2::Stream(`< Self > ::`)
     "###);
     assert!(typ.path.segs.pop().is_none());
     let mut typ: typ::Path = parse_quote!(Self::A::B);
-    snapshot!(typ.to_token_stream(), @r###"
+    snapshot!(typ.to_stream(), @r###"
     pm2::Stream(`Self :: A :: B`)
     "###);
     assert!(typ.path.segs.pop().is_some());
-    snapshot!(typ.to_token_stream(), @r###"
+    snapshot!(typ.to_stream(), @r###"
     pm2::Stream(`Self :: A ::`)
     "###);
     assert!(typ.path.segs.pop().is_some());
-    snapshot!(typ.to_token_stream(), @r###"
+    snapshot!(typ.to_stream(), @r###"
     pm2::Stream(`Self ::`)
     "###);
     assert!(typ.path.segs.pop().is_some());
-    snapshot!(typ.to_token_stream(), @r###"
+    snapshot!(typ.to_stream(), @r###"
     pm2::Stream(``)
     "###);
     assert!(typ.path.segs.pop().is_none());

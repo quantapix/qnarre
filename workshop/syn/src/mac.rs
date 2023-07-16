@@ -30,7 +30,7 @@ impl Parse for Mac {
         })
     }
 }
-impl ToTokens for Mac {
+impl ToStream for Mac {
     fn to_tokens(&self, ys: &mut Stream) {
         self.path.to_tokens(ys);
         self.bang.to_tokens(ys);
@@ -122,7 +122,7 @@ macro_rules! generate_to_tokens {
         );
     };
     (($($arms:tt)*) $ys:ident $n:ident {}) => {
-        impl crate::quote::ToTokens for $n {
+        impl crate::quote::ToStream for $n {
             fn to_tokens(&self, $ys: &mut crate::pm2::Stream) {
                 match self {
                     $($arms)*
@@ -192,7 +192,7 @@ macro_rules! impl_parse_for_custom_kw {
 #[macro_export]
 macro_rules! impl_to_tokens_for_custom_kw {
     ($n:ident) => {
-        impl<'a> $crate::quote::ToTokens for $n<'a> {
+        impl<'a> $crate::quote::ToStream for $n<'a> {
             fn to_tokens(&self, ys: &mut $crate::pm2::TokenStream) {
                 let y = $crate::Ident::new(std::stringify!($n), self.span);
                 $crate::quote::TokenStreamExt::append(ys, y);
@@ -283,7 +283,7 @@ macro_rules! impl_parse_for_custom_punct {
 #[macro_export]
 macro_rules! impl_to_tokens_for_custom_punct {
     ($n:ident, $($tt:tt)+) => {
-        impl $crate::quote::ToTokens for $n {
+        impl $crate::quote::ToStream for $n {
             fn to_tokens(&self, ys: &mut $crate::pm2::TokenStream) {
                 $crate::tok::punct_to_tokens($crate::stringify_punct!($($tt)+), &self.spans, ys)
             }

@@ -86,7 +86,7 @@ pub mod bound {
             })
         }
     }
-    impl ToTokens for Trait {
+    impl ToStream for Trait {
         fn to_tokens(&self, ys: &mut Stream) {
             let f = |ys: &mut Stream| {
                 self.modif.to_tokens(ys);
@@ -113,7 +113,7 @@ pub mod bound {
             }
         }
     }
-    impl ToTokens for Modifier {
+    impl ToStream for Modifier {
         fn to_tokens(&self, ys: &mut Stream) {
             use Modifier::*;
             match self {
@@ -175,7 +175,7 @@ pub mod bound {
             }
         }
     }
-    impl ToTokens for Lifes {
+    impl ToStream for Lifes {
         fn to_tokens(&self, ys: &mut Stream) {
             self.for_.to_tokens(ys);
             self.lt.to_tokens(ys);
@@ -261,7 +261,7 @@ pub mod param {
             })
         }
     }
-    impl ToTokens for Life {
+    impl ToStream for Life {
         fn to_tokens(&self, ys: &mut Stream) {
             ys.append_all(self.attrs.outers());
             self.life.to_tokens(ys);
@@ -359,7 +359,7 @@ pub mod param {
             })
         }
     }
-    impl ToTokens for Type {
+    impl ToStream for Type {
         fn to_tokens(&self, ys: &mut Stream) {
             ys.append_all(self.attrs.outers());
             self.ident.to_tokens(ys);
@@ -435,7 +435,7 @@ pub mod param {
             })
         }
     }
-    impl ToTokens for Const {
+    impl ToStream for Const {
         fn to_tokens(&self, ys: &mut Stream) {
             ys.append_all(self.attrs.outers());
             self.const_.to_tokens(ys);
@@ -524,7 +524,7 @@ impl Parse for Option<Where> {
         }
     }
 }
-impl ToTokens for Where {
+impl ToStream for Where {
     fn to_tokens(&self, ys: &mut Stream) {
         if !self.preds.is_empty() {
             self.where_.to_tokens(ys);
@@ -607,7 +607,7 @@ pub mod Where {
         pub colon: Token![:],
         pub bounds: Puncted<Life, Token![+]>,
     }
-    impl ToTokens for Life {
+    impl ToStream for Life {
         fn to_tokens(&self, ys: &mut Stream) {
             self.life.to_tokens(ys);
             self.colon.to_tokens(ys);
@@ -621,7 +621,7 @@ pub mod Where {
         pub colon: Token![:],
         pub bounds: Puncted<bound::Type, Token![+]>,
     }
-    impl ToTokens for Type {
+    impl ToStream for Type {
         fn to_tokens(&self, ys: &mut Stream) {
             self.lifes.to_tokens(ys);
             self.bounded.to_tokens(ys);
@@ -722,7 +722,7 @@ impl Parse for Gens {
         })
     }
 }
-impl ToTokens for Gens {
+impl ToStream for Gens {
     fn to_tokens(&self, ys: &mut Stream) {
         if self.ps.is_empty() {
             return;
@@ -778,7 +778,7 @@ macro_rules! gens_impls {
     };
 }
 gens_impls!(Impl);
-impl<'a> ToTokens for Impl<'a> {
+impl<'a> ToStream for Impl<'a> {
     fn to_tokens(&self, ys: &mut Stream) {
         if self.0.ps.is_empty() {
             return;
@@ -825,7 +825,7 @@ impl<'a> ToTokens for Impl<'a> {
 
 pub struct Type<'a>(pub &'a Gens);
 gens_impls!(Type);
-impl<'a> ToTokens for Type<'a> {
+impl<'a> ToStream for Type<'a> {
     fn to_tokens(&self, ys: &mut Stream) {
         if self.0.ps.is_empty() {
             return;
@@ -869,7 +869,7 @@ impl<'a> Type<'a> {
 
 pub struct Turbofish<'a>(pub &'a Gens);
 gens_impls!(Turbofish);
-impl<'a> ToTokens for Turbofish<'a> {
+impl<'a> ToStream for Turbofish<'a> {
     fn to_tokens(&self, ys: &mut Stream) {
         if !self.0.ps.is_empty() {
             <Token![::]>::default().to_tokens(ys);

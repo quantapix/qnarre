@@ -41,7 +41,7 @@ impl Parse for Block {
         })
     }
 }
-impl ToTokens for Block {
+impl ToStream for Block {
     fn to_tokens(&self, ys: &mut Stream) {
         self.brace.surround(ys, |ys| {
             ys.append_all(&self.stmts);
@@ -61,7 +61,7 @@ impl Parse for Stmt {
         parse_stmt(x, nosemi)
     }
 }
-impl ToTokens for Stmt {
+impl ToStream for Stmt {
     fn to_tokens(&self, ys: &mut Stream) {
         match self {
             Stmt::Local(x) => x.to_tokens(ys),
@@ -85,7 +85,7 @@ pub struct Local {
     pub init: Option<Init>,
     pub semi: Token![;],
 }
-impl ToTokens for Local {
+impl ToStream for Local {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.let_.to_tokens(ys);
@@ -113,7 +113,7 @@ pub struct Mac {
     pub mac: mac::Mac,
     pub semi: Option<Token![;]>,
 }
-impl ToTokens for Mac {
+impl ToStream for Mac {
     fn to_tokens(&self, ys: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, ys);
         self.mac.to_tokens(ys);

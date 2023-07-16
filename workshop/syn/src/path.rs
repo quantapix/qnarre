@@ -424,19 +424,19 @@ impl<'a> Display for DisplayPath<'a> {
     }
 }
 
-impl ToTokens for Path {
+impl ToStream for Path {
     fn to_tokens(&self, ys: &mut Stream) {
         self.colon.to_tokens(ys);
         self.segs.to_tokens(ys);
     }
 }
-impl ToTokens for Segment {
+impl ToStream for Segment {
     fn to_tokens(&self, ys: &mut Stream) {
         self.ident.to_tokens(ys);
         self.args.to_tokens(ys);
     }
 }
-impl ToTokens for Args {
+impl ToStream for Args {
     fn to_tokens(&self, ys: &mut Stream) {
         match self {
             Args::None => {},
@@ -449,7 +449,7 @@ impl ToTokens for Args {
         }
     }
 }
-impl ToTokens for Arg {
+impl ToStream for Arg {
     #[allow(clippy::match_same_arms)]
     fn to_tokens(&self, ys: &mut Stream) {
         use Arg::*;
@@ -469,7 +469,7 @@ impl ToTokens for Arg {
         }
     }
 }
-impl ToTokens for AngledArgs {
+impl ToStream for AngledArgs {
     fn to_tokens(&self, ys: &mut Stream) {
         self.colon2.to_tokens(ys);
         self.lt.to_tokens(ys);
@@ -498,7 +498,7 @@ impl ToTokens for AngledArgs {
         self.gt.to_tokens(ys);
     }
 }
-impl ToTokens for AssocType {
+impl ToStream for AssocType {
     fn to_tokens(&self, ys: &mut Stream) {
         self.ident.to_tokens(ys);
         self.args.to_tokens(ys);
@@ -506,7 +506,7 @@ impl ToTokens for AssocType {
         self.typ.to_tokens(ys);
     }
 }
-impl ToTokens for AssocConst {
+impl ToStream for AssocConst {
     fn to_tokens(&self, ys: &mut Stream) {
         self.ident.to_tokens(ys);
         self.args.to_tokens(ys);
@@ -514,7 +514,7 @@ impl ToTokens for AssocConst {
         self.val.to_tokens(ys);
     }
 }
-impl ToTokens for Constraint {
+impl ToStream for Constraint {
     fn to_tokens(&self, ys: &mut Stream) {
         self.ident.to_tokens(ys);
         self.args.to_tokens(ys);
@@ -522,7 +522,7 @@ impl ToTokens for Constraint {
         self.bounds.to_tokens(ys);
     }
 }
-impl ToTokens for ParenthesizedArgs {
+impl ToStream for ParenthesizedArgs {
     fn to_tokens(&self, ys: &mut Stream) {
         self.paren.surround(ys, |ys| {
             self.args.to_tokens(ys);

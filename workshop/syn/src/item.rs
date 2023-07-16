@@ -22,7 +22,7 @@ impl Parse for File {
         })
     }
 }
-impl ToTokens for File {
+impl ToStream for File {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(self.attrs.inners());
         ys.append_all(&self.items);
@@ -146,7 +146,7 @@ impl Parse for Const {
         })
     }
 }
-impl ToTokens for Const {
+impl ToStream for Const {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(self.attrs.outers());
         self.vis.to_tokens(ys);
@@ -203,7 +203,7 @@ impl Parse for Enum {
         })
     }
 }
-impl ToTokens for Enum {
+impl ToStream for Enum {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(self.attrs.outers());
         self.vis.to_tokens(ys);
@@ -257,7 +257,7 @@ impl Parse for Extern {
         })
     }
 }
-impl ToTokens for Extern {
+impl ToStream for Extern {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(self.attrs.outers());
         self.vis.to_tokens(ys);
@@ -286,7 +286,7 @@ impl Parse for Fn {
         parse_rest_of_fn(s, attrs, vis, sig)
     }
 }
-impl ToTokens for Fn {
+impl ToStream for Fn {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(self.attrs.outers());
         self.vis.to_tokens(ys);
@@ -326,7 +326,7 @@ impl Parse for Foreign {
         })
     }
 }
-impl ToTokens for Foreign {
+impl ToStream for Foreign {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(self.attrs.outers());
         self.unsafe_.to_tokens(ys);
@@ -355,7 +355,7 @@ impl Parse for Impl {
         parse_impl(s, verbatim).map(Option::unwrap)
     }
 }
-impl ToTokens for Impl {
+impl ToStream for Impl {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(self.attrs.outers());
         self.default_.to_tokens(ys);
@@ -407,7 +407,7 @@ impl Parse for Mac {
         })
     }
 }
-impl ToTokens for Mac {
+impl ToStream for Mac {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(self.attrs.outers());
         self.mac.path.to_tokens(ys);
@@ -481,7 +481,7 @@ impl Parse for Mod {
         }
     }
 }
-impl ToTokens for Mod {
+impl ToStream for Mod {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(self.attrs.outers());
         self.vis.to_tokens(ys);
@@ -527,7 +527,7 @@ impl Parse for Static {
         })
     }
 }
-impl ToTokens for Static {
+impl ToStream for Static {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(self.attrs.outers());
         self.vis.to_tokens(ys);
@@ -585,7 +585,7 @@ impl Parse for Struct {
         })
     }
 }
-impl ToTokens for Struct {
+impl ToStream for Struct {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(self.attrs.outers());
         self.vis.to_tokens(ys);
@@ -636,7 +636,7 @@ impl Parse for Trait {
         parse_rest_of_trait(s, attrs, vis, unsafe_, auto_, trait_, ident, gens)
     }
 }
-impl ToTokens for Trait {
+impl ToStream for Trait {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(self.attrs.outers());
         self.vis.to_tokens(ys);
@@ -673,7 +673,7 @@ impl Parse for TraitAlias {
         parse_rest_of_trait_alias(s, attrs, vis, trait_, ident, gens)
     }
 }
-impl ToTokens for TraitAlias {
+impl ToStream for TraitAlias {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(self.attrs.outers());
         self.vis.to_tokens(ys);
@@ -715,7 +715,7 @@ impl Parse for Type {
         })
     }
 }
-impl ToTokens for Type {
+impl ToStream for Type {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(self.attrs.outers());
         self.vis.to_tokens(ys);
@@ -769,7 +769,7 @@ impl Parse for Union {
         })
     }
 }
-impl ToTokens for Union {
+impl ToStream for Union {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(self.attrs.outers());
         self.vis.to_tokens(ys);
@@ -795,7 +795,7 @@ impl Parse for Use {
         parse_item_use(s, root).map(Option::unwrap)
     }
 }
-impl ToTokens for Use {
+impl ToStream for Use {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(self.attrs.outers());
         self.vis.to_tokens(ys);
@@ -878,7 +878,7 @@ impl Parse for Receiver {
         })
     }
 }
-impl ToTokens for Receiver {
+impl ToStream for Receiver {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(self.attrs.outers());
         if let Some((amper, life)) = &self.ref_ {
@@ -984,7 +984,7 @@ impl Parse for Sig {
         })
     }
 }
-impl ToTokens for Sig {
+impl ToStream for Sig {
     fn to_tokens(&self, ys: &mut Stream) {
         self.const_.to_tokens(ys);
         self.async_.to_tokens(ys);
@@ -1013,7 +1013,7 @@ pub struct Variadic {
     pub dots: Token![...],
     pub comma: Option<Token![,]>,
 }
-impl ToTokens for Variadic {
+impl ToStream for Variadic {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(self.attrs.outers());
         if let Some((pat, colon)) = &self.pat {
@@ -1035,7 +1035,7 @@ impl Parse for StaticMut {
         Ok(mut_.map_or(StaticMut::None, StaticMut::Mut))
     }
 }
-impl ToTokens for StaticMut {
+impl ToStream for StaticMut {
     fn to_tokens(&self, ys: &mut Stream) {
         match self {
             StaticMut::None => {},
@@ -1144,7 +1144,7 @@ pub mod foreign {
             Ok(Fn { attrs, vis, sig, semi })
         }
     }
-    impl ToTokens for Fn {
+    impl ToStream for Fn {
         fn to_tokens(&self, ys: &mut Stream) {
             ys.append_all(self.attrs.outers());
             self.vis.to_tokens(ys);
@@ -1177,7 +1177,7 @@ pub mod foreign {
             })
         }
     }
-    impl ToTokens for Static {
+    impl ToStream for Static {
         fn to_tokens(&self, ys: &mut Stream) {
             ys.append_all(self.attrs.outers());
             self.vis.to_tokens(ys);
@@ -1214,7 +1214,7 @@ pub mod foreign {
             })
         }
     }
-    impl ToTokens for Type {
+    impl ToStream for Type {
         fn to_tokens(&self, ys: &mut Stream) {
             ys.append_all(self.attrs.outers());
             self.vis.to_tokens(ys);
@@ -1239,7 +1239,7 @@ pub mod foreign {
             Ok(Mac { attrs, mac, semi })
         }
     }
-    impl ToTokens for Mac {
+    impl ToStream for Mac {
         fn to_tokens(&self, ys: &mut Stream) {
             ys.append_all(self.attrs.outers());
             self.mac.to_tokens(ys);
@@ -1372,7 +1372,7 @@ pub mod impl_ {
             })
         }
     }
-    impl ToTokens for Const {
+    impl ToStream for Const {
         fn to_tokens(&self, ys: &mut Stream) {
             ys.append_all(self.attrs.outers());
             self.vis.to_tokens(ys);
@@ -1400,7 +1400,7 @@ pub mod impl_ {
             parse_impl_item_fn(s, omitted).map(Option::unwrap)
         }
     }
-    impl ToTokens for Fn {
+    impl ToStream for Fn {
         fn to_tokens(&self, ys: &mut Stream) {
             ys.append_all(self.attrs.outers());
             self.vis.to_tokens(ys);
@@ -1449,7 +1449,7 @@ pub mod impl_ {
             })
         }
     }
-    impl ToTokens for Type {
+    impl ToStream for Type {
         fn to_tokens(&self, ys: &mut Stream) {
             ys.append_all(self.attrs.outers());
             self.vis.to_tokens(ys);
@@ -1477,7 +1477,7 @@ pub mod impl_ {
             Ok(Mac { attrs, mac, semi })
         }
     }
-    impl ToTokens for Mac {
+    impl ToStream for Mac {
         fn to_tokens(&self, ys: &mut Stream) {
             ys.append_all(self.attrs.outers());
             self.mac.to_tokens(ys);
@@ -1592,7 +1592,7 @@ pub mod trait_ {
             })
         }
     }
-    impl ToTokens for Const {
+    impl ToStream for Const {
         fn to_tokens(&self, ys: &mut Stream) {
             ys.append_all(self.attrs.outers());
             self.const_.to_tokens(ys);
@@ -1638,7 +1638,7 @@ pub mod trait_ {
             })
         }
     }
-    impl ToTokens for Fn {
+    impl ToStream for Fn {
         fn to_tokens(&self, ys: &mut Stream) {
             ys.append_all(self.attrs.outers());
             self.sig.to_tokens(ys);
@@ -1688,7 +1688,7 @@ pub mod trait_ {
             })
         }
     }
-    impl ToTokens for Type {
+    impl ToStream for Type {
         fn to_tokens(&self, ys: &mut Stream) {
             ys.append_all(self.attrs.outers());
             self.type_.to_tokens(ys);
@@ -1720,7 +1720,7 @@ pub mod trait_ {
             Ok(Mac { attrs, mac, semi })
         }
     }
-    impl ToTokens for Mac {
+    impl ToStream for Mac {
         fn to_tokens(&self, ys: &mut Stream) {
             ys.append_all(self.attrs.outers());
             self.mac.to_tokens(ys);
@@ -1815,7 +1815,7 @@ pub mod use_ {
         pub colon2: Token![::],
         pub tree: Box<Tree>,
     }
-    impl ToTokens for Path {
+    impl ToStream for Path {
         fn to_tokens(&self, ys: &mut Stream) {
             self.ident.to_tokens(ys);
             self.colon2.to_tokens(ys);
@@ -1826,7 +1826,7 @@ pub mod use_ {
     pub struct Name {
         pub ident: Ident,
     }
-    impl ToTokens for Name {
+    impl ToStream for Name {
         fn to_tokens(&self, ys: &mut Stream) {
             self.ident.to_tokens(ys);
         }
@@ -1837,7 +1837,7 @@ pub mod use_ {
         pub as_: Token![as],
         pub rename: Ident,
     }
-    impl ToTokens for Rename {
+    impl ToStream for Rename {
         fn to_tokens(&self, ys: &mut Stream) {
             self.ident.to_tokens(ys);
             self.as_.to_tokens(ys);
@@ -1848,7 +1848,7 @@ pub mod use_ {
     pub struct Glob {
         pub star: Token![*],
     }
-    impl ToTokens for Glob {
+    impl ToStream for Glob {
         fn to_tokens(&self, ys: &mut Stream) {
             self.star.to_tokens(ys);
         }
@@ -1858,7 +1858,7 @@ pub mod use_ {
         pub brace: tok::Brace,
         pub elems: Puncted<Tree, Token![,]>,
     }
-    impl ToTokens for Group {
+    impl ToStream for Group {
         fn to_tokens(&self, ys: &mut Stream) {
             self.brace.surround(ys, |ys| {
                 self.elems.to_tokens(ys);

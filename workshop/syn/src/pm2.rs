@@ -16,7 +16,7 @@ mod parse {
     use super::fallback::{
         is_ident_continue, is_ident_start, Group, LexError, Literal, Span, TokenStream, TokenStreamBuilder,
     };
-    use super::{Delimiter, Punct, Spacing, TokenTree};
+    use super::{Delimiter, Punct, Spacing, Tree};
     use std::char;
     use std::str::{Bytes, CharIndices, Chars};
     #[derive(Copy, Clone, Eq, PartialEq)]
@@ -198,7 +198,7 @@ mod parse {
                 let mut g = Group::new(open_delimiter, trees.build());
                 g.set_span(Span { lo, hi: input.off });
                 trees = outer;
-                trees.push_token_from_parser(TokenTree::Group(super::Group::_new_fallback(g)));
+                trees.push_token_from_parser(Tree::Group(super::Group::_new_fallback(g)));
             } else {
                 let (rest, mut tt) = match leaf_token(input) {
                     Ok((rest, tt)) => (rest, tt),
@@ -218,13 +218,13 @@ mod parse {
             },
         }
     }
-    fn leaf_token(input: Cursor) -> PResult<TokenTree> {
+    fn leaf_token(input: Cursor) -> PResult<Tree> {
         if let Ok((input, l)) = literal(input) {
-            Ok((input, TokenTree::Literal(super::Literal::_new_fallback(l))))
+            Ok((input, Tree::Literal(super::Literal::_new_fallback(l))))
         } else if let Ok((input, p)) = punct(input) {
-            Ok((input, TokenTree::Punct(p)))
+            Ok((input, Tree::Punct(p)))
         } else if let Ok((input, i)) = ident(input) {
-            Ok((input, TokenTree::Ident(i)))
+            Ok((input, Tree::Ident(i)))
         } else {
             Err(Reject)
         }
@@ -818,11 +818,11 @@ mod parse {
         }
         let mut pound = Punct::new('#', Spacing::Alone);
         pound.set_span(span);
-        trees.push_token_from_parser(TokenTree::Punct(pound));
+        trees.push_token_from_parser(Tree::Punct(pound));
         if inner {
             let mut bang = Punct::new('!', Spacing::Alone);
             bang.set_span(span);
-            trees.push_token_from_parser(TokenTree::Punct(bang));
+            trees.push_token_from_parser(Tree::Punct(bang));
         }
         let doc_ident = super::Ident::new("doc", span);
         let mut equal = Punct::new('=', Spacing::Alone);
@@ -830,13 +830,13 @@ mod parse {
         let mut literal = super::Literal::string(comment);
         literal.set_span(span);
         let mut bracketed = TokenStreamBuilder::with_capacity(3);
-        bracketed.push_token_from_parser(TokenTree::Ident(doc_ident));
-        bracketed.push_token_from_parser(TokenTree::Punct(equal));
-        bracketed.push_token_from_parser(TokenTree::Literal(literal));
+        bracketed.push_token_from_parser(Tree::Ident(doc_ident));
+        bracketed.push_token_from_parser(Tree::Punct(equal));
+        bracketed.push_token_from_parser(Tree::Literal(literal));
         let group = Group::new(Delimiter::Bracket, bracketed.build());
         let mut group = super::Group::_new_fallback(group);
         group.set_span(span);
-        trees.push_token_from_parser(TokenTree::Group(group));
+        trees.push_token_from_parser(Tree::Group(group));
         Ok((rest, ()))
     }
     fn doc_comment_contents(input: Cursor) -> PResult<(&str, bool)> {
@@ -1020,7 +1020,7 @@ pub mod fallback {
     use super::location::LineColumn;
     use super::parse::{self, Cursor};
     use super::rcvec::{RcVec, RcVecBuilder, RcVecIntoIter, RcVecMut};
-    use super::{Delimiter, Spacing, TokenTree};
+    use super::{Delimiter, Spacing, Tree};
     use std::cell::RefCell;
     use std::cmp;
     use std::fmt::{self, Debug, Display, Write};
@@ -1038,7 +1038,7 @@ pub mod fallback {
     }
     #[derive(Clone)]
     pub struct TokenStream {
-        inner: RcVec<TokenTree>,
+        inner: RcVec<Tree>,
     }
     #[derive(Debug)]
     pub struct LexError {
@@ -1063,14 +1063,14 @@ pub mod fallback {
         pub fn is_empty(&self) -> bool {
             self.inner.len() == 0
         }
-        fn take_inner(self) -> RcVecBuilder<TokenTree> {
+        fn take_inner(self) -> RcVecBuilder<Tree> {
             let nodrop = ManuallyDrop::new(self);
             unsafe { ptr::read(&nodrop.inner) }.make_owned()
         }
     }
-    fn push_token_from_proc_macro(mut vec: RcVecMut<TokenTree>, token: TokenTree) {
+    fn push_token_from_proc_macro(mut vec: RcVecMut<Tree>, token: Tree) {
         match token {
-            TokenTree::Literal(super::Literal {
+            Tree::Literal(super::Literal {
                 inner: super::imp::Literal::Fallback(literal),
                 ..
             }) if literal.repr.starts_with('-') => {
@@ -1079,12 +1079,12 @@ pub mod fallback {
             _ => vec.push(token),
         }
         #[cold]
-        fn push_negative_literal(mut vec: RcVecMut<TokenTree>, mut literal: Literal) {
+        fn push_negative_literal(mut vec: RcVecMut<Tree>, mut literal: Literal) {
             literal.repr.remove(0);
             let mut punct = super::Punct::new('-', Spacing::Alone);
             punct.set_span(super::Span::_new_fallback(literal.span));
-            vec.push(TokenTree::Punct(punct));
-            vec.push(TokenTree::Literal(super::Literal::_new_fallback(literal)));
+            vec.push(Tree::Punct(punct));
+            vec.push(Tree::Literal(super::Literal::_new_fallback(literal)));
         }
     }
     impl Drop for TokenStream {
@@ -1095,7 +1095,7 @@ pub mod fallback {
             };
             while let Some(token) = inner.pop() {
                 let group = match token {
-                    TokenTree::Group(group) => group.inner,
+                    Tree::Group(group) => group.inner,
                     _ => continue,
                 };
                 let group = match group {
@@ -1107,7 +1107,7 @@ pub mod fallback {
         }
     }
     pub struct TokenStreamBuilder {
-        inner: RcVecBuilder<TokenTree>,
+        inner: RcVecBuilder<Tree>,
     }
     impl TokenStreamBuilder {
         pub fn new() -> Self {
@@ -1120,7 +1120,7 @@ pub mod fallback {
                 inner: RcVecBuilder::with_capacity(cap),
             }
         }
-        pub fn push_token_from_parser(&mut self, tt: TokenTree) {
+        pub fn push_token_from_parser(&mut self, tt: Tree) {
             self.inner.push(tt);
         }
         pub fn build(self) -> TokenStream {
@@ -1164,13 +1164,13 @@ pub mod fallback {
                 }
                 joint = false;
                 match tt {
-                    TokenTree::Group(tt) => Display::fmt(tt, f),
-                    TokenTree::Ident(tt) => Display::fmt(tt, f),
-                    TokenTree::Punct(tt) => {
+                    Tree::Group(tt) => Display::fmt(tt, f),
+                    Tree::Ident(tt) => Display::fmt(tt, f),
+                    Tree::Punct(tt) => {
                         joint = tt.spacing() == Spacing::Joint;
                         Display::fmt(tt, f)
                     },
-                    TokenTree::Literal(tt) => Display::fmt(tt, f),
+                    Tree::Literal(tt) => Display::fmt(tt, f),
                 }?;
             }
             Ok(())
@@ -1192,15 +1192,15 @@ pub mod fallback {
             inner.to_string().parse().expect("failed to parse to compiler tokens")
         }
     }
-    impl From<TokenTree> for TokenStream {
-        fn from(tree: TokenTree) -> Self {
+    impl From<Tree> for TokenStream {
+        fn from(tree: Tree) -> Self {
             let mut stream = RcVecBuilder::new();
             push_token_from_proc_macro(stream.as_mut(), tree);
             TokenStream { inner: stream.build() }
         }
     }
-    impl FromIterator<TokenTree> for TokenStream {
-        fn from_iter<I: IntoIterator<Item = TokenTree>>(tokens: I) -> Self {
+    impl FromIterator<Tree> for TokenStream {
+        fn from_iter<I: IntoIterator<Item = Tree>>(tokens: I) -> Self {
             let mut stream = TokenStream::new();
             stream.extend(tokens);
             stream
@@ -1215,8 +1215,8 @@ pub mod fallback {
             TokenStream { inner: v.build() }
         }
     }
-    impl Extend<TokenTree> for TokenStream {
-        fn extend<I: IntoIterator<Item = TokenTree>>(&mut self, tokens: I) {
+    impl Extend<Tree> for TokenStream {
+        fn extend<I: IntoIterator<Item = Tree>>(&mut self, tokens: I) {
             let mut vec = self.inner.make_mut();
             tokens
                 .into_iter()
@@ -1228,11 +1228,11 @@ pub mod fallback {
             self.inner.make_mut().extend(streams.into_iter().flatten());
         }
     }
-    pub type TokenTreeIter = RcVecIntoIter<TokenTree>;
+    pub type TreeIter = RcVecIntoIter<Tree>;
     impl IntoIterator for TokenStream {
-        type Item = TokenTree;
-        type IntoIter = TokenTreeIter;
-        fn into_iter(self) -> TokenTreeIter {
+        type Item = Tree;
+        type IntoIter = TreeIter;
+        fn into_iter(self) -> TreeIter {
             self.take_inner().into_iter()
         }
     }
@@ -1848,7 +1848,7 @@ pub mod extra {
 mod imp {
     use super::detection::inside_proc_macro;
     use super::location::LineColumn;
-    use super::{fallback, Delimiter, Punct, Spacing, TokenTree};
+    use super::{fallback, Delimiter, Punct, Spacing, Tree};
     use std::fmt::{self, Debug, Display};
     use std::iter::FromIterator;
     use std::ops::RangeBounds;
@@ -1965,10 +1965,10 @@ mod imp {
             TokenStream::Fallback(inner)
         }
     }
-    fn into_compiler_token(token: TokenTree) -> proc_macro::TokenTree {
+    fn into_compiler_token(token: Tree) -> proc_macro::TokenTree {
         match token {
-            TokenTree::Group(tt) => tt.inner.unwrap_nightly().into(),
-            TokenTree::Punct(tt) => {
+            Tree::Group(tt) => tt.inner.unwrap_nightly().into(),
+            Tree::Punct(tt) => {
                 let spacing = match tt.spacing() {
                     Spacing::Joint => proc_macro::Spacing::Joint,
                     Spacing::Alone => proc_macro::Spacing::Alone,
@@ -1977,12 +1977,12 @@ mod imp {
                 punct.set_span(tt.span().inner.unwrap_nightly());
                 punct.into()
             },
-            TokenTree::Ident(tt) => tt.inner.unwrap_nightly().into(),
-            TokenTree::Literal(tt) => tt.inner.unwrap_nightly().into(),
+            Tree::Ident(tt) => tt.inner.unwrap_nightly().into(),
+            Tree::Literal(tt) => tt.inner.unwrap_nightly().into(),
         }
     }
-    impl From<TokenTree> for TokenStream {
-        fn from(token: TokenTree) -> Self {
+    impl From<Tree> for TokenStream {
+        fn from(token: Tree) -> Self {
             if inside_proc_macro() {
                 TokenStream::Compiler(DeferredTokenStream::new(into_compiler_token(token).into()))
             } else {
@@ -1990,8 +1990,8 @@ mod imp {
             }
         }
     }
-    impl FromIterator<TokenTree> for TokenStream {
-        fn from_iter<I: IntoIterator<Item = TokenTree>>(trees: I) -> Self {
+    impl FromIterator<Tree> for TokenStream {
+        fn from_iter<I: IntoIterator<Item = Tree>>(trees: I) -> Self {
             if inside_proc_macro() {
                 TokenStream::Compiler(DeferredTokenStream::new(
                     trees.into_iter().map(into_compiler_token).collect(),
@@ -2024,8 +2024,8 @@ mod imp {
             }
         }
     }
-    impl Extend<TokenTree> for TokenStream {
-        fn extend<I: IntoIterator<Item = TokenTree>>(&mut self, stream: I) {
+    impl Extend<Tree> for TokenStream {
+        fn extend<I: IntoIterator<Item = Tree>>(&mut self, stream: I) {
             match self {
                 TokenStream::Compiler(tts) => {
                     // Here is the reason for DeferredTokenStream.
@@ -2093,26 +2093,26 @@ mod imp {
         }
     }
     #[derive(Clone)]
-    pub enum TokenTreeIter {
+    pub enum TreeIter {
         Compiler(proc_macro::token_stream::IntoIter),
-        Fallback(fallback::TokenTreeIter),
+        Fallback(fallback::TreeIter),
     }
     impl IntoIterator for TokenStream {
-        type Item = TokenTree;
-        type IntoIter = TokenTreeIter;
-        fn into_iter(self) -> TokenTreeIter {
+        type Item = Tree;
+        type IntoIter = TreeIter;
+        fn into_iter(self) -> TreeIter {
             match self {
-                TokenStream::Compiler(tts) => TokenTreeIter::Compiler(tts.into_token_stream().into_iter()),
-                TokenStream::Fallback(tts) => TokenTreeIter::Fallback(tts.into_iter()),
+                TokenStream::Compiler(tts) => TreeIter::Compiler(tts.into_token_stream().into_iter()),
+                TokenStream::Fallback(tts) => TreeIter::Fallback(tts.into_iter()),
             }
         }
     }
-    impl Iterator for TokenTreeIter {
-        type Item = TokenTree;
-        fn next(&mut self) -> Option<TokenTree> {
+    impl Iterator for TreeIter {
+        type Item = Tree;
+        fn next(&mut self) -> Option<Tree> {
             let token = match self {
-                TokenTreeIter::Compiler(iter) => iter.next()?,
-                TokenTreeIter::Fallback(iter) => return iter.next(),
+                TreeIter::Compiler(iter) => iter.next()?,
+                TreeIter::Fallback(iter) => return iter.next(),
             };
             Some(match token {
                 proc_macro::TokenTree::Group(tt) => super::Group::_new(Group::Compiler(tt)).into(),
@@ -2131,8 +2131,8 @@ mod imp {
         }
         fn size_hint(&self) -> (usize, Option<usize>) {
             match self {
-                TokenTreeIter::Compiler(tts) => tts.size_hint(),
-                TokenTreeIter::Fallback(tts) => tts.size_hint(),
+                TreeIter::Compiler(tts) => tts.size_hint(),
+                TreeIter::Fallback(tts) => tts.size_hint(),
             }
         }
     }
@@ -2646,13 +2646,13 @@ impl From<TokenStream> for proc_macro::TokenStream {
         inner.inner.into()
     }
 }
-impl From<TokenTree> for TokenStream {
-    fn from(token: TokenTree) -> Self {
+impl From<Tree> for TokenStream {
+    fn from(token: Tree) -> Self {
         TokenStream::_new(imp::TokenStream::from(token))
     }
 }
-impl Extend<TokenTree> for TokenStream {
-    fn extend<I: IntoIterator<Item = TokenTree>>(&mut self, streams: I) {
+impl Extend<Tree> for TokenStream {
+    fn extend<I: IntoIterator<Item = Tree>>(&mut self, streams: I) {
         self.inner.extend(streams);
     }
 }
@@ -2661,8 +2661,8 @@ impl Extend<TokenStream> for TokenStream {
         self.inner.extend(streams.into_iter().map(|stream| stream.inner));
     }
 }
-impl FromIterator<TokenTree> for TokenStream {
-    fn from_iter<I: IntoIterator<Item = TokenTree>>(streams: I) -> Self {
+impl FromIterator<Tree> for TokenStream {
+    fn from_iter<I: IntoIterator<Item = Tree>>(streams: I) -> Self {
         TokenStream::_new(streams.into_iter().collect())
     }
 }
@@ -2749,72 +2749,72 @@ impl Debug for Span {
     }
 }
 #[derive(Clone)]
-pub enum TokenTree {
+pub enum Tree {
     Group(Group),
     Ident(Ident),
     Punct(Punct),
     Literal(Literal),
 }
-impl TokenTree {
+impl Tree {
     pub fn span(&self) -> Span {
         match self {
-            TokenTree::Group(t) => t.span(),
-            TokenTree::Ident(t) => t.span(),
-            TokenTree::Punct(t) => t.span(),
-            TokenTree::Literal(t) => t.span(),
+            Tree::Group(t) => t.span(),
+            Tree::Ident(t) => t.span(),
+            Tree::Punct(t) => t.span(),
+            Tree::Literal(t) => t.span(),
         }
     }
     pub fn set_span(&mut self, span: Span) {
         match self {
-            TokenTree::Group(t) => t.set_span(span),
-            TokenTree::Ident(t) => t.set_span(span),
-            TokenTree::Punct(t) => t.set_span(span),
-            TokenTree::Literal(t) => t.set_span(span),
+            Tree::Group(t) => t.set_span(span),
+            Tree::Ident(t) => t.set_span(span),
+            Tree::Punct(t) => t.set_span(span),
+            Tree::Literal(t) => t.set_span(span),
         }
     }
 }
-impl From<Group> for TokenTree {
+impl From<Group> for Tree {
     fn from(g: Group) -> Self {
-        TokenTree::Group(g)
+        Tree::Group(g)
     }
 }
-impl From<Ident> for TokenTree {
+impl From<Ident> for Tree {
     fn from(g: Ident) -> Self {
-        TokenTree::Ident(g)
+        Tree::Ident(g)
     }
 }
-impl From<Punct> for TokenTree {
+impl From<Punct> for Tree {
     fn from(g: Punct) -> Self {
-        TokenTree::Punct(g)
+        Tree::Punct(g)
     }
 }
-impl From<Literal> for TokenTree {
+impl From<Literal> for Tree {
     fn from(g: Literal) -> Self {
-        TokenTree::Literal(g)
+        Tree::Literal(g)
     }
 }
-impl Display for TokenTree {
+impl Display for Tree {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            TokenTree::Group(t) => Display::fmt(t, f),
-            TokenTree::Ident(t) => Display::fmt(t, f),
-            TokenTree::Punct(t) => Display::fmt(t, f),
-            TokenTree::Literal(t) => Display::fmt(t, f),
+            Tree::Group(t) => Display::fmt(t, f),
+            Tree::Ident(t) => Display::fmt(t, f),
+            Tree::Punct(t) => Display::fmt(t, f),
+            Tree::Literal(t) => Display::fmt(t, f),
         }
     }
 }
-impl Debug for TokenTree {
+impl Debug for Tree {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            TokenTree::Group(t) => Debug::fmt(t, f),
-            TokenTree::Ident(t) => {
+            Tree::Group(t) => Debug::fmt(t, f),
+            Tree::Ident(t) => {
                 let mut debug = f.debug_struct("Ident");
                 debug.field("sym", &format_args!("{}", t));
                 imp::debug_span_field_if_nontrivial(&mut debug, t.span().inner);
                 debug.finish()
             },
-            TokenTree::Punct(t) => Debug::fmt(t, f),
-            TokenTree::Literal(t) => Debug::fmt(t, f),
+            Tree::Punct(t) => Debug::fmt(t, f),
+            Tree::Literal(t) => Debug::fmt(t, f),
         }
     }
 }
@@ -3099,16 +3099,16 @@ impl Display for Literal {
 pub mod token_stream {
     use super::marker::Marker;
     pub use super::TokenStream;
-    use super::{imp, TokenTree};
+    use super::{imp, Tree};
     use std::fmt::{self, Debug};
     #[derive(Clone)]
     pub struct IntoIter {
-        inner: imp::TokenTreeIter,
+        inner: imp::TreeIter,
         _marker: Marker,
     }
     impl Iterator for IntoIter {
-        type Item = TokenTree;
-        fn next(&mut self) -> Option<TokenTree> {
+        type Item = Tree;
+        fn next(&mut self) -> Option<Tree> {
             self.inner.next()
         }
         fn size_hint(&self) -> (usize, Option<usize>) {
@@ -3122,7 +3122,7 @@ pub mod token_stream {
         }
     }
     impl IntoIterator for TokenStream {
-        type Item = TokenTree;
+        type Item = Tree;
         type IntoIter = IntoIter;
         fn into_iter(self) -> IntoIter {
             IntoIter {
@@ -3182,4 +3182,4 @@ impl IntoSpans<DelimSpan> for DelimSpan {
         self
     }
 }
-pub use self::{extra::DelimSpan, Delimiter as Delim, Literal as Lit, TokenStream as Stream, TokenTree as Tree};
+pub use self::{extra::DelimSpan, Delimiter as Delim, Literal as Lit, TokenStream as Stream};

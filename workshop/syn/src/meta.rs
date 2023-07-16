@@ -80,7 +80,7 @@ impl Parse for List {
         parse_list_after_path(y, x)
     }
 }
-impl ToTokens for List {
+impl ToStream for List {
     fn to_tokens(&self, ys: &mut Stream) {
         self.path.to_tokens(ys);
         self.delim.surround(ys, self.toks.clone());
@@ -98,7 +98,7 @@ impl Parse for NameValue {
         parse_name_value_after_path(y, x)
     }
 }
-impl ToTokens for NameValue {
+impl ToStream for NameValue {
     fn to_tokens(&self, ys: &mut Stream) {
         self.path.to_tokens(ys);
         self.eq.to_tokens(ys);

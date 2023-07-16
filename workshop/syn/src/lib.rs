@@ -11,7 +11,7 @@ use std::{
 
 #[macro_use]
 mod quote;
-use quote::{ToTokens, TokenStreamExt};
+use quote::{StreamExt, ToStream};
 
 #[macro_use]
 mod mac;
@@ -120,9 +120,9 @@ mod look {
 use look::{Look1, Peek};
 
 struct TokensOrDefault<'a, T: 'a>(pub &'a Option<T>);
-impl<'a, T> ToTokens for TokensOrDefault<'a, T>
+impl<'a, T> ToStream for TokensOrDefault<'a, T>
 where
-    T: ToTokens + Default,
+    T: ToStream + Default,
 {
     fn to_tokens(&self, ys: &mut Stream) {
         match self.0 {
@@ -135,7 +135,7 @@ where
 pub trait Spanned {
     fn span(&self) -> pm2::Span;
 }
-impl<T: ?Sized + quote::spanned::Spanned> Spanned for T {
+impl<T: ?Sized + quote::Spanned> Spanned for T {
     fn span(&self) -> pm2::Span {
         self.__span()
     }

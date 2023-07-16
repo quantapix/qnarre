@@ -51,7 +51,7 @@ impl Parse for Array {
         })
     }
 }
-impl ToTokens for Array {
+impl ToStream for Array {
     fn to_tokens(&self, ys: &mut Stream) {
         self.bracket.surround(ys, |ys| {
             self.elem.to_tokens(ys);
@@ -108,7 +108,7 @@ impl Parse for Fn {
         })
     }
 }
-impl ToTokens for Fn {
+impl ToStream for Fn {
     fn to_tokens(&self, ys: &mut Stream) {
         self.lifes.to_tokens(ys);
         self.unsafe_.to_tokens(ys);
@@ -141,7 +141,7 @@ impl Parse for Group {
         })
     }
 }
-impl ToTokens for Group {
+impl ToStream for Group {
     fn to_tokens(&self, ys: &mut Stream) {
         self.group.surround(ys, |ys| {
             self.elem.to_tokens(ys);
@@ -187,7 +187,7 @@ impl Parse for Impl {
         Self::parse(x, plus)
     }
 }
-impl ToTokens for Impl {
+impl ToStream for Impl {
     fn to_tokens(&self, ys: &mut Stream) {
         self.impl_.to_tokens(ys);
         self.bounds.to_tokens(ys);
@@ -202,7 +202,7 @@ impl Parse for Infer {
         Ok(Infer { underscore: x.parse()? })
     }
 }
-impl ToTokens for Infer {
+impl ToStream for Infer {
     fn to_tokens(&self, ys: &mut Stream) {
         self.underscore.to_tokens(ys);
     }
@@ -216,7 +216,7 @@ impl Parse for Mac {
         Ok(Mac { mac: x.parse()? })
     }
 }
-impl ToTokens for Mac {
+impl ToStream for Mac {
     fn to_tokens(&self, ys: &mut Stream) {
         self.mac.to_tokens(ys);
     }
@@ -230,7 +230,7 @@ impl Parse for Never {
         Ok(Never { bang: x.parse()? })
     }
 }
-impl ToTokens for Never {
+impl ToStream for Never {
     fn to_tokens(&self, ys: &mut Stream) {
         self.bang.to_tokens(ys);
     }
@@ -258,7 +258,7 @@ impl Parse for Paren {
         Self::parse(x, plus)
     }
 }
-impl ToTokens for Paren {
+impl ToStream for Paren {
     fn to_tokens(&self, ys: &mut Stream) {
         self.paren.surround(ys, |ys| {
             self.elem.to_tokens(ys);
@@ -277,7 +277,7 @@ impl Parse for Path {
         Ok(Path { qself, path })
     }
 }
-impl ToTokens for Path {
+impl ToStream for Path {
     fn to_tokens(&self, ys: &mut Stream) {
         path::path_to_tokens(ys, &self.qself, &self.path);
     }
@@ -308,7 +308,7 @@ impl Parse for Ptr {
         })
     }
 }
-impl ToTokens for Ptr {
+impl ToStream for Ptr {
     fn to_tokens(&self, ys: &mut Stream) {
         self.star.to_tokens(ys);
         match &self.mut_ {
@@ -337,7 +337,7 @@ impl Parse for Ref {
         })
     }
 }
-impl ToTokens for Ref {
+impl ToStream for Ref {
     fn to_tokens(&self, ys: &mut Stream) {
         self.and.to_tokens(ys);
         self.life.to_tokens(ys);
@@ -359,7 +359,7 @@ impl Parse for Slice {
         })
     }
 }
-impl ToTokens for Slice {
+impl ToStream for Slice {
     fn to_tokens(&self, ys: &mut Stream) {
         self.bracket.surround(ys, |ys| {
             self.elem.to_tokens(ys);
@@ -413,7 +413,7 @@ impl Parse for Trait {
         Self::parse(x, plus)
     }
 }
-impl ToTokens for Trait {
+impl ToStream for Trait {
     fn to_tokens(&self, ys: &mut Stream) {
         self.dyn_.to_tokens(ys);
         self.bounds.to_tokens(ys);
@@ -453,7 +453,7 @@ impl Parse for Tuple {
         })
     }
 }
-impl ToTokens for Tuple {
+impl ToStream for Tuple {
     fn to_tokens(&self, ys: &mut Stream) {
         self.paren.surround(ys, |ys| {
             self.elems.to_tokens(ys);
@@ -485,7 +485,7 @@ impl Parse for Option<Abi> {
         }
     }
 }
-impl ToTokens for Abi {
+impl ToStream for Abi {
     fn to_tokens(&self, ys: &mut Stream) {
         self.extern_.to_tokens(ys);
         self.name.to_tokens(ys);
@@ -503,7 +503,7 @@ impl Parse for FnArg {
         parse_fn_arg(x, self_)
     }
 }
-impl ToTokens for FnArg {
+impl ToStream for FnArg {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(self.attrs.outers());
         if let Some((name, colon)) = &self.name {
@@ -520,7 +520,7 @@ pub struct Variadic {
     pub dots: Token![...],
     pub comma: Option<Token![,]>,
 }
-impl ToTokens for Variadic {
+impl ToStream for Variadic {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(self.attrs.outers());
         if let Some((name, colon)) = &self.name {
@@ -558,7 +558,7 @@ impl Parse for Ret {
         Self::parse(x, plus)
     }
 }
-impl ToTokens for Ret {
+impl ToStream for Ret {
     fn to_tokens(&self, ys: &mut Stream) {
         match self {
             Ret::Type(arrow, ty) => {

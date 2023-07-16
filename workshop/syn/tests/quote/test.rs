@@ -16,7 +16,7 @@ use quote::{format_ident, quote, quote_spanned, TokenStreamExt};
 
 struct X;
 
-impl quote::ToTokens for X {
+impl quote::ToStream for X {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append(Ident::new("X", Span::call_site()));
     }
@@ -25,7 +25,7 @@ impl quote::ToTokens for X {
 #[test]
 fn test_quote_impl() {
     let tokens = quote! {
-        impl<'a, T: ToTokens> ToTokens for &'a T {
+        impl<'a, T: ToStream> ToStream for &'a T {
             fn to_tokens(&self, tokens: &mut TokenStream) {
                 (**self).to_tokens(tokens)
             }
@@ -33,7 +33,7 @@ fn test_quote_impl() {
     };
 
     let expected = concat!(
-        "impl < 'a , T : ToTokens > ToTokens for & 'a T { ",
+        "impl < 'a , T : ToStream > ToStream for & 'a T { ",
         "fn to_tokens (& self , tokens : & mut TokenStream) { ",
         "(* * self) . to_tokens (tokens) ",
         "} ",
@@ -47,7 +47,7 @@ fn test_quote_impl() {
 fn test_quote_spanned_impl() {
     let span = Span::call_site();
     let tokens = quote_spanned! {span=>
-        impl<'a, T: ToTokens> ToTokens for &'a T {
+        impl<'a, T: ToStream> ToStream for &'a T {
             fn to_tokens(&self, tokens: &mut TokenStream) {
                 (**self).to_tokens(tokens)
             }
@@ -55,7 +55,7 @@ fn test_quote_spanned_impl() {
     };
 
     let expected = concat!(
-        "impl < 'a , T : ToTokens > ToTokens for & 'a T { ",
+        "impl < 'a , T : ToStream > ToStream for & 'a T { ",
         "fn to_tokens (& self , tokens : & mut TokenStream) { ",
         "(* * self) . to_tokens (tokens) ",
         "} ",

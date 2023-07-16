@@ -22,8 +22,8 @@ impl Err {
             }
         }
     }
-    pub fn new_spanned<T: ToTokens, U: Display>(tokens: T, msg: U) -> Self {
-        return new_spanned(tokens.into_token_stream(), msg.to_string());
+    pub fn new_spanned<T: ToStream, U: Display>(tokens: T, msg: U) -> Self {
+        return new_spanned(tokens.into_stream(), msg.to_string());
         fn new_spanned(tokens: pm2::Stream, msg: String) -> Err {
             let mut iter = tokens.into_iter();
             let beg = iter.next().map_or_else(pm2::Span::call_site, |t| t.span());

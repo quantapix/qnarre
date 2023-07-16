@@ -58,7 +58,7 @@ impl Attr {
         Ok(y)
     }
 }
-impl ToTokens for Attr {
+impl ToStream for Attr {
     fn to_tokens(&self, ys: &mut Stream) {
         self.pound.to_tokens(ys);
         if let Style::Inner(x) = &self.style {

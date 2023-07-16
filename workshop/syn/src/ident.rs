@@ -117,7 +117,7 @@ impl Parse for Life {
         x.step(|c| c.life().ok_or_else(|| c.err("expected life")))
     }
 }
-impl ToTokens for Life {
+impl ToStream for Life {
     fn to_tokens(&self, ys: &mut Stream) {
         let mut apos = Punct::new('\'', pm2::Spacing::Joint);
         apos.set_span(self.apos);

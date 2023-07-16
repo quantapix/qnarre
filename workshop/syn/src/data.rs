@@ -53,7 +53,7 @@ impl Parse for DeriveInput {
         }
     }
 }
-impl ToTokens for DeriveInput {
+impl ToStream for DeriveInput {
     fn to_tokens(&self, ys: &mut Stream) {
         for x in self.attrs.outers() {
             x.to_tokens(ys);
@@ -163,7 +163,7 @@ impl Parse for Visibility {
         }
     }
 }
-impl ToTokens for Visibility {
+impl ToStream for Visibility {
     fn to_tokens(&self, ys: &mut Stream) {
         match self {
             Visibility::Public(x) => x.to_tokens(ys),
@@ -179,7 +179,7 @@ pub struct Restricted {
     pub in_: Option<Token![in]>,
     pub path: Box<Path>,
 }
-impl ToTokens for Restricted {
+impl ToStream for Restricted {
     fn to_tokens(&self, ys: &mut Stream) {
         self.pub_.to_tokens(ys);
         self.paren.surround(ys, |ys| {
@@ -243,7 +243,7 @@ impl Parse for Variant {
         })
     }
 }
-impl ToTokens for Variant {
+impl ToStream for Variant {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(&self.attrs);
         self.ident.to_tokens(ys);
@@ -336,7 +336,7 @@ impl Parse for Named {
         })
     }
 }
-impl ToTokens for Named {
+impl ToStream for Named {
     fn to_tokens(&self, ys: &mut Stream) {
         self.brace.surround(ys, |ys| {
             self.fields.to_tokens(ys);
@@ -357,7 +357,7 @@ impl Parse for Unnamed {
         })
     }
 }
-impl ToTokens for Unnamed {
+impl ToStream for Unnamed {
     fn to_tokens(&self, ys: &mut Stream) {
         self.paren.surround(ys, |ys| {
             self.fields.to_tokens(ys);
@@ -399,7 +399,7 @@ impl Field {
         })
     }
 }
-impl ToTokens for Field {
+impl ToStream for Field {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(&self.attrs);
         self.vis.to_tokens(ys);

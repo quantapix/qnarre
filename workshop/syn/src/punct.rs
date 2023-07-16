@@ -330,10 +330,10 @@ impl<T, P> IndexMut<usize> for Puncted<T, P> {
         }
     }
 }
-impl<T, P> ToTokens for Puncted<T, P>
+impl<T, P> ToStream for Puncted<T, P>
 where
-    T: ToTokens,
-    P: ToTokens,
+    T: ToStream,
+    P: ToStream,
 {
     fn to_tokens(&self, ys: &mut Stream) {
         ys.append_all(self.pairs());
@@ -726,10 +726,10 @@ where
     P: Copy,
 {
 }
-impl<T, P> ToTokens for Pair<T, P>
+impl<T, P> ToStream for Pair<T, P>
 where
-    T: ToTokens,
-    P: ToTokens,
+    T: ToStream,
+    P: ToStream,
 {
     fn to_tokens(&self, ys: &mut Stream) {
         match self {
