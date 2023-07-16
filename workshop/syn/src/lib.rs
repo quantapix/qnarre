@@ -5,6 +5,7 @@ use std::{
     fmt::{self, Debug, Display},
     hash::{Hash, Hasher},
     marker::PhantomData,
+    mem,
     ops::{self, Deref, DerefMut},
 };
 

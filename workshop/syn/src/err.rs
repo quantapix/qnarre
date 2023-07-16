@@ -11,9 +11,9 @@ pub struct Err {
     msgs: Vec<ErrMsg>,
 }
 impl Err {
-    pub fn new<T: Display>(span: pm2::Span, message: T) -> Self {
-        return new(span, message.to_string());
-        fn new(span: pm2::Span, message: String) -> Err {
+    pub fn new<T: Display>(span: pm2::Span, msg: T) -> Self {
+        return new(span, msg.to_string());
+        fn new(span: pm2::Span, msg: String) -> Err {
             Err {
                 msgs: vec![ErrMsg {
                     span: ThreadBound::new(SpanRange { beg: span, end: span }),
@@ -22,12 +22,12 @@ impl Err {
             }
         }
     }
-    pub fn new_spanned<T: ToTokens, U: Display>(tokens: T, message: U) -> Self {
-        return new_spanned(tokens.into_token_stream(), message.to_string());
-        fn new_spanned(tokens: pm2::Stream, message: String) -> Err {
+    pub fn new_spanned<T: ToTokens, U: Display>(tokens: T, msg: U) -> Self {
+        return new_spanned(tokens.into_token_stream(), msg.to_string());
+        fn new_spanned(tokens: pm2::Stream, msg: String) -> Err {
             let mut iter = tokens.into_iter();
-            let start = iter.next().map_or_else(pm2::Span::call_site, |t| t.span());
-            let end = iter.last().map_or(start, |t| t.span());
+            let beg = iter.next().map_or_else(pm2::Span::call_site, |t| t.span());
+            let end = iter.last().map_or(beg, |t| t.span());
             Err {
                 msgs: vec![ErrMsg {
                     span: ThreadBound::new(SpanRange { beg, end }),
@@ -135,42 +135,42 @@ struct ErrMsg {
 impl ErrMsg {
     fn to_compile_error(&self) -> pm2::Stream {
         let (start, end) = match self.span.get() {
-            Some(range) => (range.beg, range.end),
+            Some(x) => (x.beg, x.end),
             None => (pm2::Span::call_site(), pm2::Span::call_site()),
         };
         use pm2::{Spacing::*, Tree::*};
         pm2::Stream::from_iter(vec![
             pm2::Tree::Punct({
-                let y = Punct::new(':', Joint);
+                let mut y = pm2::Punct::new(':', Joint);
                 y.set_span(start);
                 y
             }),
             pm2::Tree::Punct({
-                let y = Punct::new(':', Alone);
+                let mut y = pm2::Punct::new(':', Alone);
                 y.set_span(start);
                 y
             }),
-            pm2::Tree::Ident(Ident::new("core", start)),
+            pm2::Tree::Ident(pm2::Ident::new("core", start)),
             pm2::Tree::Punct({
-                let y = Punct::new(':', Joint);
+                let mut y = pm2::Punct::new(':', Joint);
                 y.set_span(start);
                 y
             }),
             pm2::Tree::Punct({
-                let y = Punct::new(':', Alone);
+                let mut y = pm2::Punct::new(':', Alone);
                 y.set_span(start);
                 y
             }),
-            pm2::Tree::Ident(Ident::new("compile_error", start)),
+            pm2::Tree::Ident(pm2::Ident::new("compile_error", start)),
             pm2::Tree::Punct({
-                let y = Punct::new('!', Alone);
+                let mut y = pm2::Punct::new('!', Alone);
                 y.set_span(start);
                 y
             }),
             pm2::Tree::Group({
-                let y = Group::new(pm2::Delim::Brace, {
+                let mut y = pm2::Group::new(pm2::Delim::Brace, {
                     pm2::Stream::from_iter(vec![pm2::Tree::Literal({
-                        let y = pm2::Lit::string(&self.msg);
+                        let mut y = pm2::Lit::string(&self.msg);
                         y.set_span(end);
                         y
                     })])
@@ -246,7 +246,7 @@ pub fn new_at<T: Display>(scope: pm2::Span, cursor: Cursor, msg: T) -> Err {
     if cursor.eof() {
         Err::new(scope, format!("unexpected end of input, {}", msg))
     } else {
-        let span = super::open_span_of_group(cursor);
+        let span = cur::open_span_of_group(cursor);
         Err::new(span, msg)
     }
 }

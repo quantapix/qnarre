@@ -1,4 +1,5 @@
 use super::*;
+use std::iter;
 
 pub mod bound {
     use super::*;
@@ -6,7 +7,7 @@ pub mod bound {
         pub enum Type {
             Trait(Trait),
             Life(Life),
-            Stream(Stream),
+            Stream(pm2::Stream),
         }
     }
     impl Type {
@@ -73,8 +74,8 @@ pub mod bound {
                 && (s.peek(tok::Paren) || s.peek(Token![::]) && s.peek3(tok::Paren))
             {
                 s.parse::<Option<Token![::]>>()?;
-                let y: ParenthesizedArgs = s.parse()?;
-                let y = Args::Parenthesized(y);
+                let y: path::ParenthesizedArgs = s.parse()?;
+                let y = path::Args::Parenthesized(y);
                 path.segs.last_mut().unwrap().args = y;
             }
             Ok(Trait {
@@ -410,7 +411,7 @@ pub mod param {
         pub colon: Token![:],
         pub typ: typ::Type,
         pub eq: Option<Token![=]>,
-        pub default: Option<Expr>,
+        pub default: Option<expr::Expr>,
     }
     impl Parse for Const {
         fn parse(x: Stream) -> Res<Self> {

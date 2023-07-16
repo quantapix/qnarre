@@ -50,7 +50,7 @@ pub fn parse_group<'a>(x: &Buffer<'a>) -> Res<Group<'a>> {
 fn parse_delimited<'a>(b: &Buffer<'a>, d: Delim) -> Res<(DelimSpan, Buffer<'a>)> {
     b.step(|x| {
         if let Some((y, span, rest)) = x.group(d) {
-            let scope = close_span_of_group(*x);
+            let scope = cur::close_span_of_group(*x);
             let nested = advance_step_cursor(x, y);
             let unexpected = get_unexpected(b);
             let y = new_parse_buffer(scope, nested, unexpected);
@@ -147,7 +147,7 @@ impl<'a> Buffer<'a> {
         if y.eof() {
             self.scope
         } else {
-            super::open_span_of_group(y)
+            cur::open_span_of_group(y)
         }
     }
     pub fn cursor(&self) -> Cursor<'a> {
@@ -398,12 +398,13 @@ impl Hash for Nothing {
 }
 
 pub mod discouraged {
+    use super::*;
     pub trait Speculative {
         fn advance_to(&self, fork: &Self);
     }
     impl<'a> Speculative for Buffer<'a> {
         fn advance_to(&self, fork: &Self) {
-            if !crate::same_scope(self.cursor(), fork.cursor()) {
+            if !cur::same_scope(self.cursor(), fork.cursor()) {
                 panic!("Fork was not derived from the advancing parse stream");
             }
             let (self_unexp, self_sp) = inner_unexpected(self);
@@ -415,7 +416,7 @@ pub mod discouraged {
                     },
                     (None, None) => {
                         fork_unexp.set(Unexpected::Chain(self_unexp));
-                        fork.unexpected.set(Some(Rc::new(Cell::new(Unexpected::None))));
+                        fork.unexp.set(Some(Rc::new(Cell::new(Unexpected::None))));
                     },
                     (_, Some(_)) => {},
                 }
@@ -431,7 +432,7 @@ pub mod discouraged {
         fn parse_any_delim(&self) -> Res<(Delim, DelimSpan, Buffer)> {
             self.step(|c| {
                 if let Some((y, delim, span, rest)) = c.any_group() {
-                    let scope = crate::close_span_of_group(*c);
+                    let scope = cur::close_span_of_group(*c);
                     let nested = advance_step_cursor(c, y);
                     let unexp = get_unexpected(self);
                     let y = new_parse_buffer(scope, nested, unexp);
@@ -504,14 +505,14 @@ pub fn parse_scoped<F: Parser>(f: F, s: Span, xs: pm2::Stream) -> Res<F::Output>
     f.__parse_scoped(s, xs)
 }
 
-pub fn parse_verbatim<'a>(beg: Stream<'a>, end: Stream<'a>) -> Stream {
+pub fn parse_verbatim<'a>(beg: Stream<'a>, end: Stream<'a>) -> Stream<'a> {
     let end = end.cursor();
     let mut cur = beg.cursor();
-    assert!(same_buffer(end, cur));
+    assert!(cur::same_buff(end, cur));
     let mut ys = Stream::new();
     while cur != end {
         let (tt, next) = cur.token_tree().unwrap();
-        if cmp_assuming_same_buffer(end, next) == Ordering::Less {
+        if cur::cmp_assuming_same_buffer(end, next) == Ordering::Less {
             if let Some((inside, _span, after)) = cur.group(pm2::Delim::None) {
                 assert!(next == after);
                 cur = inside;
@@ -520,7 +521,7 @@ pub fn parse_verbatim<'a>(beg: Stream<'a>, end: Stream<'a>) -> Stream {
                 panic!("verbatim end must not be inside a delimited group");
             }
         }
-        ys.extend(iter::once(tt));
+        ys.extend(std::iter::once(tt));
         cur = next;
     }
     ys

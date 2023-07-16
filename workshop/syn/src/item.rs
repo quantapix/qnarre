@@ -40,13 +40,13 @@ ast_enum_of_structs! {
         Mac(Mac),
         Mod(Mod),
         Static(Static),
-        Stream(Stream),
         Struct(Struct),
         Trait(Trait),
         TraitAlias(TraitAlias),
         Type(Type),
         Union(Union),
         Use(Use),
+        Stream(pm2::Stream),
     }
 }
 impl Item {
@@ -347,7 +347,7 @@ pub struct Impl {
     pub trait_: Option<(Option<Token![!]>, Path, Token![for])>,
     pub typ: Box<typ::Type>,
     pub brace: tok::Brace,
-    pub items: Vec<Impl::Item>,
+    pub items: Vec<impl_::Item>,
 }
 impl Parse for Impl {
     fn parse(s: Stream) -> Res<Self> {
@@ -615,7 +615,7 @@ pub struct Trait {
     pub vis: data::Visibility,
     pub unsafe_: Option<Token![unsafe]>,
     pub auto_: Option<Token![auto]>,
-    pub restriction: Option<Impl::Restriction>,
+    pub restriction: Option<impl_::Restriction>,
     pub trait_: Token![trait],
     pub ident: Ident,
     pub gens: gen::Gens,
@@ -1051,8 +1051,8 @@ pub mod foreign {
             Fn(Fn),
             Mac(Mac),
             Static(Static),
-            Stream(Stream),
             Type(Type),
+            Stream(pm2::Stream),
         }
     }
     impl Parse for Item {
@@ -1254,8 +1254,8 @@ pub mod impl_ {
             Const(Const),
             Fn(Fn),
             Mac(Mac),
-            Stream(Stream),
             Type(Type),
+            Stream(pm2::Stream),
         }
     }
     impl Parse for Item {
@@ -1495,7 +1495,7 @@ pub mod trait_ {
             Fn(Fn),
             Type(Type),
             Mac(Mac),
-            Stream(Stream),
+            Stream(pm2::Stream),
         }
     }
     impl Parse for Item {
@@ -1633,7 +1633,7 @@ pub mod trait_ {
             Ok(Fn {
                 attrs,
                 sig,
-                default: brace.map(|brace| Block { brace, stmts }),
+                default: brace.map(|brace| stmt::Block { brace, stmts }),
                 semi,
             })
         }
@@ -1745,7 +1745,7 @@ pub mod use_ {
             parse_tree(s, root).map(Option::unwrap)
         }
     }
-    fn parse_tree(s: Stream, root: bool) -> Res<Option<Tree>> {
+    pub fn parse_tree(s: Stream, root: bool) -> Res<Option<Tree>> {
         let look = s.look1();
         if look.peek(Ident)
             || look.peek(Token![self])
@@ -1953,7 +1953,7 @@ impl Flexible {
     }
 }
 
-pub fn parse_rest_of_item(beg: Buffer, mut attrs: Vec<attr::Attr>, s: Stream) -> Res<Item> {
+pub fn parse_rest_of_item(beg: parse::Buffer, mut attrs: Vec<attr::Attr>, s: Stream) -> Res<Item> {
     let ahead = s.fork();
     let vis: data::Visibility = ahead.parse()?;
     let look = ahead.look1();
@@ -2107,7 +2107,7 @@ pub fn parse_rest_of_item(beg: Buffer, mut attrs: Vec<attr::Attr>, s: Stream) ->
     item.replace_attrs(attrs);
     Ok(item)
 }
-fn parse_macro2(beg: Buffer, _: data::Visibility, s: Stream) -> Res<Item> {
+fn parse_macro2(beg: parse::Buffer, _: data::Visibility, s: Stream) -> Res<Item> {
     s.parse::<Token![macro]>()?;
     s.parse::<Ident>()?;
     let mut look = s.look1();
@@ -2229,7 +2229,7 @@ fn parse_fn_args(s: Stream) -> Res<(Puncted<FnArg, Token![,]>, Option<Variadic>)
     }
     Ok((ys, vari))
 }
-fn parse_foreign_item_type(beg: Buffer, s: Stream) -> Res<Foreign::Item> {
+fn parse_foreign_item_type(beg: parse::Buffer, s: Stream) -> Res<Foreign::Item> {
     let Flexible {
         vis,
         default_: _,
@@ -2254,7 +2254,7 @@ fn parse_foreign_item_type(beg: Buffer, s: Stream) -> Res<Foreign::Item> {
         }))
     }
 }
-fn parse_item_type(beg: Buffer, s: Stream) -> Res<Item> {
+fn parse_item_type(beg: parse::Buffer, s: Stream) -> Res<Item> {
     let Flexible {
         vis,
         default_: _,
@@ -2382,7 +2382,7 @@ fn parse_rest_of_trait_alias(
         semi,
     })
 }
-fn parse_trait_item_type(beg: Buffer, s: Stream) -> Res<trait_::Item> {
+fn parse_trait_item_type(beg: parse::Buffer, s: Stream) -> Res<trait_::Item> {
     let Flexible {
         vis,
         default_: _,
@@ -2490,7 +2490,7 @@ fn parse_impl(s: Stream, verbatim: bool) -> Res<Option<Impl>> {
         }))
     }
 }
-fn parse_impl_item_fn(s: Stream, omitted: bool) -> Res<Option<Impl::Fn>> {
+fn parse_impl_item_fn(s: Stream, omitted: bool) -> Res<Option<impl_::Fn>> {
     let mut attrs = s.call(attr::Attr::parse_outers)?;
     let vis: data::Visibility = s.parse()?;
     let default_: Option<Token![default]> = s.parse()?;
@@ -2501,11 +2501,11 @@ fn parse_impl_item_fn(s: Stream, omitted: bool) -> Res<Option<Impl::Fn>> {
     let y;
     let brace = braced!(y in s);
     attrs.extend(y.call(attr::Attr::parse_inners)?);
-    let block = Block {
+    let block = stmt::Block {
         brace,
         stmts: y.call(stmt::Block::parse_within)?,
     };
-    Ok(Some(Impl::Fn {
+    Ok(Some(impl_::Fn {
         attrs,
         vis,
         default_,
@@ -2513,7 +2513,7 @@ fn parse_impl_item_fn(s: Stream, omitted: bool) -> Res<Option<Impl::Fn>> {
         block,
     }))
 }
-fn parse_impl_item_type(beg: Buffer, s: Stream) -> Res<Impl::Item> {
+fn parse_impl_item_type(beg: parse::Buffer, s: Stream) -> Res<impl_::Item> {
     let Flexible {
         vis,
         default_,
@@ -2527,9 +2527,9 @@ fn parse_impl_item_type(beg: Buffer, s: Stream) -> Res<Impl::Item> {
     } = Flexible::parse(s, TypeDefault::Optional, WhereLoc::AfterEq)?;
     let (eq, typ) = match typ {
         Some(x) if colon.is_none() => x,
-        _ => return Ok(Impl::Item::Stream(parse::parse_verbatim(&beg, s))),
+        _ => return Ok(impl_::Item::Stream(parse::parse_verbatim(&beg, s))),
     };
-    Ok(Impl::Item::Type(Impl::Type {
+    Ok(impl_::Item::Type(impl_::Type {
         attrs: Vec::new(),
         vis,
         default_,

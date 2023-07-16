@@ -33,7 +33,6 @@ ast_enum_of_structs! {
         Ref(Ref),
         Repeat(Repeat),
         Return(Return),
-        Stream(Stream),
         Struct(Struct),
         Try(Try),
         TryBlock(TryBlock),
@@ -42,6 +41,7 @@ ast_enum_of_structs! {
         Unsafe(Unsafe),
         While(While),
         Yield(Yield),
+        Stream(pm2::Stream),
     }
 }
 impl Expr {
@@ -110,18 +110,18 @@ impl Parse for Expr {
 macro_rules! impl_by_parsing_expr {
     (
         $(
-            $ty:ty, $v:ident, $m:expr,
+            $n:ty, $v:ident, $m:expr,
         )*
     ) => {
         $(
-            impl Parse for $ty {
+            impl Parse for $n {
                 fn parse(x: Stream) -> Res<Self> {
                     let mut y: Expr = x.parse()?;
                     loop {
                         match y {
                             Expr::$v(x) => return Ok(x),
-                            Expr::Group(x) => expr = *x.expr,
-                            _ => return Err(Error::new_spanned(expr, $m)),
+                            Expr::Group(x) => y = *x.expr,
+                            _ => return Err(Err::new_spanned(y, $m)),
                         }
                     }
                 }
@@ -333,7 +333,7 @@ impl ToTokens for Cast {
 
 pub struct Closure {
     pub attrs: Vec<attr::Attr>,
-    pub lifes: Option<Bgen::bound::Lifes>,
+    pub lifes: Option<gen::bound::Lifes>,
     pub const_: Option<Token![const]>,
     pub static_: Option<Token![static]>,
     pub async_: Option<Token![async]>,
@@ -524,12 +524,12 @@ impl ToTokens for If {
         attr::outers_to_tokens(&self.attrs, ys);
         self.if_.to_tokens(ys);
         wrap_bare_struct(ys, &self.cond);
-        self.then_branch.to_tokens(ys);
-        if let Some((else_, else_)) = &self.else_branch {
+        self.then_.to_tokens(ys);
+        if let Some((else_, x)) = &self.else_ {
             else_.to_tokens(ys);
-            match **else_ {
-                Expr::If(_) | Expr::Block(_) => else_.to_tokens(ys),
-                _ => tok::Brace::default().surround(ys, |ys| else_.to_tokens(ys)),
+            match **x {
+                Expr::If(_) | Expr::Block(_) => x.to_tokens(ys),
+                _ => tok::Brace::default().surround(ys, |ys| x.to_tokens(ys)),
             }
         }
     }
@@ -739,7 +739,7 @@ pub struct MethodCall {
     pub expr: Box<Expr>,
     pub dot: Token![.],
     pub method: Ident,
-    pub turbofish: Option<AngledArgs>,
+    pub turbofish: Option<path::AngledArgs>,
     pub paren: tok::Paren,
     pub args: Puncted<Expr, Token![,]>,
 }
@@ -1729,13 +1729,13 @@ fn expr_attrs(x: Stream) -> Res<Vec<attr::Attr>> {
             if !group.buf.peek(Token![#]) || group.buf.peek2(Token![!]) {
                 break;
             }
-            let y = group.buf.call(attr::single_outer)?;
+            let y = group.buf.call(attr::parse_one_outer)?;
             if !group.buf.is_empty() {
                 break;
             }
             ys.push(y);
         } else if x.peek(Token![#]) {
-            ys.push(x.call(attr::single_outer)?);
+            ys.push(x.call(attr::parse_one_outer)?);
         } else {
             break;
         }
@@ -1768,7 +1768,7 @@ fn unary_expr(x: Stream, allow: AllowStruct) -> Res<Expr> {
         trailer_expr(beg, attrs, x, allow)
     }
 }
-fn trailer_expr(beg: Buffer, mut attrs: Vec<attr::Attr>, x: Stream, allow: AllowStruct) -> Res<Expr> {
+fn trailer_expr(beg: parse::Buffer, mut attrs: Vec<attr::Attr>, x: Stream, allow: AllowStruct) -> Res<Expr> {
     let atom = atom_expr(x, allow)?;
     let mut y = trailer_helper(x, atom)?;
     if let Expr::Stream(tokens) = &mut y {
@@ -1816,7 +1816,7 @@ fn trailer_helper(x: Stream, mut y: Expr) -> Res<Expr> {
             }
             let memb: Member = x.parse()?;
             let turbofish = if memb.is_named() && x.peek(Token![::]) {
-                Some(AngledArgs::parse_turbofish(x)?)
+                Some(path::AngledArgs::parse_turbofish(x)?)
             } else {
                 None
             };
@@ -1864,7 +1864,7 @@ fn trailer_helper(x: Stream, mut y: Expr) -> Res<Expr> {
 fn atom_expr(x: Stream, allow: AllowStruct) -> Res<Expr> {
     if x.peek(tok::Group) && !x.peek2(Token![::]) && !x.peek2(Token![!]) && !x.peek2(tok::Brace) {
         x.call(expr_group).map(Expr::Group)
-    } else if x.peek(Lit) {
+    } else if x.peek(lit::Lit) {
         x.parse().map(Expr::Lit)
     } else if x.peek(Token![async]) && (x.peek2(tok::Brace) || x.peek2(Token![move]) && x.peek3(tok::Brace)) {
         x.parse().map(Expr::Async)
@@ -2138,7 +2138,7 @@ fn expr_unary(x: Stream, attrs: Vec<attr::Attr>, allow: AllowStruct) -> Res<Unar
     })
 }
 fn expr_closure(x: Stream, allow: AllowStruct) -> Res<Closure> {
-    let lifes: Option<Bgen::bound::Lifes> = x.parse()?;
+    let lifes: Option<gen::bound::Lifes> = x.parse()?;
     let const_: Option<Token![const]> = x.parse()?;
     let static_: Option<Token![static]> = x.parse()?;
     let async_: Option<Token![async]> = x.parse()?;
@@ -2249,7 +2249,7 @@ fn expr_ret(x: Stream, allow: AllowStruct) -> Res<Return> {
         },
     })
 }
-fn expr_struct_helper(x: Stream, qself: Option<QSelf>, path: Path) -> Res<Struct> {
+fn expr_struct_helper(x: Stream, qself: Option<path::QSelf>, path: Path) -> Res<Struct> {
     let y;
     let brace = braced!(y in x);
     let mut fields = Puncted::new();

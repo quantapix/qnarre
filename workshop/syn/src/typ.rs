@@ -14,9 +14,9 @@ ast_enum_of_structs! {
         Ptr(Ptr),
         Ref(Ref),
         Slice(Slice),
-        Stream(Stream),
         Trait(Trait),
         Tuple(Tuple),
+        Stream(pm2::Stream),
     }
 }
 impl Type {
@@ -38,7 +38,7 @@ pub struct Array {
     pub bracket: tok::Bracket,
     pub elem: Box<Type>,
     pub semi: Token![;],
-    pub len: Expr,
+    pub len: expr::Expr,
 }
 impl Parse for Array {
     fn parse(x: Stream) -> Res<Self> {
@@ -604,7 +604,7 @@ pub fn parse_ambig_typ(s: Stream, plus: bool, gen: bool) -> Res<Type> {
         }
         return Ok(Type::Group(y));
     }
-    let mut lifes = None::<Bgen::bound::Lifes>;
+    let mut lifes = None::<gen::bound::Lifes>;
     let mut look = s.look1();
     if look.peek(Token![for]) {
         lifes = s.parse()?;
@@ -733,13 +733,13 @@ pub fn parse_ambig_typ(s: Stream, plus: bool, gen: bool) -> Res<Type> {
         }
         if s.peek(Token![!]) && !s.peek(Token![!=]) && typ.path.is_mod_style() {
             let bang: Token![!] = s.parse()?;
-            let (delimiter, tokens) = mac::parse_delim(s)?;
+            let (delim, toks) = mac::parse_delim(s)?;
             return Ok(Type::Mac(Mac {
-                mac: Macro {
+                mac: mac::Mac {
                     path: typ.path,
                     bang,
-                    delimiter,
-                    tokens,
+                    delim,
+                    toks,
                 },
             }));
         }

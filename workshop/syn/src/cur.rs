@@ -252,10 +252,10 @@ impl Buffer {
     }
 }
 
-fn same_scope(a: Cursor, b: Cursor) -> bool {
+pub fn same_scope(a: Cursor, b: Cursor) -> bool {
     a.scope == b.scope
 }
-fn same_buff(a: Cursor, b: Cursor) -> bool {
+pub fn same_buff(a: Cursor, b: Cursor) -> bool {
     buff_start(a) == buff_start(b)
 }
 fn buff_start(c: Cursor) -> *const Entry {
@@ -266,16 +266,16 @@ fn buff_start(c: Cursor) -> *const Entry {
         }
     }
 }
-fn cmp_assuming_same_buffer(a: Cursor, b: Cursor) -> Ordering {
+pub fn cmp_assuming_same_buffer(a: Cursor, b: Cursor) -> Ordering {
     a.ptr.cmp(&b.ptr)
 }
-fn open_span_of_group(c: Cursor) -> Span {
+pub fn open_span_of_group(c: Cursor) -> Span {
     match c.entry() {
         Entry::Group(x, _) => x.span_open(),
         _ => c.span(),
     }
 }
-fn close_span_of_group(c: Cursor) -> Span {
+pub fn close_span_of_group(c: Cursor) -> Span {
     match c.entry() {
         Entry::Group(x, _) => x.span_close(),
         _ => c.span(),

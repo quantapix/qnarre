@@ -14,12 +14,12 @@ ast_enum_of_structs! {
         Ref(Ref),
         Rest(Rest),
         Slice(Slice),
-        Stream(Stream),
         Struct(Struct),
         Tuple(Tuple),
         TupleStruct(TupleStruct),
         Type(Type),
         Wild(Wild),
+        Stream(pm2::Stream),
     }
 }
 impl Pat {
