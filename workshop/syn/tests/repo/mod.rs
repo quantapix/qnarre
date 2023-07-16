@@ -176,9 +176,6 @@ pub fn for_each_rust_file(for_each: impl Fn(&Path) + Sync + Send) {
 pub fn base_dir_filter(entry: &DirEntry) -> bool {
     let path = entry.path();
     let mut path_string = path.to_string_lossy();
-    if cfg!(windows) {
-        path_string = path_string.replace('\\', "/").into();
-    }
     let path_string = if path_string == "tests/rust" {
         return true;
     } else if let Some(path) = path_string.strip_prefix("tests/rust/") {

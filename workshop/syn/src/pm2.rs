@@ -1,12 +1,12 @@
 extern crate proc_macro;
 mod marker {
-    use core::marker::PhantomData;
+    use std::marker::PhantomData;
     use std::panic::{RefUnwindSafe, UnwindSafe};
     use std::rc::Rc;
     pub type Marker = PhantomData<ProcMacroAutoTraits>;
     pub use self::value::*;
     mod value {
-        pub use core::marker::PhantomData as Marker;
+        pub use std::marker::PhantomData as Marker;
     }
     pub struct ProcMacroAutoTraits(Rc<()>);
     impl UnwindSafe for ProcMacroAutoTraits {}
@@ -17,8 +17,8 @@ mod parse {
         is_ident_continue, is_ident_start, Group, LexError, Literal, Span, TokenStream, TokenStreamBuilder,
     };
     use super::{Delimiter, Punct, Spacing, TokenTree};
-    use core::char;
-    use core::str::{Bytes, CharIndices, Chars};
+    use std::char;
+    use std::str::{Bytes, CharIndices, Chars};
     #[derive(Copy, Clone, Eq, PartialEq)]
     pub struct Cursor<'a> {
         pub rest: &'a str,
@@ -874,10 +874,10 @@ mod parse {
     }
 }
 mod rcvec {
-    use core::mem;
-    use core::slice;
+    use std::mem;
     use std::panic::RefUnwindSafe;
     use std::rc::Rc;
+    use std::slice;
     use std::vec;
     pub struct RcVec<T> {
         inner: Rc<Vec<T>>,
@@ -991,9 +991,8 @@ mod rcvec {
     }
     impl<T> RefUnwindSafe for RcVec<T> where T: RefUnwindSafe {}
 }
-#[cfg(wrap_proc_macro)]
 mod detection {
-    use core::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Once;
     static WORKS: AtomicUsize = AtomicUsize::new(0);
     static INIT: Once = Once::new();
@@ -1012,26 +1011,9 @@ mod detection {
     pub fn unforce_fallback() {
         initialize();
     }
-    #[cfg(not(no_is_available))]
     fn initialize() {
         let available = proc_macro::is_available();
         WORKS.store(available as usize + 1, Ordering::Relaxed);
-    }
-    #[cfg(no_is_available)]
-    fn initialize() {
-        use std::panic::{self, PanicInfo};
-        type PanicHook = dyn Fn(&PanicInfo) + Sync + Send + 'static;
-        let null_hook: Box<PanicHook> = Box::new(|_panic_info| { /* ignore */ });
-        let sanity_check = &*null_hook as *const PanicHook;
-        let original_hook = panic::take_hook();
-        panic::set_hook(null_hook);
-        let works = panic::catch_unwind(proc_macro::Span::call_site).is_ok();
-        WORKS.store(works as usize + 1, Ordering::Relaxed);
-        let hopefully_null_hook = panic::take_hook();
-        panic::set_hook(original_hook);
-        if sanity_check != &*hopefully_null_hook {
-            panic!("observed race condition in proc_macro2::inside_proc_macro");
-        }
     }
 }
 pub mod fallback {
@@ -1039,21 +1021,19 @@ pub mod fallback {
     use super::parse::{self, Cursor};
     use super::rcvec::{RcVec, RcVecBuilder, RcVecIntoIter, RcVecMut};
     use super::{Delimiter, Spacing, TokenTree};
-    use core::cell::RefCell;
-    use core::cmp;
-    use core::fmt::{self, Debug, Display, Write};
-    use core::iter::FromIterator;
-    use core::mem::ManuallyDrop;
-    use core::ops::RangeBounds;
-    use core::ptr;
-    use core::str::FromStr;
+    use std::cell::RefCell;
+    use std::cmp;
+    use std::fmt::{self, Debug, Display, Write};
+    use std::iter::FromIterator;
+    use std::mem::ManuallyDrop;
+    use std::ops::RangeBounds;
     use std::path::PathBuf;
+    use std::ptr;
+    use std::str::FromStr;
     pub fn force() {
-        #[cfg(wrap_proc_macro)]
         super::detection::force_fallback();
     }
     pub fn unforce() {
-        #[cfg(wrap_proc_macro)]
         super::detection::unforce_fallback();
     }
     #[derive(Clone)]
@@ -1090,29 +1070,11 @@ pub mod fallback {
     }
     fn push_token_from_proc_macro(mut vec: RcVecMut<TokenTree>, token: TokenTree) {
         match token {
-            #[cfg(not(no_bind_by_move_pattern_guard))]
             TokenTree::Literal(super::Literal {
-                #[cfg(wrap_proc_macro)]
-                    inner: super::imp::Literal::Fallback(literal),
-                #[cfg(not(wrap_proc_macro))]
-                    inner: literal,
+                inner: super::imp::Literal::Fallback(literal),
                 ..
             }) if literal.repr.starts_with('-') => {
                 push_negative_literal(vec, literal);
-            },
-            #[cfg(no_bind_by_move_pattern_guard)]
-            TokenTree::Literal(super::Literal {
-                #[cfg(wrap_proc_macro)]
-                    inner: super::imp::Literal::Fallback(literal),
-                #[cfg(not(wrap_proc_macro))]
-                    inner: literal,
-                ..
-            }) => {
-                if literal.repr.starts_with('-') {
-                    push_negative_literal(vec, literal);
-                } else {
-                    vec.push(TokenTree::Literal(super::Literal::_new_fallback(literal)));
-                }
             },
             _ => vec.push(token),
         }
@@ -1136,7 +1098,6 @@ pub mod fallback {
                     TokenTree::Group(group) => group.inner,
                     _ => continue,
                 };
-                #[cfg(wrap_proc_macro)]
                 let group = match group {
                     super::imp::Group::Fallback(group) => group,
                     super::imp::Group::Compiler(_) => continue,
@@ -1368,19 +1329,6 @@ pub mod fallback {
             });
             span
         }
-        #[cfg(procmacro2_semver_exempt)]
-        fn filepath(&self, span: Span) -> PathBuf {
-            for (i, file) in self.files.iter().enumerate() {
-                if file.span_within(span) {
-                    return PathBuf::from(if i == 0 {
-                        "<unspecified>".to_owned()
-                    } else {
-                        format!("<parsed string {}>", i)
-                    });
-                }
-            }
-            unreachable!("Invalid span with no related FileInfo!");
-        }
         fn fileinfo(&self, span: Span) -> &FileInfo {
             for file in &self.files {
                 if file.span_within(span) {
@@ -1399,12 +1347,7 @@ pub mod fallback {
         pub fn call_site() -> Self {
             Span { lo: 0, hi: 0 }
         }
-        #[cfg(not(no_hygiene))]
         pub fn mixed_site() -> Self {
-            Span::call_site()
-        }
-        #[cfg(procmacro2_semver_exempt)]
-        pub fn def_site() -> Self {
             Span::call_site()
         }
         pub fn resolved_at(&self, _other: Span) -> Span {
@@ -1412,14 +1355,6 @@ pub mod fallback {
         }
         pub fn located_at(&self, other: Span) -> Span {
             other
-        }
-        #[cfg(procmacro2_semver_exempt)]
-        pub fn source_file(&self) -> SourceFile {
-            SOURCE_MAP.with(|cm| {
-                let cm = cm.borrow();
-                let path = cm.filepath(*self);
-                SourceFile { path }
-            })
         }
         pub fn start(&self) -> LineColumn {
             SOURCE_MAP.with(|cm| {
@@ -1785,7 +1720,7 @@ pub mod fallback {
         }
         pub fn subspan<R: RangeBounds<usize>>(&self, range: R) -> Option<Span> {
             use super::convert::usize_to_u32;
-            use core::ops::Bound;
+            use std::ops::Bound;
             let lo = match range.start_bound() {
                 Bound::Included(start) => {
                     let start = usize_to_u32(*start)?;
@@ -1858,7 +1793,7 @@ pub mod extra {
     use super::imp;
     use super::marker::Marker;
     use super::Span;
-    use core::fmt::{self, Debug};
+    use std::fmt::{self, Debug};
     #[derive(Copy, Clone)]
     pub struct DelimSpan {
         inner: DelimSpanEnum,
@@ -1866,63 +1801,40 @@ pub mod extra {
     }
     #[derive(Copy, Clone)]
     enum DelimSpanEnum {
-        #[cfg(wrap_proc_macro)]
         Compiler {
             join: proc_macro::Span,
-            #[cfg(not(no_group_open_close))]
             open: proc_macro::Span,
-            #[cfg(not(no_group_open_close))]
             close: proc_macro::Span,
         },
         Fallback(fallback::Span),
     }
     impl DelimSpan {
         pub fn new(group: &imp::Group) -> Self {
-            #[cfg(wrap_proc_macro)]
             let inner = match group {
                 imp::Group::Compiler(group) => DelimSpanEnum::Compiler {
                     join: group.span(),
-                    #[cfg(not(no_group_open_close))]
                     open: group.span_open(),
-                    #[cfg(not(no_group_open_close))]
                     close: group.span_close(),
                 },
                 imp::Group::Fallback(group) => DelimSpanEnum::Fallback(group.span()),
             };
-            #[cfg(not(wrap_proc_macro))]
-            let inner = DelimSpanEnum::Fallback(group.span());
             DelimSpan { inner, _marker: Marker }
         }
         pub fn join(&self) -> Span {
             match &self.inner {
-                #[cfg(wrap_proc_macro)]
                 DelimSpanEnum::Compiler { join, .. } => Span::_new(imp::Span::Compiler(*join)),
                 DelimSpanEnum::Fallback(span) => Span::_new_fallback(*span),
             }
         }
         pub fn open(&self) -> Span {
             match &self.inner {
-                #[cfg(wrap_proc_macro)]
-                DelimSpanEnum::Compiler {
-                    #[cfg(not(no_group_open_close))]
-                    open,
-                    #[cfg(no_group_open_close)]
-                        join: open,
-                    ..
-                } => Span::_new(imp::Span::Compiler(*open)),
+                DelimSpanEnum::Compiler { open, .. } => Span::_new(imp::Span::Compiler(*open)),
                 DelimSpanEnum::Fallback(span) => Span::_new_fallback(span.first_byte()),
             }
         }
         pub fn close(&self) -> Span {
             match &self.inner {
-                #[cfg(wrap_proc_macro)]
-                DelimSpanEnum::Compiler {
-                    #[cfg(not(no_group_open_close))]
-                    close,
-                    #[cfg(no_group_open_close)]
-                        join: close,
-                    ..
-                } => Span::_new(imp::Span::Compiler(*close)),
+                DelimSpanEnum::Compiler { close, .. } => Span::_new(imp::Span::Compiler(*close)),
                 DelimSpanEnum::Fallback(span) => Span::_new_fallback(span.last_byte()),
             }
         }
@@ -1933,20 +1845,15 @@ pub mod extra {
         }
     }
 }
-#[cfg(not(wrap_proc_macro))]
-use super::fallback as imp;
-#[cfg(wrap_proc_macro)]
 mod imp {
     use super::detection::inside_proc_macro;
     use super::location::LineColumn;
     use super::{fallback, Delimiter, Punct, Spacing, TokenTree};
-    use core::fmt::{self, Debug, Display};
-    use core::iter::FromIterator;
-    use core::ops::RangeBounds;
-    use core::str::FromStr;
+    use std::fmt::{self, Debug, Display};
+    use std::iter::FromIterator;
+    use std::ops::RangeBounds;
     use std::panic;
-    #[cfg(super_unstable)]
-    use std::path::PathBuf;
+    use std::str::FromStr;
     #[derive(Clone)]
     pub enum TokenStream {
         Compiler(DeferredTokenStream),
@@ -2180,15 +2087,7 @@ mod imp {
     impl Display for LexError {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             match self {
-                #[cfg(not(no_lexerror_display))]
                 LexError::Compiler(e) => Display::fmt(e, f),
-                #[cfg(no_lexerror_display)]
-                LexError::Compiler(_e) => Display::fmt(
-                    &fallback::LexError {
-                        span: fallback::Span::call_site(),
-                    },
-                    f,
-                ),
                 LexError::Fallback(e) => Display::fmt(e, f),
             }
         }
@@ -2237,39 +2136,6 @@ mod imp {
             }
         }
     }
-    #[derive(Clone, PartialEq, Eq)]
-    #[cfg(super_unstable)]
-    pub enum SourceFile {
-        Compiler(proc_macro::SourceFile),
-        Fallback(fallback::SourceFile),
-    }
-    #[cfg(super_unstable)]
-    impl SourceFile {
-        fn nightly(sf: proc_macro::SourceFile) -> Self {
-            SourceFile::Compiler(sf)
-        }
-        pub fn path(&self) -> PathBuf {
-            match self {
-                SourceFile::Compiler(a) => a.path(),
-                SourceFile::Fallback(a) => a.path(),
-            }
-        }
-        pub fn is_real(&self) -> bool {
-            match self {
-                SourceFile::Compiler(a) => a.is_real(),
-                SourceFile::Fallback(a) => a.is_real(),
-            }
-        }
-    }
-    #[cfg(super_unstable)]
-    impl Debug for SourceFile {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            match self {
-                SourceFile::Compiler(a) => Debug::fmt(a, f),
-                SourceFile::Fallback(a) => Debug::fmt(a, f),
-            }
-        }
-    }
     #[derive(Copy, Clone)]
     pub enum Span {
         Compiler(proc_macro::Span),
@@ -2283,7 +2149,6 @@ mod imp {
                 Span::Fallback(fallback::Span::call_site())
             }
         }
-        #[cfg(not(no_hygiene))]
         pub fn mixed_site() -> Self {
             if inside_proc_macro() {
                 Span::Compiler(proc_macro::Span::mixed_site())
@@ -2291,32 +2156,16 @@ mod imp {
                 Span::Fallback(fallback::Span::mixed_site())
             }
         }
-        #[cfg(super_unstable)]
-        pub fn def_site() -> Self {
-            if inside_proc_macro() {
-                Span::Compiler(proc_macro::Span::def_site())
-            } else {
-                Span::Fallback(fallback::Span::def_site())
-            }
-        }
         pub fn resolved_at(&self, other: Span) -> Span {
             match (self, other) {
-                #[cfg(not(no_hygiene))]
                 (Span::Compiler(a), Span::Compiler(b)) => Span::Compiler(a.resolved_at(b)),
-                // Name resolution affects semantics, but location is only cosmetic
-                #[cfg(no_hygiene)]
-                (Span::Compiler(_), Span::Compiler(_)) => other,
                 (Span::Fallback(a), Span::Fallback(b)) => Span::Fallback(a.resolved_at(b)),
                 _ => mismatch(),
             }
         }
         pub fn located_at(&self, other: Span) -> Span {
             match (self, other) {
-                #[cfg(not(no_hygiene))]
                 (Span::Compiler(a), Span::Compiler(b)) => Span::Compiler(a.located_at(b)),
-                // Name resolution affects semantics, but location is only cosmetic
-                #[cfg(no_hygiene)]
-                (Span::Compiler(_), Span::Compiler(_)) => *self,
                 (Span::Fallback(a), Span::Fallback(b)) => Span::Fallback(a.located_at(b)),
                 _ => mismatch(),
             }
@@ -2325,13 +2174,6 @@ mod imp {
             match self {
                 Span::Compiler(s) => s,
                 Span::Fallback(_) => panic!("proc_macro::Span is only available in procedural macros"),
-            }
-        }
-        #[cfg(super_unstable)]
-        pub fn source_file(&self) -> SourceFile {
-            match self {
-                Span::Compiler(s) => SourceFile::nightly(s.source_file()),
-                Span::Fallback(s) => SourceFile::Fallback(s.source_file()),
             }
         }
         pub fn start(&self) -> LineColumn {
@@ -2348,27 +2190,15 @@ mod imp {
         }
         pub fn join(&self, other: Span) -> Option<Span> {
             let ret = match (self, other) {
-                #[cfg(proc_macro_span)]
                 (Span::Compiler(a), Span::Compiler(b)) => Span::Compiler(a.join(b)?),
                 (Span::Fallback(a), Span::Fallback(b)) => Span::Fallback(a.join(b)?),
                 _ => return None,
             };
             Some(ret)
         }
-        #[cfg(super_unstable)]
-        pub fn eq(&self, other: &Span) -> bool {
-            match (self, other) {
-                (Span::Compiler(a), Span::Compiler(b)) => a.eq(b),
-                (Span::Fallback(a), Span::Fallback(b)) => a.eq(b),
-                _ => false,
-            }
-        }
         pub fn source_text(&self) -> Option<String> {
             match self {
-                #[cfg(not(no_source_text))]
                 Span::Compiler(s) => s.source_text(),
-                #[cfg(no_source_text)]
-                Span::Compiler(_) => None,
                 Span::Fallback(s) => s.source_text(),
             }
         }
@@ -2450,19 +2280,13 @@ mod imp {
         }
         pub fn span_open(&self) -> Span {
             match self {
-                #[cfg(not(no_group_open_close))]
                 Group::Compiler(g) => Span::Compiler(g.span_open()),
-                #[cfg(no_group_open_close)]
-                Group::Compiler(g) => Span::Compiler(g.span()),
                 Group::Fallback(g) => Span::Fallback(g.span_open()),
             }
         }
         pub fn span_close(&self) -> Span {
             match self {
-                #[cfg(not(no_group_open_close))]
                 Group::Compiler(g) => Span::Compiler(g.span_close()),
-                #[cfg(no_group_open_close)]
-                Group::Compiler(g) => Span::Compiler(g.span()),
                 Group::Fallback(g) => Span::Fallback(g.span_close()),
             }
         }
@@ -2515,25 +2339,7 @@ mod imp {
         }
         pub fn new_raw(string: &str, span: Span) -> Self {
             match span {
-                #[cfg(not(no_ident_new_raw))]
                 Span::Compiler(s) => Ident::Compiler(proc_macro::Ident::new_raw(string, s)),
-                #[cfg(no_ident_new_raw)]
-                Span::Compiler(s) => {
-                    let _ = proc_macro::Ident::new(string, s);
-                    // At this point the un-r#-prefixed string is known to be a
-                    // valid identifier. Try to produce a valid raw identifier by
-                    // running the `TokenStream` parser, and unwrapping the first
-                    // token as an `Ident`.
-                    let raw_prefixed = format!("r#{}", string);
-                    if let Ok(ts) = raw_prefixed.parse::<proc_macro::TokenStream>() {
-                        let mut iter = ts.into_iter();
-                        if let (Some(proc_macro::TokenTree::Ident(mut id)), None) = (iter.next(), iter.next()) {
-                            id.set_span(s);
-                            return Ident::Compiler(id);
-                        }
-                    }
-                    panic!("not allowed as a raw identifier: `{}`", raw_prefixed)
-                },
                 Span::Fallback(s) => Ident::Fallback(fallback::Ident::new_raw(string, s)),
             }
         }
@@ -2709,10 +2515,7 @@ mod imp {
         }
         pub fn subspan<R: RangeBounds<usize>>(&self, range: R) -> Option<Span> {
             match self {
-                #[cfg(proc_macro_span)]
                 Literal::Compiler(lit) => lit.subspan(range).map(Span::Compiler),
-                #[cfg(not(proc_macro_span))]
-                Literal::Compiler(_lit) => None,
                 Literal::Fallback(lit) => lit.subspan(range).map(Span::Fallback),
             }
         }
@@ -2740,21 +2543,7 @@ mod imp {
         }
     }
     fn compiler_literal_from_str(repr: &str) -> Result<proc_macro::Literal, LexError> {
-        #[cfg(not(no_literal_from_str))]
-        {
-            proc_macro::Literal::from_str(repr).map_err(LexError::Compiler)
-        }
-        #[cfg(no_literal_from_str)]
-        {
-            let tokens = proc_macro_parse(repr)?;
-            let mut iter = tokens.into_iter();
-            if let (Some(proc_macro::TokenTree::Literal(literal)), None) = (iter.next(), iter.next()) {
-                if literal.to_string().len() == repr.len() {
-                    return Ok(literal);
-                }
-            }
-            Err(LexError::call_site())
-        }
+        proc_macro::Literal::from_str(repr).map_err(LexError::Compiler)
     }
     impl Display for Literal {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -2775,24 +2564,12 @@ mod imp {
 }
 mod convert {
     pub fn usize_to_u32(u: usize) -> Option<u32> {
-        #[cfg(not(no_try_from))]
-        {
-            use core::convert::TryFrom;
-            u32::try_from(u).ok()
-        }
-        #[cfg(no_try_from)]
-        {
-            use core::mem;
-            if mem::size_of::<usize>() <= mem::size_of::<u32>() || u <= u32::max_value() as usize {
-                Some(u as u32)
-            } else {
-                None
-            }
-        }
+        use std::convert::TryFrom;
+        u32::try_from(u).ok()
     }
 }
 mod location {
-    use core::cmp::Ordering;
+    use std::cmp::Ordering;
     #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
     pub struct LineColumn {
         pub line: usize,
@@ -2809,18 +2586,15 @@ mod location {
         }
     }
 }
-use super::extra::DelimSpan;
-pub use super::location::LineColumn;
-use super::marker::Marker;
-use core::cmp::Ordering;
-use core::fmt::{self, Debug, Display};
-use core::hash::{Hash, Hasher};
-use core::iter::FromIterator;
-use core::ops::RangeBounds;
-use core::str::FromStr;
+pub use location::LineColumn;
+use marker::Marker;
+use std::cmp::Ordering;
 use std::error::Error;
-#[cfg(procmacro2_semver_exempt)]
-use std::path::PathBuf;
+use std::fmt::{self, Debug, Display};
+use std::hash::{Hash, Hasher};
+use std::iter::FromIterator;
+use std::ops::RangeBounds;
+use std::str::FromStr;
 #[derive(Clone)]
 pub struct TokenStream {
     inner: imp::TokenStream,
@@ -2923,30 +2697,6 @@ impl Display for LexError {
     }
 }
 impl Error for LexError {}
-#[cfg(all(procmacro2_semver_exempt, any(not(wrap_proc_macro), super_unstable)))]
-#[derive(Clone, PartialEq, Eq)]
-pub struct SourceFile {
-    inner: imp::SourceFile,
-    _marker: Marker,
-}
-#[cfg(all(procmacro2_semver_exempt, any(not(wrap_proc_macro), super_unstable)))]
-impl SourceFile {
-    fn _new(inner: imp::SourceFile) -> Self {
-        SourceFile { inner, _marker: Marker }
-    }
-    pub fn path(&self) -> PathBuf {
-        self.inner.path()
-    }
-    pub fn is_real(&self) -> bool {
-        self.inner.is_real()
-    }
-}
-#[cfg(all(procmacro2_semver_exempt, any(not(wrap_proc_macro), super_unstable)))]
-impl Debug for SourceFile {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        Debug::fmt(&self.inner, f)
-    }
-}
 #[derive(Copy, Clone)]
 pub struct Span {
     inner: imp::Span,
@@ -2965,13 +2715,8 @@ impl Span {
     pub fn call_site() -> Self {
         Span::_new(imp::Span::call_site())
     }
-    #[cfg(not(no_hygiene))]
     pub fn mixed_site() -> Self {
         Span::_new(imp::Span::mixed_site())
-    }
-    #[cfg(procmacro2_semver_exempt)]
-    pub fn def_site() -> Self {
-        Span::_new(imp::Span::def_site())
     }
     pub fn resolved_at(&self, other: Span) -> Span {
         Span::_new(self.inner.resolved_at(other.inner))
@@ -2979,17 +2724,11 @@ impl Span {
     pub fn located_at(&self, other: Span) -> Span {
         Span::_new(self.inner.located_at(other.inner))
     }
-    #[cfg(wrap_proc_macro)]
     pub fn unwrap(self) -> proc_macro::Span {
         self.inner.unwrap()
     }
-    #[cfg(wrap_proc_macro)]
     pub fn unstable(self) -> proc_macro::Span {
         self.unwrap()
-    }
-    #[cfg(all(procmacro2_semver_exempt, any(not(wrap_proc_macro), super_unstable)))]
-    pub fn source_file(&self) -> SourceFile {
-        SourceFile::_new(self.inner.source_file())
     }
     pub fn start(&self) -> LineColumn {
         self.inner.start()
@@ -2999,10 +2738,6 @@ impl Span {
     }
     pub fn join(&self, other: Span) -> Option<Span> {
         self.inner.join(other.inner).map(Span::_new)
-    }
-    #[cfg(procmacro2_semver_exempt)]
-    pub fn eq(&self, other: &Span) -> bool {
-        self.inner.eq(&other.inner)
     }
     pub fn source_text(&self) -> Option<String> {
         self.inner.source_text()
@@ -3365,7 +3100,7 @@ pub mod token_stream {
     use super::marker::Marker;
     pub use super::TokenStream;
     use super::{imp, TokenTree};
-    use core::fmt::{self, Debug};
+    use std::fmt::{self, Debug};
     #[derive(Clone)]
     pub struct IntoIter {
         inner: imp::TokenTreeIter,

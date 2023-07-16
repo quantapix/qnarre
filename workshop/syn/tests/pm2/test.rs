@@ -312,20 +312,11 @@ fn literal_span() {
     let negative = "-0.1".parse::<Literal>().unwrap();
     let subspan = positive.subspan(1..2);
 
-    #[cfg(not(span_locations))]
-    {
-        let _ = negative;
-        assert!(subspan.is_none());
-    }
-
-    #[cfg(span_locations)]
-    {
-        assert_eq!(positive.span().start().column, 0);
-        assert_eq!(positive.span().end().column, 3);
-        assert_eq!(negative.span().start().column, 0);
-        assert_eq!(negative.span().end().column, 4);
-        assert_eq!(subspan.unwrap().source_text().unwrap(), ".");
-    }
+    assert_eq!(positive.span().start().column, 0);
+    assert_eq!(positive.span().end().column, 3);
+    assert_eq!(negative.span().start().column, 0);
+    assert_eq!(negative.span().end().column, 4);
+    assert_eq!(subspan.unwrap().source_text().unwrap(), ".");
 
     assert!(positive.subspan(1..4).is_none());
 }
@@ -391,7 +382,6 @@ fn fail() {
     fail("\"\\\n\u{85}\r\"");
 }
 
-#[cfg(span_locations)]
 #[test]
 fn span_test() {
     check_spans(
@@ -414,53 +404,6 @@ testing 123
             (4, 10, 4, 13), // 234
         ],
     );
-}
-
-#[cfg(procmacro2_semver_exempt)]
-#[cfg(not(nightly))]
-#[test]
-fn default_span() {
-    let start = Span::call_site().start();
-    assert_eq!(start.line, 1);
-    assert_eq!(start.column, 0);
-    let end = Span::call_site().end();
-    assert_eq!(end.line, 1);
-    assert_eq!(end.column, 0);
-    let source_file = Span::call_site().source_file();
-    assert_eq!(source_file.path().to_string_lossy(), "<unspecified>");
-    assert!(!source_file.is_real());
-}
-
-#[cfg(procmacro2_semver_exempt)]
-#[test]
-fn span_join() {
-    let source1 = "aaa\nbbb"
-        .parse::<TokenStream>()
-        .unwrap()
-        .into_iter()
-        .collect::<Vec<_>>();
-    let source2 = "ccc\nddd"
-        .parse::<TokenStream>()
-        .unwrap()
-        .into_iter()
-        .collect::<Vec<_>>();
-
-    assert!(source1[0].span().source_file() != source2[0].span().source_file());
-    assert_eq!(source1[0].span().source_file(), source1[1].span().source_file());
-
-    let joined1 = source1[0].span().join(source1[1].span());
-    let joined2 = source1[0].span().join(source2[0].span());
-    assert!(joined1.is_some());
-    assert!(joined2.is_none());
-
-    let start = joined1.unwrap().start();
-    let end = joined1.unwrap().end();
-    assert_eq!(start.line, 1);
-    assert_eq!(start.column, 0);
-    assert_eq!(end.line, 2);
-    assert_eq!(end.column, 3);
-
-    assert_eq!(joined1.unwrap().source_file(), source1[0].span().source_file());
 }
 
 #[test]
@@ -505,42 +448,13 @@ fn raw_identifier() {
 #[test]
 fn test_debug_ident() {
     let ident = Ident::new("proc_macro", Span::call_site());
-
-    #[cfg(not(span_locations))]
-    let expected = "Ident(proc_macro)";
-
-    #[cfg(span_locations)]
     let expected = "Ident { sym: proc_macro }";
-
     assert_eq!(expected, format!("{:?}", ident));
 }
 
 #[test]
 fn test_debug_tokenstream() {
     let tts = TokenStream::from_str("[a + 1]").unwrap();
-
-    #[cfg(not(span_locations))]
-    let expected = "\
-TokenStream [
-    Group {
-        delimiter: Bracket,
-        stream: TokenStream [
-            Ident {
-                sym: a,
-            },
-            Punct {
-                char: '+',
-                spacing: Alone,
-            },
-            Literal {
-                lit: 1,
-            },
-        ],
-    },
-]\
-    ";
-
-    #[cfg(not(span_locations))]
     let expected_before_trailing_commas = "\
 TokenStream [
     Group {
@@ -560,8 +474,6 @@ TokenStream [
     }
 ]\
     ";
-
-    #[cfg(span_locations)]
     let expected = "\
 TokenStream [
     Group {
@@ -585,8 +497,6 @@ TokenStream [
     },
 ]\
     ";
-
-    #[cfg(span_locations)]
     let expected_before_trailing_commas = "\
 TokenStream [
     Group {
@@ -610,7 +520,6 @@ TokenStream [
     }
 ]\
     ";
-
     let actual = format!("{:#?}", tts);
     if actual.ends_with(",\n]") {
         assert_eq!(expected, actual);
@@ -642,7 +551,6 @@ fn tuple_indexing() {
     assert!(tokens.next().is_none());
 }
 
-#[cfg(span_locations)]
 #[test]
 fn non_ascii_tokens() {
     check_spans("// abc", &[]);
@@ -680,14 +588,12 @@ fn non_ascii_tokens() {
     check_spans("b\"a\\\n c\"", &[(1, 0, 2, 3)]);
 }
 
-#[cfg(span_locations)]
 fn check_spans(p: &str, mut lines: &[(usize, usize, usize, usize)]) {
     let ts = p.parse::<TokenStream>().unwrap();
     check_spans_internal(ts, &mut lines);
     assert!(lines.is_empty(), "leftover ranges: {:?}", lines);
 }
 
-#[cfg(span_locations)]
 fn check_spans_internal(ts: TokenStream, lines: &mut &[(usize, usize, usize, usize)]) {
     for i in ts {
         if let Some((&(sline, scol, eline, ecol), rest)) = lines.split_first() {

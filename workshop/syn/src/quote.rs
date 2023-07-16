@@ -2,6 +2,7 @@ use super::pm2;
 pub use ext::TokenStreamExt;
 pub use ident_fragment::IdentFragment;
 pub use to_tokens::ToTokens;
+
 mod ext {
     use super::{
         pm2::{TokenStream, TokenTree},
@@ -364,8 +365,8 @@ pub mod __private {
         use super::RepInterp;
         use super::{HasIterator as HasIter, ThereIsNoIteratorInRepetition as DoesNotHaveIter};
         use crate::ToTokens;
-        use core::slice;
         use std::collections::btree_set::{self, BTreeSet};
+        use std::slice;
         pub trait RepIteratorExt: Iterator + Sized {
             fn quote_into_iter(self) -> (Self, HasIter) {
                 (self, HasIter)
@@ -737,18 +738,7 @@ pub mod spanned {
         }
     }
     fn join_spans(tokens: TokenStream) -> Span {
-        #[cfg(not(needs_invalid_span_workaround))]
         let mut iter = tokens.into_iter().map(|tt| tt.span());
-        #[cfg(needs_invalid_span_workaround)]
-        let mut iter = tokens.into_iter().filter_map(|tt| {
-            let span = tt.span();
-            let debug = format!("{:?}", span);
-            if debug.ends_with("bytes(0..0)") {
-                None
-            } else {
-                Some(span)
-            }
-        });
         let first = match iter.next() {
             Some(span) => span,
             None => return Span::call_site(),
