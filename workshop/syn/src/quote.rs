@@ -243,7 +243,7 @@ macro_rules! primitive {
         $(
             impl ToStream for $t {
                 fn to_tokens(&self, tokens: &mut TokenStream) {
-                    tokens.append(Literal::$name(*self));
+                    tokens.append(Lit::$name(*self));
                 }
             }
         )*

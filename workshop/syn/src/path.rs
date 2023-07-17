@@ -118,7 +118,7 @@ pub struct Constraint {
 pub struct ParenthesizedArgs {
     pub paren: tok::Paren,
     pub args: Puncted<typ::Type, Token![,]>,
-    pub ret: Ret,
+    pub ret: typ::Ret,
 }
 pub struct QSelf {
     pub lt: Token![<],
@@ -270,7 +270,7 @@ impl Parse for Arg {
         if x.peek(Lit) || x.peek(tok::Brace) {
             return const_argument(x).map(Arg::Const);
         }
-        let mut y: Type = x.parse()?;
+        let mut y: typ::Type = x.parse()?;
         match y {
             typ::Type::Path(mut ty)
                 if ty.qself.is_none()
@@ -363,7 +363,7 @@ pub fn const_argument(x: Stream) -> Res<Expr> {
 pub fn qpath(x: Stream, expr_style: bool) -> Res<(Option<QSelf>, Path)> {
     if x.peek(Token![<]) {
         let lt: Token![<] = x.parse()?;
-        let this: Type = x.parse()?;
+        let this: typ::Type = x.parse()?;
         let y = if x.peek(Token![as]) {
             let as_: Token![as] = x.parse()?;
             let y: Path = x.parse()?;

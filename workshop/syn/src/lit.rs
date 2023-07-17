@@ -398,7 +398,7 @@ impl Int {
     pub fn base10_digits(&self) -> &str {
         &self.repr.digits
     }
-    pub fn base10_parse<N>(&self) -> Result<N>
+    pub fn base10_parse<N>(&self) -> Res<N>
     where
         N: FromStr,
         N::Err: Display,
@@ -482,7 +482,7 @@ impl Float {
     pub fn base10_digits(&self) -> &str {
         &self.repr.digits
     }
-    pub fn base10_parse<N>(&self) -> Result<N>
+    pub fn base10_parse<N>(&self) -> Res<N>
     where
         N: FromStr,
         N::Err: Display,

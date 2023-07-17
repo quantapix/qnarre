@@ -1,4 +1,4 @@
-extern crate proc_macro;
+extern crate proc_macro as pm;
 
 use std::{
     cmp::{self, Ordering},

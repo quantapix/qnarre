@@ -1,38 +1,37 @@
 use super::*;
-use std::{
-    error::Error,
-    iter::FromIterator,
-    marker::PhantomData,
-    ops::RangeBounds,
-    panic::{RefUnwindSafe, UnwindSafe},
-    rc::Rc,
-    str::FromStr,
-};
+use std::{error::Error, iter::FromIterator, ops::RangeBounds, str::FromStr};
 
-pub type Marker = PhantomData<AutoTraits>;
-pub use self::value::*;
-mod value {
-    pub use std::marker::PhantomData as Marker;
-}
-pub struct AutoTraits(Rc<()>);
-impl UnwindSafe for AutoTraits {}
-impl RefUnwindSafe for AutoTraits {}
-
-mod detection {
-    use std::sync::{
-        atomic::{AtomicUsize, Ordering},
-        Once,
+mod util {
+    use std::{
+        marker::PhantomData,
+        panic::{RefUnwindSafe, UnwindSafe},
+        rc::Rc,
+        sync::{
+            atomic::{AtomicUsize, Ordering},
+            Once,
+        },
     };
+
+    pub struct AutoTraits(Rc<()>);
+    impl UnwindSafe for AutoTraits {}
+    impl RefUnwindSafe for AutoTraits {}
+
+    pub type Marker = PhantomData<AutoTraits>;
+    mod value {
+        pub use std::marker::PhantomData as Marker;
+    }
+    pub use value::*;
+
     static FLAG: AtomicUsize = AtomicUsize::new(0);
     static INIT: Once = Once::new();
-    pub fn inside_proc_macro() -> bool {
+    pub fn inside_pm() -> bool {
         match FLAG.load(Ordering::Relaxed) {
             1 => return false,
             2 => return true,
             _ => {},
         }
         INIT.call_once(init);
-        inside_proc_macro()
+        inside_pm()
     }
     pub fn force_fallback() {
         FLAG.store(1, Ordering::Relaxed);
@@ -41,11 +40,10 @@ mod detection {
         init();
     }
     fn init() {
-        let y = proc_macro::is_available();
+        let y = pm::is_available();
         FLAG.store(y as usize + 1, Ordering::Relaxed);
     }
 }
-use detection::inside_proc_macro;
 
 fn mismatch() -> ! {
     panic!("compiler/fallback mismatch")
@@ -53,11 +51,11 @@ fn mismatch() -> ! {
 
 #[derive(Clone)]
 pub struct DeferredTokenStream {
-    stream: proc_macro::TokenStream,
-    extra: Vec<proc_macro::TokenTree>,
+    stream: pm::TokenStream,
+    extra: Vec<pm::TokenTree>,
 }
 impl DeferredTokenStream {
-    fn new(stream: proc_macro::TokenStream) -> Self {
+    fn new(stream: pm::TokenStream) -> Self {
         DeferredTokenStream {
             stream,
             extra: Vec::new(),
@@ -71,7 +69,7 @@ impl DeferredTokenStream {
             self.stream.extend(self.extra.drain(..));
         }
     }
-    fn into_token_stream(mut self) -> proc_macro::TokenStream {
+    fn into_token_stream(mut self) -> pm::TokenStream {
         self.evaluate_now();
         self.stream
     }
@@ -87,7 +85,7 @@ pub enum Delim {
 
 #[derive(Clone)]
 pub enum Group {
-    Compiler(proc_macro::Group),
+    Compiler(pm::Group),
     Fallback(fallback::Group),
 }
 impl Group {
@@ -95,12 +93,12 @@ impl Group {
         match s {
             TokenStream::Compiler(y) => {
                 let x = match x {
-                    Delim::Paren => proc_macro::Delimiter::Parenthesis,
-                    Delim::Bracket => proc_macro::Delimiter::Bracket,
-                    Delim::Brace => proc_macro::Delimiter::Brace,
-                    Delim::None => proc_macro::Delimiter::None,
+                    Delim::Paren => pm::Delimiter::Parenthesis,
+                    Delim::Bracket => pm::Delimiter::Bracket,
+                    Delim::Brace => pm::Delimiter::Brace,
+                    Delim::None => pm::Delimiter::None,
                 };
-                Group::Compiler(proc_macro::Group::new(x, y.into_token_stream()))
+                Group::Compiler(pm::Group::new(x, y.into_token_stream()))
             },
             TokenStream::Fallback(y) => Group::Fallback(fallback::Group::new(x, y)),
         }
@@ -108,10 +106,10 @@ impl Group {
     pub fn delim(&self) -> Delim {
         match self {
             Group::Compiler(x) => match x.delimiter() {
-                proc_macro::Delimiter::Parenthesis => Delim::Paren,
-                proc_macro::Delimiter::Bracket => Delim::Bracket,
-                proc_macro::Delimiter::Brace => Delim::Brace,
-                proc_macro::Delimiter::None => Delim::None,
+                pm::Delimiter::Parenthesis => Delim::Paren,
+                pm::Delimiter::Bracket => Delim::Bracket,
+                pm::Delimiter::Brace => Delim::Brace,
+                pm::Delimiter::None => Delim::None,
             },
             Group::Fallback(x) => x.delim(),
         }
@@ -150,7 +148,7 @@ impl Group {
     pub fn delim_span(&self) -> DelimSpan {
         DelimSpan::new(&self)
     }
-    fn unwrap_nightly(self) -> proc_macro::Group {
+    fn unwrap_nightly(self) -> pm::Group {
         match self {
             Group::Compiler(x) => x,
             Group::Fallback(_) => mismatch(),
@@ -180,15 +178,129 @@ impl Debug for Group {
 }
 
 #[derive(Clone)]
+pub struct Ident {
+    inner: imp::Ident,
+    _marker: util::Marker,
+}
+impl Ident {
+    fn _new(inner: imp::Ident) -> Self {
+        Ident {
+            inner,
+            _marker: util::Marker,
+        }
+    }
+    pub fn new(string: &str, span: Span) -> Self {
+        Ident::_new(imp::Ident::new(string, span.inner))
+    }
+    pub fn new_raw(string: &str, span: Span) -> Self {
+        Ident::_new_raw(string, span)
+    }
+    fn _new_raw(string: &str, span: Span) -> Self {
+        Ident::_new(imp::Ident::new_raw(string, span.inner))
+    }
+    pub fn span(&self) -> Span {
+        Span::_new(self.inner.span())
+    }
+    pub fn set_span(&mut self, span: Span) {
+        self.inner.set_span(span.inner);
+    }
+}
+impl PartialEq for Ident {
+    fn eq(&self, other: &Ident) -> bool {
+        self.inner == other.inner
+    }
+}
+impl<T> PartialEq<T> for Ident
+where
+    T: ?Sized + AsRef<str>,
+{
+    fn eq(&self, other: &T) -> bool {
+        self.inner == other
+    }
+}
+impl Eq for Ident {}
+impl PartialOrd for Ident {
+    fn partial_cmp(&self, other: &Ident) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl Ord for Ident {
+    fn cmp(&self, other: &Ident) -> Ordering {
+        self.to_string().cmp(&other.to_string())
+    }
+}
+impl Hash for Ident {
+    fn hash<H: Hasher>(&self, hasher: &mut H) {
+        self.to_string().hash(hasher);
+    }
+}
+impl Display for Ident {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        Display::fmt(&self.inner, f)
+    }
+}
+impl Debug for Ident {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        Debug::fmt(&self.inner, f)
+    }
+}
+
+pub enum LexErr {
+    Compiler(pm::LexError),
+    Fallback(fallback::LexErr),
+}
+impl LexErr {
+    pub fn span(&self) -> Span {
+        match self {
+            LexErr::Compiler(_) => Span::call_site(),
+            LexErr::Fallback(x) => Span::Fallback(x.span()),
+        }
+    }
+    fn call_site() -> Self {
+        LexErr::Fallback(fallback::LexErr {
+            span: fallback::Span::call_site(),
+            _marker: util::Marker,
+        })
+    }
+}
+impl Error for LexErr {}
+impl From<pm::LexError> for LexErr {
+    fn from(x: pm::LexError) -> Self {
+        LexErr::Compiler(x)
+    }
+}
+impl From<fallback::LexErr> for LexErr {
+    fn from(x: fallback::LexErr) -> Self {
+        LexErr::Fallback(x)
+    }
+}
+impl Debug for LexErr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            LexErr::Compiler(x) => Debug::fmt(x, f),
+            LexErr::Fallback(x) => Debug::fmt(x, f),
+        }
+    }
+}
+impl Display for LexErr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            LexErr::Compiler(x) => Display::fmt(x, f),
+            LexErr::Fallback(x) => Display::fmt(x, f),
+        }
+    }
+}
+
+#[derive(Clone)]
 pub enum Lit {
-    Compiler(proc_macro::Literal),
+    Compiler(pm::Literal),
     Fallback(fallback::Lit),
 }
 macro_rules! suffixed_nums {
     ($($n:ident => $kind:ident,)*) => ($(
         pub fn $n(n: $kind) -> Lit {
-            if inside_proc_macro() {
-                Lit::Compiler(proc_macro::Literal::$n(n))
+            if util::inside_pm() {
+                Lit::Compiler(pm::Literal::$n(n))
             } else {
                 Lit::Fallback(fallback::Lit::$n(n))
             }
@@ -198,8 +310,8 @@ macro_rules! suffixed_nums {
 macro_rules! unsuffixed_nums {
     ($($n:ident => $kind:ident,)*) => ($(
         pub fn $n(n: $kind) -> Lit {
-            if inside_proc_macro() {
-                Lit::Compiler(proc_macro::Literal::$n(n))
+            if util::inside_pm() {
+                Lit::Compiler(pm::Literal::$n(n))
             } else {
                 Lit::Fallback(fallback::Lit::$n(n))
             }
@@ -208,7 +320,7 @@ macro_rules! unsuffixed_nums {
 }
 impl Lit {
     pub unsafe fn from_str_unchecked(x: &str) -> Self {
-        if inside_proc_macro() {
+        if util::inside_pm() {
             Lit::Compiler(compiler_lit_from_str(x).expect("invalid literal"))
         } else {
             Lit::Fallback(fallback::Lit::from_str_unchecked(x))
@@ -254,37 +366,37 @@ impl Lit {
     }
     pub fn f32_unsuffixed(x: f32) -> Lit {
         assert!(x.is_finite());
-        if inside_proc_macro() {
-            Lit::Compiler(proc_macro::Literal::f32_unsuffixed(x))
+        if util::inside_pm() {
+            Lit::Compiler(pm::Literal::f32_unsuffixed(x))
         } else {
             Lit::Fallback(fallback::Lit::f32_unsuffixed(x))
         }
     }
     pub fn f64_unsuffixed(x: f64) -> Lit {
         assert!(x.is_finite());
-        if inside_proc_macro() {
-            Lit::Compiler(proc_macro::Literal::f64_unsuffixed(x))
+        if util::inside_pm() {
+            Lit::Compiler(pm::Literal::f64_unsuffixed(x))
         } else {
             Lit::Fallback(fallback::Lit::f64_unsuffixed(x))
         }
     }
     pub fn string(x: &str) -> Lit {
-        if inside_proc_macro() {
-            Lit::Compiler(proc_macro::Literal::string(x))
+        if util::inside_pm() {
+            Lit::Compiler(pm::Literal::string(x))
         } else {
             Lit::Fallback(fallback::Lit::string(x))
         }
     }
     pub fn character(x: char) -> Lit {
-        if inside_proc_macro() {
-            Lit::Compiler(proc_macro::Literal::character(x))
+        if util::inside_pm() {
+            Lit::Compiler(pm::Literal::character(x))
         } else {
             Lit::Fallback(fallback::Lit::character(x))
         }
     }
     pub fn byte_string(xs: &[u8]) -> Lit {
-        if inside_proc_macro() {
-            Lit::Compiler(proc_macro::Literal::byte_string(xs))
+        if util::inside_pm() {
+            Lit::Compiler(pm::Literal::byte_string(xs))
         } else {
             Lit::Fallback(fallback::Lit::byte_string(xs))
         }
@@ -308,7 +420,7 @@ impl Lit {
             Lit::Fallback(x) => x.subspan(range).map(Span::Fallback),
         }
     }
-    fn unwrap_nightly(self) -> proc_macro::Literal {
+    fn unwrap_nightly(self) -> pm::Literal {
         match self {
             Lit::Compiler(x) => x,
             Lit::Fallback(_) => mismatch(),
@@ -321,9 +433,9 @@ impl From<fallback::Lit> for Lit {
     }
 }
 impl FromStr for Lit {
-    type Err = LexError;
+    type Err = LexErr;
     fn from_str(x: &str) -> Result<Self, Self::Err> {
-        if inside_proc_macro() {
+        if util::inside_pm() {
             compiler_lit_from_str(x).map(Lit::Compiler)
         } else {
             let y = fallback::Lit::from_str(x)?;
@@ -347,26 +459,26 @@ impl Debug for Lit {
         }
     }
 }
-fn compiler_lit_from_str(x: &str) -> Result<proc_macro::Literal, LexError> {
-    proc_macro::Literal::from_str(x).map_err(LexError::Compiler)
+fn compiler_lit_from_str(x: &str) -> Result<pm::Literal, LexErr> {
+    pm::Literal::from_str(x).map_err(LexErr::Compiler)
 }
 
 #[derive(Copy, Clone)]
 pub enum Span {
-    Compiler(proc_macro::Span),
+    Compiler(pm::Span),
     Fallback(fallback::Span),
 }
 impl Span {
     pub fn call_site() -> Self {
-        if inside_proc_macro() {
-            Span::Compiler(proc_macro::Span::call_site())
+        if util::inside_pm() {
+            Span::Compiler(pm::Span::call_site())
         } else {
             Span::Fallback(fallback::Span::call_site())
         }
     }
     pub fn mixed_site() -> Self {
-        if inside_proc_macro() {
-            Span::Compiler(proc_macro::Span::mixed_site())
+        if util::inside_pm() {
+            Span::Compiler(pm::Span::mixed_site())
         } else {
             Span::Fallback(fallback::Span::mixed_site())
         }
@@ -411,24 +523,24 @@ impl Span {
             Span::Fallback(x) => x.source_text(),
         }
     }
-    pub fn unstable(self) -> proc_macro::Span {
+    pub fn unstable(self) -> pm::Span {
         self.unwrap()
     }
-    pub fn unwrap(self) -> proc_macro::Span {
+    pub fn unwrap(self) -> pm::Span {
         match self {
             Span::Compiler(x) => x,
             Span::Fallback(_) => mismatch(),
         }
     }
-    fn unwrap_nightly(self) -> proc_macro::Span {
+    fn unwrap_nightly(self) -> pm::Span {
         match self {
             Span::Compiler(x) => x,
             Span::Fallback(_) => mismatch(),
         }
     }
 }
-impl From<proc_macro::Span> for Span {
-    fn from(x: proc_macro::Span) -> Self {
+impl From<pm::Span> for Span {
+    fn from(x: pm::Span) -> Self {
         Span::Compiler(x)
     }
 }
@@ -456,7 +568,7 @@ pub fn debug_span_field(x: &mut fmt::DebugStruct, s: Span) {
 
 mod parse {
     use super::fallback::{
-        is_ident_continue, is_ident_start, Group, LexError, Lit, Span, TokenStream, TokenStreamBuilder,
+        is_ident_continue, is_ident_start, Group, LexErr, Lit, Span, TokenStream, TokenStreamBuilder,
     };
     use super::{Delim, Punct, Spacing, Tree};
     use std::{
@@ -591,7 +703,7 @@ mod parse {
             Some(_) | None => Ok(input),
         }
     }
-    pub fn token_stream(mut input: Cursor) -> Result<TokenStream, LexError> {
+    pub fn token_stream(mut input: Cursor) -> Result<TokenStream, LexErr> {
         let mut trees = TokenStreamBuilder::new();
         let mut stack = Vec::new();
         loop {
@@ -606,7 +718,7 @@ mod parse {
                 None => match stack.last() {
                     None => return Ok(trees.build()),
                     Some((lo, _frame)) => {
-                        return Err(LexError {
+                        return Err(LexErr {
                             span: Span { lo: *lo, hi: *lo },
                         })
                     },
@@ -654,8 +766,8 @@ mod parse {
             }
         }
     }
-    fn lex_error(cursor: Cursor) -> LexError {
-        LexError {
+    fn lex_error(cursor: Cursor) -> LexErr {
+        LexErr {
             span: Span {
                 lo: cursor.off,
                 hi: cursor.off,
@@ -1454,28 +1566,14 @@ pub mod fallback {
         str::FromStr,
     };
     pub fn force() {
-        super::detection::force_fallback();
+        super::util::force_fallback();
     }
     pub fn unforce() {
-        super::detection::unforce_fallback();
+        super::util::unforce_fallback();
     }
     #[derive(Clone)]
     pub struct TokenStream {
         inner: RcVec<Tree>,
-    }
-    #[derive(Debug)]
-    pub struct LexError {
-        pub span: Span,
-    }
-    impl LexError {
-        pub fn span(&self) -> Span {
-            self.span
-        }
-        fn call_site() -> Self {
-            LexError {
-                span: Span::call_site(),
-            }
-        }
     }
     impl TokenStream {
         pub fn new() -> Self {
@@ -1563,19 +1661,14 @@ pub mod fallback {
         })
     }
     impl FromStr for TokenStream {
-        type Err = LexError;
-        fn from_str(src: &str) -> Result<TokenStream, LexError> {
+        type Err = LexErr;
+        fn from_str(src: &str) -> Result<TokenStream, LexErr> {
             let mut cursor = get_cursor(src);
             const BYTE_ORDER_MARK: &str = "\u{feff}";
             if cursor.starts_with(BYTE_ORDER_MARK) {
                 cursor = cursor.advance(BYTE_ORDER_MARK.len());
             }
             parse::token_stream(cursor)
-        }
-    }
-    impl Display for LexError {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            f.write_str("cannot parse string into token stream")
         }
     }
     impl Display for TokenStream {
@@ -1605,12 +1698,12 @@ pub mod fallback {
             f.debug_list().entries(self.clone()).finish()
         }
     }
-    impl From<proc_macro::TokenStream> for TokenStream {
-        fn from(inner: proc_macro::TokenStream) -> Self {
+    impl From<pm::TokenStream> for TokenStream {
+        fn from(inner: pm::TokenStream) -> Self {
             inner.to_string().parse().expect("compiler token stream parse failed")
         }
     }
-    impl From<TokenStream> for proc_macro::TokenStream {
+    impl From<TokenStream> for pm::TokenStream {
         fn from(inner: TokenStream) -> Self {
             inner.to_string().parse().expect("failed to parse to compiler tokens")
         }
@@ -1924,11 +2017,33 @@ pub mod fallback {
         }
     }
 
+    #[derive(Debug)]
+    pub struct LexErr {
+        pub span: Span,
+        _marker: util::Marker,
+    }
+    impl LexErr {
+        pub fn span(&self) -> Span {
+            self.span
+        }
+        fn call_site() -> Self {
+            LexErr {
+                span: Span::call_site(),
+                _marker: util::Marker,
+            }
+        }
+    }
+    impl Display for LexErr {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            f.write_str("cannot parse string into token stream")
+        }
+    }
+
     #[derive(Clone)]
     pub struct Lit {
         repr: String,
         span: Span,
-        _marker: Marker,
+        _marker: util::Marker,
     }
     macro_rules! suffixed_nums {
         ($($n:ident => $kind:ident,)*) => ($(
@@ -1949,7 +2064,7 @@ pub mod fallback {
             Lit {
                 repr,
                 span: Span::call_site(),
-                _marker: Marker,
+                _marker: util::Marker,
             }
         }
         pub unsafe fn from_str_unchecked(x: &str) -> Self {
@@ -2093,7 +2208,7 @@ pub mod fallback {
         }
     }
     impl FromStr for Lit {
-        type Err = LexError;
+        type Err = LexErr;
         fn from_str(repr: &str) -> Result<Self, Self::Err> {
             let mut cursor = get_cursor(repr);
             let lo = cursor.off;
@@ -2101,7 +2216,7 @@ pub mod fallback {
             if negative {
                 cursor = cursor.advance(1);
                 if !cursor.starts_with_fn(|ch| ch.is_ascii_digit()) {
-                    return Err(LexError::call_site());
+                    return Err(LexErr::call_site());
                 }
             }
             if let Ok((rest, mut literal)) = parse::literal(cursor) {
@@ -2113,7 +2228,7 @@ pub mod fallback {
                     return Ok(literal);
                 }
             }
-            Err(LexError::call_site())
+            Err(LexErr::call_site())
         }
     }
     impl Display for Lit {
@@ -2134,14 +2249,14 @@ pub mod fallback {
     pub struct Span {
         pub lo: u32,
         pub hi: u32,
-        _marker: Marker,
+        _marker: util::Marker,
     }
     impl Span {
         pub fn call_site() -> Self {
             Span {
                 lo: 0,
                 hi: 0,
-                _marker: Marker,
+                _marker: util::Marker,
             }
         }
         pub fn mixed_site() -> Self {
@@ -2176,7 +2291,7 @@ pub mod fallback {
                 Some(Span {
                     lo: cmp::min(self.lo, s.lo),
                     hi: cmp::max(self.hi, s.hi),
-                    _marker: Marker,
+                    _marker: util::Marker,
                 })
             })
         }
@@ -2193,14 +2308,14 @@ pub mod fallback {
             Span {
                 lo: self.lo,
                 hi: cmp::min(self.lo.saturating_add(1), self.hi),
-                _marker: Marker,
+                _marker: util::Marker,
             }
         }
         pub fn last_byte(self) -> Self {
             Span {
                 lo: cmp::max(self.hi.saturating_sub(1), self.lo),
                 hi: self.hi,
-                _marker: Marker,
+                _marker: util::Marker,
             }
         }
         fn is_call_site(&self) -> bool {
@@ -2222,19 +2337,19 @@ pub mod fallback {
     }
 }
 pub mod extra {
-    use super::{fallback, imp, Marker, Span};
+    use super::{fallback, imp, util, Span};
     use std::fmt::{self, Debug};
     #[derive(Copy, Clone)]
     pub struct DelimSpan {
         inner: DelimSpanEnum,
-        _marker: Marker,
+        _marker: util::Marker,
     }
     #[derive(Copy, Clone)]
     enum DelimSpanEnum {
         Compiler {
-            join: proc_macro::Span,
-            open: proc_macro::Span,
-            close: proc_macro::Span,
+            join: pm::Span,
+            open: pm::Span,
+            close: pm::Span,
         },
         Fallback(fallback::Span),
     }
@@ -2248,7 +2363,10 @@ pub mod extra {
                 },
                 imp::Group::Fallback(group) => DelimSpanEnum::Fallback(group.span()),
             };
-            DelimSpan { inner, _marker: Marker }
+            DelimSpan {
+                inner,
+                _marker: util::Marker,
+            }
         }
         pub fn join(&self) -> Span {
             match &self.inner {
@@ -2287,21 +2405,10 @@ mod imp {
         Compiler(DeferredTokenStream),
         Fallback(fallback::TokenStream),
     }
-    pub enum LexError {
-        Compiler(proc_macro::LexError),
-        Fallback(fallback::LexError),
-    }
-    impl LexError {
-        fn call_site() -> Self {
-            LexError::Fallback(fallback::LexError {
-                span: fallback::Span::call_site(),
-            })
-        }
-    }
     impl TokenStream {
         pub fn new() -> Self {
-            if inside_proc_macro() {
-                TokenStream::Compiler(DeferredTokenStream::new(proc_macro::TokenStream::new()))
+            if util::inside_pm() {
+                TokenStream::Compiler(DeferredTokenStream::new(pm::TokenStream::new()))
             } else {
                 TokenStream::Fallback(fallback::TokenStream::new())
             }
@@ -2312,7 +2419,7 @@ mod imp {
                 TokenStream::Fallback(tts) => tts.is_empty(),
             }
         }
-        fn unwrap_nightly(self) -> proc_macro::TokenStream {
+        fn unwrap_nightly(self) -> pm::TokenStream {
             match self {
                 TokenStream::Compiler(s) => s.into_token_stream(),
                 TokenStream::Fallback(_) => mismatch(),
@@ -2326,18 +2433,18 @@ mod imp {
         }
     }
     impl FromStr for TokenStream {
-        type Err = LexError;
-        fn from_str(src: &str) -> Result<TokenStream, LexError> {
-            if inside_proc_macro() {
+        type Err = LexErr;
+        fn from_str(src: &str) -> Result<TokenStream, LexErr> {
+            if util::inside_pm() {
                 Ok(TokenStream::Compiler(DeferredTokenStream::new(proc_macro_parse(src)?)))
             } else {
                 Ok(TokenStream::Fallback(src.parse()?))
             }
         }
     }
-    fn proc_macro_parse(src: &str) -> Result<proc_macro::TokenStream, LexError> {
-        let result = panic::catch_unwind(|| src.parse().map_err(LexError::Compiler));
-        result.unwrap_or_else(|_| Err(LexError::call_site()))
+    fn proc_macro_parse(src: &str) -> Result<pm::TokenStream, LexErr> {
+        let result = panic::catch_unwind(|| src.parse().map_err(LexErr::Compiler));
+        result.unwrap_or_else(|_| Err(LexErr::call_site()))
     }
     impl Display for TokenStream {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -2347,12 +2454,12 @@ mod imp {
             }
         }
     }
-    impl From<proc_macro::TokenStream> for TokenStream {
-        fn from(inner: proc_macro::TokenStream) -> Self {
+    impl From<pm::TokenStream> for TokenStream {
+        fn from(inner: pm::TokenStream) -> Self {
             TokenStream::Compiler(DeferredTokenStream::new(inner))
         }
     }
-    impl From<TokenStream> for proc_macro::TokenStream {
+    impl From<TokenStream> for pm::TokenStream {
         fn from(inner: TokenStream) -> Self {
             match inner {
                 TokenStream::Compiler(inner) => inner.into_token_stream(),
@@ -2365,15 +2472,15 @@ mod imp {
             TokenStream::Fallback(inner)
         }
     }
-    fn into_compiler_token(token: Tree) -> proc_macro::TokenTree {
+    fn into_compiler_token(token: Tree) -> pm::TokenTree {
         match token {
             Tree::Group(tt) => tt.inner.unwrap_nightly().into(),
             Tree::Punct(tt) => {
                 let spacing = match tt.spacing() {
-                    Spacing::Joint => proc_macro::Spacing::Joint,
-                    Spacing::Alone => proc_macro::Spacing::Alone,
+                    Spacing::Joint => pm::Spacing::Joint,
+                    Spacing::Alone => pm::Spacing::Alone,
                 };
-                let mut punct = proc_macro::Punct::new(tt.as_char(), spacing);
+                let mut punct = pm::Punct::new(tt.as_char(), spacing);
                 punct.set_span(tt.span().inner.unwrap_nightly());
                 punct.into()
             },
@@ -2383,7 +2490,7 @@ mod imp {
     }
     impl From<Tree> for TokenStream {
         fn from(token: Tree) -> Self {
-            if inside_proc_macro() {
+            if util::inside_pm() {
                 TokenStream::Compiler(DeferredTokenStream::new(into_compiler_token(token).into()))
             } else {
                 TokenStream::Fallback(token.into())
@@ -2392,7 +2499,7 @@ mod imp {
     }
     impl FromIterator<Tree> for TokenStream {
         fn from_iter<I: IntoIterator<Item = Tree>>(trees: I) -> Self {
-            if inside_proc_macro() {
+            if util::inside_pm() {
                 TokenStream::Compiler(DeferredTokenStream::new(
                     trees.into_iter().map(into_compiler_token).collect(),
                 ))
@@ -2458,43 +2565,10 @@ mod imp {
             }
         }
     }
-    impl LexError {
-        pub fn span(&self) -> Span {
-            match self {
-                LexError::Compiler(_) => Span::call_site(),
-                LexError::Fallback(e) => Span::Fallback(e.span()),
-            }
-        }
-    }
-    impl From<proc_macro::LexError> for LexError {
-        fn from(e: proc_macro::LexError) -> Self {
-            LexError::Compiler(e)
-        }
-    }
-    impl From<fallback::LexError> for LexError {
-        fn from(e: fallback::LexError) -> Self {
-            LexError::Fallback(e)
-        }
-    }
-    impl Debug for LexError {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            match self {
-                LexError::Compiler(e) => Debug::fmt(e, f),
-                LexError::Fallback(e) => Debug::fmt(e, f),
-            }
-        }
-    }
-    impl Display for LexError {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            match self {
-                LexError::Compiler(e) => Display::fmt(e, f),
-                LexError::Fallback(e) => Display::fmt(e, f),
-            }
-        }
-    }
+
     #[derive(Clone)]
     pub enum TreeIter {
-        Compiler(proc_macro::token_stream::IntoIter),
+        Compiler(pm::token_stream::IntoIter),
         Fallback(fallback::TreeIter),
     }
     impl IntoIterator for TokenStream {
@@ -2515,18 +2589,18 @@ mod imp {
                 TreeIter::Fallback(iter) => return iter.next(),
             };
             Some(match token {
-                proc_macro::TokenTree::Group(tt) => super::Group::_new(Group::Compiler(tt)).into(),
-                proc_macro::TokenTree::Punct(tt) => {
+                pm::TokenTree::Group(tt) => super::Group::_new(Group::Compiler(tt)).into(),
+                pm::TokenTree::Punct(tt) => {
                     let spacing = match tt.spacing() {
-                        proc_macro::Spacing::Joint => Spacing::Joint,
-                        proc_macro::Spacing::Alone => Spacing::Alone,
+                        pm::Spacing::Joint => Spacing::Joint,
+                        pm::Spacing::Alone => Spacing::Alone,
                     };
                     let mut o = Punct::new(tt.as_char(), spacing);
                     o.set_span(super::Span::_new(Span::Compiler(tt.span())));
                     o.into()
                 },
-                proc_macro::TokenTree::Ident(s) => super::Ident::_new(Ident::Compiler(s)).into(),
-                proc_macro::TokenTree::Literal(l) => super::Lit::_new(Lit::Compiler(l)).into(),
+                pm::TokenTree::Ident(s) => super::Ident::_new(Ident::Compiler(s)).into(),
+                pm::TokenTree::Literal(l) => super::Lit::_new(Lit::Compiler(l)).into(),
             })
         }
         fn size_hint(&self) -> (usize, Option<usize>) {
@@ -2538,19 +2612,19 @@ mod imp {
     }
     #[derive(Clone)]
     pub enum Ident {
-        Compiler(proc_macro::Ident),
+        Compiler(pm::Ident),
         Fallback(fallback::Ident),
     }
     impl Ident {
         pub fn new(string: &str, span: Span) -> Self {
             match span {
-                Span::Compiler(s) => Ident::Compiler(proc_macro::Ident::new(string, s)),
+                Span::Compiler(s) => Ident::Compiler(pm::Ident::new(string, s)),
                 Span::Fallback(s) => Ident::Fallback(fallback::Ident::new(string, s)),
             }
         }
         pub fn new_raw(string: &str, span: Span) -> Self {
             match span {
-                Span::Compiler(s) => Ident::Compiler(proc_macro::Ident::new_raw(string, s)),
+                Span::Compiler(s) => Ident::Compiler(pm::Ident::new_raw(string, s)),
                 Span::Fallback(s) => Ident::Fallback(fallback::Ident::new_raw(string, s)),
             }
         }
@@ -2567,7 +2641,7 @@ mod imp {
                 _ => mismatch(),
             }
         }
-        fn unwrap_nightly(self) -> proc_macro::Ident {
+        fn unwrap_nightly(self) -> pm::Ident {
             match self {
                 Ident::Compiler(s) => s,
                 Ident::Fallback(_) => mismatch(),
@@ -2641,20 +2715,19 @@ pub use location::LineColumn;
 #[derive(Clone)]
 pub struct TokenStream {
     inner: imp::TokenStream,
-    _marker: Marker,
-}
-pub struct LexError {
-    inner: imp::LexError,
-    _marker: Marker,
+    _marker: util::Marker,
 }
 impl TokenStream {
     fn _new(inner: imp::TokenStream) -> Self {
-        TokenStream { inner, _marker: Marker }
+        TokenStream {
+            inner,
+            _marker: util::Marker,
+        }
     }
     fn _new_fallback(inner: fallback::TokenStream) -> Self {
         TokenStream {
             inner: inner.into(),
-            _marker: Marker,
+            _marker: util::Marker,
         }
     }
     pub fn new() -> Self {
@@ -2670,21 +2743,21 @@ impl Default for TokenStream {
     }
 }
 impl FromStr for TokenStream {
-    type Err = LexError;
-    fn from_str(src: &str) -> Result<TokenStream, LexError> {
-        let e = src.parse().map_err(|e| LexError {
+    type Err = LexErr;
+    fn from_str(src: &str) -> Result<TokenStream, LexErr> {
+        let e = src.parse().map_err(|e| LexErr {
             inner: e,
-            _marker: Marker,
+            _marker: util::Marker,
         })?;
         Ok(TokenStream::_new(e))
     }
 }
-impl From<proc_macro::TokenStream> for TokenStream {
-    fn from(inner: proc_macro::TokenStream) -> Self {
+impl From<pm::TokenStream> for TokenStream {
+    fn from(inner: pm::TokenStream) -> Self {
         TokenStream::_new(inner.into())
     }
 }
-impl From<TokenStream> for proc_macro::TokenStream {
+impl From<TokenStream> for pm::TokenStream {
     fn from(inner: TokenStream) -> Self {
         inner.inner.into()
     }
@@ -2724,22 +2797,7 @@ impl Debug for TokenStream {
         Debug::fmt(&self.inner, f)
     }
 }
-impl LexError {
-    pub fn span(&self) -> Span {
-        Span::_new(self.inner.span())
-    }
-}
-impl Debug for LexError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        Debug::fmt(&self.inner, f)
-    }
-}
-impl Display for LexError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        Display::fmt(&self.inner, f)
-    }
-}
-impl Error for LexError {}
+
 #[derive(Clone)]
 pub enum Tree {
     Group(Group),
@@ -2810,16 +2868,12 @@ impl Debug for Tree {
         }
     }
 }
+
 #[derive(Clone)]
 pub struct Punct {
     ch: char,
     spacing: Spacing,
     span: Span,
-}
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum Spacing {
-    Alone,
-    Joint,
 }
 impl Punct {
     pub fn new(ch: char, spacing: Spacing) -> Self {
@@ -2857,69 +2911,10 @@ impl Debug for Punct {
     }
 }
 
-#[derive(Clone)]
-pub struct Ident {
-    inner: imp::Ident,
-    _marker: Marker,
-}
-impl Ident {
-    fn _new(inner: imp::Ident) -> Self {
-        Ident { inner, _marker: Marker }
-    }
-    pub fn new(string: &str, span: Span) -> Self {
-        Ident::_new(imp::Ident::new(string, span.inner))
-    }
-    pub fn new_raw(string: &str, span: Span) -> Self {
-        Ident::_new_raw(string, span)
-    }
-    fn _new_raw(string: &str, span: Span) -> Self {
-        Ident::_new(imp::Ident::new_raw(string, span.inner))
-    }
-    pub fn span(&self) -> Span {
-        Span::_new(self.inner.span())
-    }
-    pub fn set_span(&mut self, span: Span) {
-        self.inner.set_span(span.inner);
-    }
-}
-impl PartialEq for Ident {
-    fn eq(&self, other: &Ident) -> bool {
-        self.inner == other.inner
-    }
-}
-impl<T> PartialEq<T> for Ident
-where
-    T: ?Sized + AsRef<str>,
-{
-    fn eq(&self, other: &T) -> bool {
-        self.inner == other
-    }
-}
-impl Eq for Ident {}
-impl PartialOrd for Ident {
-    fn partial_cmp(&self, other: &Ident) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-impl Ord for Ident {
-    fn cmp(&self, other: &Ident) -> Ordering {
-        self.to_string().cmp(&other.to_string())
-    }
-}
-impl Hash for Ident {
-    fn hash<H: Hasher>(&self, hasher: &mut H) {
-        self.to_string().hash(hasher);
-    }
-}
-impl Display for Ident {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        Display::fmt(&self.inner, f)
-    }
-}
-impl Debug for Ident {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        Debug::fmt(&self.inner, f)
-    }
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum Spacing {
+    Alone,
+    Joint,
 }
 
 pub mod token_stream {
@@ -2928,7 +2923,7 @@ pub mod token_stream {
     #[derive(Clone)]
     pub struct IntoIter {
         inner: imp::TreeIter,
-        _marker: Marker,
+        _marker: util::Marker,
     }
     impl Iterator for IntoIter {
         type Item = Tree;
@@ -2951,7 +2946,7 @@ pub mod token_stream {
         fn into_iter(self) -> IntoIter {
             IntoIter {
                 inner: self.inner.into_iter(),
-                _marker: Marker,
+                _marker: util::Marker,
             }
         }
     }
@@ -3007,4 +3002,4 @@ impl IntoSpans<DelimSpan> for DelimSpan {
         self
     }
 }
-pub use self::{extra::DelimSpan, Delim, TokenStream as Stream};
+pub use self::{extra::DelimSpan, TokenStream as Stream};
