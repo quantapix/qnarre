@@ -1,4 +1,4 @@
-use super::pm2::{extra::DelimSpan, Delimiter, Group, Ident, Literal, Punct, Spacing, Span, TokenStream, Tree};
+use super::pm2::{extra::DelimSpan, Delimiter, Group, Ident, Lit, Punct, Spacing, Span, TokenStream, Tree};
 use std::{
     borrow::Cow,
     collections::btree_set::{self, BTreeSet},
@@ -229,7 +229,7 @@ impl<T: ToStream> ToStream for Option<T> {
 }
 impl ToStream for str {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        tokens.append(Literal::string(self));
+        tokens.append(Lit::string(self));
     }
 }
 impl ToStream for String {
@@ -267,7 +267,7 @@ primitive! {
 }
 impl ToStream for char {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        tokens.append(Literal::character(*self));
+        tokens.append(Lit::character(*self));
     }
 }
 impl ToStream for bool {
@@ -291,7 +291,7 @@ impl ToStream for Punct {
         tokens.append(self.clone());
     }
 }
-impl ToStream for Literal {
+impl ToStream for Lit {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append(self.clone());
     }

@@ -1,24 +1,162 @@
-extern crate proc_macro;
-mod marker {
-    use std::marker::PhantomData;
-    use std::panic::{RefUnwindSafe, UnwindSafe};
-    use std::rc::Rc;
-    pub type Marker = PhantomData<ProcMacroAutoTraits>;
-    pub use self::value::*;
-    mod value {
-        pub use std::marker::PhantomData as Marker;
-    }
-    pub struct ProcMacroAutoTraits(Rc<()>);
-    impl UnwindSafe for ProcMacroAutoTraits {}
-    impl RefUnwindSafe for ProcMacroAutoTraits {}
+use super::*;
+use std::{
+    error::Error,
+    iter::FromIterator,
+    marker::PhantomData,
+    ops::RangeBounds,
+    panic::{RefUnwindSafe, UnwindSafe},
+    rc::Rc,
+    str::FromStr,
+};
+
+pub type Marker = PhantomData<AutoTraits>;
+pub use self::value::*;
+mod value {
+    pub use std::marker::PhantomData as Marker;
 }
+pub struct AutoTraits(Rc<()>);
+impl UnwindSafe for AutoTraits {}
+impl RefUnwindSafe for AutoTraits {}
+
+mod lit {
+    use super::*;
+    #[derive(Clone)]
+    pub enum Lit {
+        Compiler(proc_macro::Literal),
+        Fallback(fallback::Lit),
+    }
+    mod fallback {}
+
+    #[derive(Clone)]
+    pub struct Lit {
+        inner: imp::Lit,
+        _marker: Marker,
+    }
+}
+
+#[derive(Clone)]
+pub struct Lit {
+    inner: imp::Lit,
+    _marker: Marker,
+}
+macro_rules! suffixed_int_literals {
+    ($($n:ident => $kind:ident,)*) => ($(
+        pub fn $n(n: $kind) -> Lit {
+            Lit::_new(imp::Lit::$n(n))
+        }
+    )*)
+}
+macro_rules! unsuffixed_int_literals {
+    ($($n:ident => $kind:ident,)*) => ($(
+        pub fn $n(n: $kind) -> Lit {
+            Lit::_new(imp::Lit::$n(n))
+        }
+    )*)
+}
+impl Lit {
+    fn _new(inner: imp::Lit) -> Self {
+        Lit { inner, _marker: Marker }
+    }
+    fn _new_fallback(inner: fallback::Lit) -> Self {
+        Lit {
+            inner: inner.into(),
+            _marker: Marker,
+        }
+    }
+    suffixed_int_literals! {
+        u8_suffixed => u8,
+        u16_suffixed => u16,
+        u32_suffixed => u32,
+        u64_suffixed => u64,
+        u128_suffixed => u128,
+        usize_suffixed => usize,
+        i8_suffixed => i8,
+        i16_suffixed => i16,
+        i32_suffixed => i32,
+        i64_suffixed => i64,
+        i128_suffixed => i128,
+        isize_suffixed => isize,
+    }
+    unsuffixed_int_literals! {
+        u8_unsuffixed => u8,
+        u16_unsuffixed => u16,
+        u32_unsuffixed => u32,
+        u64_unsuffixed => u64,
+        u128_unsuffixed => u128,
+        usize_unsuffixed => usize,
+        i8_unsuffixed => i8,
+        i16_unsuffixed => i16,
+        i32_unsuffixed => i32,
+        i64_unsuffixed => i64,
+        i128_unsuffixed => i128,
+        isize_unsuffixed => isize,
+    }
+    pub fn f64_unsuffixed(f: f64) -> Lit {
+        assert!(f.is_finite());
+        Lit::_new(imp::Lit::f64_unsuffixed(f))
+    }
+    pub fn f64_suffixed(f: f64) -> Lit {
+        assert!(f.is_finite());
+        Lit::_new(imp::Lit::f64_suffixed(f))
+    }
+    pub fn f32_unsuffixed(f: f32) -> Lit {
+        assert!(f.is_finite());
+        Lit::_new(imp::Lit::f32_unsuffixed(f))
+    }
+    pub fn f32_suffixed(f: f32) -> Lit {
+        assert!(f.is_finite());
+        Lit::_new(imp::Lit::f32_suffixed(f))
+    }
+    pub fn string(string: &str) -> Lit {
+        Lit::_new(imp::Lit::string(string))
+    }
+    pub fn character(ch: char) -> Lit {
+        Lit::_new(imp::Lit::character(ch))
+    }
+    pub fn byte_string(s: &[u8]) -> Lit {
+        Lit::_new(imp::Lit::byte_string(s))
+    }
+    pub fn span(&self) -> Span {
+        Span::_new(self.inner.span())
+    }
+    pub fn set_span(&mut self, span: Span) {
+        self.inner.set_span(span.inner);
+    }
+    pub fn subspan<R: RangeBounds<usize>>(&self, range: R) -> Option<Span> {
+        self.inner.subspan(range).map(Span::_new)
+    }
+    pub unsafe fn from_str_unchecked(repr: &str) -> Self {
+        Lit::_new(imp::Lit::from_str_unchecked(repr))
+    }
+}
+impl FromStr for Lit {
+    type Err = LexError;
+    fn from_str(x: &str) -> Result<Self, LexError> {
+        x.parse()
+            .map(Lit::_new)
+            .map_err(|inner| LexError { inner, _marker: Marker })
+    }
+}
+impl Debug for Lit {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        Debug::fmt(&self.inner, f)
+    }
+}
+impl Display for Lit {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        Display::fmt(&self.inner, f)
+    }
+}
+
 mod parse {
     use super::fallback::{
         is_ident_continue, is_ident_start, Group, LexError, Lit, Span, TokenStream, TokenStreamBuilder,
     };
     use super::{Delimiter, Punct, Spacing, Tree};
-    use std::char;
-    use std::str::{Bytes, CharIndices, Chars};
+    use std::{
+        char,
+        str::{Bytes, CharIndices, Chars},
+    };
     #[derive(Copy, Clone, Eq, PartialEq)]
     pub struct Cursor<'a> {
         pub rest: &'a str,
@@ -220,7 +358,7 @@ mod parse {
     }
     fn leaf_token(input: Cursor) -> PResult<Tree> {
         if let Ok((input, l)) = literal(input) {
-            Ok((input, Tree::Literal(super::Literal::_new_fallback(l))))
+            Ok((input, Tree::Lit(super::Lit::_new_fallback(l))))
         } else if let Ok((input, p)) = punct(input) {
             Ok((input, Tree::Punct(p)))
         } else if let Ok((input, i)) = ident(input) {
@@ -827,12 +965,12 @@ mod parse {
         let doc_ident = super::Ident::new("doc", span);
         let mut equal = Punct::new('=', Spacing::Alone);
         equal.set_span(span);
-        let mut literal = super::Literal::string(comment);
+        let mut literal = super::Lit::string(comment);
         literal.set_span(span);
         let mut bracketed = TokenStreamBuilder::with_capacity(3);
         bracketed.push_token_from_parser(Tree::Ident(doc_ident));
         bracketed.push_token_from_parser(Tree::Punct(equal));
-        bracketed.push_token_from_parser(Tree::Literal(literal));
+        bracketed.push_token_from_parser(Tree::Lit(literal));
         let group = Group::new(Delimiter::Bracket, bracketed.build());
         let mut group = super::Group::_new_fallback(group);
         group.set_span(span);
@@ -1017,19 +1155,23 @@ mod detection {
     }
 }
 pub mod fallback {
-    use super::location::LineColumn;
-    use super::parse::{self, Cursor};
-    use super::rcvec::{RcVec, RcVecBuilder, RcVecIntoIter, RcVecMut};
-    use super::{Delimiter, Spacing, Tree};
-    use std::cell::RefCell;
-    use std::cmp;
-    use std::fmt::{self, Debug, Display, Write};
-    use std::iter::FromIterator;
-    use std::mem::ManuallyDrop;
-    use std::ops::RangeBounds;
-    use std::path::PathBuf;
-    use std::ptr;
-    use std::str::FromStr;
+    use super::{
+        location::LineColumn,
+        parse::{self, Cursor},
+        rcvec::{RcVec, RcVecBuilder, RcVecIntoIter, RcVecMut},
+        *,
+    };
+    use std::{
+        cell::RefCell,
+        cmp,
+        fmt::{self, Debug, Display, Write},
+        iter::FromIterator,
+        mem::ManuallyDrop,
+        ops::RangeBounds,
+        path::PathBuf,
+        ptr,
+        str::FromStr,
+    };
     pub fn force() {
         super::detection::force_fallback();
     }
@@ -1070,7 +1212,7 @@ pub mod fallback {
     }
     fn push_token_from_proc_macro(mut vec: RcVecMut<Tree>, token: Tree) {
         match token {
-            Tree::Literal(super::Literal {
+            Tree::Lit(super::Lit {
                 inner: super::imp::Lit::Fallback(literal),
                 ..
             }) if literal.repr.starts_with('-') => {
@@ -1084,7 +1226,7 @@ pub mod fallback {
             let mut punct = super::Punct::new('-', Spacing::Alone);
             punct.set_span(super::Span::_new_fallback(literal.span));
             vec.push(Tree::Punct(punct));
-            vec.push(Tree::Literal(super::Literal::_new_fallback(literal)));
+            vec.push(Tree::Lit(super::Lit::_new_fallback(literal)));
         }
     }
     impl Drop for TokenStream {
@@ -1170,7 +1312,7 @@ pub mod fallback {
                         joint = tt.spacing() == Spacing::Joint;
                         Display::fmt(tt, f)
                     },
-                    Tree::Literal(tt) => Display::fmt(tt, f),
+                    Tree::Lit(tt) => Display::fmt(tt, f),
                 }?;
             }
             Ok(())
@@ -1586,6 +1728,7 @@ pub mod fallback {
     pub struct Lit {
         repr: String,
         span: Span,
+        _marker: Marker,
     }
     macro_rules! suffixed_nums {
         ($($n:ident => $kind:ident,)*) => ($(
@@ -1606,6 +1749,7 @@ pub mod fallback {
             Lit {
                 repr,
                 span: Span::call_site(),
+                _marker: Marker,
             }
         }
         pub unsafe fn from_str_unchecked(repr: &str) -> Self {
@@ -1641,12 +1785,12 @@ pub mod fallback {
             i128_unsuffixed => i128,
             isize_unsuffixed => isize,
         }
-        pub fn f32_unsuffixed(f: f32) -> Lit {
-            let mut s = f.to_string();
-            if !s.contains('.') {
-                s.push_str(".0");
+        pub fn f32_unsuffixed(x: f32) -> Lit {
+            let mut y = x.to_string();
+            if !y.contains('.') {
+                y.push_str(".0");
             }
-            Lit::_new(s)
+            Lit::_new(y)
         }
         pub fn f64_unsuffixed(f: f64) -> Lit {
             let mut s = f.to_string();
@@ -1791,10 +1935,7 @@ pub mod fallback {
     }
 }
 pub mod extra {
-    use super::fallback;
-    use super::imp;
-    use super::marker::Marker;
-    use super::Span;
+    use super::{fallback, imp, Marker, Span};
     use std::fmt::{self, Debug};
     #[derive(Copy, Clone)]
     pub struct DelimSpan {
@@ -1980,7 +2121,7 @@ mod imp {
                 punct.into()
             },
             Tree::Ident(tt) => tt.inner.unwrap_nightly().into(),
-            Tree::Literal(tt) => tt.inner.unwrap_nightly().into(),
+            Tree::Lit(tt) => tt.inner.unwrap_nightly().into(),
         }
     }
     impl From<Tree> for TokenStream {
@@ -2128,7 +2269,7 @@ mod imp {
                     o.into()
                 },
                 proc_macro::TokenTree::Ident(s) => super::Ident::_new(Ident::Compiler(s)).into(),
-                proc_macro::TokenTree::Literal(l) => super::Literal::_new(Lit::Compiler(l)).into(),
+                proc_macro::TokenTree::Literal(l) => super::Lit::_new(Lit::Compiler(l)).into(),
             })
         }
         fn size_hint(&self) -> (usize, Option<usize>) {
@@ -2590,14 +2731,7 @@ mod location {
     }
 }
 pub use location::LineColumn;
-use marker::Marker;
-use std::cmp::Ordering;
-use std::error::Error;
-use std::fmt::{self, Debug, Display};
-use std::hash::{Hash, Hasher};
-use std::iter::FromIterator;
-use std::ops::RangeBounds;
-use std::str::FromStr;
+
 #[derive(Clone)]
 pub struct TokenStream {
     inner: imp::TokenStream,
@@ -2756,7 +2890,7 @@ pub enum Tree {
     Group(Group),
     Ident(Ident),
     Punct(Punct),
-    Literal(Literal),
+    Lit(Lit),
 }
 impl Tree {
     pub fn span(&self) -> Span {
@@ -2764,7 +2898,7 @@ impl Tree {
             Tree::Group(t) => t.span(),
             Tree::Ident(t) => t.span(),
             Tree::Punct(t) => t.span(),
-            Tree::Literal(t) => t.span(),
+            Tree::Lit(t) => t.span(),
         }
     }
     pub fn set_span(&mut self, span: Span) {
@@ -2772,7 +2906,7 @@ impl Tree {
             Tree::Group(t) => t.set_span(span),
             Tree::Ident(t) => t.set_span(span),
             Tree::Punct(t) => t.set_span(span),
-            Tree::Literal(t) => t.set_span(span),
+            Tree::Lit(t) => t.set_span(span),
         }
     }
 }
@@ -2791,9 +2925,9 @@ impl From<Punct> for Tree {
         Tree::Punct(g)
     }
 }
-impl From<Literal> for Tree {
-    fn from(g: Literal) -> Self {
-        Tree::Literal(g)
+impl From<Lit> for Tree {
+    fn from(g: Lit) -> Self {
+        Tree::Lit(g)
     }
 }
 impl Display for Tree {
@@ -2802,7 +2936,7 @@ impl Display for Tree {
             Tree::Group(t) => Display::fmt(t, f),
             Tree::Ident(t) => Display::fmt(t, f),
             Tree::Punct(t) => Display::fmt(t, f),
-            Tree::Literal(t) => Display::fmt(t, f),
+            Tree::Lit(t) => Display::fmt(t, f),
         }
     }
 }
@@ -2817,7 +2951,7 @@ impl Debug for Tree {
                 debug.finish()
             },
             Tree::Punct(t) => Debug::fmt(t, f),
-            Tree::Literal(t) => Debug::fmt(t, f),
+            Tree::Lit(t) => Debug::fmt(t, f),
         }
     }
 }
@@ -2988,125 +3122,9 @@ impl Debug for Ident {
     }
 }
 
-#[derive(Clone)]
-pub struct Literal {
-    inner: imp::Lit,
-    _marker: Marker,
-}
-macro_rules! suffixed_int_literals {
-    ($($n:ident => $kind:ident,)*) => ($(
-        pub fn $n(n: $kind) -> Literal {
-            Literal::_new(imp::Lit::$n(n))
-        }
-    )*)
-}
-macro_rules! unsuffixed_int_literals {
-    ($($n:ident => $kind:ident,)*) => ($(
-        pub fn $n(n: $kind) -> Literal {
-            Literal::_new(imp::Lit::$n(n))
-        }
-    )*)
-}
-impl Literal {
-    fn _new(inner: imp::Lit) -> Self {
-        Literal { inner, _marker: Marker }
-    }
-    fn _new_fallback(inner: fallback::Lit) -> Self {
-        Literal {
-            inner: inner.into(),
-            _marker: Marker,
-        }
-    }
-    suffixed_int_literals! {
-        u8_suffixed => u8,
-        u16_suffixed => u16,
-        u32_suffixed => u32,
-        u64_suffixed => u64,
-        u128_suffixed => u128,
-        usize_suffixed => usize,
-        i8_suffixed => i8,
-        i16_suffixed => i16,
-        i32_suffixed => i32,
-        i64_suffixed => i64,
-        i128_suffixed => i128,
-        isize_suffixed => isize,
-    }
-    unsuffixed_int_literals! {
-        u8_unsuffixed => u8,
-        u16_unsuffixed => u16,
-        u32_unsuffixed => u32,
-        u64_unsuffixed => u64,
-        u128_unsuffixed => u128,
-        usize_unsuffixed => usize,
-        i8_unsuffixed => i8,
-        i16_unsuffixed => i16,
-        i32_unsuffixed => i32,
-        i64_unsuffixed => i64,
-        i128_unsuffixed => i128,
-        isize_unsuffixed => isize,
-    }
-    pub fn f64_unsuffixed(f: f64) -> Literal {
-        assert!(f.is_finite());
-        Literal::_new(imp::Lit::f64_unsuffixed(f))
-    }
-    pub fn f64_suffixed(f: f64) -> Literal {
-        assert!(f.is_finite());
-        Literal::_new(imp::Lit::f64_suffixed(f))
-    }
-    pub fn f32_unsuffixed(f: f32) -> Literal {
-        assert!(f.is_finite());
-        Literal::_new(imp::Lit::f32_unsuffixed(f))
-    }
-    pub fn f32_suffixed(f: f32) -> Literal {
-        assert!(f.is_finite());
-        Literal::_new(imp::Lit::f32_suffixed(f))
-    }
-    pub fn string(string: &str) -> Literal {
-        Literal::_new(imp::Lit::string(string))
-    }
-    pub fn character(ch: char) -> Literal {
-        Literal::_new(imp::Lit::character(ch))
-    }
-    pub fn byte_string(s: &[u8]) -> Literal {
-        Literal::_new(imp::Lit::byte_string(s))
-    }
-    pub fn span(&self) -> Span {
-        Span::_new(self.inner.span())
-    }
-    pub fn set_span(&mut self, span: Span) {
-        self.inner.set_span(span.inner);
-    }
-    pub fn subspan<R: RangeBounds<usize>>(&self, range: R) -> Option<Span> {
-        self.inner.subspan(range).map(Span::_new)
-    }
-    pub unsafe fn from_str_unchecked(repr: &str) -> Self {
-        Literal::_new(imp::Lit::from_str_unchecked(repr))
-    }
-}
-impl FromStr for Literal {
-    type Err = LexError;
-    fn from_str(x: &str) -> Result<Self, LexError> {
-        x.parse()
-            .map(Literal::_new)
-            .map_err(|inner| LexError { inner, _marker: Marker })
-    }
-}
-impl Debug for Literal {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        Debug::fmt(&self.inner, f)
-    }
-}
-impl Display for Literal {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        Display::fmt(&self.inner, f)
-    }
-}
-
 pub mod token_stream {
-    use super::marker::Marker;
-    pub use super::TokenStream;
-    use super::{imp, Tree};
-    use std::fmt::{self, Debug};
+    use super::*;
+
     #[derive(Clone)]
     pub struct IntoIter {
         inner: imp::TreeIter,
@@ -3189,4 +3207,4 @@ impl IntoSpans<DelimSpan> for DelimSpan {
         self
     }
 }
-pub use self::{extra::DelimSpan, Delimiter as Delim, Literal as Lit, TokenStream as Stream};
+pub use self::{extra::DelimSpan, Delimiter as Delim, TokenStream as Stream};

@@ -222,7 +222,7 @@ impl Buffer {
             match x {
                 Tree::Ident(x) => ys.push(Entry::Ident(x)),
                 Tree::Punct(x) => ys.push(Entry::Punct(x)),
-                Tree::Literal(x) => ys.push(Entry::Lit(x)),
+                Tree::Lit(x) => ys.push(Entry::Lit(x)),
                 Tree::Group(x) => {
                     let beg = ys.len();
                     ys.push(Entry::End(0));

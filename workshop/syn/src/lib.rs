@@ -171,7 +171,7 @@ impl<'a> PartialEq for TokenTreeHelper<'a> {
                         _ => false,
                     }
             },
-            (pm2::Tree::Literal(l1), pm2::Tree::Literal(l2)) => l1.to_string() == l2.to_string(),
+            (pm2::Tree::Lit(l1), pm2::Tree::Lit(l2)) => l1.to_string() == l2.to_string(),
             (pm2::Tree::Ident(s1), pm2::Tree::Ident(s2)) => s1 == s2,
             _ => false,
         }
@@ -203,7 +203,7 @@ impl<'a> Hash for TokenTreeHelper<'a> {
                     Joint => 1u8.hash(h),
                 }
             },
-            pm2::Tree::Literal(x) => (2u8, x.to_string()).hash(h),
+            pm2::Tree::Lit(x) => (2u8, x.to_string()).hash(h),
             pm2::Tree::Ident(x) => (3u8, x).hash(h),
         }
     }

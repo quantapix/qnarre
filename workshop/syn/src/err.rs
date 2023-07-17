@@ -169,7 +169,7 @@ impl ErrMsg {
             }),
             pm2::Tree::Group({
                 let mut y = pm2::Group::new(pm2::Delim::Brace, {
-                    pm2::Stream::from_iter(vec![pm2::Tree::Literal({
+                    pm2::Stream::from_iter(vec![pm2::Tree::Lit({
                         let mut y = pm2::Lit::string(&self.msg);
                         y.set_span(end);
                         y
