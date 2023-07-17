@@ -178,70 +178,94 @@ impl Debug for Group {
 }
 
 #[derive(Clone)]
-pub struct Ident {
-    inner: imp::Ident,
-    _marker: util::Marker,
+pub enum Ident {
+    Compiler(pm::Ident),
+    Fallback(fallback::Ident),
 }
 impl Ident {
-    fn _new(inner: imp::Ident) -> Self {
-        Ident {
-            inner,
-            _marker: util::Marker,
+    pub fn new(x: &str, s: Span) -> Self {
+        match s {
+            Span::Compiler(s) => Ident::Compiler(pm::Ident::new(x, s)),
+            Span::Fallback(s) => Ident::Fallback(fallback::Ident::new(x, s)),
         }
     }
-    pub fn new(string: &str, span: Span) -> Self {
-        Ident::_new(imp::Ident::new(string, span.inner))
-    }
-    pub fn new_raw(string: &str, span: Span) -> Self {
-        Ident::_new_raw(string, span)
-    }
-    fn _new_raw(string: &str, span: Span) -> Self {
-        Ident::_new(imp::Ident::new_raw(string, span.inner))
+    pub fn new_raw(x: &str, s: Span) -> Self {
+        match s {
+            Span::Compiler(s) => Ident::Compiler(pm::Ident::new_raw(x, s)),
+            Span::Fallback(s) => Ident::Fallback(fallback::Ident::new_raw(x, s)),
+        }
     }
     pub fn span(&self) -> Span {
-        Span::_new(self.inner.span())
+        match self {
+            Ident::Compiler(x) => Span::Compiler(x.span()),
+            Ident::Fallback(x) => Span::Fallback(x.span()),
+        }
     }
-    pub fn set_span(&mut self, span: Span) {
-        self.inner.set_span(span.inner);
+    pub fn set_span(&mut self, s: Span) {
+        match (self, s) {
+            (Ident::Compiler(x), Span::Compiler(s)) => x.set_span(s),
+            (Ident::Fallback(x), Span::Fallback(s)) => x.set_span(s),
+            _ => mismatch(),
+        }
+    }
+    fn unwrap_nightly(self) -> pm::Ident {
+        match self {
+            Ident::Compiler(x) => x,
+            Ident::Fallback(_) => mismatch(),
+        }
     }
 }
 impl PartialEq for Ident {
-    fn eq(&self, other: &Ident) -> bool {
-        self.inner == other.inner
+    fn eq(&self, i: &Ident) -> bool {
+        match (self, i) {
+            (Ident::Compiler(x), Ident::Compiler(i)) => x.to_string() == i.to_string(),
+            (Ident::Fallback(x), Ident::Fallback(i)) => x == i,
+            _ => mismatch(),
+        }
     }
 }
 impl<T> PartialEq<T> for Ident
 where
     T: ?Sized + AsRef<str>,
 {
-    fn eq(&self, other: &T) -> bool {
-        self.inner == other
+    fn eq(&self, t: &T) -> bool {
+        let t = t.as_ref();
+        match self {
+            Ident::Compiler(x) => x.to_string() == t,
+            Ident::Fallback(x) => x == t,
+        }
     }
 }
 impl Eq for Ident {}
 impl PartialOrd for Ident {
-    fn partial_cmp(&self, other: &Ident) -> Option<Ordering> {
-        Some(self.cmp(other))
+    fn partial_cmp(&self, x: &Ident) -> Option<Ordering> {
+        Some(self.cmp(x))
     }
 }
 impl Ord for Ident {
-    fn cmp(&self, other: &Ident) -> Ordering {
-        self.to_string().cmp(&other.to_string())
+    fn cmp(&self, x: &Ident) -> Ordering {
+        self.to_string().cmp(&x.to_string())
     }
 }
 impl Hash for Ident {
-    fn hash<H: Hasher>(&self, hasher: &mut H) {
-        self.to_string().hash(hasher);
+    fn hash<H: Hasher>(&self, x: &mut H) {
+        self.to_string().hash(x);
     }
 }
 impl Display for Ident {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        Display::fmt(&self.inner, f)
+        match self {
+            Ident::Compiler(x) => Display::fmt(x, f),
+            Ident::Fallback(x) => Display::fmt(x, f),
+        }
     }
 }
 impl Debug for Ident {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        Debug::fmt(&self.inner, f)
+        match self {
+            Ident::Compiler(x) => Debug::fmt(x, f),
+            Ident::Fallback(x) => Debug::fmt(x, f),
+        }
     }
 }
 
@@ -567,9 +591,7 @@ pub fn debug_span_field(x: &mut fmt::DebugStruct, s: Span) {
 }
 
 mod parse {
-    use super::fallback::{
-        is_ident_continue, is_ident_start, Group, LexErr, Lit, Span, TokenStream, TokenStreamBuilder,
-    };
+    use super::fallback::{is_ident_cont, is_ident_start, Group, LexErr, Lit, Span, TokenStream, TokenStreamBuilder};
     use super::{Delim, Punct, Spacing, Tree};
     use std::{
         char,
@@ -699,7 +721,7 @@ mod parse {
     }
     fn word_break(input: Cursor) -> Result<Cursor, Reject> {
         match input.chars().next() {
-            Some(ch) if is_ident_continue(ch) => Err(Reject),
+            Some(ch) if is_ident_cont(ch) => Err(Reject),
             Some(_) | None => Ok(input),
         }
     }
@@ -818,7 +840,7 @@ mod parse {
         }
         let mut end = input.len();
         for (i, ch) in chars {
-            if !is_ident_continue(ch) {
+            if !is_ident_cont(ch) {
                 end = i;
                 break;
             }
@@ -1571,6 +1593,7 @@ pub mod fallback {
     pub fn unforce() {
         super::util::unforce_fallback();
     }
+
     #[derive(Clone)]
     pub struct TokenStream {
         inner: RcVec<Tree>,
@@ -1587,25 +1610,6 @@ pub mod fallback {
         fn take_inner(self) -> RcVecBuilder<Tree> {
             let nodrop = ManuallyDrop::new(self);
             unsafe { ptr::read(&nodrop.inner) }.make_owned()
-        }
-    }
-    fn push_token_from_proc_macro(mut vec: RcVecMut<Tree>, token: Tree) {
-        match token {
-            Tree::Lit(super::Lit {
-                inner: super::imp::Lit::Fallback(literal),
-                ..
-            }) if literal.repr.starts_with('-') => {
-                push_negative_literal(vec, literal);
-            },
-            _ => vec.push(token),
-        }
-        #[cold]
-        fn push_negative_literal(mut vec: RcVecMut<Tree>, mut literal: Lit) {
-            literal.repr.remove(0);
-            let mut punct = super::Punct::new('-', Spacing::Alone);
-            punct.set_span(super::Span::_new_fallback(literal.span));
-            vec.push(Tree::Punct(punct));
-            vec.push(Tree::Lit(super::Lit::_new_fallback(literal)));
         }
     }
     impl Drop for TokenStream {
@@ -1626,39 +1630,6 @@ pub mod fallback {
                 inner.extend(group.stream.take_inner());
             }
         }
-    }
-    pub struct TokenStreamBuilder {
-        inner: RcVecBuilder<Tree>,
-    }
-    impl TokenStreamBuilder {
-        pub fn new() -> Self {
-            TokenStreamBuilder {
-                inner: RcVecBuilder::new(),
-            }
-        }
-        pub fn with_capacity(cap: usize) -> Self {
-            TokenStreamBuilder {
-                inner: RcVecBuilder::with_capacity(cap),
-            }
-        }
-        pub fn push_token_from_parser(&mut self, tt: Tree) {
-            self.inner.push(tt);
-        }
-        pub fn build(self) -> TokenStream {
-            TokenStream {
-                inner: self.inner.build(),
-            }
-        }
-    }
-    fn get_cursor(src: &str) -> Cursor {
-        SRC_MAP.with(|cm| {
-            let mut cm = cm.borrow_mut();
-            let span = cm.add_file(src);
-            Cursor {
-                rest: src,
-                off: span.lo,
-            }
-        })
     }
     impl FromStr for TokenStream {
         type Err = LexErr;
@@ -1744,7 +1715,6 @@ pub mod fallback {
             self.inner.make_mut().extend(streams.into_iter().flatten());
         }
     }
-    pub type TreeIter = RcVecIntoIter<Tree>;
     impl IntoIterator for TokenStream {
         type Item = Tree;
         type IntoIter = TreeIter;
@@ -1752,6 +1722,63 @@ pub mod fallback {
             self.take_inner().into_iter()
         }
     }
+
+    fn push_token_from_proc_macro(mut vec: RcVecMut<Tree>, token: Tree) {
+        match token {
+            Tree::Lit(super::Lit {
+                inner: super::imp::Lit::Fallback(literal),
+                ..
+            }) if literal.repr.starts_with('-') => {
+                push_negative_literal(vec, literal);
+            },
+            _ => vec.push(token),
+        }
+        #[cold]
+        fn push_negative_literal(mut vec: RcVecMut<Tree>, mut literal: Lit) {
+            literal.repr.remove(0);
+            let mut punct = super::Punct::new('-', Spacing::Alone);
+            punct.set_span(super::Span::_new_fallback(literal.span));
+            vec.push(Tree::Punct(punct));
+            vec.push(Tree::Lit(super::Lit::_new_fallback(literal)));
+        }
+    }
+    fn get_cursor(src: &str) -> Cursor {
+        SRC_MAP.with(|cm| {
+            let mut cm = cm.borrow_mut();
+            let span = cm.add_file(src);
+            Cursor {
+                rest: src,
+                off: span.lo,
+            }
+        })
+    }
+
+    pub struct TokenStreamBuilder {
+        inner: RcVecBuilder<Tree>,
+    }
+    impl TokenStreamBuilder {
+        pub fn new() -> Self {
+            TokenStreamBuilder {
+                inner: RcVecBuilder::new(),
+            }
+        }
+        pub fn with_capacity(cap: usize) -> Self {
+            TokenStreamBuilder {
+                inner: RcVecBuilder::with_capacity(cap),
+            }
+        }
+        pub fn push_token_from_parser(&mut self, tt: Tree) {
+            self.inner.push(tt);
+        }
+        pub fn build(self) -> TokenStream {
+            TokenStream {
+                inner: self.inner.build(),
+            }
+        }
+    }
+
+    pub type TreeIter = RcVecIntoIter<Tree>;
+
     #[derive(Clone, PartialEq, Eq)]
     pub struct SourceFile {
         path: PathBuf,
@@ -1772,6 +1799,7 @@ pub mod fallback {
                 .finish()
         }
     }
+
     thread_local! {
         static SRC_MAP: RefCell<SourceMap> = RefCell::new(SourceMap {
             files: vec![FileInfo {
@@ -1781,6 +1809,7 @@ pub mod fallback {
             }],
         });
     }
+
     struct FileInfo {
         text: String,
         span: Span,
@@ -1813,6 +1842,7 @@ pub mod fallback {
             self.text[lo..hi].to_owned()
         }
     }
+
     fn lines_offsets(s: &str) -> (usize, Vec<usize>) {
         let mut lines = vec![0];
         let mut total = 0;
@@ -1824,6 +1854,7 @@ pub mod fallback {
         }
         (total, lines)
     }
+
     struct SourceMap {
         files: Vec<FileInfo>,
     }
@@ -1837,6 +1868,7 @@ pub mod fallback {
             let span = Span {
                 lo,
                 hi: lo + (len as u32),
+                _marker: util::Marker,
             };
             self.files.push(FileInfo {
                 text: src.to_owned(),
@@ -1845,115 +1877,13 @@ pub mod fallback {
             });
             span
         }
-        fn fileinfo(&self, span: Span) -> &FileInfo {
-            for file in &self.files {
-                if file.span_within(span) {
-                    return file;
+        fn fileinfo(&self, s: Span) -> &FileInfo {
+            for x in &self.files {
+                if x.span_within(s) {
+                    return x;
                 }
             }
             unreachable!("Invalid span with no related FileInfo!");
-        }
-    }
-
-    #[derive(Clone)]
-    pub struct Ident {
-        sym: String,
-        span: Span,
-        raw: bool,
-    }
-    impl Ident {
-        fn _new(string: &str, raw: bool, span: Span) -> Self {
-            validate_ident(string, raw);
-            Ident {
-                sym: string.to_owned(),
-                span,
-                raw,
-            }
-        }
-        pub fn new(string: &str, span: Span) -> Self {
-            Ident::_new(string, false, span)
-        }
-        pub fn new_raw(string: &str, span: Span) -> Self {
-            Ident::_new(string, true, span)
-        }
-        pub fn span(&self) -> Span {
-            self.span
-        }
-        pub fn set_span(&mut self, span: Span) {
-            self.span = span;
-        }
-    }
-    pub fn is_ident_start(c: char) -> bool {
-        c == '_' || unicode_ident::is_xid_start(c)
-    }
-    pub fn is_ident_continue(c: char) -> bool {
-        unicode_ident::is_xid_continue(c)
-    }
-    fn validate_ident(string: &str, raw: bool) {
-        if string.is_empty() {
-            panic!("Ident is not allowed to be empty; use Option<Ident>");
-        }
-        if string.bytes().all(|digit| digit >= b'0' && digit <= b'9') {
-            panic!("Ident cannot be a number; use Literal instead");
-        }
-        fn ident_ok(string: &str) -> bool {
-            let mut chars = string.chars();
-            let first = chars.next().unwrap();
-            if !is_ident_start(first) {
-                return false;
-            }
-            for ch in chars {
-                if !is_ident_continue(ch) {
-                    return false;
-                }
-            }
-            true
-        }
-        if !ident_ok(string) {
-            panic!("{:?} is not a valid Ident", string);
-        }
-        if raw {
-            match string {
-                "_" | "super" | "self" | "Self" | "crate" => {
-                    panic!("`r#{}` cannot be a raw identifier", string);
-                },
-                _ => {},
-            }
-        }
-    }
-    impl PartialEq for Ident {
-        fn eq(&self, other: &Ident) -> bool {
-            self.sym == other.sym && self.raw == other.raw
-        }
-    }
-    impl<T> PartialEq<T> for Ident
-    where
-        T: ?Sized + AsRef<str>,
-    {
-        fn eq(&self, other: &T) -> bool {
-            let other = other.as_ref();
-            if self.raw {
-                other.starts_with("r#") && self.sym == other[2..]
-            } else {
-                self.sym == other
-            }
-        }
-    }
-    impl Display for Ident {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            if self.raw {
-                f.write_str("r#")?;
-            }
-            Display::fmt(&self.sym, f)
-        }
-    }
-    #[allow(clippy::missing_fields_in_debug)]
-    impl Debug for Ident {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            let mut y = f.debug_struct("Ident");
-            y.field("sym", &format_args!("{}", self));
-            debug_span_field(&mut y, self.span);
-            y.finish()
         }
     }
 
@@ -2014,6 +1944,110 @@ pub mod fallback {
             y.field("stream", &self.stream);
             debug_span_field(&mut y, self.span);
             y.finish()
+        }
+    }
+
+    #[derive(Clone)]
+    pub struct Ident {
+        sym: String,
+        span: Span,
+        raw: bool,
+        _marker: util::Marker,
+    }
+    impl Ident {
+        pub fn new(x: &str, s: Span) -> Self {
+            Ident::_new(x, false, s)
+        }
+        pub fn new_raw(x: &str, s: Span) -> Self {
+            Ident::_new(x, true, s)
+        }
+        fn _new(x: &str, raw: bool, span: Span) -> Self {
+            validate_ident(x, raw);
+            Ident {
+                sym: x.to_owned(),
+                span,
+                raw,
+                _marker: util::Marker,
+            }
+        }
+        pub fn span(&self) -> Span {
+            self.span
+        }
+        pub fn set_span(&mut self, x: Span) {
+            self.span = x;
+        }
+    }
+    impl PartialEq for Ident {
+        fn eq(&self, x: &Ident) -> bool {
+            self.sym == x.sym && self.raw == x.raw
+        }
+    }
+    impl<T> PartialEq<T> for Ident
+    where
+        T: ?Sized + AsRef<str>,
+    {
+        fn eq(&self, t: &T) -> bool {
+            let t = t.as_ref();
+            if self.raw {
+                t.starts_with("r#") && self.sym == t[2..]
+            } else {
+                self.sym == t
+            }
+        }
+    }
+    impl Display for Ident {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            if self.raw {
+                f.write_str("r#")?;
+            }
+            Display::fmt(&self.sym, f)
+        }
+    }
+    #[allow(clippy::missing_fields_in_debug)]
+    impl Debug for Ident {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            let mut y = f.debug_struct("Ident");
+            y.field("sym", &format_args!("{}", self));
+            debug_span_field(&mut y, self.span);
+            y.finish()
+        }
+    }
+    pub fn is_ident_start(x: char) -> bool {
+        x == '_' || unicode_ident::is_xid_start(x)
+    }
+    pub fn is_ident_cont(x: char) -> bool {
+        unicode_ident::is_xid_continue(x)
+    }
+    fn validate_ident(x: &str, raw: bool) {
+        if x.is_empty() {
+            panic!("Ident is not allowed to be empty; use Option<Ident>");
+        }
+        if x.bytes().all(|x| x >= b'0' && x <= b'9') {
+            panic!("Ident cannot be a number; use Literal instead");
+        }
+        fn ident_ok(x: &str) -> bool {
+            let mut xs = x.chars();
+            let first = xs.next().unwrap();
+            if !is_ident_start(first) {
+                return false;
+            }
+            for x in xs {
+                if !is_ident_cont(x) {
+                    return false;
+                }
+            }
+            true
+        }
+        if !ident_ok(x) {
+            panic!("{:?} is not a valid Ident", x);
+        }
+        if raw {
+            match x {
+                "_" | "super" | "self" | "Self" | "crate" => {
+                    panic!("`r#{}` cannot be a raw identifier", x);
+                },
+                _ => {},
+            }
         }
     }
 
@@ -2400,6 +2434,7 @@ mod imp {
     use std::ops::RangeBounds;
     use std::panic;
     use std::str::FromStr;
+
     #[derive(Clone)]
     pub enum TokenStream {
         Compiler(DeferredTokenStream),
@@ -2442,10 +2477,6 @@ mod imp {
             }
         }
     }
-    fn proc_macro_parse(src: &str) -> Result<pm::TokenStream, LexErr> {
-        let result = panic::catch_unwind(|| src.parse().map_err(LexErr::Compiler));
-        result.unwrap_or_else(|_| Err(LexErr::call_site()))
-    }
     impl Display for TokenStream {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             match self {
@@ -2470,22 +2501,6 @@ mod imp {
     impl From<fallback::TokenStream> for TokenStream {
         fn from(inner: fallback::TokenStream) -> Self {
             TokenStream::Fallback(inner)
-        }
-    }
-    fn into_compiler_token(token: Tree) -> pm::TokenTree {
-        match token {
-            Tree::Group(tt) => tt.inner.unwrap_nightly().into(),
-            Tree::Punct(tt) => {
-                let spacing = match tt.spacing() {
-                    Spacing::Joint => pm::Spacing::Joint,
-                    Spacing::Alone => pm::Spacing::Alone,
-                };
-                let mut punct = pm::Punct::new(tt.as_char(), spacing);
-                punct.set_span(tt.span().inner.unwrap_nightly());
-                punct.into()
-            },
-            Tree::Ident(tt) => tt.inner.unwrap_nightly().into(),
-            Tree::Lit(tt) => tt.inner.unwrap_nightly().into(),
         }
     }
     impl From<Tree> for TokenStream {
@@ -2565,12 +2580,6 @@ mod imp {
             }
         }
     }
-
-    #[derive(Clone)]
-    pub enum TreeIter {
-        Compiler(pm::token_stream::IntoIter),
-        Fallback(fallback::TreeIter),
-    }
     impl IntoIterator for TokenStream {
         type Item = Tree;
         type IntoIter = TreeIter;
@@ -2580,6 +2589,12 @@ mod imp {
                 TokenStream::Fallback(tts) => TreeIter::Fallback(tts.into_iter()),
             }
         }
+    }
+
+    #[derive(Clone)]
+    pub enum TreeIter {
+        Compiler(pm::token_stream::IntoIter),
+        Fallback(fallback::TreeIter),
     }
     impl Iterator for TreeIter {
         type Item = Tree;
@@ -2610,79 +2625,25 @@ mod imp {
             }
         }
     }
-    #[derive(Clone)]
-    pub enum Ident {
-        Compiler(pm::Ident),
-        Fallback(fallback::Ident),
+
+    fn proc_macro_parse(src: &str) -> Result<pm::TokenStream, LexErr> {
+        let result = panic::catch_unwind(|| src.parse().map_err(LexErr::Compiler));
+        result.unwrap_or_else(|_| Err(LexErr::call_site()))
     }
-    impl Ident {
-        pub fn new(string: &str, span: Span) -> Self {
-            match span {
-                Span::Compiler(s) => Ident::Compiler(pm::Ident::new(string, s)),
-                Span::Fallback(s) => Ident::Fallback(fallback::Ident::new(string, s)),
-            }
-        }
-        pub fn new_raw(string: &str, span: Span) -> Self {
-            match span {
-                Span::Compiler(s) => Ident::Compiler(pm::Ident::new_raw(string, s)),
-                Span::Fallback(s) => Ident::Fallback(fallback::Ident::new_raw(string, s)),
-            }
-        }
-        pub fn span(&self) -> Span {
-            match self {
-                Ident::Compiler(t) => Span::Compiler(t.span()),
-                Ident::Fallback(t) => Span::Fallback(t.span()),
-            }
-        }
-        pub fn set_span(&mut self, span: Span) {
-            match (self, span) {
-                (Ident::Compiler(t), Span::Compiler(s)) => t.set_span(s),
-                (Ident::Fallback(t), Span::Fallback(s)) => t.set_span(s),
-                _ => mismatch(),
-            }
-        }
-        fn unwrap_nightly(self) -> pm::Ident {
-            match self {
-                Ident::Compiler(s) => s,
-                Ident::Fallback(_) => mismatch(),
-            }
-        }
-    }
-    impl PartialEq for Ident {
-        fn eq(&self, other: &Ident) -> bool {
-            match (self, other) {
-                (Ident::Compiler(t), Ident::Compiler(o)) => t.to_string() == o.to_string(),
-                (Ident::Fallback(t), Ident::Fallback(o)) => t == o,
-                _ => mismatch(),
-            }
-        }
-    }
-    impl<T> PartialEq<T> for Ident
-    where
-        T: ?Sized + AsRef<str>,
-    {
-        fn eq(&self, other: &T) -> bool {
-            let other = other.as_ref();
-            match self {
-                Ident::Compiler(t) => t.to_string() == other,
-                Ident::Fallback(t) => t == other,
-            }
-        }
-    }
-    impl Display for Ident {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            match self {
-                Ident::Compiler(t) => Display::fmt(t, f),
-                Ident::Fallback(t) => Display::fmt(t, f),
-            }
-        }
-    }
-    impl Debug for Ident {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            match self {
-                Ident::Compiler(t) => Debug::fmt(t, f),
-                Ident::Fallback(t) => Debug::fmt(t, f),
-            }
+    fn into_compiler_token(token: Tree) -> pm::TokenTree {
+        match token {
+            Tree::Group(tt) => tt.inner.unwrap_nightly().into(),
+            Tree::Punct(tt) => {
+                let spacing = match tt.spacing() {
+                    Spacing::Joint => pm::Spacing::Joint,
+                    Spacing::Alone => pm::Spacing::Alone,
+                };
+                let mut punct = pm::Punct::new(tt.as_char(), spacing);
+                punct.set_span(tt.span().inner.unwrap_nightly());
+                punct.into()
+            },
+            Tree::Ident(tt) => tt.inner.unwrap_nightly().into(),
+            Tree::Lit(tt) => tt.inner.unwrap_nightly().into(),
         }
     }
 }
