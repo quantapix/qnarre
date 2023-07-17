@@ -18,134 +18,189 @@ pub struct AutoTraits(Rc<()>);
 impl UnwindSafe for AutoTraits {}
 impl RefUnwindSafe for AutoTraits {}
 
-mod lit {
-    use super::*;
-    #[derive(Clone)]
-    pub enum Lit {
-        Compiler(proc_macro::Literal),
-        Fallback(fallback::Lit),
-    }
-    mod fallback {}
-
-    #[derive(Clone)]
-    pub struct Lit {
-        inner: imp::Lit,
-        _marker: Marker,
-    }
-}
+use detection::inside_proc_macro;
 
 #[derive(Clone)]
-pub struct Lit {
-    inner: imp::Lit,
-    _marker: Marker,
+pub enum Lit {
+    Compiler(proc_macro::Literal),
+    Fallback(fallback::Lit),
 }
-macro_rules! suffixed_int_literals {
+macro_rules! suffixed_nums {
     ($($n:ident => $kind:ident,)*) => ($(
         pub fn $n(n: $kind) -> Lit {
-            Lit::_new(imp::Lit::$n(n))
+            if inside_proc_macro() {
+                Lit::Compiler(proc_macro::Literal::$n(n))
+            } else {
+                Lit::Fallback(fallback::Lit::$n(n))
+            }
         }
     )*)
 }
-macro_rules! unsuffixed_int_literals {
+macro_rules! unsuffixed_nums {
     ($($n:ident => $kind:ident,)*) => ($(
         pub fn $n(n: $kind) -> Lit {
-            Lit::_new(imp::Lit::$n(n))
+            if inside_proc_macro() {
+                Lit::Compiler(proc_macro::Literal::$n(n))
+            } else {
+                Lit::Fallback(fallback::Lit::$n(n))
+            }
         }
     )*)
 }
 impl Lit {
-    fn _new(inner: imp::Lit) -> Self {
-        Lit { inner, _marker: Marker }
-    }
-    fn _new_fallback(inner: fallback::Lit) -> Self {
-        Lit {
-            inner: inner.into(),
-            _marker: Marker,
-        }
-    }
-    suffixed_int_literals! {
-        u8_suffixed => u8,
-        u16_suffixed => u16,
-        u32_suffixed => u32,
-        u64_suffixed => u64,
-        u128_suffixed => u128,
-        usize_suffixed => usize,
-        i8_suffixed => i8,
+    suffixed_nums! {
+        f32_suffixed => f32,
+        f64_suffixed => f64,
+        i128_suffixed => i128,
         i16_suffixed => i16,
         i32_suffixed => i32,
         i64_suffixed => i64,
-        i128_suffixed => i128,
+        i8_suffixed => i8,
         isize_suffixed => isize,
+        u128_suffixed => u128,
+        u16_suffixed => u16,
+        u32_suffixed => u32,
+        u64_suffixed => u64,
+        u8_suffixed => u8,
+        usize_suffixed => usize,
     }
-    unsuffixed_int_literals! {
-        u8_unsuffixed => u8,
-        u16_unsuffixed => u16,
-        u32_unsuffixed => u32,
-        u64_unsuffixed => u64,
-        u128_unsuffixed => u128,
-        usize_unsuffixed => usize,
-        i8_unsuffixed => i8,
+    unsuffixed_nums! {
+        i128_unsuffixed => i128,
         i16_unsuffixed => i16,
         i32_unsuffixed => i32,
         i64_unsuffixed => i64,
-        i128_unsuffixed => i128,
+        i8_unsuffixed => i8,
         isize_unsuffixed => isize,
+        u128_unsuffixed => u128,
+        u16_unsuffixed => u16,
+        u32_unsuffixed => u32,
+        u64_unsuffixed => u64,
+        u8_unsuffixed => u8,
+        usize_unsuffixed => usize,
     }
-    pub fn f64_unsuffixed(f: f64) -> Lit {
-        assert!(f.is_finite());
-        Lit::_new(imp::Lit::f64_unsuffixed(f))
+    pub fn f32_suffixed(x: f32) -> Lit {
+        assert!(x.is_finite());
+        Lit::Fallback(fallback::Lit::f32_suffixed(x))
     }
-    pub fn f64_suffixed(f: f64) -> Lit {
-        assert!(f.is_finite());
-        Lit::_new(imp::Lit::f64_suffixed(f))
+    pub fn f64_suffixed(x: f64) -> Lit {
+        assert!(x.is_finite());
+        Lit::Fallback(fallback::Lit::f64_suffixed(x))
     }
-    pub fn f32_unsuffixed(f: f32) -> Lit {
-        assert!(f.is_finite());
-        Lit::_new(imp::Lit::f32_unsuffixed(f))
+    pub fn f32_unsuffixed(x: f32) -> Lit {
+        assert!(x.is_finite());
+        if inside_proc_macro() {
+            Lit::Compiler(proc_macro::Literal::f32_unsuffixed(x))
+        } else {
+            Lit::Fallback(fallback::Lit::f32_unsuffixed(x))
+        }
     }
-    pub fn f32_suffixed(f: f32) -> Lit {
-        assert!(f.is_finite());
-        Lit::_new(imp::Lit::f32_suffixed(f))
+    pub fn f64_unsuffixed(x: f64) -> Lit {
+        assert!(x.is_finite());
+        if inside_proc_macro() {
+            Lit::Compiler(proc_macro::Literal::f64_unsuffixed(x))
+        } else {
+            Lit::Fallback(fallback::Lit::f64_unsuffixed(x))
+        }
     }
-    pub fn string(string: &str) -> Lit {
-        Lit::_new(imp::Lit::string(string))
+    pub fn string(x: &str) -> Lit {
+        if inside_proc_macro() {
+            Lit::Compiler(proc_macro::Literal::string(x))
+        } else {
+            Lit::Fallback(fallback::Lit::string(x))
+        }
     }
-    pub fn character(ch: char) -> Lit {
-        Lit::_new(imp::Lit::character(ch))
+    pub fn character(x: char) -> Lit {
+        if inside_proc_macro() {
+            Lit::Compiler(proc_macro::Literal::character(x))
+        } else {
+            Lit::Fallback(fallback::Lit::character(x))
+        }
     }
-    pub fn byte_string(s: &[u8]) -> Lit {
-        Lit::_new(imp::Lit::byte_string(s))
+    pub fn byte_string(xs: &[u8]) -> Lit {
+        if inside_proc_macro() {
+            Lit::Compiler(proc_macro::Literal::byte_string(xs))
+        } else {
+            Lit::Fallback(fallback::Lit::byte_string(xs))
+        }
     }
     pub fn span(&self) -> Span {
+        match self {
+            Lit::Compiler(x) => Span::Compiler(x.span()),
+            Lit::Fallback(x) => Span::Fallback(x.span()),
+        }
+    }
+
+    pub fn span(&self) -> Span {
         Span::_new(self.inner.span())
+    }
+    pub fn set_span(&mut self, x: Span) {
+        match (self, x) {
+            (Lit::Compiler(x), Span::Compiler(s)) => x.set_span(s),
+            (Lit::Fallback(x), Span::Fallback(s)) => x.set_span(s),
+            _ => mismatch(),
+        }
     }
     pub fn set_span(&mut self, span: Span) {
         self.inner.set_span(span.inner);
     }
     pub fn subspan<R: RangeBounds<usize>>(&self, range: R) -> Option<Span> {
+        match self {
+            Lit::Compiler(x) => x.subspan(range).map(Span::Compiler),
+            Lit::Fallback(x) => x.subspan(range).map(Span::Fallback),
+        }
+    }
+    pub fn subspan<R: RangeBounds<usize>>(&self, range: R) -> Option<Span> {
         self.inner.subspan(range).map(Span::_new)
     }
-    pub unsafe fn from_str_unchecked(repr: &str) -> Self {
-        Lit::_new(imp::Lit::from_str_unchecked(repr))
+    pub unsafe fn from_str_unchecked(x: &str) -> Self {
+        if inside_proc_macro() {
+            Lit::Compiler(compiler_literal_from_str(x).expect("invalid literal"))
+        } else {
+            Lit::Fallback(fallback::Lit::from_str_unchecked(x))
+        }
+    }
+    fn unwrap_nightly(self) -> proc_macro::Literal {
+        match self {
+            Lit::Compiler(x) => x,
+            Lit::Fallback(_) => mismatch(),
+        }
+    }
+}
+impl From<fallback::Lit> for Lit {
+    fn from(x: fallback::Lit) -> Self {
+        Lit::Fallback(x)
     }
 }
 impl FromStr for Lit {
     type Err = LexError;
-    fn from_str(x: &str) -> Result<Self, LexError> {
-        x.parse()
-            .map(Lit::_new)
-            .map_err(|inner| LexError { inner, _marker: Marker })
-    }
-}
-impl Debug for Lit {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        Debug::fmt(&self.inner, f)
+    fn from_str(x: &str) -> Result<Self, Self::Err> {
+        if inside_proc_macro() {
+            compiler_literal_from_str(x).map(Lit::Compiler)
+        } else {
+            let y = fallback::Lit::from_str(x)?;
+            Ok(Lit::Fallback(y))
+        }
     }
 }
 impl Display for Lit {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        Display::fmt(&self.inner, f)
+        match self {
+            Lit::Compiler(x) => Display::fmt(x, f),
+            Lit::Fallback(x) => Display::fmt(x, f),
+        }
     }
+}
+impl Debug for Lit {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Lit::Compiler(x) => Debug::fmt(x, f),
+            Lit::Fallback(x) => Debug::fmt(x, f),
+        }
+    }
+}
+
+fn compiler_literal_from_str(x: &str) -> Result<proc_macro::Literal, LexError> {
+    proc_macro::Literal::from_str(x).map_err(LexError::Compiler)
 }
 
 mod parse {
@@ -1989,9 +2044,7 @@ pub mod extra {
     }
 }
 mod imp {
-    use super::detection::inside_proc_macro;
-    use super::location::LineColumn;
-    use super::{fallback, Delimiter, Punct, Spacing, Tree};
+    use super::{location::LineColumn, *};
     use std::fmt::{self, Debug, Display};
     use std::iter::FromIterator;
     use std::ops::RangeBounds;
@@ -2540,168 +2593,6 @@ mod imp {
             match self {
                 Ident::Compiler(t) => Debug::fmt(t, f),
                 Ident::Fallback(t) => Debug::fmt(t, f),
-            }
-        }
-    }
-
-    #[derive(Clone)]
-    pub enum Lit {
-        Compiler(proc_macro::Literal),
-        Fallback(fallback::Lit),
-    }
-    macro_rules! suffixed_nums {
-        ($($n:ident => $kind:ident,)*) => ($(
-            pub fn $n(n: $kind) -> Lit {
-                if inside_proc_macro() {
-                    Lit::Compiler(proc_macro::Literal::$n(n))
-                } else {
-                    Lit::Fallback(fallback::Lit::$n(n))
-                }
-            }
-        )*)
-    }
-    macro_rules! unsuffixed_nums {
-        ($($n:ident => $kind:ident,)*) => ($(
-            pub fn $n(n: $kind) -> Lit {
-                if inside_proc_macro() {
-                    Lit::Compiler(proc_macro::Literal::$n(n))
-                } else {
-                    Lit::Fallback(fallback::Lit::$n(n))
-                }
-            }
-        )*)
-    }
-    impl Lit {
-        pub unsafe fn from_str_unchecked(repr: &str) -> Self {
-            if inside_proc_macro() {
-                Lit::Compiler(compiler_literal_from_str(repr).expect("invalid literal"))
-            } else {
-                Lit::Fallback(fallback::Lit::from_str_unchecked(repr))
-            }
-        }
-        suffixed_nums! {
-            u8_suffixed => u8,
-            u16_suffixed => u16,
-            u32_suffixed => u32,
-            u64_suffixed => u64,
-            u128_suffixed => u128,
-            usize_suffixed => usize,
-            i8_suffixed => i8,
-            i16_suffixed => i16,
-            i32_suffixed => i32,
-            i64_suffixed => i64,
-            i128_suffixed => i128,
-            isize_suffixed => isize,
-            f32_suffixed => f32,
-            f64_suffixed => f64,
-        }
-        unsuffixed_nums! {
-            u8_unsuffixed => u8,
-            u16_unsuffixed => u16,
-            u32_unsuffixed => u32,
-            u64_unsuffixed => u64,
-            u128_unsuffixed => u128,
-            usize_unsuffixed => usize,
-            i8_unsuffixed => i8,
-            i16_unsuffixed => i16,
-            i32_unsuffixed => i32,
-            i64_unsuffixed => i64,
-            i128_unsuffixed => i128,
-            isize_unsuffixed => isize,
-        }
-        pub fn f32_unsuffixed(f: f32) -> Lit {
-            if inside_proc_macro() {
-                Lit::Compiler(proc_macro::Literal::f32_unsuffixed(f))
-            } else {
-                Lit::Fallback(fallback::Lit::f32_unsuffixed(f))
-            }
-        }
-        pub fn f64_unsuffixed(f: f64) -> Lit {
-            if inside_proc_macro() {
-                Lit::Compiler(proc_macro::Literal::f64_unsuffixed(f))
-            } else {
-                Lit::Fallback(fallback::Lit::f64_unsuffixed(f))
-            }
-        }
-        pub fn string(t: &str) -> Lit {
-            if inside_proc_macro() {
-                Lit::Compiler(proc_macro::Literal::string(t))
-            } else {
-                Lit::Fallback(fallback::Lit::string(t))
-            }
-        }
-        pub fn character(t: char) -> Lit {
-            if inside_proc_macro() {
-                Lit::Compiler(proc_macro::Literal::character(t))
-            } else {
-                Lit::Fallback(fallback::Lit::character(t))
-            }
-        }
-        pub fn byte_string(bytes: &[u8]) -> Lit {
-            if inside_proc_macro() {
-                Lit::Compiler(proc_macro::Literal::byte_string(bytes))
-            } else {
-                Lit::Fallback(fallback::Lit::byte_string(bytes))
-            }
-        }
-        pub fn span(&self) -> Span {
-            match self {
-                Lit::Compiler(lit) => Span::Compiler(lit.span()),
-                Lit::Fallback(lit) => Span::Fallback(lit.span()),
-            }
-        }
-        pub fn set_span(&mut self, span: Span) {
-            match (self, span) {
-                (Lit::Compiler(lit), Span::Compiler(s)) => lit.set_span(s),
-                (Lit::Fallback(lit), Span::Fallback(s)) => lit.set_span(s),
-                _ => mismatch(),
-            }
-        }
-        pub fn subspan<R: RangeBounds<usize>>(&self, range: R) -> Option<Span> {
-            match self {
-                Lit::Compiler(lit) => lit.subspan(range).map(Span::Compiler),
-                Lit::Fallback(lit) => lit.subspan(range).map(Span::Fallback),
-            }
-        }
-        fn unwrap_nightly(self) -> proc_macro::Literal {
-            match self {
-                Lit::Compiler(s) => s,
-                Lit::Fallback(_) => mismatch(),
-            }
-        }
-    }
-    impl From<fallback::Lit> for Lit {
-        fn from(s: fallback::Lit) -> Self {
-            Lit::Fallback(s)
-        }
-    }
-    impl FromStr for Lit {
-        type Err = LexError;
-        fn from_str(repr: &str) -> Result<Self, Self::Err> {
-            if inside_proc_macro() {
-                compiler_literal_from_str(repr).map(Lit::Compiler)
-            } else {
-                let literal = fallback::Lit::from_str(repr)?;
-                Ok(Lit::Fallback(literal))
-            }
-        }
-    }
-    fn compiler_literal_from_str(repr: &str) -> Result<proc_macro::Literal, LexError> {
-        proc_macro::Literal::from_str(repr).map_err(LexError::Compiler)
-    }
-    impl Display for Lit {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            match self {
-                Lit::Compiler(t) => Display::fmt(t, f),
-                Lit::Fallback(t) => Display::fmt(t, f),
-            }
-        }
-    }
-    impl Debug for Lit {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            match self {
-                Lit::Compiler(t) => Debug::fmt(t, f),
-                Lit::Fallback(t) => Debug::fmt(t, f),
             }
         }
     }
