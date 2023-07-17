@@ -1,4 +1,4 @@
-use super::pm2::{extra::DelimSpan, Delimiter, Group, Ident, Lit, Punct, Spacing, Span, TokenStream, Tree};
+use super::pm2::{extra::DelimSpan, Delim, Group, Ident, Lit, Punct, Spacing, Span, TokenStream, Tree};
 use std::{
     borrow::Cow,
     collections::btree_set::{self, BTreeSet},
@@ -484,10 +484,10 @@ pub fn get_span<T>(x: T) -> GetSpan<T> {
     GetSpan(GetSpanInner(GetSpanBase(x)))
 }
 
-pub fn push_group(tokens: &mut TokenStream, delimiter: Delimiter, inner: TokenStream) {
+pub fn push_group(tokens: &mut TokenStream, delimiter: Delim, inner: TokenStream) {
     tokens.append(Group::new(delimiter, inner));
 }
-pub fn push_group_spanned(tokens: &mut TokenStream, span: Span, delimiter: Delimiter, inner: TokenStream) {
+pub fn push_group_spanned(tokens: &mut TokenStream, span: Span, delimiter: Delim, inner: TokenStream) {
     let mut g = Group::new(delimiter, inner);
     g.set_span(span);
     tokens.append(g);
@@ -508,7 +508,7 @@ fn respan_token_tree(mut token: Tree, span: Span) -> Tree {
                 .into_iter()
                 .map(|token| respan_token_tree(token, span))
                 .collect();
-            *g = Group::new(g.delimiter(), stream);
+            *g = Group::new(g.delim(), stream);
             g.set_span(span);
         },
         other => other.set_span(span),

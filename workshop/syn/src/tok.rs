@@ -475,7 +475,7 @@ impl Tok for Bracket {
 }
 impl Tok for Paren {
     fn peek(x: Cursor) -> bool {
-        look::is_delim(x, pm2::Delim::Parenthesis)
+        look::is_delim(x, pm2::Delim::Paren)
     }
     fn display() -> &'static str {
         "parentheses"
@@ -498,7 +498,7 @@ impl Delim {
     }
     pub fn surround(&self, ys: &mut Stream, inner: pm2::Stream) {
         let (delim, span) = match self {
-            tok::Delim::Paren(x) => (pm2::Delim::Parenthesis, x.span),
+            tok::Delim::Paren(x) => (pm2::Delim::Paren, x.span),
             tok::Delim::Brace(x) => (pm2::Delim::Brace, x.span),
             tok::Delim::Bracket(x) => (pm2::Delim::Bracket, x.span),
         };

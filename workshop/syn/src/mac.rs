@@ -42,8 +42,8 @@ pub fn parse_delim(s: Stream) -> Res<(tok::Delim, pm2::Stream)> {
     s.step(|c| {
         if let Some((pm2::Tree::Group(x), rest)) = c.token_tree() {
             let s = x.delim_span();
-            let delim = match x.delimiter() {
-                pm2::Delim::Parenthesis => tok::Delim::Paren(tok::Paren(s)),
+            let delim = match x.delim() {
+                pm2::Delim::Paren => tok::Delim::Paren(tok::Paren(s)),
                 pm2::Delim::Brace => tok::Delim::Brace(tok::Brace(s)),
                 pm2::Delim::Bracket => tok::Delim::Bracket(tok::Bracket(s)),
                 pm2::Delim::None => {

@@ -161,7 +161,7 @@ impl Str {
             match &mut token {
                 pm2::Tree::Group(g) => {
                     let stream = respan_token_stream(g.stream(), s);
-                    *g = Group::new(g.delimiter(), stream);
+                    *g = Group::new(g.delim(), stream);
                     g.set_span(s);
                 },
                 other => other.set_span(s),

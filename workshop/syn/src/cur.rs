@@ -48,7 +48,7 @@ impl<'a> Cursor<'a> {
     }
     fn ignore_none(&mut self) {
         while let Entry::Group(x, _) = self.entry() {
-            if x.delimiter() == Delim::None {
+            if x.delim() == Delim::None {
                 unsafe { *self = self.bump_ignore_group() };
             } else {
                 break;
@@ -63,7 +63,7 @@ impl<'a> Cursor<'a> {
             self.ignore_none();
         }
         if let Entry::Group(x, i) = self.entry() {
-            if x.delimiter() == d {
+            if x.delim() == d {
                 let span = x.delim_span();
                 let end = unsafe { self.ptr.add(*i) };
                 let inside = unsafe { Cursor::create(self.ptr.add(1), end) };
@@ -75,7 +75,7 @@ impl<'a> Cursor<'a> {
     }
     pub fn any_group(self) -> Option<(Cursor<'a>, Delim, DelimSpan, Cursor<'a>)> {
         if let Entry::Group(x, i) = self.entry() {
-            let delim = x.delimiter();
+            let delim = x.delim();
             let span = x.delim_span();
             let end = unsafe { self.ptr.add(*i) };
             let inside = unsafe { Cursor::create(self.ptr.add(1), end) };

@@ -52,6 +52,134 @@ fn mismatch() -> ! {
 }
 
 #[derive(Clone)]
+pub struct DeferredTokenStream {
+    stream: proc_macro::TokenStream,
+    extra: Vec<proc_macro::TokenTree>,
+}
+impl DeferredTokenStream {
+    fn new(stream: proc_macro::TokenStream) -> Self {
+        DeferredTokenStream {
+            stream,
+            extra: Vec::new(),
+        }
+    }
+    fn is_empty(&self) -> bool {
+        self.stream.is_empty() && self.extra.is_empty()
+    }
+    fn evaluate_now(&mut self) {
+        if !self.extra.is_empty() {
+            self.stream.extend(self.extra.drain(..));
+        }
+    }
+    fn into_token_stream(mut self) -> proc_macro::TokenStream {
+        self.evaluate_now();
+        self.stream
+    }
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum Delim {
+    Paren,
+    Brace,
+    Bracket,
+    None,
+}
+
+#[derive(Clone)]
+pub enum Group {
+    Compiler(proc_macro::Group),
+    Fallback(fallback::Group),
+}
+impl Group {
+    pub fn new(x: Delim, s: TokenStream) -> Self {
+        match s {
+            TokenStream::Compiler(y) => {
+                let x = match x {
+                    Delim::Paren => proc_macro::Delimiter::Parenthesis,
+                    Delim::Bracket => proc_macro::Delimiter::Bracket,
+                    Delim::Brace => proc_macro::Delimiter::Brace,
+                    Delim::None => proc_macro::Delimiter::None,
+                };
+                Group::Compiler(proc_macro::Group::new(x, y.into_token_stream()))
+            },
+            TokenStream::Fallback(y) => Group::Fallback(fallback::Group::new(x, y)),
+        }
+    }
+    pub fn delim(&self) -> Delim {
+        match self {
+            Group::Compiler(x) => match x.delimiter() {
+                proc_macro::Delimiter::Parenthesis => Delim::Paren,
+                proc_macro::Delimiter::Bracket => Delim::Bracket,
+                proc_macro::Delimiter::Brace => Delim::Brace,
+                proc_macro::Delimiter::None => Delim::None,
+            },
+            Group::Fallback(x) => x.delim(),
+        }
+    }
+    pub fn stream(&self) -> TokenStream {
+        match self {
+            Group::Compiler(x) => TokenStream::Compiler(DeferredTokenStream::new(x.stream())),
+            Group::Fallback(x) => TokenStream::Fallback(x.stream()),
+        }
+    }
+    pub fn span(&self) -> Span {
+        match self {
+            Group::Compiler(x) => Span::Compiler(x.span()),
+            Group::Fallback(x) => Span::Fallback(x.span()),
+        }
+    }
+    pub fn set_span(&mut self, s: Span) {
+        match (self, s) {
+            (Group::Compiler(x), Span::Compiler(s)) => x.set_span(s),
+            (Group::Fallback(x), Span::Fallback(s)) => x.set_span(s),
+            _ => mismatch(),
+        }
+    }
+    pub fn span_open(&self) -> Span {
+        match self {
+            Group::Compiler(x) => Span::Compiler(x.span_open()),
+            Group::Fallback(x) => Span::Fallback(x.span_open()),
+        }
+    }
+    pub fn span_close(&self) -> Span {
+        match self {
+            Group::Compiler(x) => Span::Compiler(x.span_close()),
+            Group::Fallback(x) => Span::Fallback(x.span_close()),
+        }
+    }
+    pub fn delim_span(&self) -> DelimSpan {
+        DelimSpan::new(&self)
+    }
+    fn unwrap_nightly(self) -> proc_macro::Group {
+        match self {
+            Group::Compiler(x) => x,
+            Group::Fallback(_) => mismatch(),
+        }
+    }
+}
+impl From<fallback::Group> for Group {
+    fn from(x: fallback::Group) -> Self {
+        Group::Fallback(x)
+    }
+}
+impl Display for Group {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Group::Compiler(x) => Display::fmt(x, f),
+            Group::Fallback(x) => Display::fmt(x, f),
+        }
+    }
+}
+impl Debug for Group {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Group::Compiler(x) => Debug::fmt(x, f),
+            Group::Fallback(x) => Debug::fmt(x, f),
+        }
+    }
+}
+
+#[derive(Clone)]
 pub enum Lit {
     Compiler(proc_macro::Literal),
     Fallback(fallback::Lit),
@@ -299,7 +427,7 @@ impl Span {
         }
     }
 }
-impl From<proc_macro::Span> for super::Span {
+impl From<proc_macro::Span> for Span {
     fn from(x: proc_macro::Span) -> Self {
         Span::Compiler(x)
     }
@@ -330,7 +458,7 @@ mod parse {
     use super::fallback::{
         is_ident_continue, is_ident_start, Group, LexError, Lit, Span, TokenStream, TokenStreamBuilder,
     };
-    use super::{Delimiter, Punct, Spacing, Tree};
+    use super::{Delim, Punct, Spacing, Tree};
     use std::{
         char,
         str::{Bytes, CharIndices, Chars},
@@ -485,9 +613,9 @@ mod parse {
                 },
             };
             if let Some(open_delimiter) = match first {
-                b'(' => Some(Delimiter::Parenthesis),
-                b'[' => Some(Delimiter::Bracket),
-                b'{' => Some(Delimiter::Brace),
+                b'(' => Some(Delim::Paren),
+                b'[' => Some(Delim::Bracket),
+                b'{' => Some(Delim::Brace),
                 _ => None,
             } {
                 input = input.advance(1);
@@ -496,9 +624,9 @@ mod parse {
                 stack.push(frame);
                 trees = TokenStreamBuilder::new();
             } else if let Some(close_delimiter) = match first {
-                b')' => Some(Delimiter::Parenthesis),
-                b']' => Some(Delimiter::Bracket),
-                b'}' => Some(Delimiter::Brace),
+                b')' => Some(Delim::Paren),
+                b']' => Some(Delim::Bracket),
+                b'}' => Some(Delim::Brace),
                 _ => None,
             } {
                 let frame = match stack.pop() {
@@ -1149,7 +1277,7 @@ mod parse {
         bracketed.push_token_from_parser(Tree::Ident(doc_ident));
         bracketed.push_token_from_parser(Tree::Punct(equal));
         bracketed.push_token_from_parser(Tree::Lit(literal));
-        let group = Group::new(Delimiter::Bracket, bracketed.build());
+        let group = Group::new(Delim::Bracket, bracketed.build());
         let mut group = super::Group::_new_fallback(group);
         group.set_span(span);
         trees.push_token_from_parser(Tree::Group(group));
@@ -1635,66 +1763,6 @@ pub mod fallback {
     }
 
     #[derive(Clone)]
-    pub struct Group {
-        delimiter: Delimiter,
-        stream: TokenStream,
-        span: Span,
-    }
-    impl Group {
-        pub fn new(delimiter: Delimiter, stream: TokenStream) -> Self {
-            Group {
-                delimiter,
-                stream,
-                span: Span::call_site(),
-            }
-        }
-        pub fn delimiter(&self) -> Delimiter {
-            self.delimiter
-        }
-        pub fn stream(&self) -> TokenStream {
-            self.stream.clone()
-        }
-        pub fn span(&self) -> Span {
-            self.span
-        }
-        pub fn span_open(&self) -> Span {
-            self.span.first_byte()
-        }
-        pub fn span_close(&self) -> Span {
-            self.span.last_byte()
-        }
-        pub fn set_span(&mut self, span: Span) {
-            self.span = span;
-        }
-    }
-    impl Display for Group {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            let (open, close) = match self.delimiter {
-                Delimiter::Parenthesis => ("(", ")"),
-                Delimiter::Brace => ("{ ", "}"),
-                Delimiter::Bracket => ("[", "]"),
-                Delimiter::None => ("", ""),
-            };
-            f.write_str(open)?;
-            Display::fmt(&self.stream, f)?;
-            if self.delimiter == Delimiter::Brace && !self.stream.inner.is_empty() {
-                f.write_str(" ")?;
-            }
-            f.write_str(close)?;
-            Ok(())
-        }
-    }
-    impl Debug for Group {
-        fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-            let mut debug = fmt.debug_struct("Group");
-            debug.field("delimiter", &self.delimiter);
-            debug.field("stream", &self.stream);
-            debug_span_field(&mut debug, self.span);
-            debug.finish()
-        }
-    }
-
-    #[derive(Clone)]
     pub struct Ident {
         sym: String,
         span: Span,
@@ -1791,6 +1859,66 @@ pub mod fallback {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             let mut y = f.debug_struct("Ident");
             y.field("sym", &format_args!("{}", self));
+            debug_span_field(&mut y, self.span);
+            y.finish()
+        }
+    }
+
+    #[derive(Clone)]
+    pub struct Group {
+        delim: Delim,
+        stream: TokenStream,
+        span: Span,
+    }
+    impl Group {
+        pub fn new(delim: Delim, stream: TokenStream) -> Self {
+            Group {
+                delim,
+                stream,
+                span: Span::call_site(),
+            }
+        }
+        pub fn delim(&self) -> Delim {
+            self.delim
+        }
+        pub fn stream(&self) -> TokenStream {
+            self.stream.clone()
+        }
+        pub fn span(&self) -> Span {
+            self.span
+        }
+        pub fn set_span(&mut self, x: Span) {
+            self.span = x;
+        }
+        pub fn span_open(&self) -> Span {
+            self.span.first_byte()
+        }
+        pub fn span_close(&self) -> Span {
+            self.span.last_byte()
+        }
+    }
+    impl Display for Group {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            let (open, close) = match self.delim {
+                Delim::Paren => ("(", ")"),
+                Delim::Brace => ("{ ", "}"),
+                Delim::Bracket => ("[", "]"),
+                Delim::None => ("", ""),
+            };
+            f.write_str(open)?;
+            Display::fmt(&self.stream, f)?;
+            if self.delim == Delim::Brace && !self.stream.inner.is_empty() {
+                f.write_str(" ")?;
+            }
+            f.write_str(close)?;
+            Ok(())
+        }
+    }
+    impl Debug for Group {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            let mut y = f.debug_struct("Group");
+            y.field("delimiter", &self.delim);
+            y.field("stream", &self.stream);
             debug_span_field(&mut y, self.span);
             y.finish()
         }
@@ -2159,11 +2287,6 @@ mod imp {
         Compiler(DeferredTokenStream),
         Fallback(fallback::TokenStream),
     }
-    #[derive(Clone)]
-    pub struct DeferredTokenStream {
-        stream: proc_macro::TokenStream,
-        extra: Vec<proc_macro::TokenTree>,
-    }
     pub enum LexError {
         Compiler(proc_macro::LexError),
         Fallback(fallback::LexError),
@@ -2173,26 +2296,6 @@ mod imp {
             LexError::Fallback(fallback::LexError {
                 span: fallback::Span::call_site(),
             })
-        }
-    }
-    impl DeferredTokenStream {
-        fn new(stream: proc_macro::TokenStream) -> Self {
-            DeferredTokenStream {
-                stream,
-                extra: Vec::new(),
-            }
-        }
-        fn is_empty(&self) -> bool {
-            self.stream.is_empty() && self.extra.is_empty()
-        }
-        fn evaluate_now(&mut self) {
-            if !self.extra.is_empty() {
-                self.stream.extend(self.extra.drain(..));
-            }
-        }
-        fn into_token_stream(mut self) -> proc_macro::TokenStream {
-            self.evaluate_now();
-            self.stream
         }
     }
     impl TokenStream {
@@ -2430,96 +2533,6 @@ mod imp {
             match self {
                 TreeIter::Compiler(tts) => tts.size_hint(),
                 TreeIter::Fallback(tts) => tts.size_hint(),
-            }
-        }
-    }
-    #[derive(Clone)]
-    pub enum Group {
-        Compiler(proc_macro::Group),
-        Fallback(fallback::Group),
-    }
-    impl Group {
-        pub fn new(delimiter: Delimiter, stream: TokenStream) -> Self {
-            match stream {
-                TokenStream::Compiler(tts) => {
-                    let delimiter = match delimiter {
-                        Delimiter::Parenthesis => proc_macro::Delimiter::Parenthesis,
-                        Delimiter::Bracket => proc_macro::Delimiter::Bracket,
-                        Delimiter::Brace => proc_macro::Delimiter::Brace,
-                        Delimiter::None => proc_macro::Delimiter::None,
-                    };
-                    Group::Compiler(proc_macro::Group::new(delimiter, tts.into_token_stream()))
-                },
-                TokenStream::Fallback(stream) => Group::Fallback(fallback::Group::new(delimiter, stream)),
-            }
-        }
-        pub fn delimiter(&self) -> Delimiter {
-            match self {
-                Group::Compiler(g) => match g.delimiter() {
-                    proc_macro::Delimiter::Parenthesis => Delimiter::Parenthesis,
-                    proc_macro::Delimiter::Bracket => Delimiter::Bracket,
-                    proc_macro::Delimiter::Brace => Delimiter::Brace,
-                    proc_macro::Delimiter::None => Delimiter::None,
-                },
-                Group::Fallback(g) => g.delimiter(),
-            }
-        }
-        pub fn stream(&self) -> TokenStream {
-            match self {
-                Group::Compiler(g) => TokenStream::Compiler(DeferredTokenStream::new(g.stream())),
-                Group::Fallback(g) => TokenStream::Fallback(g.stream()),
-            }
-        }
-        pub fn span(&self) -> Span {
-            match self {
-                Group::Compiler(g) => Span::Compiler(g.span()),
-                Group::Fallback(g) => Span::Fallback(g.span()),
-            }
-        }
-        pub fn span_open(&self) -> Span {
-            match self {
-                Group::Compiler(g) => Span::Compiler(g.span_open()),
-                Group::Fallback(g) => Span::Fallback(g.span_open()),
-            }
-        }
-        pub fn span_close(&self) -> Span {
-            match self {
-                Group::Compiler(g) => Span::Compiler(g.span_close()),
-                Group::Fallback(g) => Span::Fallback(g.span_close()),
-            }
-        }
-        pub fn set_span(&mut self, span: Span) {
-            match (self, span) {
-                (Group::Compiler(g), Span::Compiler(s)) => g.set_span(s),
-                (Group::Fallback(g), Span::Fallback(s)) => g.set_span(s),
-                _ => mismatch(),
-            }
-        }
-        fn unwrap_nightly(self) -> proc_macro::Group {
-            match self {
-                Group::Compiler(g) => g,
-                Group::Fallback(_) => mismatch(),
-            }
-        }
-    }
-    impl From<fallback::Group> for Group {
-        fn from(g: fallback::Group) -> Self {
-            Group::Fallback(g)
-        }
-    }
-    impl Display for Group {
-        fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            match self {
-                Group::Compiler(group) => Display::fmt(group, formatter),
-                Group::Fallback(group) => Display::fmt(group, formatter),
-            }
-        }
-    }
-    impl Debug for Group {
-        fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            match self {
-                Group::Compiler(group) => Debug::fmt(group, formatter),
-                Group::Fallback(group) => Debug::fmt(group, formatter),
             }
         }
     }
@@ -2798,61 +2811,6 @@ impl Debug for Tree {
     }
 }
 #[derive(Clone)]
-pub struct Group {
-    inner: imp::Group,
-}
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum Delimiter {
-    Parenthesis,
-    Brace,
-    Bracket,
-    None,
-}
-impl Group {
-    fn _new(inner: imp::Group) -> Self {
-        Group { inner }
-    }
-    fn _new_fallback(inner: fallback::Group) -> Self {
-        Group { inner: inner.into() }
-    }
-    pub fn new(delimiter: Delimiter, stream: TokenStream) -> Self {
-        Group {
-            inner: imp::Group::new(delimiter, stream.inner),
-        }
-    }
-    pub fn delimiter(&self) -> Delimiter {
-        self.inner.delimiter()
-    }
-    pub fn stream(&self) -> TokenStream {
-        TokenStream::_new(self.inner.stream())
-    }
-    pub fn span(&self) -> Span {
-        Span::_new(self.inner.span())
-    }
-    pub fn span_open(&self) -> Span {
-        Span::_new(self.inner.span_open())
-    }
-    pub fn span_close(&self) -> Span {
-        Span::_new(self.inner.span_close())
-    }
-    pub fn delim_span(&self) -> DelimSpan {
-        DelimSpan::new(&self.inner)
-    }
-    pub fn set_span(&mut self, span: Span) {
-        self.inner.set_span(span.inner);
-    }
-}
-impl Display for Group {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        Display::fmt(&self.inner, formatter)
-    }
-}
-impl Debug for Group {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        Debug::fmt(&self.inner, formatter)
-    }
-}
-#[derive(Clone)]
 pub struct Punct {
     ch: char,
     spacing: Spacing,
@@ -3049,4 +3007,4 @@ impl IntoSpans<DelimSpan> for DelimSpan {
         self
     }
 }
-pub use self::{extra::DelimSpan, Delimiter as Delim, TokenStream as Stream};
+pub use self::{extra::DelimSpan, Delim, TokenStream as Stream};

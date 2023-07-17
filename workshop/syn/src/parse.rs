@@ -9,7 +9,7 @@ pub struct Parens<'a> {
     pub buf: Buffer<'a>,
 }
 pub fn parse_parens<'a>(x: &Buffer<'a>) -> Res<Parens<'a>> {
-    parse_delimited(x, Delim::Parenthesis).map(|(span, buf)| Parens {
+    parse_delimited(x, Delim::Paren).map(|(span, buf)| Parens {
         tok: tok::Paren(span),
         buf,
     })
@@ -57,7 +57,7 @@ fn parse_delimited<'a>(b: &Buffer<'a>, d: Delim) -> Res<(DelimSpan, Buffer<'a>)>
             Ok(((span, y), rest))
         } else {
             let y = match d {
-                Delim::Parenthesis => "expected parentheses",
+                Delim::Paren => "expected parentheses",
                 Delim::Brace => "expected braces",
                 Delim::Bracket => "expected brackets",
                 Delim::None => "expected group",
@@ -306,7 +306,7 @@ impl Parse for pm2::Group {
     fn parse(s: Stream) -> Res<Self> {
         s.step(|x| {
             if let Some((y, rest)) = x.any_group_token() {
-                if y.delimiter() != Delim::None {
+                if y.delim() != Delim::None {
                     return Ok((y, rest));
                 }
             }

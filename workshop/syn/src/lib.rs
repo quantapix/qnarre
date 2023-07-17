@@ -147,8 +147,8 @@ impl<'a> PartialEq for TokenTreeHelper<'a> {
         use pm2::{Delim::*, Spacing::*};
         match (self.0, other.0) {
             (pm2::Tree::Group(g1), pm2::Tree::Group(g2)) => {
-                match (g1.delimiter(), g2.delimiter()) {
-                    (Parenthesis, Parenthesis) | (Brace, Brace) | (Bracket, Bracket) | (None, None) => {},
+                match (g1.delim(), g2.delim()) {
+                    (Paren, Paren) | (Brace, Brace) | (Bracket, Bracket) | (None, None) => {},
                     _ => return false,
                 }
                 let s1 = g1.stream().into_iter();
@@ -183,8 +183,8 @@ impl<'a> Hash for TokenTreeHelper<'a> {
             pm2::Tree::Group(g) => {
                 0u8.hash(h);
                 use pm2::Delim::*;
-                match g.delimiter() {
-                    Parenthesis => 0u8.hash(h),
+                match g.delim() {
+                    Paren => 0u8.hash(h),
                     Brace => 1u8.hash(h),
                     Bracket => 2u8.hash(h),
                     None => 3u8.hash(h),
