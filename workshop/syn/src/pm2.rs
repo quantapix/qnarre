@@ -18,7 +18,38 @@ pub struct AutoTraits(Rc<()>);
 impl UnwindSafe for AutoTraits {}
 impl RefUnwindSafe for AutoTraits {}
 
+mod detection {
+    use std::sync::{
+        atomic::{AtomicUsize, Ordering},
+        Once,
+    };
+    static FLAG: AtomicUsize = AtomicUsize::new(0);
+    static INIT: Once = Once::new();
+    pub fn inside_proc_macro() -> bool {
+        match FLAG.load(Ordering::Relaxed) {
+            1 => return false,
+            2 => return true,
+            _ => {},
+        }
+        INIT.call_once(init);
+        inside_proc_macro()
+    }
+    pub fn force_fallback() {
+        FLAG.store(1, Ordering::Relaxed);
+    }
+    pub fn unforce_fallback() {
+        init();
+    }
+    fn init() {
+        let y = proc_macro::is_available();
+        FLAG.store(y as usize + 1, Ordering::Relaxed);
+    }
+}
 use detection::inside_proc_macro;
+
+fn mismatch() -> ! {
+    panic!("compiler/fallback mismatch")
+}
 
 #[derive(Clone)]
 pub enum Lit {
@@ -48,6 +79,13 @@ macro_rules! unsuffixed_nums {
     )*)
 }
 impl Lit {
+    pub unsafe fn from_str_unchecked(x: &str) -> Self {
+        if inside_proc_macro() {
+            Lit::Compiler(compiler_lit_from_str(x).expect("invalid literal"))
+        } else {
+            Lit::Fallback(fallback::Lit::from_str_unchecked(x))
+        }
+    }
     suffixed_nums! {
         f32_suffixed => f32,
         f64_suffixed => f64,
@@ -129,10 +167,6 @@ impl Lit {
             Lit::Fallback(x) => Span::Fallback(x.span()),
         }
     }
-
-    pub fn span(&self) -> Span {
-        Span::_new(self.inner.span())
-    }
     pub fn set_span(&mut self, x: Span) {
         match (self, x) {
             (Lit::Compiler(x), Span::Compiler(s)) => x.set_span(s),
@@ -140,23 +174,10 @@ impl Lit {
             _ => mismatch(),
         }
     }
-    pub fn set_span(&mut self, span: Span) {
-        self.inner.set_span(span.inner);
-    }
     pub fn subspan<R: RangeBounds<usize>>(&self, range: R) -> Option<Span> {
         match self {
             Lit::Compiler(x) => x.subspan(range).map(Span::Compiler),
             Lit::Fallback(x) => x.subspan(range).map(Span::Fallback),
-        }
-    }
-    pub fn subspan<R: RangeBounds<usize>>(&self, range: R) -> Option<Span> {
-        self.inner.subspan(range).map(Span::_new)
-    }
-    pub unsafe fn from_str_unchecked(x: &str) -> Self {
-        if inside_proc_macro() {
-            Lit::Compiler(compiler_literal_from_str(x).expect("invalid literal"))
-        } else {
-            Lit::Fallback(fallback::Lit::from_str_unchecked(x))
         }
     }
     fn unwrap_nightly(self) -> proc_macro::Literal {
@@ -175,7 +196,7 @@ impl FromStr for Lit {
     type Err = LexError;
     fn from_str(x: &str) -> Result<Self, Self::Err> {
         if inside_proc_macro() {
-            compiler_literal_from_str(x).map(Lit::Compiler)
+            compiler_lit_from_str(x).map(Lit::Compiler)
         } else {
             let y = fallback::Lit::from_str(x)?;
             Ok(Lit::Fallback(y))
@@ -198,9 +219,111 @@ impl Debug for Lit {
         }
     }
 }
-
-fn compiler_literal_from_str(x: &str) -> Result<proc_macro::Literal, LexError> {
+fn compiler_lit_from_str(x: &str) -> Result<proc_macro::Literal, LexError> {
     proc_macro::Literal::from_str(x).map_err(LexError::Compiler)
+}
+
+#[derive(Copy, Clone)]
+pub enum Span {
+    Compiler(proc_macro::Span),
+    Fallback(fallback::Span),
+}
+impl Span {
+    pub fn call_site() -> Self {
+        if inside_proc_macro() {
+            Span::Compiler(proc_macro::Span::call_site())
+        } else {
+            Span::Fallback(fallback::Span::call_site())
+        }
+    }
+    pub fn mixed_site() -> Self {
+        if inside_proc_macro() {
+            Span::Compiler(proc_macro::Span::mixed_site())
+        } else {
+            Span::Fallback(fallback::Span::mixed_site())
+        }
+    }
+    pub fn resolved_at(&self, x: Span) -> Span {
+        match (self, x) {
+            (Span::Compiler(a), Span::Compiler(b)) => Span::Compiler(a.resolved_at(b)),
+            (Span::Fallback(a), Span::Fallback(b)) => Span::Fallback(a.resolved_at(b)),
+            _ => mismatch(),
+        }
+    }
+    pub fn located_at(&self, x: Span) -> Span {
+        match (self, x) {
+            (Span::Compiler(a), Span::Compiler(b)) => Span::Compiler(a.located_at(b)),
+            (Span::Fallback(a), Span::Fallback(b)) => Span::Fallback(a.located_at(b)),
+            _ => mismatch(),
+        }
+    }
+    pub fn start(&self) -> LineColumn {
+        match self {
+            Span::Compiler(_) => LineColumn { line: 0, column: 0 },
+            Span::Fallback(x) => x.start(),
+        }
+    }
+    pub fn end(&self) -> LineColumn {
+        match self {
+            Span::Compiler(_) => LineColumn { line: 0, column: 0 },
+            Span::Fallback(x) => x.end(),
+        }
+    }
+    pub fn join(&self, x: Span) -> Option<Span> {
+        let y = match (self, x) {
+            (Span::Compiler(a), Span::Compiler(b)) => Span::Compiler(a.join(b)?),
+            (Span::Fallback(a), Span::Fallback(b)) => Span::Fallback(a.join(b)?),
+            _ => return None,
+        };
+        Some(y)
+    }
+    pub fn source_text(&self) -> Option<String> {
+        match self {
+            Span::Compiler(x) => x.source_text(),
+            Span::Fallback(x) => x.source_text(),
+        }
+    }
+    pub fn unstable(self) -> proc_macro::Span {
+        self.unwrap()
+    }
+    pub fn unwrap(self) -> proc_macro::Span {
+        match self {
+            Span::Compiler(x) => x,
+            Span::Fallback(_) => mismatch(),
+        }
+    }
+    fn unwrap_nightly(self) -> proc_macro::Span {
+        match self {
+            Span::Compiler(x) => x,
+            Span::Fallback(_) => mismatch(),
+        }
+    }
+}
+impl From<proc_macro::Span> for super::Span {
+    fn from(x: proc_macro::Span) -> Self {
+        Span::Compiler(x)
+    }
+}
+impl From<fallback::Span> for Span {
+    fn from(x: fallback::Span) -> Self {
+        Span::Fallback(x)
+    }
+}
+impl Debug for Span {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Span::Compiler(x) => Debug::fmt(x, f),
+            Span::Fallback(x) => Debug::fmt(x, f),
+        }
+    }
+}
+pub fn debug_span_field(x: &mut fmt::DebugStruct, s: Span) {
+    match s {
+        Span::Compiler(s) => {
+            x.field("span", &s);
+        },
+        Span::Fallback(s) => fallback::debug_span_field(x, s),
+    }
 }
 
 mod parse {
@@ -1184,31 +1307,6 @@ mod rcvec {
     }
     impl<T> RefUnwindSafe for RcVec<T> where T: RefUnwindSafe {}
 }
-mod detection {
-    use std::sync::atomic::{AtomicUsize, Ordering};
-    use std::sync::Once;
-    static WORKS: AtomicUsize = AtomicUsize::new(0);
-    static INIT: Once = Once::new();
-    pub fn inside_proc_macro() -> bool {
-        match WORKS.load(Ordering::Relaxed) {
-            1 => return false,
-            2 => return true,
-            _ => {},
-        }
-        INIT.call_once(initialize);
-        inside_proc_macro()
-    }
-    pub fn force_fallback() {
-        WORKS.store(1, Ordering::Relaxed);
-    }
-    pub fn unforce_fallback() {
-        initialize();
-    }
-    fn initialize() {
-        let available = proc_macro::is_available();
-        WORKS.store(available as usize + 1, Ordering::Relaxed);
-    }
-}
 pub mod fallback {
     use super::{
         location::LineColumn,
@@ -1327,7 +1425,7 @@ pub mod fallback {
         }
     }
     fn get_cursor(src: &str) -> Cursor {
-        SOURCE_MAP.with(|cm| {
+        SRC_MAP.with(|cm| {
             let mut cm = cm.borrow_mut();
             let span = cm.add_file(src);
             Cursor {
@@ -1454,16 +1552,16 @@ pub mod fallback {
         }
     }
     thread_local! {
-        static SOURCE_MAP: RefCell<SourceMap> = RefCell::new(SourceMap {
+        static SRC_MAP: RefCell<SourceMap> = RefCell::new(SourceMap {
             files: vec![FileInfo {
-                source_text: String::new(),
+                text: String::new(),
                 span: Span { lo: 0, hi: 0 },
                 lines: vec![0],
             }],
         });
     }
     struct FileInfo {
-        source_text: String,
+        text: String,
         span: Span,
         lines: Vec<usize>,
     }
@@ -1491,7 +1589,7 @@ pub mod fallback {
         fn source_text(&self, span: Span) -> String {
             let lo = (span.lo - self.span.lo) as usize;
             let hi = (span.hi - self.span.lo) as usize;
-            self.source_text[lo..hi].to_owned()
+            self.text[lo..hi].to_owned()
         }
     }
     fn lines_offsets(s: &str) -> (usize, Vec<usize>) {
@@ -1520,7 +1618,7 @@ pub mod fallback {
                 hi: lo + (len as u32),
             };
             self.files.push(FileInfo {
-                source_text: src.to_owned(),
+                text: src.to_owned(),
                 span,
                 lines,
             });
@@ -1535,88 +1633,7 @@ pub mod fallback {
             unreachable!("Invalid span with no related FileInfo!");
         }
     }
-    #[derive(Clone, Copy, PartialEq, Eq)]
-    pub struct Span {
-        pub lo: u32,
-        pub hi: u32,
-    }
-    impl Span {
-        pub fn call_site() -> Self {
-            Span { lo: 0, hi: 0 }
-        }
-        pub fn mixed_site() -> Self {
-            Span::call_site()
-        }
-        pub fn resolved_at(&self, _other: Span) -> Span {
-            *self
-        }
-        pub fn located_at(&self, other: Span) -> Span {
-            other
-        }
-        pub fn start(&self) -> LineColumn {
-            SOURCE_MAP.with(|cm| {
-                let cm = cm.borrow();
-                let fi = cm.fileinfo(*self);
-                fi.offset_line_column(self.lo as usize)
-            })
-        }
-        pub fn end(&self) -> LineColumn {
-            SOURCE_MAP.with(|cm| {
-                let cm = cm.borrow();
-                let fi = cm.fileinfo(*self);
-                fi.offset_line_column(self.hi as usize)
-            })
-        }
-        pub fn join(&self, other: Span) -> Option<Span> {
-            SOURCE_MAP.with(|cm| {
-                let cm = cm.borrow();
-                if !cm.fileinfo(*self).span_within(other) {
-                    return None;
-                }
-                Some(Span {
-                    lo: cmp::min(self.lo, other.lo),
-                    hi: cmp::max(self.hi, other.hi),
-                })
-            })
-        }
-        pub fn source_text(&self) -> Option<String> {
-            {
-                if self.is_call_site() {
-                    None
-                } else {
-                    Some(SOURCE_MAP.with(|cm| cm.borrow().fileinfo(*self).source_text(*self)))
-                }
-            }
-        }
-        pub fn first_byte(self) -> Self {
-            Span {
-                lo: self.lo,
-                hi: cmp::min(self.lo.saturating_add(1), self.hi),
-            }
-        }
-        pub fn last_byte(self) -> Self {
-            Span {
-                lo: cmp::max(self.hi.saturating_sub(1), self.lo),
-                hi: self.hi,
-            }
-        }
-        fn is_call_site(&self) -> bool {
-            self.lo == 0 && self.hi == 0
-        }
-    }
-    impl Debug for Span {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            return write!(f, "bytes({}..{})", self.lo, self.hi);
-        }
-    }
-    pub fn debug_span_field_if_nontrivial(debug: &mut fmt::DebugStruct, span: Span) {
-        {
-            if span.is_call_site() {
-                return;
-            }
-        }
-        debug.field("span", &span);
-    }
+
     #[derive(Clone)]
     pub struct Group {
         delimiter: Delimiter,
@@ -1672,7 +1689,7 @@ pub mod fallback {
             let mut debug = fmt.debug_struct("Group");
             debug.field("delimiter", &self.delimiter);
             debug.field("stream", &self.stream);
-            debug_span_field_if_nontrivial(&mut debug, self.span);
+            debug_span_field(&mut debug, self.span);
             debug.finish()
         }
     }
@@ -1774,7 +1791,7 @@ pub mod fallback {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             let mut y = f.debug_struct("Ident");
             y.field("sym", &format_args!("{}", self));
-            debug_span_field_if_nontrivial(&mut y, self.span);
+            debug_span_field(&mut y, self.span);
             y.finish()
         }
     }
@@ -1807,38 +1824,38 @@ pub mod fallback {
                 _marker: Marker,
             }
         }
-        pub unsafe fn from_str_unchecked(repr: &str) -> Self {
-            Lit::_new(repr.to_owned())
+        pub unsafe fn from_str_unchecked(x: &str) -> Self {
+            Lit::_new(x.to_owned())
         }
         suffixed_nums! {
-            u8_suffixed => u8,
-            u16_suffixed => u16,
-            u32_suffixed => u32,
-            u64_suffixed => u64,
-            u128_suffixed => u128,
-            usize_suffixed => usize,
-            i8_suffixed => i8,
+            f32_suffixed => f32,
+            f64_suffixed => f64,
+            i128_suffixed => i128,
             i16_suffixed => i16,
             i32_suffixed => i32,
             i64_suffixed => i64,
-            i128_suffixed => i128,
+            i8_suffixed => i8,
             isize_suffixed => isize,
-            f32_suffixed => f32,
-            f64_suffixed => f64,
+            u128_suffixed => u128,
+            u16_suffixed => u16,
+            u32_suffixed => u32,
+            u64_suffixed => u64,
+            u8_suffixed => u8,
+            usize_suffixed => usize,
         }
         unsuffixed_nums! {
-            u8_unsuffixed => u8,
-            u16_unsuffixed => u16,
-            u32_unsuffixed => u32,
-            u64_unsuffixed => u64,
-            u128_unsuffixed => u128,
-            usize_unsuffixed => usize,
-            i8_unsuffixed => i8,
+            i128_unsuffixed => i128,
             i16_unsuffixed => i16,
             i32_unsuffixed => i32,
             i64_unsuffixed => i64,
-            i128_unsuffixed => i128,
+            i8_unsuffixed => i8,
             isize_unsuffixed => isize,
+            u128_unsuffixed => u128,
+            u16_unsuffixed => u16,
+            u32_unsuffixed => u32,
+            u64_unsuffixed => u64,
+            u8_unsuffixed => u8,
+            usize_unsuffixed => usize,
         }
         pub fn f32_unsuffixed(x: f32) -> Lit {
             let mut y = x.to_string();
@@ -1847,102 +1864,98 @@ pub mod fallback {
             }
             Lit::_new(y)
         }
-        pub fn f64_unsuffixed(f: f64) -> Lit {
-            let mut s = f.to_string();
-            if !s.contains('.') {
-                s.push_str(".0");
+        pub fn f64_unsuffixed(x: f64) -> Lit {
+            let mut y = x.to_string();
+            if !y.contains('.') {
+                y.push_str(".0");
             }
-            Lit::_new(s)
+            Lit::_new(y)
         }
-        pub fn string(t: &str) -> Lit {
-            let mut repr = String::with_capacity(t.len() + 2);
-            repr.push('"');
-            let mut chars = t.chars();
-            while let Some(ch) = chars.next() {
-                if ch == '\0' {
-                    repr.push_str(if chars.as_str().starts_with(|next| '0' <= next && next <= '7') {
-                        // circumvent clippy::octal_escapes lint
+        pub fn string(x: &str) -> Lit {
+            let mut y = String::with_capacity(x.len() + 2);
+            y.push('"');
+            let mut xs = x.chars();
+            while let Some(x) = xs.next() {
+                if x == '\0' {
+                    y.push_str(if xs.as_str().starts_with(|x| '0' <= x && x <= '7') {
                         "\\x00"
                     } else {
                         "\\0"
                     });
-                } else if ch == '\'' {
-                    // escape_debug turns this into "\'" which is unnecessary.
-                    repr.push(ch);
+                } else if x == '\'' {
+                    y.push(x);
                 } else {
-                    repr.extend(ch.escape_debug());
+                    y.extend(x.escape_debug());
                 }
             }
-            repr.push('"');
-            Lit::_new(repr)
+            y.push('"');
+            Lit::_new(y)
         }
-        pub fn character(t: char) -> Lit {
-            let mut repr = String::new();
-            repr.push('\'');
-            if t == '"' {
-                // escape_debug turns this into '\"' which is unnecessary.
-                repr.push(t);
+        pub fn character(x: char) -> Lit {
+            let mut y = String::new();
+            y.push('\'');
+            if x == '"' {
+                y.push(x);
             } else {
-                repr.extend(t.escape_debug());
+                y.extend(x.escape_debug());
             }
-            repr.push('\'');
-            Lit::_new(repr)
+            y.push('\'');
+            Lit::_new(y)
         }
-        pub fn byte_string(bytes: &[u8]) -> Lit {
-            let mut escaped = "b\"".to_string();
-            let mut bytes = bytes.iter();
-            while let Some(&b) = bytes.next() {
+        pub fn byte_string(xs: &[u8]) -> Lit {
+            let mut y = "b\"".to_string();
+            let mut xs = xs.iter();
+            while let Some(&x) = xs.next() {
                 #[allow(clippy::match_overlapping_arm)]
-                match b {
-                    b'\0' => escaped.push_str(match bytes.as_slice().first() {
-                        // circumvent clippy::octal_escapes lint
+                match x {
+                    b'\0' => y.push_str(match xs.as_slice().first() {
                         Some(b'0'..=b'7') => r"\x00",
                         _ => r"\0",
                     }),
-                    b'\t' => escaped.push_str(r"\t"),
-                    b'\n' => escaped.push_str(r"\n"),
-                    b'\r' => escaped.push_str(r"\r"),
-                    b'"' => escaped.push_str("\\\""),
-                    b'\\' => escaped.push_str("\\\\"),
-                    b'\x20'..=b'\x7E' => escaped.push(b as char),
+                    b'\t' => y.push_str(r"\t"),
+                    b'\n' => y.push_str(r"\n"),
+                    b'\r' => y.push_str(r"\r"),
+                    b'"' => y.push_str("\\\""),
+                    b'\\' => y.push_str("\\\\"),
+                    b'\x20'..=b'\x7E' => y.push(x as char),
                     _ => {
-                        let _ = write!(escaped, "\\x{:02X}", b);
+                        let _ = write!(y, "\\x{:02X}", x);
                     },
                 }
             }
-            escaped.push('"');
-            Lit::_new(escaped)
+            y.push('"');
+            Lit::_new(y)
         }
         pub fn span(&self) -> Span {
             self.span
         }
-        pub fn set_span(&mut self, span: Span) {
-            self.span = span;
+        pub fn set_span(&mut self, x: Span) {
+            self.span = x;
         }
         pub fn subspan<R: RangeBounds<usize>>(&self, range: R) -> Option<Span> {
             use super::convert::usize_to_u32;
-            use std::ops::Bound;
+            use std::ops::Bound::*;
             let lo = match range.start_bound() {
-                Bound::Included(start) => {
-                    let start = usize_to_u32(*start)?;
-                    self.span.lo.checked_add(start)?
+                Included(x) => {
+                    let x = usize_to_u32(*x)?;
+                    self.span.lo.checked_add(x)?
                 },
-                Bound::Excluded(start) => {
-                    let start = usize_to_u32(*start)?;
-                    self.span.lo.checked_add(start)?.checked_add(1)?
+                Excluded(x) => {
+                    let x = usize_to_u32(*x)?;
+                    self.span.lo.checked_add(x)?.checked_add(1)?
                 },
-                Bound::Unbounded => self.span.lo,
+                Unbounded => self.span.lo,
             };
             let hi = match range.end_bound() {
-                Bound::Included(end) => {
-                    let end = usize_to_u32(*end)?;
-                    self.span.lo.checked_add(end)?.checked_add(1)?
+                Included(x) => {
+                    let x = usize_to_u32(*x)?;
+                    self.span.lo.checked_add(x)?.checked_add(1)?
                 },
-                Bound::Excluded(end) => {
-                    let end = usize_to_u32(*end)?;
-                    self.span.lo.checked_add(end)?
+                Excluded(x) => {
+                    let x = usize_to_u32(*x)?;
+                    self.span.lo.checked_add(x)?
                 },
-                Bound::Unbounded => self.span.hi,
+                Unbounded => self.span.hi,
             };
             if lo <= hi && hi <= self.span.hi {
                 Some(Span { lo, hi })
@@ -1984,9 +1997,100 @@ pub mod fallback {
         fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
             let mut debug = fmt.debug_struct("Literal");
             debug.field("lit", &format_args!("{}", self.repr));
-            debug_span_field_if_nontrivial(&mut debug, self.span);
+            debug_span_field(&mut debug, self.span);
             debug.finish()
         }
+    }
+
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    pub struct Span {
+        pub lo: u32,
+        pub hi: u32,
+        _marker: Marker,
+    }
+    impl Span {
+        pub fn call_site() -> Self {
+            Span {
+                lo: 0,
+                hi: 0,
+                _marker: Marker,
+            }
+        }
+        pub fn mixed_site() -> Self {
+            Span::call_site()
+        }
+        pub fn resolved_at(&self, _: Span) -> Span {
+            *self
+        }
+        pub fn located_at(&self, x: Span) -> Span {
+            x
+        }
+        pub fn start(&self) -> LineColumn {
+            SRC_MAP.with(|x| {
+                let x = x.borrow();
+                let y = x.fileinfo(*self);
+                y.offset_line_column(self.lo as usize)
+            })
+        }
+        pub fn end(&self) -> LineColumn {
+            SRC_MAP.with(|x| {
+                let x = x.borrow();
+                let y = x.fileinfo(*self);
+                y.offset_line_column(self.hi as usize)
+            })
+        }
+        pub fn join(&self, s: Span) -> Option<Span> {
+            SRC_MAP.with(|x| {
+                let x = x.borrow();
+                if !x.fileinfo(*self).span_within(s) {
+                    return None;
+                }
+                Some(Span {
+                    lo: cmp::min(self.lo, s.lo),
+                    hi: cmp::max(self.hi, s.hi),
+                    _marker: Marker,
+                })
+            })
+        }
+        pub fn source_text(&self) -> Option<String> {
+            {
+                if self.is_call_site() {
+                    None
+                } else {
+                    Some(SRC_MAP.with(|x| x.borrow().fileinfo(*self).source_text(*self)))
+                }
+            }
+        }
+        pub fn first_byte(self) -> Self {
+            Span {
+                lo: self.lo,
+                hi: cmp::min(self.lo.saturating_add(1), self.hi),
+                _marker: Marker,
+            }
+        }
+        pub fn last_byte(self) -> Self {
+            Span {
+                lo: cmp::max(self.hi.saturating_sub(1), self.lo),
+                hi: self.hi,
+                _marker: Marker,
+            }
+        }
+        fn is_call_site(&self) -> bool {
+            self.lo == 0 && self.hi == 0
+        }
+    }
+    impl Debug for Span {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            return write!(f, "bytes({}..{})", self.lo, self.hi);
+        }
+    }
+    pub fn debug_span_field(x: &mut fmt::DebugStruct, s: Span) {
+        {
+            if s.is_call_site() {
+                return;
+            }
+        }
+        x.field("span", &s);
     }
 }
 pub mod extra {
@@ -2070,9 +2174,6 @@ mod imp {
                 span: fallback::Span::call_site(),
             })
         }
-    }
-    fn mismatch() -> ! {
-        panic!("compiler/fallback mismatch")
     }
     impl DeferredTokenStream {
         fn new(stream: proc_macro::TokenStream) -> Self {
@@ -2330,105 +2431,6 @@ mod imp {
                 TreeIter::Compiler(tts) => tts.size_hint(),
                 TreeIter::Fallback(tts) => tts.size_hint(),
             }
-        }
-    }
-    #[derive(Copy, Clone)]
-    pub enum Span {
-        Compiler(proc_macro::Span),
-        Fallback(fallback::Span),
-    }
-    impl Span {
-        pub fn call_site() -> Self {
-            if inside_proc_macro() {
-                Span::Compiler(proc_macro::Span::call_site())
-            } else {
-                Span::Fallback(fallback::Span::call_site())
-            }
-        }
-        pub fn mixed_site() -> Self {
-            if inside_proc_macro() {
-                Span::Compiler(proc_macro::Span::mixed_site())
-            } else {
-                Span::Fallback(fallback::Span::mixed_site())
-            }
-        }
-        pub fn resolved_at(&self, other: Span) -> Span {
-            match (self, other) {
-                (Span::Compiler(a), Span::Compiler(b)) => Span::Compiler(a.resolved_at(b)),
-                (Span::Fallback(a), Span::Fallback(b)) => Span::Fallback(a.resolved_at(b)),
-                _ => mismatch(),
-            }
-        }
-        pub fn located_at(&self, other: Span) -> Span {
-            match (self, other) {
-                (Span::Compiler(a), Span::Compiler(b)) => Span::Compiler(a.located_at(b)),
-                (Span::Fallback(a), Span::Fallback(b)) => Span::Fallback(a.located_at(b)),
-                _ => mismatch(),
-            }
-        }
-        pub fn unwrap(self) -> proc_macro::Span {
-            match self {
-                Span::Compiler(s) => s,
-                Span::Fallback(_) => panic!("proc_macro::Span is only available in procedural macros"),
-            }
-        }
-        pub fn start(&self) -> LineColumn {
-            match self {
-                Span::Compiler(_) => LineColumn { line: 0, column: 0 },
-                Span::Fallback(s) => s.start(),
-            }
-        }
-        pub fn end(&self) -> LineColumn {
-            match self {
-                Span::Compiler(_) => LineColumn { line: 0, column: 0 },
-                Span::Fallback(s) => s.end(),
-            }
-        }
-        pub fn join(&self, other: Span) -> Option<Span> {
-            let ret = match (self, other) {
-                (Span::Compiler(a), Span::Compiler(b)) => Span::Compiler(a.join(b)?),
-                (Span::Fallback(a), Span::Fallback(b)) => Span::Fallback(a.join(b)?),
-                _ => return None,
-            };
-            Some(ret)
-        }
-        pub fn source_text(&self) -> Option<String> {
-            match self {
-                Span::Compiler(s) => s.source_text(),
-                Span::Fallback(s) => s.source_text(),
-            }
-        }
-        fn unwrap_nightly(self) -> proc_macro::Span {
-            match self {
-                Span::Compiler(s) => s,
-                Span::Fallback(_) => mismatch(),
-            }
-        }
-    }
-    impl From<proc_macro::Span> for super::Span {
-        fn from(proc_span: proc_macro::Span) -> Self {
-            super::Span::_new(Span::Compiler(proc_span))
-        }
-    }
-    impl From<fallback::Span> for Span {
-        fn from(inner: fallback::Span) -> Self {
-            Span::Fallback(inner)
-        }
-    }
-    impl Debug for Span {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            match self {
-                Span::Compiler(s) => Debug::fmt(s, f),
-                Span::Fallback(s) => Debug::fmt(s, f),
-            }
-        }
-    }
-    pub fn debug_span_field_if_nontrivial(debug: &mut fmt::DebugStruct, span: Span) {
-        match span {
-            Span::Compiler(s) => {
-                debug.field("span", &s);
-            },
-            Span::Fallback(s) => fallback::debug_span_field_if_nontrivial(debug, s),
         }
     }
     #[derive(Clone)]
@@ -2725,57 +2727,6 @@ impl Display for LexError {
     }
 }
 impl Error for LexError {}
-#[derive(Copy, Clone)]
-pub struct Span {
-    inner: imp::Span,
-    _marker: Marker,
-}
-impl Span {
-    fn _new(inner: imp::Span) -> Self {
-        Span { inner, _marker: Marker }
-    }
-    fn _new_fallback(inner: fallback::Span) -> Self {
-        Span {
-            inner: inner.into(),
-            _marker: Marker,
-        }
-    }
-    pub fn call_site() -> Self {
-        Span::_new(imp::Span::call_site())
-    }
-    pub fn mixed_site() -> Self {
-        Span::_new(imp::Span::mixed_site())
-    }
-    pub fn resolved_at(&self, other: Span) -> Span {
-        Span::_new(self.inner.resolved_at(other.inner))
-    }
-    pub fn located_at(&self, other: Span) -> Span {
-        Span::_new(self.inner.located_at(other.inner))
-    }
-    pub fn unwrap(self) -> proc_macro::Span {
-        self.inner.unwrap()
-    }
-    pub fn unstable(self) -> proc_macro::Span {
-        self.unwrap()
-    }
-    pub fn start(&self) -> LineColumn {
-        self.inner.start()
-    }
-    pub fn end(&self) -> LineColumn {
-        self.inner.end()
-    }
-    pub fn join(&self, other: Span) -> Option<Span> {
-        self.inner.join(other.inner).map(Span::_new)
-    }
-    pub fn source_text(&self) -> Option<String> {
-        self.inner.source_text()
-    }
-}
-impl Debug for Span {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        Debug::fmt(&self.inner, f)
-    }
-}
 #[derive(Clone)]
 pub enum Tree {
     Group(Group),
@@ -2838,7 +2789,7 @@ impl Debug for Tree {
             Tree::Ident(t) => {
                 let mut debug = f.debug_struct("Ident");
                 debug.field("sym", &format_args!("{}", t));
-                imp::debug_span_field_if_nontrivial(&mut debug, t.span().inner);
+                debug_span_field(&mut debug, t.span().inner);
                 debug.finish()
             },
             Tree::Punct(t) => Debug::fmt(t, f),
@@ -2943,7 +2894,7 @@ impl Debug for Punct {
         let mut debug = fmt.debug_struct("Punct");
         debug.field("char", &self.ch);
         debug.field("spacing", &self.spacing);
-        imp::debug_span_field_if_nontrivial(&mut debug, self.span.inner);
+        debug_span_field(&mut debug, self.span.inner);
         debug.finish()
     }
 }
