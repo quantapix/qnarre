@@ -1,28 +1,28 @@
 use super::*;
-use std::{error::Error, iter::FromIterator, ops::RangeBounds, panic, str::FromStr};
+use std::{iter::FromIterator, ops::RangeBounds, panic, str::FromStr};
 
 #[derive(Clone)]
-pub struct DeferredStream {
+pub struct Deferred {
     stream: pm::TokenStream,
-    extra: Vec<pm::TokenTree>,
+    trees: Vec<pm::TokenTree>,
 }
-impl DeferredStream {
+impl Deferred {
     fn new(stream: pm::TokenStream) -> Self {
-        DeferredStream {
+        Deferred {
             stream,
-            extra: Vec::new(),
+            trees: Vec::new(),
         }
     }
     fn is_empty(&self) -> bool {
-        self.stream.is_empty() && self.extra.is_empty()
+        self.stream.is_empty() && self.trees.is_empty()
     }
-    fn evaluate_now(&mut self) {
-        if !self.extra.is_empty() {
-            self.stream.extend(self.extra.drain(..));
+    fn evaluate(&mut self) {
+        if !self.trees.is_empty() {
+            self.stream.extend(self.trees.drain(..));
         }
     }
-    fn into_pm_stream(mut self) -> pm::TokenStream {
-        self.evaluate_now();
+    fn into_stream(mut self) -> pm::TokenStream {
+        self.evaluate();
         self.stream
     }
 }
@@ -64,13 +64,13 @@ impl DelimSpan {
     pub fn open(&self) -> Span {
         match &self {
             DelimSpan::Compiler { open, .. } => Span::Compiler(*open),
-            DelimSpan::Fallback(x) => Span::_new_fallback(x.first_byte()),
+            DelimSpan::Fallback(x) => Span::Fallback(x.first_byte()),
         }
     }
     pub fn close(&self) -> Span {
         match &self {
             DelimSpan::Compiler { close, .. } => Span::Compiler(*close),
-            DelimSpan::Fallback(x) => Span::_new_fallback(x.last_byte()),
+            DelimSpan::Fallback(x) => Span::Fallback(x.last_byte()),
         }
     }
 }
@@ -95,7 +95,7 @@ impl Group {
                     Delim::Brace => pm::Delimiter::Brace,
                     Delim::None => pm::Delimiter::None,
                 };
-                Group::Compiler(pm::Group::new(x, y.into_pm_stream()))
+                Group::Compiler(pm::Group::new(x, y.into_stream()))
             },
             Stream::Fallback(y) => Group::Fallback(fallback::Group::new(x, y)),
         }
@@ -113,7 +113,7 @@ impl Group {
     }
     pub fn stream(&self) -> Stream {
         match self {
-            Group::Compiler(x) => Stream::Compiler(DeferredStream::new(x.stream())),
+            Group::Compiler(x) => Stream::Compiler(Deferred::new(x.stream())),
             Group::Fallback(x) => Stream::Fallback(x.stream()),
         }
     }
@@ -287,7 +287,7 @@ impl LexErr {
         })
     }
 }
-impl Error for LexErr {}
+impl std::error::Error for LexErr {}
 impl From<pm::LexError> for LexErr {
     fn from(x: pm::LexError) -> Self {
         LexErr::Compiler(x)
@@ -540,8 +540,16 @@ impl Debug for Punct {
         let mut y = fmt.debug_struct("Punct");
         y.field("char", &self.ch);
         y.field("spacing", &self.spacing);
-        debug_span_field(&mut y, self.span.inner);
+        debug_span_field(&mut y, self.span);
         y.finish()
+    }
+}
+pub fn debug_span_field(x: &mut fmt::DebugStruct, s: Span) {
+    match s {
+        Span::Compiler(s) => {
+            x.field("span", &s);
+        },
+        Span::Fallback(s) => fallback::debug_span_field(x, s),
     }
 }
 
@@ -645,24 +653,16 @@ impl Debug for Span {
         }
     }
 }
-pub fn debug_span_field(x: &mut fmt::DebugStruct, s: Span) {
-    match s {
-        Span::Compiler(s) => {
-            x.field("span", &s);
-        },
-        Span::Fallback(s) => fallback::debug_span_field(x, s),
-    }
-}
 
 #[derive(Clone)]
 pub enum Stream {
-    Compiler(DeferredStream),
+    Compiler(Deferred),
     Fallback(fallback::Stream),
 }
 impl Stream {
     pub fn new() -> Self {
         if util::inside_pm() {
-            Stream::Compiler(DeferredStream::new(pm::TokenStream::new()))
+            Stream::Compiler(Deferred::new(pm::TokenStream::new()))
         } else {
             Stream::Fallback(fallback::Stream::new())
         }
@@ -675,7 +675,7 @@ impl Stream {
     }
     fn unwrap_nightly(self) -> pm::TokenStream {
         match self {
-            Stream::Compiler(x) => x.into_pm_stream(),
+            Stream::Compiler(x) => x.into_stream(),
             Stream::Fallback(_) => mismatch(),
         }
     }
@@ -695,7 +695,7 @@ impl FromStr for Stream {
     type Err = LexErr;
     fn from_str(x: &str) -> Result<Stream, LexErr> {
         if util::inside_pm() {
-            Ok(Stream::Compiler(DeferredStream::new(pm_parse(x)?)))
+            Ok(Stream::Compiler(Deferred::new(pm_parse(x)?)))
         } else {
             Ok(Stream::Fallback(x.parse()?))
         }
@@ -703,7 +703,7 @@ impl FromStr for Stream {
 }
 impl From<pm::TokenStream> for Stream {
     fn from(x: pm::TokenStream) -> Self {
-        Stream::Compiler(DeferredStream::new(x))
+        Stream::Compiler(Deferred::new(x))
     }
 }
 impl From<fallback::Stream> for Stream {
@@ -714,7 +714,7 @@ impl From<fallback::Stream> for Stream {
 impl From<Tree> for Stream {
     fn from(x: Tree) -> Self {
         if util::inside_pm() {
-            Stream::Compiler(DeferredStream::new(into_pm_tok(x).into()))
+            Stream::Compiler(Deferred::new(into_pm_tok(x).into()))
         } else {
             Stream::Fallback(x.into())
         }
@@ -725,9 +725,9 @@ impl FromIterator<Stream> for Stream {
         let mut xs = xs.into_iter();
         match xs.next() {
             Some(Stream::Compiler(mut first)) => {
-                first.evaluate_now();
+                first.evaluate();
                 first.stream.extend(xs.map(|x| match x {
-                    Stream::Compiler(x) => x.into_pm_stream(),
+                    Stream::Compiler(x) => x.into_stream(),
                     Stream::Fallback(_) => mismatch(),
                 }));
                 Stream::Compiler(first)
@@ -746,7 +746,7 @@ impl FromIterator<Stream> for Stream {
 impl FromIterator<Tree> for Stream {
     fn from_iter<I: IntoIterator<Item = Tree>>(xs: I) -> Self {
         if util::inside_pm() {
-            Stream::Compiler(DeferredStream::new(xs.into_iter().map(into_pm_tok).collect()))
+            Stream::Compiler(Deferred::new(xs.into_iter().map(into_pm_tok).collect()))
         } else {
             Stream::Fallback(xs.into_iter().collect())
         }
@@ -756,7 +756,7 @@ impl Extend<Stream> for Stream {
     fn extend<I: IntoIterator<Item = Stream>>(&mut self, xs: I) {
         match self {
             Stream::Compiler(x) => {
-                x.evaluate_now();
+                x.evaluate();
                 x.stream.extend(xs.into_iter().map(Stream::unwrap_nightly));
             },
             Stream::Fallback(x) => {
@@ -770,7 +770,7 @@ impl Extend<Tree> for Stream {
         match self {
             Stream::Compiler(y) => {
                 for x in xs {
-                    y.extra.push(into_pm_tok(x));
+                    y.trees.push(into_pm_tok(x));
                 }
             },
             Stream::Fallback(x) => x.extend(xs),
@@ -782,7 +782,7 @@ impl IntoIterator for Stream {
     type IntoIter = TreeIter;
     fn into_iter(self) -> TreeIter {
         match self {
-            Stream::Compiler(x) => TreeIter::Compiler(x.into_pm_stream().into_iter()),
+            Stream::Compiler(x) => TreeIter::Compiler(x.into_stream().into_iter()),
             Stream::Fallback(x) => TreeIter::Fallback(x.into_iter()),
         }
     }
@@ -790,7 +790,7 @@ impl IntoIterator for Stream {
 impl Display for Stream {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Stream::Compiler(x) => Display::fmt(&x.clone().into_pm_stream(), f),
+            Stream::Compiler(x) => Display::fmt(&x.clone().into_stream(), f),
             Stream::Fallback(x) => Display::fmt(x, f),
         }
     }
@@ -798,7 +798,7 @@ impl Display for Stream {
 impl Debug for Stream {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Stream::Compiler(x) => Debug::fmt(&x.clone().into_pm_stream(), f),
+            Stream::Compiler(x) => Debug::fmt(&x.clone().into_stream(), f),
             Stream::Fallback(x) => Debug::fmt(x, f),
         }
     }
@@ -806,7 +806,7 @@ impl Debug for Stream {
 impl From<Stream> for pm::TokenStream {
     fn from(x: Stream) -> Self {
         match x {
-            Stream::Compiler(x) => x.into_pm_stream(),
+            Stream::Compiler(x) => x.into_stream(),
             Stream::Fallback(x) => x.to_string().parse().unwrap(),
         }
     }
@@ -817,18 +817,18 @@ fn pm_parse(x: &str) -> Result<pm::TokenStream, LexErr> {
 }
 fn into_pm_tok(x: Tree) -> pm::TokenTree {
     match x {
-        Tree::Group(x) => x.inner.unwrap_nightly().into(),
+        Tree::Group(x) => x.unwrap_nightly().into(),
         Tree::Punct(x) => {
             let spacing = match x.spacing() {
                 Spacing::Joint => pm::Spacing::Joint,
                 Spacing::Alone => pm::Spacing::Alone,
             };
             let mut y = pm::Punct::new(x.as_char(), spacing);
-            y.set_span(x.span().inner.unwrap_nightly());
+            y.set_span(x.span().unwrap_nightly());
             y.into()
         },
-        Tree::Ident(x) => x.inner.unwrap_nightly().into(),
-        Tree::Lit(x) => x.inner.unwrap_nightly().into(),
+        Tree::Ident(x) => x.unwrap_nightly().into(),
+        Tree::Lit(x) => x.unwrap_nightly().into(),
     }
 }
 
@@ -891,10 +891,10 @@ impl Debug for Tree {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Tree::Group(x) => Debug::fmt(x, f),
-            Tree::Ident(t) => {
+            Tree::Ident(x) => {
                 let mut y = f.debug_struct("Ident");
-                y.field("sym", &format_args!("{}", t));
-                debug_span_field(&mut y, t.span().inner);
+                y.field("sym", &format_args!("{}", x));
+                debug_span_field(&mut y, x.span());
                 y.finish()
             },
             Tree::Punct(x) => Debug::fmt(x, f),
@@ -940,16 +940,16 @@ impl Iterator for TreeIter {
 
 #[derive(Clone)]
 pub struct IntoIter {
-    inner: TreeIter,
+    iter: TreeIter,
     _marker: util::Marker,
 }
 impl Iterator for IntoIter {
     type Item = Tree;
     fn next(&mut self) -> Option<Tree> {
-        self.inner.next()
+        self.iter.next()
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
-        self.inner.size_hint()
+        self.iter.size_hint()
     }
 }
 impl Debug for IntoIter {
@@ -962,12 +962,12 @@ impl IntoIterator for Stream {
     type Item = Tree;
     type IntoIter = IntoIter;
     fn into_iter(self) -> IntoIter {
-        let inner = match self {
-            Stream::Compiler(x) => x.into_pm_stream().into_iter(),
+        let iter = match self {
+            Stream::Compiler(x) => x.into_stream().into_iter(),
             Stream::Fallback(x) => x.into_iter(),
         };
         IntoIter {
-            inner,
+            iter,
             _marker: util::Marker,
         }
     }
@@ -1027,7 +1027,7 @@ impl IntoSpans<DelimSpan> for DelimSpan {
 pub mod fallback {
     use super::{
         parse::{self, Cursor},
-        rcvec::{RcVec, RcVecBuilder, RcVecIntoIter, RcVecMut},
+        rcvec::{RcVec, RcVecMut},
         *,
     };
     use std::{
@@ -1048,62 +1048,29 @@ pub mod fallback {
         util::unforce_fallback();
     }
 
-    pub struct StreamBuilder {
-        inner: RcVecBuilder<Tree>,
+    pub struct Builder {
+        inner: rcvec::Builder<Tree>,
     }
-    impl StreamBuilder {
+    impl Builder {
         pub fn new() -> Self {
-            StreamBuilder {
-                inner: RcVecBuilder::new(),
+            Builder {
+                inner: rcvec::Builder::new(),
             }
         }
         pub fn with_capacity(x: usize) -> Self {
-            StreamBuilder {
-                inner: RcVecBuilder::with_capacity(x),
+            Builder {
+                inner: rcvec::Builder::with_capacity(x),
             }
         }
-        pub fn push_tok_from_parser(&mut self, x: Tree) {
+        pub fn push_from_parser(&mut self, x: Tree) {
             self.inner.push(x);
         }
         pub fn build(self) -> Stream {
             Stream {
-                inner: self.inner.build(),
+                trees: self.inner.build(),
                 _marker: util::Marker,
             }
         }
-    }
-
-    pub type TreeIter = RcVecIntoIter<Tree>;
-
-    #[derive(Clone, PartialEq, Eq)]
-    pub struct SourceFile {
-        path: PathBuf,
-    }
-    impl SourceFile {
-        pub fn path(&self) -> PathBuf {
-            self.path.clone()
-        }
-        pub fn is_real(&self) -> bool {
-            false
-        }
-    }
-    impl Debug for SourceFile {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            f.debug_struct("SourceFile")
-                .field("path", &self.path())
-                .field("is_real", &self.is_real())
-                .finish()
-        }
-    }
-
-    thread_local! {
-        static SRC_MAP: RefCell<SourceMap> = RefCell::new(SourceMap {
-            files: vec![FileInfo {
-                text: String::new(),
-                span: Span { lo: 0, hi: 0 },
-                lines: vec![0],
-            }],
-        });
     }
 
     struct FileInfo {
@@ -1112,75 +1079,28 @@ pub mod fallback {
         lines: Vec<usize>,
     }
     impl FileInfo {
-        fn offset_line_column(&self, offset: usize) -> LineCol {
+        fn offset_line_col(&self, x: usize) -> LineCol {
             assert!(self.span_within(Span {
-                lo: offset as u32,
-                hi: offset as u32,
+                lo: x as u32,
+                hi: x as u32,
                 _marker: util::Marker
             }));
-            let offset = offset - self.span.lo as usize;
-            match self.lines.binary_search(&offset) {
-                Ok(found) => LineCol {
-                    line: found + 1,
-                    col: 0,
-                },
-                Err(idx) => LineCol {
-                    line: idx,
-                    col: offset - self.lines[idx - 1],
+            let y = x - self.span.lo as usize;
+            match self.lines.binary_search(&y) {
+                Ok(x) => LineCol { line: x + 1, col: 0 },
+                Err(line) => LineCol {
+                    line,
+                    col: y - self.lines[line - 1],
                 },
             }
         }
-        fn span_within(&self, span: Span) -> bool {
-            span.lo >= self.span.lo && span.hi <= self.span.hi
+        fn span_within(&self, x: Span) -> bool {
+            x.lo >= self.span.lo && x.hi <= self.span.hi
         }
-        fn source_text(&self, span: Span) -> String {
-            let lo = (span.lo - self.span.lo) as usize;
-            let hi = (span.hi - self.span.lo) as usize;
+        fn source_text(&self, x: Span) -> String {
+            let lo = (x.lo - self.span.lo) as usize;
+            let hi = (x.hi - self.span.lo) as usize;
             self.text[lo..hi].to_owned()
-        }
-    }
-
-    fn lines_offsets(s: &str) -> (usize, Vec<usize>) {
-        let mut lines = vec![0];
-        let mut total = 0;
-        for ch in s.chars() {
-            total += 1;
-            if ch == '\n' {
-                lines.push(total);
-            }
-        }
-        (total, lines)
-    }
-
-    struct SourceMap {
-        files: Vec<FileInfo>,
-    }
-    impl SourceMap {
-        fn next_start_pos(&self) -> u32 {
-            self.files.last().unwrap().span.hi + 1
-        }
-        fn add_file(&mut self, src: &str) -> Span {
-            let (len, lines) = lines_offsets(src);
-            let lo = self.next_start_pos();
-            let span = Span {
-                lo,
-                hi: lo + (len as u32),
-                _marker: util::Marker,
-            };
-            self.files.push(FileInfo {
-                text: src.to_owned(),
-                span,
-                lines,
-            });
-            span
-        }
-        fn fileinfo(&self, s: Span) -> &FileInfo {
-            for x in &self.files {
-                if x.span_within(s) {
-                    return x;
-                }
-            }
-            unreachable!("Invalid span with no related FileInfo!");
         }
     }
 
@@ -1227,7 +1147,7 @@ pub mod fallback {
             };
             f.write_str(open)?;
             Display::fmt(&self.stream, f)?;
-            if self.delim == Delim::Brace && !self.stream.inner.is_empty() {
+            if self.delim == Delim::Brace && !self.stream.trees.is_empty() {
                 f.write_str(" ")?;
             }
             f.write_str(close)?;
@@ -1611,14 +1531,14 @@ pub mod fallback {
             SRC_MAP.with(|x| {
                 let x = x.borrow();
                 let y = x.fileinfo(*self);
-                y.offset_line_column(self.lo as usize)
+                y.offset_line_col(self.lo as usize)
             })
         }
         pub fn end(&self) -> LineCol {
             SRC_MAP.with(|x| {
                 let x = x.borrow();
                 let y = x.fileinfo(*self);
-                y.offset_line_column(self.hi as usize)
+                y.offset_line_col(self.hi as usize)
             })
         }
         pub fn join(&self, s: Span) -> Option<Span> {
@@ -1675,42 +1595,116 @@ pub mod fallback {
         x.field("span", &s);
     }
 
+    #[derive(Clone, PartialEq, Eq)]
+    pub struct SrcFile {
+        path: PathBuf,
+    }
+    impl SrcFile {
+        pub fn path(&self) -> PathBuf {
+            self.path.clone()
+        }
+        pub fn is_real(&self) -> bool {
+            false
+        }
+    }
+    impl Debug for SrcFile {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            f.debug_struct("SourceFile")
+                .field("path", &self.path())
+                .field("is_real", &self.is_real())
+                .finish()
+        }
+    }
+
+    struct SrcMap {
+        files: Vec<FileInfo>,
+    }
+    impl SrcMap {
+        fn next_start_pos(&self) -> u32 {
+            self.files.last().unwrap().span.hi + 1
+        }
+        fn add_file(&mut self, x: &str) -> Span {
+            let (len, lines) = lines_offsets(x);
+            let lo = self.next_start_pos();
+            let span = Span {
+                lo,
+                hi: lo + (len as u32),
+                _marker: util::Marker,
+            };
+            self.files.push(FileInfo {
+                text: x.to_owned(),
+                span,
+                lines,
+            });
+            span
+        }
+        fn fileinfo(&self, s: Span) -> &FileInfo {
+            for x in &self.files {
+                if x.span_within(s) {
+                    return x;
+                }
+            }
+            unreachable!("Invalid span with no related FileInfo!");
+        }
+    }
+    fn lines_offsets(xs: &str) -> (usize, Vec<usize>) {
+        let mut lines = vec![0];
+        let mut total = 0;
+        for x in xs.chars() {
+            total += 1;
+            if x == '\n' {
+                lines.push(total);
+            }
+        }
+        (total, lines)
+    }
+
+    thread_local! {
+        static SRC_MAP: RefCell<SrcMap> = RefCell::new(SrcMap {
+            files: vec![FileInfo {
+                text: String::new(),
+                span: Span { lo: 0, hi: 0 },
+                lines: vec![0],
+            }],
+        });
+    }
+
     #[derive(Clone)]
     pub struct Stream {
-        inner: RcVec<Tree>,
+        trees: RcVec<Tree>,
         _marker: util::Marker,
     }
     impl Stream {
         pub fn new() -> Self {
             Stream {
-                inner: RcVecBuilder::new().build(),
+                trees: rcvec::Builder::new().build(),
                 _marker: util::Marker,
             }
         }
         pub fn is_empty(&self) -> bool {
-            self.inner.len() == 0
+            self.trees.len() == 0
         }
-        fn take_inner(self) -> RcVecBuilder<Tree> {
+        fn take_trees(self) -> rcvec::Builder<Tree> {
             let y = ManuallyDrop::new(self);
-            unsafe { ptr::read(&y.inner) }.make_owned()
+            unsafe { ptr::read(&y.trees) }.make_owned()
         }
     }
     impl Drop for Stream {
         fn drop(&mut self) {
-            let mut ys = match self.inner.get_mut() {
+            let mut ys = match self.trees.get_mut() {
                 Some(x) => x,
                 None => return,
             };
             while let Some(x) = ys.pop() {
                 let y = match x {
-                    Tree::Group(x) => x.inner,
+                    Tree::Group(x) => x,
                     _ => continue,
                 };
                 let y = match y {
                     super::Group::Compiler(_) => continue,
                     super::Group::Fallback(x) => x,
                 };
-                ys.extend(y.stream.take_inner());
+                ys.extend(y.stream.take_trees());
             }
         }
     }
@@ -1732,22 +1726,22 @@ pub mod fallback {
     }
     impl From<Tree> for Stream {
         fn from(x: Tree) -> Self {
-            let mut y = RcVecBuilder::new();
-            push_tok_from_pm(y.as_mut(), x);
+            let mut y = rcvec::Builder::new();
+            push_from_pm(y.as_mut(), x);
             Stream {
-                inner: y.build(),
+                trees: y.build(),
                 _marker: util::Marker,
             }
         }
     }
     impl FromIterator<Stream> for Stream {
         fn from_iter<I: IntoIterator<Item = Stream>>(xs: I) -> Self {
-            let mut y = RcVecBuilder::new();
+            let mut y = rcvec::Builder::new();
             for x in xs {
-                y.extend(x.take_inner());
+                y.extend(x.take_trees());
             }
             Stream {
-                inner: y.build(),
+                trees: y.build(),
                 _marker: util::Marker,
             }
         }
@@ -1761,26 +1755,26 @@ pub mod fallback {
     }
     impl Extend<Stream> for Stream {
         fn extend<I: IntoIterator<Item = Stream>>(&mut self, xs: I) {
-            self.inner.make_mut().extend(xs.into_iter().flatten());
+            self.trees.make_mut().extend(xs.into_iter().flatten());
         }
     }
     impl Extend<Tree> for Stream {
         fn extend<I: IntoIterator<Item = Tree>>(&mut self, xs: I) {
-            let mut y = self.inner.make_mut();
-            xs.into_iter().for_each(|x| push_tok_from_pm(y.as_mut(), x));
+            let mut y = self.trees.make_mut();
+            xs.into_iter().for_each(|x| push_from_pm(y.as_mut(), x));
         }
     }
     impl IntoIterator for Stream {
         type Item = Tree;
         type IntoIter = TreeIter;
         fn into_iter(self) -> TreeIter {
-            self.take_inner().into_iter()
+            self.take_trees().into_iter()
         }
     }
     impl Display for Stream {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             let mut joint = false;
-            for (i, x) in self.inner.iter().enumerate() {
+            for (i, x) in self.trees.iter().enumerate() {
                 if i != 0 && !joint {
                     write!(f, " ")?;
                 }
@@ -1809,14 +1803,14 @@ pub mod fallback {
             x.to_string().parse().expect("failed to parse to compiler tokens")
         }
     }
-    fn push_tok_from_pm(mut ys: RcVecMut<Tree>, x: Tree) {
+    fn push_from_pm(mut ys: RcVecMut<Tree>, x: Tree) {
         #[cold]
         fn push_neg_lit(mut ys: RcVecMut<Tree>, mut x: Lit) {
             x.repr.remove(0);
             let mut y = super::Punct::new('-', Spacing::Alone);
-            y.set_span(super::Span::_new_fallback(x.span));
+            y.set_span(super::Span::Fallback(x.span));
             ys.push(Tree::Punct(y));
-            ys.push(Tree::Lit(super::Lit::_new_fallback(x)));
+            ys.push(Tree::Lit(super::Lit::Fallback(x)));
         }
         match x {
             Tree::Lit(super::fallback::Lit {
@@ -1838,10 +1832,12 @@ pub mod fallback {
             }
         })
     }
+
+    pub type TreeIter = rcvec::IntoIter<Tree>;
 }
 mod parse {
     use super::{
-        fallback::{is_ident_cont, is_ident_start, Group, LexErr, Lit, Span, Stream, StreamBuilder},
+        fallback::{is_ident_cont, is_ident_start, Builder, Group, LexErr, Lit, Span, Stream},
         *,
     };
     use std::{
@@ -1977,7 +1973,7 @@ mod parse {
         }
     }
     pub fn token_stream(mut input: Cursor) -> Result<Stream, LexErr> {
-        let mut trees = StreamBuilder::new();
+        let mut trees = Builder::new();
         let mut stack = Vec::new();
         loop {
             input = skip_whitespace(input);
@@ -2012,7 +2008,7 @@ mod parse {
                 let frame = (open_delimiter, trees);
                 let frame = (lo, frame);
                 stack.push(frame);
-                trees = StreamBuilder::new();
+                trees = Builder::new();
             } else if let Some(close_delimiter) = match first {
                 b')' => Some(Delim::Paren),
                 b']' => Some(Delim::Bracket),
@@ -2036,7 +2032,7 @@ mod parse {
                     _marker: util::Marker,
                 });
                 trees = outer;
-                trees.push_tok_from_parser(Tree::Group(super::Group::_new_fallback(g)));
+                trees.push_from_parser(Tree::Group(super::Group::Fallback(g)));
             } else {
                 let (rest, mut tt) = match leaf_token(input) {
                     Ok((rest, tt)) => (rest, tt),
@@ -2047,7 +2043,7 @@ mod parse {
                     hi: rest.off,
                     _marker: util::Marker,
                 }));
-                trees.push_tok_from_parser(tt);
+                trees.push_from_parser(tt);
                 input = rest;
             }
         }
@@ -2064,7 +2060,7 @@ mod parse {
     }
     fn leaf_token(x: Cursor) -> PResult<Tree> {
         if let Ok((x, l)) = literal(x) {
-            Ok((x, Tree::Lit(super::Lit::_new_fallback(l))))
+            Ok((x, Tree::Lit(super::Lit::Fallback(l))))
         } else if let Ok((x, p)) = punct(x) {
             Ok((x, Tree::Punct(p)))
         } else if let Ok((x, i)) = ident(x) {
@@ -2095,7 +2091,7 @@ mod parse {
             "_" | "super" | "self" | "Self" | "crate" => return Err(Reject),
             _ => {},
         }
-        let ident = super::Ident::_new_raw(sym, super::Span::call_site());
+        let ident = super::Ident::new_raw(sym, super::Span::call_site());
         Ok((rest, ident))
     }
     fn ident_not_raw(input: Cursor) -> PResult<&str> {
@@ -2648,7 +2644,7 @@ mod parse {
             Err(Reject)
         }
     }
-    fn doc_comment<'a>(input: Cursor<'a>, trees: &mut StreamBuilder) -> PResult<'a, ()> {
+    fn doc_comment<'a>(input: Cursor<'a>, trees: &mut Builder) -> PResult<'a, ()> {
         let lo = input.off;
         let (rest, (comment, inner)) = doc_comment_contents(input)?;
         let span = super::Span::Fallback(Span {
@@ -2666,25 +2662,25 @@ mod parse {
         }
         let mut pound = Punct::new('#', Spacing::Alone);
         pound.set_span(span);
-        trees.push_tok_from_parser(Tree::Punct(pound));
+        trees.push_from_parser(Tree::Punct(pound));
         if inner {
             let mut bang = Punct::new('!', Spacing::Alone);
             bang.set_span(span);
-            trees.push_tok_from_parser(Tree::Punct(bang));
+            trees.push_from_parser(Tree::Punct(bang));
         }
         let doc_ident = super::Ident::new("doc", span);
         let mut equal = Punct::new('=', Spacing::Alone);
         equal.set_span(span);
         let mut literal = super::Lit::string(comment);
         literal.set_span(span);
-        let mut bracketed = StreamBuilder::with_capacity(3);
-        bracketed.push_tok_from_parser(Tree::Ident(doc_ident));
-        bracketed.push_tok_from_parser(Tree::Punct(equal));
-        bracketed.push_tok_from_parser(Tree::Lit(literal));
+        let mut bracketed = Builder::with_capacity(3);
+        bracketed.push_from_parser(Tree::Ident(doc_ident));
+        bracketed.push_from_parser(Tree::Punct(equal));
+        bracketed.push_from_parser(Tree::Lit(literal));
         let group = Group::new(Delim::Bracket, bracketed.build());
-        let mut group = super::Group::_new_fallback(group);
+        let mut group = super::Group::Fallback(group);
         group.set_span(span);
-        trees.push_tok_from_parser(Tree::Group(group));
+        trees.push_from_parser(Tree::Group(group));
         Ok((rest, ()))
     }
     fn doc_comment_contents(input: Cursor) -> PResult<(&str, bool)> {
@@ -2722,122 +2718,119 @@ mod parse {
     }
 }
 mod rcvec {
-    use std::mem;
-    use std::panic::RefUnwindSafe;
-    use std::rc::Rc;
-    use std::slice;
-    use std::vec;
+    use std::{mem, panic::RefUnwindSafe, rc::Rc, slice, vec};
+    pub struct Builder<T> {
+        vec: Vec<T>,
+    }
+    impl<T> Builder<T> {
+        pub fn new() -> Self {
+            Builder { vec: Vec::new() }
+        }
+        pub fn with_capacity(x: usize) -> Self {
+            Builder {
+                vec: Vec::with_capacity(x),
+            }
+        }
+        pub fn push(&mut self, x: T) {
+            self.vec.push(x);
+        }
+        pub fn extend(&mut self, xs: impl IntoIterator<Item = T>) {
+            self.vec.extend(xs);
+        }
+        pub fn as_mut(&mut self) -> RcVecMut<T> {
+            RcVecMut { vec: &mut self.vec }
+        }
+        pub fn build(self) -> RcVec<T> {
+            RcVec { vec: Rc::new(self.vec) }
+        }
+    }
+
     pub struct RcVec<T> {
-        inner: Rc<Vec<T>>,
-    }
-    pub struct RcVecBuilder<T> {
-        inner: Vec<T>,
-    }
-    pub struct RcVecMut<'a, T> {
-        inner: &'a mut Vec<T>,
-    }
-    #[derive(Clone)]
-    pub struct RcVecIntoIter<T> {
-        inner: vec::IntoIter<T>,
+        vec: Rc<Vec<T>>,
     }
     impl<T> RcVec<T> {
         pub fn is_empty(&self) -> bool {
-            self.inner.is_empty()
+            self.vec.is_empty()
         }
         pub fn len(&self) -> usize {
-            self.inner.len()
+            self.vec.len()
         }
         pub fn iter(&self) -> slice::Iter<T> {
-            self.inner.iter()
+            self.vec.iter()
         }
         pub fn make_mut(&mut self) -> RcVecMut<T>
         where
             T: Clone,
         {
             RcVecMut {
-                inner: Rc::make_mut(&mut self.inner),
+                vec: Rc::make_mut(&mut self.vec),
             }
         }
         pub fn get_mut(&mut self) -> Option<RcVecMut<T>> {
-            let inner = Rc::get_mut(&mut self.inner)?;
-            Some(RcVecMut { inner })
+            let vec = Rc::get_mut(&mut self.vec)?;
+            Some(RcVecMut { vec })
         }
-        pub fn make_owned(mut self) -> RcVecBuilder<T>
+        pub fn make_owned(mut self) -> Builder<T>
         where
             T: Clone,
         {
-            let vec = if let Some(owned) = Rc::get_mut(&mut self.inner) {
-                mem::replace(owned, Vec::new())
+            let vec = if let Some(x) = Rc::get_mut(&mut self.vec) {
+                mem::replace(x, Vec::new())
             } else {
-                Vec::clone(&self.inner)
+                Vec::clone(&self.vec)
             };
-            RcVecBuilder { inner: vec }
-        }
-    }
-    impl<T> RcVecBuilder<T> {
-        pub fn new() -> Self {
-            RcVecBuilder { inner: Vec::new() }
-        }
-        pub fn with_capacity(cap: usize) -> Self {
-            RcVecBuilder {
-                inner: Vec::with_capacity(cap),
-            }
-        }
-        pub fn push(&mut self, element: T) {
-            self.inner.push(element);
-        }
-        pub fn extend(&mut self, iter: impl IntoIterator<Item = T>) {
-            self.inner.extend(iter);
-        }
-        pub fn as_mut(&mut self) -> RcVecMut<T> {
-            RcVecMut { inner: &mut self.inner }
-        }
-        pub fn build(self) -> RcVec<T> {
-            RcVec {
-                inner: Rc::new(self.inner),
-            }
-        }
-    }
-    impl<'a, T> RcVecMut<'a, T> {
-        pub fn push(&mut self, element: T) {
-            self.inner.push(element);
-        }
-        pub fn extend(&mut self, iter: impl IntoIterator<Item = T>) {
-            self.inner.extend(iter);
-        }
-        pub fn pop(&mut self) -> Option<T> {
-            self.inner.pop()
-        }
-        pub fn as_mut(&mut self) -> RcVecMut<T> {
-            RcVecMut { inner: self.inner }
+            Builder { vec }
         }
     }
     impl<T> Clone for RcVec<T> {
         fn clone(&self) -> Self {
             RcVec {
-                inner: Rc::clone(&self.inner),
+                vec: Rc::clone(&self.vec),
             }
-        }
-    }
-    impl<T> IntoIterator for RcVecBuilder<T> {
-        type Item = T;
-        type IntoIter = RcVecIntoIter<T>;
-        fn into_iter(self) -> Self::IntoIter {
-            RcVecIntoIter {
-                inner: self.inner.into_iter(),
-            }
-        }
-    }
-    impl<T> Iterator for RcVecIntoIter<T> {
-        type Item = T;
-        fn next(&mut self) -> Option<Self::Item> {
-            self.inner.next()
-        }
-        fn size_hint(&self) -> (usize, Option<usize>) {
-            self.inner.size_hint()
         }
     }
     impl<T> RefUnwindSafe for RcVec<T> where T: RefUnwindSafe {}
+
+    pub struct RcVecMut<'a, T> {
+        vec: &'a mut Vec<T>,
+    }
+    impl<'a, T> RcVecMut<'a, T> {
+        pub fn push(&mut self, x: T) {
+            self.vec.push(x);
+        }
+        pub fn extend(&mut self, xs: impl IntoIterator<Item = T>) {
+            self.vec.extend(xs);
+        }
+        pub fn pop(&mut self) -> Option<T> {
+            self.vec.pop()
+        }
+        pub fn as_mut(&mut self) -> RcVecMut<T> {
+            RcVecMut { vec: self.vec }
+        }
+    }
+
+    #[derive(Clone)]
+    pub struct IntoIter<T> {
+        iter: vec::IntoIter<T>,
+    }
+    impl<T> IntoIterator for Builder<T> {
+        type Item = T;
+        type IntoIter = IntoIter<T>;
+        fn into_iter(self) -> Self::IntoIter {
+            IntoIter {
+                iter: self.vec.into_iter(),
+            }
+        }
+    }
+    impl<T> Iterator for IntoIter<T> {
+        type Item = T;
+        fn next(&mut self) -> Option<Self::Item> {
+            self.iter.next()
+        }
+        fn size_hint(&self) -> (usize, Option<usize>) {
+            self.iter.size_hint()
+        }
+    }
 }
 mod util {
     use std::{
