@@ -1,8 +1,8 @@
-use super::pm2::{extra::DelimSpan, Delim, Group, Ident, Lit, Punct, Spacing, Span, TokenStream, Tree};
+use super::pm2::{Delim, DelimSpan, Group, Ident, Lit, Punct, Spacing, Span, Stream, Tree};
 use std::{
     borrow::Cow,
     collections::btree_set::{self, BTreeSet},
-    fmt, format, iter,
+    fmt, iter,
     ops::{BitOr, Deref},
     option::Option,
     rc::Rc,
@@ -28,7 +28,7 @@ pub trait StreamExt {
         I::Item: ToStream,
         U: ToStream;
 }
-impl StreamExt for TokenStream {
+impl StreamExt for Stream {
     fn append<U>(&mut self, x: U)
     where
         U: Into<Tree>,
@@ -182,13 +182,13 @@ ident_fragment_display!(bool, str, String, char);
 ident_fragment_display!(u8, u16, u32, u64, u128, usize);
 
 pub trait ToStream {
-    fn to_tokens(&self, tokens: &mut TokenStream);
-    fn to_stream(&self) -> TokenStream {
-        let mut tokens = TokenStream::new();
+    fn to_tokens(&self, tokens: &mut Stream);
+    fn to_stream(&self) -> Stream {
+        let mut tokens = Stream::new();
         self.to_tokens(&mut tokens);
         tokens
     }
-    fn into_stream(self) -> TokenStream
+    fn into_stream(self) -> Stream
     where
         Self: Sized,
     {
@@ -196,44 +196,44 @@ pub trait ToStream {
     }
 }
 impl<'a, T: ?Sized + ToStream> ToStream for &'a T {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut Stream) {
         (**self).to_tokens(tokens);
     }
 }
 impl<'a, T: ?Sized + ToStream> ToStream for &'a mut T {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut Stream) {
         (**self).to_tokens(tokens);
     }
 }
 impl<'a, T: ?Sized + ToOwned + ToStream> ToStream for Cow<'a, T> {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut Stream) {
         (**self).to_tokens(tokens);
     }
 }
 impl<T: ?Sized + ToStream> ToStream for Box<T> {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut Stream) {
         (**self).to_tokens(tokens);
     }
 }
 impl<T: ?Sized + ToStream> ToStream for Rc<T> {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut Stream) {
         (**self).to_tokens(tokens);
     }
 }
 impl<T: ToStream> ToStream for Option<T> {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut Stream) {
         if let Some(ref t) = *self {
             t.to_tokens(tokens);
         }
     }
 }
 impl ToStream for str {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut Stream) {
         tokens.append(Lit::string(self));
     }
 }
 impl ToStream for String {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut Stream) {
         self.as_str().to_tokens(tokens);
     }
 }
@@ -242,7 +242,7 @@ macro_rules! primitive {
     ($($t:ident => $name:ident)*) => {
         $(
             impl ToStream for $t {
-                fn to_tokens(&self, tokens: &mut TokenStream) {
+                fn to_tokens(&self, tokens: &mut Stream) {
                     tokens.append(Lit::$name(*self));
                 }
             }
@@ -266,46 +266,46 @@ primitive! {
     f64 => f64_suffixed
 }
 impl ToStream for char {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut Stream) {
         tokens.append(Lit::character(*self));
     }
 }
 impl ToStream for bool {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut Stream) {
         let word = if *self { "true" } else { "false" };
         tokens.append(Ident::new(word, Span::call_site()));
     }
 }
 impl ToStream for Group {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut Stream) {
         tokens.append(self.clone());
     }
 }
 impl ToStream for Ident {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut Stream) {
         tokens.append(self.clone());
     }
 }
 impl ToStream for Punct {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut Stream) {
         tokens.append(self.clone());
     }
 }
 impl ToStream for Lit {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut Stream) {
         tokens.append(self.clone());
     }
 }
 impl ToStream for Tree {
-    fn to_tokens(&self, dst: &mut TokenStream) {
+    fn to_tokens(&self, dst: &mut Stream) {
         dst.append(self.clone());
     }
 }
-impl ToStream for TokenStream {
-    fn to_tokens(&self, dst: &mut TokenStream) {
+impl ToStream for Stream {
+    fn to_tokens(&self, dst: &mut Stream) {
         dst.extend(iter::once(self.clone()));
     }
-    fn into_stream(self) -> TokenStream {
+    fn into_stream(self) -> Stream {
         self
     }
 }
@@ -328,7 +328,7 @@ impl<T: ?Sized + ToStream> Spanned for T {
         join_spans(self.into_stream())
     }
 }
-fn join_spans(s: TokenStream) -> Span {
+fn join_spans(s: Stream) -> Span {
     let mut y = s.into_iter().map(|x| x.span());
     let first = match y.next() {
         Some(x) => x,
@@ -439,7 +439,7 @@ impl<T: Iterator> Iterator for RepInterp<T> {
     }
 }
 impl<T: ToStream> ToStream for RepInterp<T> {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut Stream) {
         self.0.to_tokens(tokens);
     }
 }
@@ -484,20 +484,20 @@ pub fn get_span<T>(x: T) -> GetSpan<T> {
     GetSpan(GetSpanInner(GetSpanBase(x)))
 }
 
-pub fn push_group(tokens: &mut TokenStream, delimiter: Delim, inner: TokenStream) {
+pub fn push_group(tokens: &mut Stream, delimiter: Delim, inner: Stream) {
     tokens.append(Group::new(delimiter, inner));
 }
-pub fn push_group_spanned(tokens: &mut TokenStream, span: Span, delimiter: Delim, inner: TokenStream) {
+pub fn push_group_spanned(tokens: &mut Stream, span: Span, delimiter: Delim, inner: Stream) {
     let mut g = Group::new(delimiter, inner);
     g.set_span(span);
     tokens.append(g);
 }
-pub fn parse(tokens: &mut TokenStream, s: &str) {
-    let s: TokenStream = s.parse().expect("invalid token stream");
+pub fn parse(tokens: &mut Stream, s: &str) {
+    let s: Stream = s.parse().expect("invalid token stream");
     tokens.extend(iter::once(s));
 }
-pub fn parse_spanned(tokens: &mut TokenStream, span: Span, s: &str) {
-    let s: TokenStream = s.parse().expect("invalid token stream");
+pub fn parse_spanned(tokens: &mut Stream, span: Span, s: &str) {
+    let s: Stream = s.parse().expect("invalid token stream");
     tokens.extend(s.into_iter().map(|t| respan_token_tree(t, span)));
 }
 fn respan_token_tree(mut token: Tree, span: Span) -> Tree {
@@ -515,14 +515,14 @@ fn respan_token_tree(mut token: Tree, span: Span) -> Tree {
     }
     token
 }
-pub fn push_ident(tokens: &mut TokenStream, s: &str) {
+pub fn push_ident(tokens: &mut Stream, s: &str) {
     let span = Span::call_site();
     push_ident_spanned(tokens, span, s);
 }
-pub fn push_ident_spanned(tokens: &mut TokenStream, span: Span, s: &str) {
+pub fn push_ident_spanned(tokens: &mut Stream, span: Span, s: &str) {
     tokens.append(ident_maybe_raw(s, span));
 }
-pub fn push_lifetime(tokens: &mut TokenStream, lifetime: &str) {
+pub fn push_lifetime(tokens: &mut Stream, lifetime: &str) {
     struct Lifetime<'a> {
         name: &'a str,
         state: u8,
@@ -548,7 +548,7 @@ pub fn push_lifetime(tokens: &mut TokenStream, lifetime: &str) {
         state: 0,
     });
 }
-pub fn push_lifetime_spanned(tokens: &mut TokenStream, span: Span, lifetime: &str) {
+pub fn push_lifetime_spanned(tokens: &mut Stream, span: Span, lifetime: &str) {
     struct Lifetime<'a> {
         name: &'a str,
         span: Span,
@@ -581,21 +581,21 @@ pub fn push_lifetime_spanned(tokens: &mut TokenStream, span: Span, lifetime: &st
 
 macro_rules! push_punct {
     ($name:ident $spanned:ident $char1:tt) => {
-        pub fn $name(tokens: &mut TokenStream) {
+        pub fn $name(tokens: &mut Stream) {
             tokens.append(Punct::new($char1, Spacing::Alone));
         }
-        pub fn $spanned(tokens: &mut TokenStream, span: Span) {
+        pub fn $spanned(tokens: &mut Stream, span: Span) {
             let mut punct = Punct::new($char1, Spacing::Alone);
             punct.set_span(span);
             tokens.append(punct);
         }
     };
     ($name:ident $spanned:ident $char1:tt $char2:tt) => {
-        pub fn $name(tokens: &mut TokenStream) {
+        pub fn $name(tokens: &mut Stream) {
             tokens.append(Punct::new($char1, Spacing::Joint));
             tokens.append(Punct::new($char2, Spacing::Alone));
         }
-        pub fn $spanned(tokens: &mut TokenStream, span: Span) {
+        pub fn $spanned(tokens: &mut Stream, span: Span) {
             let mut punct = Punct::new($char1, Spacing::Joint);
             punct.set_span(span);
             tokens.append(punct);
@@ -605,12 +605,12 @@ macro_rules! push_punct {
         }
     };
     ($name:ident $spanned:ident $char1:tt $char2:tt $char3:tt) => {
-        pub fn $name(tokens: &mut TokenStream) {
+        pub fn $name(tokens: &mut Stream) {
             tokens.append(Punct::new($char1, Spacing::Joint));
             tokens.append(Punct::new($char2, Spacing::Joint));
             tokens.append(Punct::new($char3, Spacing::Alone));
         }
-        pub fn $spanned(tokens: &mut TokenStream, span: Span) {
+        pub fn $spanned(tokens: &mut Stream, span: Span) {
             let mut punct = Punct::new($char1, Spacing::Joint);
             punct.set_span(span);
             tokens.append(punct);
@@ -667,10 +667,10 @@ push_punct!(push_shr_eq push_shr_eq_spanned '>' '>' '=');
 push_punct!(push_star push_star_spanned '*');
 push_punct!(push_sub push_sub_spanned '-');
 push_punct!(push_sub_eq push_sub_eq_spanned '-' '=');
-pub fn push_underscore(tokens: &mut TokenStream) {
+pub fn push_underscore(tokens: &mut Stream) {
     push_underscore_spanned(tokens, Span::call_site());
 }
-pub fn push_underscore_spanned(tokens: &mut TokenStream, span: Span) {
+pub fn push_underscore_spanned(tokens: &mut Stream, span: Span) {
     tokens.append(Ident::new("_", span));
 }
 pub fn mk_ident(id: &str, span: Option<Span>) -> Ident {
