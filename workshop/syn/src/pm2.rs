@@ -1299,19 +1299,19 @@ pub mod fallback {
     macro_rules! suffixed_nums {
         ($($n:ident => $kind:ident,)*) => ($(
             pub fn $n(n: $kind) -> Lit {
-                Lit::_new(format!(concat!("{}", stringify!($kind)), n))
+                Lit::new(format!(concat!("{}", stringify!($kind)), n))
             }
         )*)
     }
     macro_rules! unsuffixed_nums {
         ($($n:ident => $kind:ident,)*) => ($(
             pub fn $n(n: $kind) -> Lit {
-                Lit::_new(n.to_string())
+                Lit::new(n.to_string())
             }
         )*)
     }
     impl Lit {
-        pub fn _new(repr: String) -> Self {
+        pub fn new(repr: String) -> Self {
             Lit {
                 repr,
                 span: Span::call_site(),
@@ -1319,7 +1319,7 @@ pub mod fallback {
             }
         }
         pub unsafe fn from_str_unchecked(x: &str) -> Self {
-            Lit::_new(x.to_owned())
+            Lit::new(x.to_owned())
         }
         suffixed_nums! {
             f32_suffixed => f32,
@@ -1356,14 +1356,14 @@ pub mod fallback {
             if !y.contains('.') {
                 y.push_str(".0");
             }
-            Lit::_new(y)
+            Lit::new(y)
         }
         pub fn f64_unsuffixed(x: f64) -> Lit {
             let mut y = x.to_string();
             if !y.contains('.') {
                 y.push_str(".0");
             }
-            Lit::_new(y)
+            Lit::new(y)
         }
         pub fn string(x: &str) -> Lit {
             let mut y = String::with_capacity(x.len() + 2);
@@ -1383,7 +1383,7 @@ pub mod fallback {
                 }
             }
             y.push('"');
-            Lit::_new(y)
+            Lit::new(y)
         }
         pub fn character(x: char) -> Lit {
             let mut y = String::new();
@@ -1394,7 +1394,7 @@ pub mod fallback {
                 y.extend(x.escape_debug());
             }
             y.push('\'');
-            Lit::_new(y)
+            Lit::new(y)
         }
         pub fn byte_string(xs: &[u8]) -> Lit {
             let mut y = "b\"".to_string();
@@ -1418,7 +1418,7 @@ pub mod fallback {
                 }
             }
             y.push('"');
-            Lit::_new(y)
+            Lit::new(y)
         }
         pub fn span(&self) -> Span {
             self.span
@@ -1464,27 +1464,27 @@ pub mod fallback {
     }
     impl FromStr for Lit {
         type Err = LexErr;
-        fn from_str(repr: &str) -> Result<Self, Self::Err> {
-            let mut cursor = get_cursor(repr);
-            let lo = cursor.off;
-            let negative = cursor.starts_with_char('-');
-            if negative {
-                cursor = cursor.advance(1);
-                if !cursor.starts_with_fn(|ch| ch.is_ascii_digit()) {
+        fn from_str(x: &str) -> Result<Self, Self::Err> {
+            let mut x = get_cursor(x);
+            let lo = x.off;
+            let neg = x.starts_with_char('-');
+            if neg {
+                x = x.advance(1);
+                if !x.starts_with_fn(|x| x.is_ascii_digit()) {
                     return Err(LexErr::call_site());
                 }
             }
-            if let Ok((rest, mut literal)) = parse::literal(cursor) {
-                if rest.is_empty() {
-                    if negative {
-                        literal.repr.insert(0, '-');
+            if let Ok((x, mut y)) = x.literal() {
+                if x.is_empty() {
+                    if neg {
+                        y.repr.insert(0, '-');
                     }
-                    literal.span = Span {
+                    y.span = Span {
                         lo,
-                        hi: rest.off,
+                        hi: x.off,
                         _marker: util::Marker,
                     };
-                    return Ok(literal);
+                    return Ok(y);
                 }
             }
             Err(LexErr::call_site())
@@ -1844,34 +1844,276 @@ mod parse {
         char,
         str::{Bytes, CharIndices, Chars},
     };
+
     #[derive(Copy, Clone, Eq, PartialEq)]
     pub struct Cursor<'a> {
         pub rest: &'a str,
         pub off: u32,
     }
     impl<'a> Cursor<'a> {
-        pub fn advance(&self, bytes: usize) -> Cursor<'a> {
-            let (_front, rest) = self.rest.split_at(bytes);
-            Cursor {
-                rest,
-                off: self.off + _front.chars().count() as u32,
-            }
-        }
-        pub fn starts_with(&self, s: &str) -> bool {
-            self.rest.starts_with(s)
-        }
-        pub fn starts_with_char(&self, ch: char) -> bool {
-            self.rest.starts_with(ch)
-        }
-        pub fn starts_with_fn<Pattern>(&self, f: Pattern) -> bool
-        where
-            Pattern: FnMut(char) -> bool,
-        {
-            self.rest.starts_with(f)
-        }
         pub fn is_empty(&self) -> bool {
             self.rest.is_empty()
         }
+        pub fn starts_with(&self, x: &str) -> bool {
+            self.rest.starts_with(x)
+        }
+        pub fn starts_with_char(&self, x: char) -> bool {
+            self.rest.starts_with(x)
+        }
+        pub fn starts_with_fn<T>(&self, f: T) -> bool
+        where
+            T: FnMut(char) -> bool,
+        {
+            self.rest.starts_with(f)
+        }
+        pub fn advance(&self, n: usize) -> Cursor<'a> {
+            let (x, rest) = self.rest.split_at(n);
+            Cursor {
+                rest,
+                off: self.off + x.chars().count() as u32,
+            }
+        }
+        pub fn advance_to_nl_eof(&self) -> (Cursor<'a>, &str) {
+            let xs = self.char_indices();
+            for (i, x) in xs {
+                if x == '\n' {
+                    return (self.advance(i), &self.rest[..i]);
+                } else if x == '\r' && self.rest[i + 1..].starts_with('\n') {
+                    return (self.advance(i + 1), &self.rest[..i]);
+                }
+            }
+            (self.advance(self.len()), self.rest)
+        }
+        pub fn block_comment(&self) -> Res<&str> {
+            if !self.starts_with("/*") {
+                return Err(Reject);
+            }
+            let mut depth = 0usize;
+            let xs = self.as_bytes();
+            let mut i = 0usize;
+            let upper = xs.len() - 1;
+            while i < upper {
+                if xs[i] == b'/' && xs[i + 1] == b'*' {
+                    depth += 1;
+                    i += 1;
+                } else if xs[i] == b'*' && xs[i + 1] == b'/' {
+                    depth -= 1;
+                    if depth == 0 {
+                        return Ok((self.advance(i + 2), &self.rest[..i + 2]));
+                    }
+                    i += 1;
+                }
+                i += 1;
+            }
+            Err(Reject)
+        }
+        pub fn literal(&self) -> Res<Lit> {
+            let y = self.lit_nocapture()?;
+            let end = self.len() - y.len();
+            Ok((y, Lit::new(self.rest[..end].to_string())))
+        }
+        fn lit_nocapture(&self) -> Result<Cursor<'a>, Reject> {
+            if let Ok(x) = string(self) {
+                Ok(x)
+            } else if let Ok(x) = byte_string(self) {
+                Ok(x)
+            } else if let Ok(x) = c_string(self) {
+                Ok(x)
+            } else if let Ok(x) = byte(self) {
+                Ok(x)
+            } else if let Ok(x) = character(self) {
+                Ok(x)
+            } else if let Ok(x) = self.float() {
+                Ok(x)
+            } else if let Ok(x) = self.int() {
+                Ok(x)
+            } else {
+                Err(Reject)
+            }
+        }
+        fn float(&self) -> Result<Cursor<'a>, Reject> {
+            let mut y = self.float_digits()?;
+            if let Some(x) = y.chars().next() {
+                if is_ident_start(x) {
+                    y = ident_not_raw(y)?.0;
+                }
+            }
+            y.word_break()
+        }
+        fn float_digits(&self) -> Result<Cursor<'a>, Reject> {
+            let mut xs = self.chars().peekable();
+            match xs.next() {
+                Some(x) if x >= '0' && x <= '9' => {},
+                _ => return Err(Reject),
+            }
+            let mut len = 1;
+            let mut has_dot = false;
+            let mut has_exp = false;
+            while let Some(&x) = xs.peek() {
+                match x {
+                    '0'..='9' | '_' => {
+                        xs.next();
+                        len += 1;
+                    },
+                    '.' => {
+                        if has_dot {
+                            break;
+                        }
+                        xs.next();
+                        if xs.peek().map_or(false, |&x| x == '.' || is_ident_start(x)) {
+                            return Err(Reject);
+                        }
+                        len += 1;
+                        has_dot = true;
+                    },
+                    'e' | 'E' => {
+                        xs.next();
+                        len += 1;
+                        has_exp = true;
+                        break;
+                    },
+                    _ => break,
+                }
+            }
+            if !(has_dot || has_exp) {
+                return Err(Reject);
+            }
+            if has_exp {
+                let pre_exp = if has_dot {
+                    Ok(self.advance(len - 1))
+                } else {
+                    Err(Reject)
+                };
+                let mut has_sign = false;
+                let mut has_exp_val = false;
+                while let Some(&x) = xs.peek() {
+                    match x {
+                        '+' | '-' => {
+                            if has_exp_val {
+                                break;
+                            }
+                            if has_sign {
+                                return pre_exp;
+                            }
+                            xs.next();
+                            len += 1;
+                            has_sign = true;
+                        },
+                        '0'..='9' => {
+                            xs.next();
+                            len += 1;
+                            has_exp_val = true;
+                        },
+                        '_' => {
+                            xs.next();
+                            len += 1;
+                        },
+                        _ => break,
+                    }
+                }
+                if !has_exp_val {
+                    return pre_exp;
+                }
+            }
+            Ok(self.advance(len))
+        }
+        fn int(&self) -> Result<Cursor<'a>, Reject> {
+            let mut y = self.digits()?;
+            if let Some(x) = y.chars().next() {
+                if is_ident_start(x) {
+                    y = ident_not_raw(y)?.0;
+                }
+            }
+            y.word_break()
+        }
+        fn digits(&self) -> Result<Cursor<'a>, Reject> {
+            let base = if self.starts_with("0x") {
+                self = &self.advance(2);
+                16
+            } else if self.starts_with("0o") {
+                self = &self.advance(2);
+                8
+            } else if self.starts_with("0b") {
+                self = &self.advance(2);
+                2
+            } else {
+                10
+            };
+            let mut len = 0;
+            let mut empty = true;
+            for x in self.bytes() {
+                match x {
+                    b'0'..=b'9' => {
+                        let y = (x - b'0') as u64;
+                        if y >= base {
+                            return Err(Reject);
+                        }
+                    },
+                    b'a'..=b'f' => {
+                        let y = 10 + (x - b'a') as u64;
+                        if y >= base {
+                            break;
+                        }
+                    },
+                    b'A'..=b'F' => {
+                        let y = 10 + (x - b'A') as u64;
+                        if y >= base {
+                            break;
+                        }
+                    },
+                    b'_' => {
+                        if empty && base == 10 {
+                            return Err(Reject);
+                        }
+                        len += 1;
+                        continue;
+                    },
+                    _ => break,
+                };
+                len += 1;
+                empty = false;
+            }
+            if empty {
+                Err(Reject)
+            } else {
+                Ok(self.advance(len))
+            }
+        }
+        fn punct(&self) -> Res<Punct> {
+            let (y, x) = self.punct_char()?;
+            if x == '\'' {
+                if ident_any(y)?.0.starts_with_char('\'') {
+                    Err(Reject)
+                } else {
+                    Ok((y, Punct::new('\'', Spacing::Joint)))
+                }
+            } else {
+                let kind = match y.punct_char() {
+                    Ok(_) => Spacing::Joint,
+                    Err(Reject) => Spacing::Alone,
+                };
+                Ok((y, Punct::new(x, kind)))
+            }
+        }
+        fn punct_char(&self) -> Res<char> {
+            if self.starts_with("//") || self.starts_with("/*") {
+                return Err(Reject);
+            }
+            let mut xs = self.chars();
+            let first = match xs.next() {
+                Some(x) => x,
+                None => {
+                    return Err(Reject);
+                },
+            };
+            let recognized = "~!@#$%^&*-=+|;:,<.>/?'";
+            if recognized.contains(first) {
+                Ok((self.advance(first.len_utf8()), first))
+            } else {
+                Err(Reject)
+            }
+        }
+
         fn len(&self) -> usize {
             self.rest.len()
         }
@@ -1887,96 +2129,75 @@ mod parse {
         fn char_indices(&self) -> CharIndices<'a> {
             self.rest.char_indices()
         }
-        fn parse(&self, tag: &str) -> Result<Cursor<'a>, Reject> {
-            if self.starts_with(tag) {
-                Ok(self.advance(tag.len()))
+        fn parse(&self, x: &str) -> Result<Cursor<'a>, Reject> {
+            if self.starts_with(x) {
+                Ok(self.advance(x.len()))
             } else {
                 Err(Reject)
             }
         }
+        fn word_break(&self) -> Result<Cursor<'a>, Reject> {
+            match self.chars().next() {
+                Some(x) if is_ident_cont(x) => Err(Reject),
+                Some(_) | None => Ok(self),
+            }
+        }
     }
+
     pub struct Reject;
-    type PResult<'a, O> = Result<(Cursor<'a>, O), Reject>;
-    fn skip_whitespace(input: Cursor) -> Cursor {
-        let mut s = input;
-        while !s.is_empty() {
-            let byte = s.as_bytes()[0];
+    type Res<'a, T> = Result<(Cursor<'a>, T), Reject>;
+
+    fn skip_ws(x: Cursor) -> Cursor {
+        fn is_ws(x: char) -> bool {
+            x.is_whitespace() || x == '\u{200e}' || x == '\u{200f}'
+        }
+        let mut y = x;
+        while !y.is_empty() {
+            let byte = y.as_bytes()[0];
             if byte == b'/' {
-                if s.starts_with("//") && (!s.starts_with("///") || s.starts_with("////")) && !s.starts_with("//!") {
-                    let (cursor, _) = take_until_newline_or_eof(s);
-                    s = cursor;
+                if y.starts_with("//") && (!y.starts_with("///") || y.starts_with("////")) && !y.starts_with("//!") {
+                    let (x, _) = y.advance_to_nl_eof();
+                    y = x;
                     continue;
-                } else if s.starts_with("/**/") {
-                    s = s.advance(4);
+                } else if y.starts_with("/**/") {
+                    y = y.advance(4);
                     continue;
-                } else if s.starts_with("/*")
-                    && (!s.starts_with("/**") || s.starts_with("/***"))
-                    && !s.starts_with("/*!")
+                } else if y.starts_with("/*")
+                    && (!y.starts_with("/**") || y.starts_with("/***"))
+                    && !y.starts_with("/*!")
                 {
-                    match block_comment(s) {
-                        Ok((rest, _)) => {
-                            s = rest;
+                    match y.block_comment() {
+                        Ok((x, _)) => {
+                            y = x;
                             continue;
                         },
-                        Err(Reject) => return s,
+                        Err(Reject) => return y,
                     }
                 }
             }
             match byte {
                 b' ' | 0x09..=0x0d => {
-                    s = s.advance(1);
+                    y = y.advance(1);
                     continue;
                 },
                 b if b.is_ascii() => {},
                 _ => {
-                    let ch = s.chars().next().unwrap();
-                    if is_whitespace(ch) {
-                        s = s.advance(ch.len_utf8());
+                    let x = y.chars().next().unwrap();
+                    if is_ws(x) {
+                        y = y.advance(x.len_utf8());
                         continue;
                     }
                 },
             }
-            return s;
+            return y;
         }
-        s
-    }
-    fn block_comment(input: Cursor) -> PResult<&str> {
-        if !input.starts_with("/*") {
-            return Err(Reject);
-        }
-        let mut depth = 0usize;
-        let bytes = input.as_bytes();
-        let mut i = 0usize;
-        let upper = bytes.len() - 1;
-        while i < upper {
-            if bytes[i] == b'/' && bytes[i + 1] == b'*' {
-                depth += 1;
-                i += 1; // eat '*'
-            } else if bytes[i] == b'*' && bytes[i + 1] == b'/' {
-                depth -= 1;
-                if depth == 0 {
-                    return Ok((input.advance(i + 2), &input.rest[..i + 2]));
-                }
-                i += 1; // eat '/'
-            }
-            i += 1;
-        }
-        Err(Reject)
-    }
-    fn is_whitespace(ch: char) -> bool {
-        ch.is_whitespace() || ch == '\u{200e}' || ch == '\u{200f}'
-    }
-    fn word_break(input: Cursor) -> Result<Cursor, Reject> {
-        match input.chars().next() {
-            Some(ch) if is_ident_cont(ch) => Err(Reject),
-            Some(_) | None => Ok(input),
-        }
+        y
     }
     pub fn token_stream(mut input: Cursor) -> Result<Stream, LexErr> {
         let mut trees = Builder::new();
         let mut stack = Vec::new();
         loop {
-            input = skip_whitespace(input);
+            input = skip_ws(input);
             if let Ok((rest, ())) = doc_comment(input, &mut trees) {
                 input = rest;
                 continue;
@@ -2058,10 +2279,10 @@ mod parse {
             _marker: util::Marker,
         }
     }
-    fn leaf_token(x: Cursor) -> PResult<Tree> {
-        if let Ok((x, l)) = literal(x) {
+    fn leaf_token(x: Cursor) -> Res<Tree> {
+        if let Ok((x, l)) = x.literal() {
             Ok((x, Tree::Lit(super::Lit::Fallback(l))))
-        } else if let Ok((x, p)) = punct(x) {
+        } else if let Ok((x, p)) = x.punct() {
             Ok((x, Tree::Punct(p)))
         } else if let Ok((x, i)) = ident(x) {
             Ok((x, Tree::Ident(i)))
@@ -2069,7 +2290,7 @@ mod parse {
             Err(Reject)
         }
     }
-    fn ident(input: Cursor) -> PResult<super::Ident> {
+    fn ident(input: Cursor) -> Res<super::Ident> {
         if ["r\"", "r#\"", "r##", "b\"", "b\'", "br\"", "br#", "c\"", "cr\"", "cr#"]
             .iter()
             .any(|prefix| input.starts_with(prefix))
@@ -2079,7 +2300,7 @@ mod parse {
             ident_any(input)
         }
     }
-    fn ident_any(input: Cursor) -> PResult<super::Ident> {
+    fn ident_any(input: Cursor) -> Res<super::Ident> {
         let raw = input.starts_with("r#");
         let rest = input.advance((raw as usize) << 1);
         let (rest, sym) = ident_not_raw(rest)?;
@@ -2094,7 +2315,7 @@ mod parse {
         let ident = super::Ident::new_raw(sym, super::Span::call_site());
         Ok((rest, ident))
     }
-    fn ident_not_raw(input: Cursor) -> PResult<&str> {
+    fn ident_not_raw(input: Cursor) -> Res<&str> {
         let mut chars = input.char_indices();
         match chars.next() {
             Some((_, ch)) if is_ident_start(ch) => {},
@@ -2108,30 +2329,6 @@ mod parse {
             }
         }
         Ok((input.advance(end), &input.rest[..end]))
-    }
-    pub fn literal(input: Cursor) -> PResult<Lit> {
-        let rest = literal_nocapture(input)?;
-        let end = input.len() - rest.len();
-        Ok((rest, Lit::_new(input.rest[..end].to_string())))
-    }
-    fn literal_nocapture(input: Cursor) -> Result<Cursor, Reject> {
-        if let Ok(ok) = string(input) {
-            Ok(ok)
-        } else if let Ok(ok) = byte_string(input) {
-            Ok(ok)
-        } else if let Ok(ok) = c_string(input) {
-            Ok(ok)
-        } else if let Ok(ok) = byte(input) {
-            Ok(ok)
-        } else if let Ok(ok) = character(input) {
-            Ok(ok)
-        } else if let Ok(ok) = float(input) {
-            Ok(ok)
-        } else if let Ok(ok) = int(input) {
-            Ok(ok)
-        } else {
-            Err(Reject)
-        }
     }
     fn literal_suffix(input: Cursor) -> Cursor {
         match ident_not_raw(input) {
@@ -2239,7 +2436,7 @@ mod parse {
         }
         Err(Reject)
     }
-    fn delimiter_of_raw_string(input: Cursor) -> PResult<&str> {
+    fn delimiter_of_raw_string(input: Cursor) -> Res<&str> {
         for (i, byte) in input.bytes().enumerate() {
             match byte {
                 b'"' => {
@@ -2462,189 +2659,7 @@ mod parse {
             }
         }
     }
-    fn float(input: Cursor) -> Result<Cursor, Reject> {
-        let mut rest = float_digits(input)?;
-        if let Some(ch) = rest.chars().next() {
-            if is_ident_start(ch) {
-                rest = ident_not_raw(rest)?.0;
-            }
-        }
-        word_break(rest)
-    }
-    fn float_digits(input: Cursor) -> Result<Cursor, Reject> {
-        let mut chars = input.chars().peekable();
-        match chars.next() {
-            Some(ch) if ch >= '0' && ch <= '9' => {},
-            _ => return Err(Reject),
-        }
-        let mut len = 1;
-        let mut has_dot = false;
-        let mut has_exp = false;
-        while let Some(&ch) = chars.peek() {
-            match ch {
-                '0'..='9' | '_' => {
-                    chars.next();
-                    len += 1;
-                },
-                '.' => {
-                    if has_dot {
-                        break;
-                    }
-                    chars.next();
-                    if chars.peek().map_or(false, |&ch| ch == '.' || is_ident_start(ch)) {
-                        return Err(Reject);
-                    }
-                    len += 1;
-                    has_dot = true;
-                },
-                'e' | 'E' => {
-                    chars.next();
-                    len += 1;
-                    has_exp = true;
-                    break;
-                },
-                _ => break,
-            }
-        }
-        if !(has_dot || has_exp) {
-            return Err(Reject);
-        }
-        if has_exp {
-            let token_before_exp = if has_dot {
-                Ok(input.advance(len - 1))
-            } else {
-                Err(Reject)
-            };
-            let mut has_sign = false;
-            let mut has_exp_value = false;
-            while let Some(&ch) = chars.peek() {
-                match ch {
-                    '+' | '-' => {
-                        if has_exp_value {
-                            break;
-                        }
-                        if has_sign {
-                            return token_before_exp;
-                        }
-                        chars.next();
-                        len += 1;
-                        has_sign = true;
-                    },
-                    '0'..='9' => {
-                        chars.next();
-                        len += 1;
-                        has_exp_value = true;
-                    },
-                    '_' => {
-                        chars.next();
-                        len += 1;
-                    },
-                    _ => break,
-                }
-            }
-            if !has_exp_value {
-                return token_before_exp;
-            }
-        }
-        Ok(input.advance(len))
-    }
-    fn int(input: Cursor) -> Result<Cursor, Reject> {
-        let mut rest = digits(input)?;
-        if let Some(ch) = rest.chars().next() {
-            if is_ident_start(ch) {
-                rest = ident_not_raw(rest)?.0;
-            }
-        }
-        word_break(rest)
-    }
-    fn digits(mut input: Cursor) -> Result<Cursor, Reject> {
-        let base = if input.starts_with("0x") {
-            input = input.advance(2);
-            16
-        } else if input.starts_with("0o") {
-            input = input.advance(2);
-            8
-        } else if input.starts_with("0b") {
-            input = input.advance(2);
-            2
-        } else {
-            10
-        };
-        let mut len = 0;
-        let mut empty = true;
-        for b in input.bytes() {
-            match b {
-                b'0'..=b'9' => {
-                    let digit = (b - b'0') as u64;
-                    if digit >= base {
-                        return Err(Reject);
-                    }
-                },
-                b'a'..=b'f' => {
-                    let digit = 10 + (b - b'a') as u64;
-                    if digit >= base {
-                        break;
-                    }
-                },
-                b'A'..=b'F' => {
-                    let digit = 10 + (b - b'A') as u64;
-                    if digit >= base {
-                        break;
-                    }
-                },
-                b'_' => {
-                    if empty && base == 10 {
-                        return Err(Reject);
-                    }
-                    len += 1;
-                    continue;
-                },
-                _ => break,
-            };
-            len += 1;
-            empty = false;
-        }
-        if empty {
-            Err(Reject)
-        } else {
-            Ok(input.advance(len))
-        }
-    }
-    fn punct(input: Cursor) -> PResult<Punct> {
-        let (rest, ch) = punct_char(input)?;
-        if ch == '\'' {
-            if ident_any(rest)?.0.starts_with_char('\'') {
-                Err(Reject)
-            } else {
-                Ok((rest, Punct::new('\'', Spacing::Joint)))
-            }
-        } else {
-            let kind = match punct_char(rest) {
-                Ok(_) => Spacing::Joint,
-                Err(Reject) => Spacing::Alone,
-            };
-            Ok((rest, Punct::new(ch, kind)))
-        }
-    }
-    fn punct_char(input: Cursor) -> PResult<char> {
-        if input.starts_with("//") || input.starts_with("/*") {
-            return Err(Reject);
-        }
-        let mut chars = input.chars();
-        let first = match chars.next() {
-            Some(ch) => ch,
-            None => {
-                return Err(Reject);
-            },
-        };
-        let recognized = "~!@#$%^&*-=+|;:,<.>/?'";
-        if recognized.contains(first) {
-            Ok((input.advance(first.len_utf8()), first))
-        } else {
-            Err(Reject)
-        }
-    }
-    fn doc_comment<'a>(input: Cursor<'a>, trees: &mut Builder) -> PResult<'a, ()> {
+    fn doc_comment<'a>(input: Cursor<'a>, trees: &mut Builder) -> Res<'a, ()> {
         let lo = input.off;
         let (rest, (comment, inner)) = doc_comment_contents(input)?;
         let span = super::Span::Fallback(Span {
@@ -2683,38 +2698,27 @@ mod parse {
         trees.push_from_parser(Tree::Group(group));
         Ok((rest, ()))
     }
-    fn doc_comment_contents(input: Cursor) -> PResult<(&str, bool)> {
+    fn doc_comment_contents(input: Cursor) -> Res<(&str, bool)> {
         if input.starts_with("//!") {
             let input = input.advance(3);
-            let (input, s) = take_until_newline_or_eof(input);
+            let (input, s) = input.advance_to_nl_eof();
             Ok((input, (s, true)))
         } else if input.starts_with("/*!") {
-            let (input, s) = block_comment(input)?;
+            let (input, s) = input.block_comment()?;
             Ok((input, (&s[3..s.len() - 2], true)))
         } else if input.starts_with("///") {
             let input = input.advance(3);
             if input.starts_with_char('/') {
                 return Err(Reject);
             }
-            let (input, s) = take_until_newline_or_eof(input);
+            let (input, s) = input.advance_to_nl_eof();
             Ok((input, (s, false)))
         } else if input.starts_with("/**") && !input.rest[3..].starts_with('*') {
-            let (input, s) = block_comment(input)?;
+            let (input, s) = input.block_comment()?;
             Ok((input, (&s[3..s.len() - 2], false)))
         } else {
             Err(Reject)
         }
-    }
-    fn take_until_newline_or_eof(input: Cursor) -> (Cursor, &str) {
-        let chars = input.char_indices();
-        for (i, ch) in chars {
-            if ch == '\n' {
-                return (input.advance(i), &input.rest[..i]);
-            } else if ch == '\r' && input.rest[i + 1..].starts_with('\n') {
-                return (input.advance(i + 1), &input.rest[..i]);
-            }
-        }
-        (input.advance(input.len()), input.rest)
     }
 }
 mod rcvec {

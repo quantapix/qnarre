@@ -18,12 +18,12 @@ pub struct Cursor<'a> {
 }
 impl<'a> Cursor<'a> {
     pub fn empty() -> Self {
-        struct UnsafeSyncEntry(Entry);
-        unsafe impl Sync for UnsafeSyncEntry {}
-        static EMPTY_ENTRY: UnsafeSyncEntry = UnsafeSyncEntry(Entry::End(0));
+        struct Unsafe(Entry);
+        unsafe impl Sync for Unsafe {}
+        static EMPTY: Unsafe = Unsafe(Entry::End(0));
         Cursor {
-            ptr: &EMPTY_ENTRY.0,
-            scope: &EMPTY_ENTRY.0,
+            ptr: &EMPTY.0,
+            scope: &EMPTY.0,
             _marker: PhantomData,
         }
     }

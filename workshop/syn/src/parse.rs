@@ -534,7 +534,7 @@ pub fn parse_file(mut x: &str) -> Res<item::File> {
     }
     let mut shebang = None;
     if x.starts_with("#!") {
-        let rest = ws_skip(&x[2..]);
+        let rest = skip_ws(&x[2..]);
         if !rest.starts_with('[') {
             if let Some(i) = x.find('\n') {
                 shebang = Some(x[..i].to_string());
@@ -554,7 +554,7 @@ pub fn parse_str<T: Parse>(x: &str) -> Res<T> {
     Parser::parse_str(T::parse, x)
 }
 
-fn ws_skip(mut x: &str) -> &str {
+fn skip_ws(mut x: &str) -> &str {
     fn is_ws(x: char) -> bool {
         x.is_whitespace() || x == '\u{200e}' || x == '\u{200f}'
     }
