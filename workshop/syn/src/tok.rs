@@ -85,8 +85,8 @@ pub fn kw_to_tokens(x: &str, s: pm2::Span, ys: &mut Stream) {
     ys.append(Ident::new(x, s));
 }
 
-macro_rules! def_kws {
-    ($($t:literal pub struct $n:ident)*) => {
+macro_rules! def_keywords {
+    ($($t:literal $n:ident)*) => {
         $(
             pub struct $n {
                 pub span: pm2::Span,
@@ -147,59 +147,59 @@ macro_rules! def_kws {
         )*
     };
 }
-def_kws! {
-    "abstract"    pub struct Abstract
-    "as"          pub struct As
-    "async"       pub struct Async
-    "auto"        pub struct Auto
-    "await"       pub struct Await
-    "become"      pub struct Become
-    "box"         pub struct Box
-    "break"       pub struct Break
-    "const"       pub struct Const
-    "continue"    pub struct Continue
-    "crate"       pub struct Crate
-    "default"     pub struct Default
-    "do"          pub struct Do
-    "dyn"         pub struct Dyn
-    "else"        pub struct Else
-    "enum"        pub struct Enum
-    "extern"      pub struct Extern
-    "final"       pub struct Final
-    "fn"          pub struct Fn
-    "for"         pub struct For
-    "if"          pub struct If
-    "impl"        pub struct Impl
-    "in"          pub struct In
-    "let"         pub struct Let
-    "loop"        pub struct Loop
-    "macro"       pub struct Macro
-    "match"       pub struct Match
-    "mod"         pub struct Mod
-    "move"        pub struct Move
-    "mut"         pub struct Mut
-    "override"    pub struct Override
-    "priv"        pub struct Priv
-    "pub"         pub struct Pub
-    "ref"         pub struct Ref
-    "return"      pub struct Return
-    "Self"        pub struct SelfType
-    "self"        pub struct SelfValue
-    "static"      pub struct Static
-    "struct"      pub struct Struct
-    "super"       pub struct Super
-    "trait"       pub struct Trait
-    "try"         pub struct Try
-    "type"        pub struct Type
-    "typeof"      pub struct Typeof
-    "union"       pub struct Union
-    "unsafe"      pub struct Unsafe
-    "unsized"     pub struct Unsized
-    "use"         pub struct Use
-    "virtual"     pub struct Virtual
-    "where"       pub struct Where
-    "while"       pub struct While
-    "yield"       pub struct Yield
+def_keywords! {
+    "abstract"    Abstract
+    "as"          As
+    "async"       Async
+    "auto"        Auto
+    "await"       Await
+    "become"      Become
+    "box"         Box
+    "break"       Break
+    "const"       Const
+    "continue"    Continue
+    "crate"       Crate
+    "default"     Default
+    "do"          Do
+    "dyn"         Dyn
+    "else"        Else
+    "enum"        Enum
+    "extern"      Extern
+    "final"       Final
+    "fn"          Fn
+    "for"         For
+    "if"          If
+    "impl"        Impl
+    "in"          In
+    "let"         Let
+    "loop"        Loop
+    "macro"       Macro
+    "match"       Match
+    "mod"         Mod
+    "move"        Move
+    "mut"         Mut
+    "override"    Override
+    "priv"        Priv
+    "pub"         Pub
+    "ref"         Ref
+    "return"      Return
+    "Self"        SelfType
+    "self"        SelfValue
+    "static"      Static
+    "struct"      Struct
+    "super"       Super
+    "trait"       Trait
+    "try"         Try
+    "type"        Type
+    "typeof"      Typeof
+    "union"       Union
+    "unsafe"      Unsafe
+    "unsized"     Unsized
+    "use"         Use
+    "virtual"     Virtual
+    "where"       Where
+    "while"       While
+    "yield"       Yield
 }
 
 macro_rules! impl_deref_len_1 {

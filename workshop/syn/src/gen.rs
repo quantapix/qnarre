@@ -1,5 +1,7 @@
-use super::*;
-use std::iter;
+use super::{
+    punct::{Iter, IterMut},
+    *,
+};
 
 pub mod bound {
     use super::*;
@@ -197,7 +199,7 @@ pub mod param {
         fn parse(s: Stream) -> Res<Self> {
             let attrs = s.call(attr::Attr::parse_outers)?;
             let look = s.look1();
-            if look.peek(Ident) {
+            if look.peek(ident::Ident) {
                 Ok(Param::Type(Type { attrs, ..s.parse()? }))
             } else if look.peek(Life) {
                 Ok(Param::Life(Life { attrs, ..s.parse()? }))
@@ -272,7 +274,7 @@ pub mod param {
         }
     }
 
-    pub struct Lifes<'a>(Iter<'a, Param>);
+    pub struct Lifes<'a>(pub Iter<'a, Param>);
     impl<'a> Iterator for Lifes<'a> {
         type Item = &'a Life;
         fn next(&mut self) -> Option<Self::Item> {
@@ -287,7 +289,7 @@ pub mod param {
             }
         }
     }
-    pub struct LifesMut<'a>(IterMut<'a, Param>);
+    pub struct LifesMut<'a>(pub IterMut<'a, Param>);
     impl<'a> Iterator for LifesMut<'a> {
         type Item = &'a mut Life;
         fn next(&mut self) -> Option<Self::Item> {
@@ -296,7 +298,7 @@ pub mod param {
                 None => return None,
             };
             if let Param::Life(x) = y {
-                Some(&mut x)
+                Some(x)
             } else {
                 self.next()
             }
@@ -374,7 +376,7 @@ pub mod param {
         }
     }
 
-    pub struct Types<'a>(Iter<'a, Param>);
+    pub struct Types<'a>(pub Iter<'a, Param>);
     impl<'a> Iterator for Types<'a> {
         type Item = &'a Type;
         fn next(&mut self) -> Option<Self::Item> {
@@ -389,7 +391,7 @@ pub mod param {
             }
         }
     }
-    pub struct TypesMut<'a>(IterMut<'a, Param>);
+    pub struct TypesMut<'a>(pub IterMut<'a, Param>);
     impl<'a> Iterator for TypesMut<'a> {
         type Item = &'a mut Type;
         fn next(&mut self) -> Option<Self::Item> {
@@ -398,7 +400,7 @@ pub mod param {
                 None => return None,
             };
             if let Param::Type(x) = y {
-                Some(&mut x)
+                Some(x)
             } else {
                 self.next()
             }
@@ -425,7 +427,7 @@ pub mod param {
                 eq: {
                     if x.peek(Token![=]) {
                         let eq = x.parse()?;
-                        default = Some(const_argument(x)?);
+                        default = Some(path::const_argument(x)?);
                         Some(eq)
                     } else {
                         None
@@ -449,7 +451,7 @@ pub mod param {
         }
     }
 
-    pub struct Consts<'a>(Iter<'a, Param>);
+    pub struct Consts<'a>(pub Iter<'a, Param>);
     impl<'a> Iterator for Consts<'a> {
         type Item = &'a Const;
         fn next(&mut self) -> Option<Self::Item> {
@@ -464,7 +466,7 @@ pub mod param {
             }
         }
     }
-    pub struct ConstsMut<'a>(IterMut<'a, Param>);
+    pub struct ConstsMut<'a>(pub IterMut<'a, Param>);
     impl<'a> Iterator for ConstsMut<'a> {
         type Item = &'a mut Const;
         fn next(&mut self) -> Option<Self::Item> {
@@ -473,7 +475,7 @@ pub mod param {
                 None => return None,
             };
             if let Param::Const(x) = y {
-                Some(&mut x)
+                Some(x)
             } else {
                 self.next()
             }
@@ -484,7 +486,7 @@ use param::Param;
 
 pub struct Where {
     pub where_: Token![where],
-    pub preds: Puncted<Where::Pred, Token![,]>,
+    pub preds: Puncted<where_::Pred, Token![,]>,
 }
 impl Parse for Where {
     fn parse(s: Stream) -> Res<Self> {
@@ -533,7 +535,7 @@ impl ToStream for Where {
     }
 }
 
-pub mod Where {
+pub mod where_ {
     use super::*;
     ast_enum_of_structs! {
         pub enum Pred {
@@ -691,7 +693,7 @@ impl Parse for Gens {
             let look = s.look1();
             if look.peek(Life) {
                 ys.push_value(Param::Life(param::Life { attrs, ..s.parse()? }));
-            } else if look.peek(Ident) {
+            } else if look.peek(ident::Ident) {
                 ys.push_value(Param::Type(param::Type { attrs, ..s.parse()? }));
             } else if look.peek(Token![const]) {
                 ys.push_value(Param::Const(param::Const { attrs, ..s.parse()? }));

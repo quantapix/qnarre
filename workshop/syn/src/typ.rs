@@ -87,7 +87,7 @@ impl Parse for Fn {
                     let attrs = args.call(attr::Attr::parse_outers)?;
                     if ys.empty_or_trailing()
                         && (args.peek(Token![...])
-                            || args.peek(Ident) && args.peek2(Token![:]) && args.peek3(Token![...]))
+                            || args.peek(ident::Ident) && args.peek2(Token![:]) && args.peek3(Token![...]))
                     {
                         vari = Some(parse_variadic(&args, attrs)?);
                         break;
@@ -609,7 +609,7 @@ pub fn parse_ambig_typ(s: Stream, plus: bool, gen: bool) -> Res<Type> {
     if look.peek(Token![for]) {
         lifes = s.parse()?;
         look = s.look1();
-        if !look.peek(Ident)
+        if !look.peek(ident::Ident)
             && !look.peek(Token![fn])
             && !look.peek(Token![unsafe])
             && !look.peek(Token![extern])
@@ -719,7 +719,7 @@ pub fn parse_ambig_typ(s: Stream, plus: bool, gen: bool) -> Res<Type> {
         let mut y: Fn = s.parse()?;
         y.lifes = lifes;
         Ok(Type::Fn(y))
-    } else if look.peek(Ident)
+    } else if look.peek(ident::Ident)
         || s.peek(Token![super])
         || s.peek(Token![self])
         || s.peek(Token![Self])
@@ -822,7 +822,7 @@ fn parse_fn_arg(s: Stream, self_: bool) -> Res<FnArg> {
         s.parse::<Token![mut]>()?;
     }
     let mut has_self = false;
-    let mut name = if (s.peek(Ident) || s.peek(Token![_]) || {
+    let mut name = if (s.peek(ident::Ident) || s.peek(Token![_]) || {
         has_self = self_ && s.peek(Token![self]);
         has_self
     }) && s.peek2(Token![:])
@@ -857,7 +857,7 @@ fn parse_fn_arg(s: Stream, self_: bool) -> Res<FnArg> {
 fn parse_variadic(s: Stream, attrs: Vec<attr::Attr>) -> Res<Variadic> {
     Ok(Variadic {
         attrs,
-        name: if s.peek(Ident) || s.peek(Token![_]) {
+        name: if s.peek(ident::Ident) || s.peek(Token![_]) {
             let y = s.call(Ident::parse_any)?;
             let colon: Token![:] = s.parse()?;
             Some((y, colon))

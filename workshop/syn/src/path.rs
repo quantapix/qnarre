@@ -135,7 +135,7 @@ impl Path {
             segs: {
                 let mut ys = Puncted::new();
                 loop {
-                    if !s.peek(Ident)
+                    if !s.peek(ident::Ident)
                         && !s.peek(Token![super])
                         && !s.peek(Token![self])
                         && !s.peek(Token![Self])
@@ -267,7 +267,7 @@ impl Parse for Arg {
         if x.peek(Life) && !x.peek2(Token![+]) {
             return Ok(Arg::Life(x.parse()?));
         }
-        if x.peek(Lit) || x.peek(tok::Brace) {
+        if x.peek(lit::Lit) || x.peek(tok::Brace) {
             return const_argument(x).map(Arg::Const);
         }
         let mut y: typ::Type = x.parse()?;
@@ -289,7 +289,7 @@ impl Parse for Arg {
                         Args::Angled(x) => Some(x),
                         Args::Parenthesized(_) => unreachable!(),
                     };
-                    return if x.peek(Lit) || x.peek(tok::Brace) {
+                    return if x.peek(lit::Lit) || x.peek(tok::Brace) {
                         Ok(Arg::AssocConst(AssocConst {
                             ident,
                             args: gnrs,
@@ -342,11 +342,11 @@ impl Parse for Arg {
 }
 pub fn const_argument(x: Stream) -> Res<Expr> {
     let y = x.look1();
-    if x.peek(Lit) {
+    if x.peek(lit::Lit) {
         let y = x.parse()?;
         return Ok(Expr::Lit(y));
     }
-    if x.peek(Ident) {
+    if x.peek(ident::Ident) {
         let y: Ident = x.parse()?;
         return Ok(Expr::Path(expr::Path {
             attrs: Vec::new(),

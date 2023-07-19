@@ -1149,7 +1149,7 @@ impl Fragment for Member {
 }
 impl Parse for Member {
     fn parse(x: Stream) -> Res<Self> {
-        if x.peek(Ident) {
+        if x.peek(ident::Ident) {
             x.parse().map(Member::Named)
         } else if x.peek(lit::Int) {
             x.parse().map(Member::Unnamed)
@@ -1880,7 +1880,7 @@ fn atom_expr(x: Stream, allow: AllowStruct) -> Res<Expr> {
         expr_closure(x, allow).map(Expr::Closure)
     } else if x.peek(kw::builtin) && x.peek2(Token![#]) {
         expr_builtin(x)
-    } else if x.peek(Ident)
+    } else if x.peek(ident::Ident)
         || x.peek(Token![::])
         || x.peek(Token![<])
         || x.peek(Token![self])
@@ -2333,7 +2333,7 @@ fn check_cast(x: Stream) -> Res<()> {
     let kind = if x.peek(Token![.]) && !x.peek(Token![..]) {
         if x.peek2(Token![await]) {
             "`.await`"
-        } else if x.peek2(Ident) && (x.peek3(tok::Paren) || x.peek3(Token![::])) {
+        } else if x.peek2(ident::Ident) && (x.peek3(tok::Paren) || x.peek3(Token![::])) {
             "a method call"
         } else {
             "a field access"

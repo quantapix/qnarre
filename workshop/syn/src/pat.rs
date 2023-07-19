@@ -26,7 +26,7 @@ impl Pat {
     pub fn parse_one(s: Stream) -> Res<Self> {
         let beg = s.fork();
         let look = s.look1();
-        if look.peek(Ident)
+        if look.peek(ident::Ident)
             && (s.peek2(Token![::])
                 || s.peek2(Token![!])
                 || s.peek2(tok::Brace)
@@ -46,7 +46,7 @@ impl Pat {
             parse_verbatim(beg, s)
         } else if s.peek(Token![-]) || look.peek(lit::Lit) || look.peek(Token![const]) {
             parse_lit_or_range(s)
-        } else if look.peek(Token![ref]) || look.peek(Token![mut]) || s.peek(Token![self]) || s.peek(Ident) {
+        } else if look.peek(Token![ref]) || look.peek(Token![mut]) || s.peek(Token![self]) || s.peek(ident::Ident) {
             s.call(parse_ident).map(Pat::Ident)
         } else if look.peek(Token![&]) {
             s.call(parse_ref).map(Pat::Ref)
@@ -475,7 +475,7 @@ fn parse_range_bound(s: Stream) -> Res<Option<RangeBound>> {
     let look = s.look1();
     let y = if look.peek(lit::Lit) {
         RangeBound::Lit(s.parse()?)
-    } else if look.peek(Ident)
+    } else if look.peek(ident::Ident)
         || look.peek(Token![::])
         || look.peek(Token![<])
         || look.peek(Token![self])

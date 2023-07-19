@@ -131,7 +131,7 @@ impl Parse for Const {
             const_: s.parse()?,
             ident: {
                 let y = s.look1();
-                if y.peek(Ident) || y.peek(Token![_]) {
+                if y.peek(ident::Ident) || y.peek(Token![_]) {
                     s.call(Ident::parse_any)?
                 } else {
                     return Err(y.error());
@@ -303,7 +303,7 @@ pub struct Foreign {
     pub unsafe_: Option<Token![unsafe]>,
     pub abi: typ::Abi,
     pub brace: tok::Brace,
-    pub items: Vec<Foreign::Item>,
+    pub items: Vec<foreign::Item>,
 }
 impl Parse for Foreign {
     fn parse(s: Stream) -> Res<Self> {
@@ -1106,7 +1106,7 @@ pub mod foreign {
             } else if look.peek(Token![type]) {
                 parse_foreign_item_type(beg, s)
             } else if vis.is_inherited()
-                && (look.peek(Ident)
+                && (look.peek(ident::Ident)
                     || look.peek(Token![self])
                     || look.peek(Token![super])
                     || look.peek(Token![crate])
@@ -1283,7 +1283,7 @@ pub mod impl_ {
                 s.advance_to(&ahead);
                 let const_: Token![const] = s.parse()?;
                 let look = s.look1();
-                let ident = if look.peek(Ident) || look.peek(Token![_]) {
+                let ident = if look.peek(ident::Ident) || look.peek(Token![_]) {
                     s.call(Ident::parse_any)?
                 } else {
                     return Err(look.error());
@@ -1312,7 +1312,7 @@ pub mod impl_ {
                 parse_impl_item_type(beg, s)
             } else if vis.is_inherited()
                 && default_.is_none()
-                && (look.peek(Ident)
+                && (look.peek(ident::Ident)
                     || look.peek(Token![self])
                     || look.peek(Token![super])
                     || look.peek(Token![crate])
@@ -1357,7 +1357,7 @@ pub mod impl_ {
                 const_: s.parse()?,
                 ident: {
                     let look = s.look1();
-                    if look.peek(Ident) || look.peek(Token![_]) {
+                    if look.peek(ident::Ident) || look.peek(Token![_]) {
                         s.call(Ident::parse_any)?
                     } else {
                         return Err(look.error());
@@ -1511,7 +1511,7 @@ pub mod trait_ {
             } else if look.peek(Token![const]) {
                 ahead.parse::<Token![const]>()?;
                 let look = ahead.look1();
-                if look.peek(Ident) || look.peek(Token![_]) {
+                if look.peek(ident::Ident) || look.peek(Token![_]) {
                     s.parse().map(Item::Const)
                 } else if look.peek(Token![async])
                     || look.peek(Token![unsafe])
@@ -1526,7 +1526,7 @@ pub mod trait_ {
                 parse_trait_item_type(beg.fork(), s)
             } else if vis.is_inherited()
                 && default_.is_none()
-                && (look.peek(Ident)
+                && (look.peek(ident::Ident)
                     || look.peek(Token![self])
                     || look.peek(Token![super])
                     || look.peek(Token![crate])
@@ -1570,7 +1570,7 @@ pub mod trait_ {
                 const_: s.parse()?,
                 ident: {
                     let look = s.look1();
-                    if look.peek(Ident) || look.peek(Token![_]) {
+                    if look.peek(ident::Ident) || look.peek(Token![_]) {
                         s.call(Ident::parse_any)?
                     } else {
                         return Err(look.error());
@@ -1747,7 +1747,7 @@ pub mod use_ {
     }
     pub fn parse_tree(s: Stream, root: bool) -> Res<Option<Tree>> {
         let look = s.look1();
-        if look.peek(Ident)
+        if look.peek(ident::Ident)
             || look.peek(Token![self])
             || look.peek(Token![super])
             || look.peek(Token![crate])
@@ -1765,7 +1765,7 @@ pub mod use_ {
                     ident,
                     as_: s.parse()?,
                     rename: {
-                        if s.peek(Ident) {
+                        if s.peek(ident::Ident) {
                             s.parse()?
                         } else if s.peek(Token![_]) {
                             Ident::from(s.parse::<Token![_]>()?)
@@ -2025,7 +2025,7 @@ pub fn parse_rest_of_item(beg: parse::Buffer, mut attrs: Vec<attr::Attr>, s: Str
         let vis = s.parse()?;
         let const_: Token![const] = s.parse()?;
         let look = s.look1();
-        let ident = if look.peek(Ident) || look.peek(Token![_]) {
+        let ident = if look.peek(ident::Ident) || look.peek(Token![_]) {
             s.call(Ident::parse_any)?
         } else {
             return Err(look.error());
@@ -2076,7 +2076,7 @@ pub fn parse_rest_of_item(beg: parse::Buffer, mut attrs: Vec<attr::Attr>, s: Str
         s.parse().map(Item::Struct)
     } else if look.peek(Token![enum]) {
         s.parse().map(Item::Enum)
-    } else if look.peek(Token![union]) && ahead.peek2(Ident) {
+    } else if look.peek(Token![union]) && ahead.peek2(ident::Ident) {
         s.parse().map(Item::Union)
     } else if look.peek(Token![trait]) {
         s.call(parse_trait_or_trait_alias)
@@ -2093,7 +2093,7 @@ pub fn parse_rest_of_item(beg: parse::Buffer, mut attrs: Vec<attr::Attr>, s: Str
         s.advance_to(&ahead);
         parse_macro2(beg, vis, s)
     } else if vis.is_inherited()
-        && (look.peek(Ident)
+        && (look.peek(ident::Ident)
             || look.peek(Token![self])
             || look.peek(Token![super])
             || look.peek(Token![crate])
@@ -2153,7 +2153,7 @@ fn parse_fn_arg_or_variadic(s: Stream, attrs: Vec<attr::Attr>, variadic: bool) -
         receiver.attrs = attrs;
         return Ok(FnArgOrVariadic::FnArg(FnArg::Receiver(receiver)));
     }
-    if s.peek(Ident) && s.peek2(Token![<]) {
+    if s.peek(ident::Ident) && s.peek2(Token![<]) {
         let span = s.fork().parse::<Ident>()?.span();
         return Ok(FnArgOrVariadic::FnArg(FnArg::Typed(pat::Type {
             attrs,
@@ -2229,7 +2229,7 @@ fn parse_fn_args(s: Stream) -> Res<(Puncted<FnArg, Token![,]>, Option<Variadic>)
     }
     Ok((ys, vari))
 }
-fn parse_foreign_item_type(beg: parse::Buffer, s: Stream) -> Res<Foreign::Item> {
+fn parse_foreign_item_type(beg: parse::Buffer, s: Stream) -> Res<foreign::Item> {
     let Flexible {
         vis,
         default_: _,
@@ -2418,7 +2418,7 @@ fn parse_impl(s: Stream, verbatim: bool) -> Res<Option<Impl>> {
     let has_gens = s.peek(Token![<])
         && (s.peek2(Token![>])
             || s.peek2(Token![#])
-            || (s.peek2(Ident) || s.peek2(Life))
+            || (s.peek2(ident::Ident) || s.peek2(Life))
                 && (s.peek3(Token![:]) || s.peek3(Token![,]) || s.peek3(Token![>]) || s.peek3(Token![=]))
             || s.peek2(Token![const]));
     let mut gens: gen::Gens = if has_gens { s.parse()? } else { gen::Gens::default() };

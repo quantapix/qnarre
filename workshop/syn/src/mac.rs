@@ -193,9 +193,9 @@ macro_rules! impl_parse_for_custom_kw {
 macro_rules! impl_to_tokens_for_custom_kw {
     ($n:ident) => {
         impl<'a> $crate::quote::ToStream for $n<'a> {
-            fn to_tokens(&self, ys: &mut $crate::pm2::TokenStream) {
+            fn to_tokens(&self, ys: &mut $crate::pm2::Stream) {
                 let y = $crate::Ident::new(std::stringify!($n), self.span);
-                $crate::quote::TokenStreamExt::append(ys, y);
+                $crate::quote::StreamExt::append(ys, y);
             }
         }
     };

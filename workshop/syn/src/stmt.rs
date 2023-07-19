@@ -128,7 +128,7 @@ fn parse_stmt(s: Stream, nosemi: NoSemi) -> Res<Stmt> {
     let mut is_mac = false;
     if let Ok(x) = ahead.call(Path::parse_mod_style) {
         if ahead.peek(Token![!]) {
-            if ahead.peek2(Ident) || ahead.peek2(Token![try]) {
+            if ahead.peek2(ident::Ident) || ahead.peek2(Token![try]) {
                 is_mac = true;
             } else if ahead.peek2(tok::Brace) && !(ahead.peek3(Token![.]) || ahead.peek3(Token![?])) {
                 s.advance_to(&ahead);
@@ -144,7 +144,7 @@ fn parse_stmt(s: Stream, nosemi: NoSemi) -> Res<Stmt> {
         || s.peek(Token![use])
         || s.peek(Token![static])
             && (s.peek2(Token![mut])
-                || s.peek2(Ident) && !(s.peek2(Token![async]) && (s.peek3(Token![move]) || s.peek3(Token![|]))))
+                || s.peek2(ident::Ident) && !(s.peek2(Token![async]) && (s.peek3(Token![move]) || s.peek3(Token![|]))))
         || s.peek(Token![const])
             && !(s.peek2(tok::Brace)
                 || s.peek2(Token![static])
@@ -159,7 +159,7 @@ fn parse_stmt(s: Stream, nosemi: NoSemi) -> Res<Stmt> {
         || s.peek(Token![type])
         || s.peek(Token![struct])
         || s.peek(Token![enum])
-        || s.peek(Token![union]) && s.peek2(Ident)
+        || s.peek(Token![union]) && s.peek2(ident::Ident)
         || s.peek(Token![auto]) && s.peek2(Token![trait])
         || s.peek(Token![trait])
         || s.peek(Token![default]) && (s.peek2(Token![unsafe]) || s.peek2(Token![impl]))
