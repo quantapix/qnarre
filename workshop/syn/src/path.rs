@@ -543,7 +543,7 @@ pub fn path_to_tokens(ys: &mut Stream, qself: &Option<QSelf>, path: &Path) {
     let pos = cmp::min(qself.pos, path.segs.len());
     let mut segs = path.segs.pairs();
     if pos > 0 {
-        TokensOrDefault(&qself.as_).to_tokens(ys);
+        ToksOrDefault(&qself.as_).to_tokens(ys);
         path.colon.to_tokens(ys);
         for (i, x) in segs.by_ref().take(pos).enumerate() {
             if i + 1 == pos {

@@ -1,4 +1,4 @@
-use crate::TokenStreamHelper;
+use crate::StreamHelper;
 use crate::*;
 use std::hash::{Hash, Hasher};
 impl Hash for Abi {
@@ -435,7 +435,7 @@ impl Hash for Expr {
             },
             Expr::Stream(v0) => {
                 state.write_u8(36u8);
-                TokenStreamHelper(v0).hash(state);
+                StreamHelper(v0).hash(state);
             },
             Expr::While(v0) => {
                 state.write_u8(37u8);
@@ -963,7 +963,7 @@ impl Hash for item::foreign::Item {
             },
             item::foreign::Item::Stream(v0) => {
                 state.write_u8(4u8);
-                TokenStreamHelper(v0).hash(state);
+                StreamHelper(v0).hash(state);
             },
         }
     }
@@ -1100,7 +1100,7 @@ impl Hash for item::impl_::Item {
             },
             item::impl_::Item::Stream(v0) => {
                 state.write_u8(4u8);
-                TokenStreamHelper(v0).hash(state);
+                StreamHelper(v0).hash(state);
             },
         }
     }
@@ -1230,7 +1230,7 @@ impl Hash for Item {
             },
             Item::Stream(v0) => {
                 state.write_u8(15u8);
-                TokenStreamHelper(v0).hash(state);
+                StreamHelper(v0).hash(state);
             },
         }
     }
@@ -1515,7 +1515,7 @@ impl Hash for Macro {
     {
         self.path.hash(state);
         self.delim.hash(state);
-        TokenStreamHelper(&self.toks).hash(state);
+        StreamHelper(&self.toks).hash(state);
     }
 }
 impl Hash for tok::Delim {
@@ -1564,7 +1564,7 @@ impl Hash for meta::List {
     {
         self.path.hash(state);
         self.delim.hash(state);
-        TokenStreamHelper(&self.toks).hash(state);
+        StreamHelper(&self.toks).hash(state);
     }
 }
 impl Hash for meta::NameValue {
@@ -1653,7 +1653,7 @@ impl Hash for pat::Pat {
             },
             pat::Pat::Stream(v0) => {
                 state.write_u8(15u8);
-                TokenStreamHelper(v0).hash(state);
+                StreamHelper(v0).hash(state);
             },
             pat::Pat::Wild(v0) => {
                 state.write_u8(16u8);
@@ -1997,7 +1997,7 @@ impl Hash for item::trait_::Item {
             },
             item::trait_::Item::Stream(v0) => {
                 state.write_u8(4u8);
-                TokenStreamHelper(v0).hash(state);
+                StreamHelper(v0).hash(state);
             },
         }
     }
@@ -2112,7 +2112,7 @@ impl Hash for typ::Type {
             },
             typ::Type::Stream(v0) => {
                 state.write_u8(14u8);
-                TokenStreamHelper(v0).hash(state);
+                StreamHelper(v0).hash(state);
             },
         }
     }
@@ -2206,7 +2206,7 @@ impl Hash for gen::bound::Type {
             },
             gen::bound::Type::Stream(v0) => {
                 state.write_u8(2u8);
-                TokenStreamHelper(v0).hash(state);
+                StreamHelper(v0).hash(state);
             },
         }
     }

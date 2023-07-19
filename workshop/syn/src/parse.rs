@@ -70,8 +70,8 @@ fn parse_delimited<'a>(b: &Buffer<'a>, d: Delim) -> Res<(DelimSpan, Buffer<'a>)>
 pub struct Buffer<'a> {
     scope: Span,
     cur: Cell<Cursor<'static>>,
-    _marker: PhantomData<Cursor<'a>>,
     unexp: Cell<Option<Rc<Cell<Unexpected>>>>,
+    _marker: PhantomData<Cursor<'a>>,
 }
 impl<'a> Buffer<'a> {
     pub fn parse<T: Parse>(&self) -> Res<T> {
@@ -81,7 +81,7 @@ impl<'a> Buffer<'a> {
         x(self)
     }
     pub fn peek<T: Peek>(&self, _: T) -> bool {
-        T::Token::peek(self.cursor())
+        T::Tok::peek(self.cursor())
     }
     pub fn peek2<T: Peek>(&self, _: T) -> bool {
         fn doit(x: &Buffer, f: fn(Cursor) -> bool) -> bool {
@@ -92,7 +92,7 @@ impl<'a> Buffer<'a> {
             }
             x.cursor().skip().map_or(false, f)
         }
-        doit(self, T::Token::peek)
+        doit(self, T::Tok::peek)
     }
     pub fn peek3<T: Peek>(&self, _: T) -> bool {
         fn doit(x: &Buffer, f: fn(Cursor) -> bool) -> bool {
@@ -103,12 +103,12 @@ impl<'a> Buffer<'a> {
             }
             x.cursor().skip().and_then(Cursor::skip).map_or(false, f)
         }
-        doit(self, T::Token::peek)
+        doit(self, T::Tok::peek)
     }
-    pub fn parse_terminated<T, P>(&self, f: fn(Stream) -> Res<T>, sep: P) -> Res<Puncted<T, P::Token>>
+    pub fn parse_terminated<T, P>(&self, f: fn(Stream) -> Res<T>, sep: P) -> Res<Puncted<T, P::Tok>>
     where
         P: Peek,
-        P::Token: Parse,
+        P::Tok: Parse,
     {
         let _ = sep;
         Puncted::parse_terminated_with(self, f)

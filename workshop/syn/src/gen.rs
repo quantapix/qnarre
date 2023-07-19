@@ -266,7 +266,7 @@ pub mod param {
             ys.append_all(self.attrs.outers());
             self.life.to_tokens(ys);
             if !self.bounds.is_empty() {
-                TokensOrDefault(&self.colon).to_tokens(ys);
+                ToksOrDefault(&self.colon).to_tokens(ys);
                 self.bounds.to_tokens(ys);
             }
         }
@@ -364,11 +364,11 @@ pub mod param {
             ys.append_all(self.attrs.outers());
             self.ident.to_tokens(ys);
             if !self.bounds.is_empty() {
-                TokensOrDefault(&self.colon).to_tokens(ys);
+                ToksOrDefault(&self.colon).to_tokens(ys);
                 self.bounds.to_tokens(ys);
             }
             if let Some(y) = &self.default {
-                TokensOrDefault(&self.eq).to_tokens(ys);
+                ToksOrDefault(&self.eq).to_tokens(ys);
                 y.to_tokens(ys);
             }
         }
@@ -443,7 +443,7 @@ pub mod param {
             self.colon.to_tokens(ys);
             self.typ.to_tokens(ys);
             if let Some(y) = &self.default {
-                TokensOrDefault(&self.eq).to_tokens(ys);
+                ToksOrDefault(&self.eq).to_tokens(ys);
                 y.to_tokens(ys);
             }
         }
@@ -727,7 +727,7 @@ impl ToStream for Gens {
         if self.ps.is_empty() {
             return;
         }
-        TokensOrDefault(&self.lt).to_tokens(ys);
+        ToksOrDefault(&self.lt).to_tokens(ys);
         let mut trail_or_empty = true;
         for x in self.ps.pairs() {
             if let Param::Life(_) = **x.value() {
@@ -747,7 +747,7 @@ impl ToStream for Gens {
                 Param::Life(_) => {},
             }
         }
-        TokensOrDefault(&self.gt).to_tokens(ys);
+        ToksOrDefault(&self.gt).to_tokens(ys);
     }
 }
 
@@ -783,7 +783,7 @@ impl<'a> ToStream for Impl<'a> {
         if self.0.ps.is_empty() {
             return;
         }
-        TokensOrDefault(&self.0.lt).to_tokens(ys);
+        ToksOrDefault(&self.0.lt).to_tokens(ys);
         let mut trail_or_empty = true;
         for x in self.0.ps.pairs() {
             if let Param::Life(_) = **x.value() {
@@ -805,7 +805,7 @@ impl<'a> ToStream for Impl<'a> {
                     ys.append_all(x.attrs.outers());
                     x.ident.to_tokens(ys);
                     if !x.bounds.is_empty() {
-                        TokensOrDefault(&x.colon).to_tokens(ys);
+                        ToksOrDefault(&x.colon).to_tokens(ys);
                         x.bounds.to_tokens(ys);
                     }
                 },
@@ -819,7 +819,7 @@ impl<'a> ToStream for Impl<'a> {
             }
             x.punct().to_tokens(ys);
         }
-        TokensOrDefault(&self.0.gt).to_tokens(ys);
+        ToksOrDefault(&self.0.gt).to_tokens(ys);
     }
 }
 
@@ -830,7 +830,7 @@ impl<'a> ToStream for Type<'a> {
         if self.0.ps.is_empty() {
             return;
         }
-        TokensOrDefault(&self.0.lt).to_tokens(ys);
+        ToksOrDefault(&self.0.lt).to_tokens(ys);
         let mut trail_or_empty = true;
         for x in self.0.ps.pairs() {
             if let Param::Life(y) = *x.value() {
@@ -858,7 +858,7 @@ impl<'a> ToStream for Type<'a> {
             }
             x.punct().to_tokens(ys);
         }
-        TokensOrDefault(&self.0.gt).to_tokens(ys);
+        ToksOrDefault(&self.0.gt).to_tokens(ys);
     }
 }
 impl<'a> Type<'a> {

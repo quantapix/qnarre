@@ -40,8 +40,8 @@ impl_tok!("boolean literal" lit::Bool);
 impl_tok!("group" pm2::Group);
 
 macro_rules! impl_low_level {
-    ($d:literal $ty:ident $get:ident) => {
-        impl Tok for $ty {
+    ($d:literal $n:ty $get:ident) => {
+        impl Tok for $n {
             fn peek(x: Cursor) -> bool {
                 x.$get().is_some()
             }
@@ -56,9 +56,9 @@ impl_low_level!("literal" pm2::Lit literal);
 impl_low_level!("token" pm2::Tree token_tree);
 
 impl Tok for Ident {
-    fn peek(x: Cursor) -> bool {
-        if let Some((ident, _)) = x.ident() {
-            accept_as_ident(&ident)
+    fn peek(c: Cursor) -> bool {
+        if let Some((x, _)) = c.ident() {
+            accept_as_ident(&x)
         } else {
             false
         }

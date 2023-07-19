@@ -75,11 +75,11 @@ impl ToStream for DeriveInput {
                 Fields::Unnamed(x) => {
                     x.to_tokens(ys);
                     self.gens.where_.to_tokens(ys);
-                    TokensOrDefault(&data.semi).to_tokens(ys);
+                    ToksOrDefault(&data.semi).to_tokens(ys);
                 },
                 Fields::Unit => {
                     self.gens.where_.to_tokens(ys);
-                    TokensOrDefault(&data.semi).to_tokens(ys);
+                    ToksOrDefault(&data.semi).to_tokens(ys);
                 },
             },
             Data::Enum(x) => {
@@ -405,7 +405,7 @@ impl ToStream for Field {
         self.vis.to_tokens(ys);
         if let Some(x) = &self.ident {
             x.to_tokens(ys);
-            TokensOrDefault(&self.colon).to_tokens(ys);
+            ToksOrDefault(&self.colon).to_tokens(ys);
         }
         self.typ.to_tokens(ys);
     }

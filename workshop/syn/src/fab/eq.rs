@@ -1,4 +1,4 @@
-use crate::TokenStreamHelper;
+use crate::StreamHelper;
 use crate::*;
 
 impl Eq for Abi {}
@@ -206,7 +206,7 @@ impl PartialEq for Expr {
             (Expr::Tuple(self0), Expr::Tuple(other0)) => self0 == other0,
             (Expr::Unary(self0), Expr::Unary(other0)) => self0 == other0,
             (Expr::Unsafe(self0), Expr::Unsafe(other0)) => self0 == other0,
-            (Expr::Stream(self0), Expr::Stream(other0)) => TokenStreamHelper(self0) == TokenStreamHelper(other0),
+            (Expr::Stream(self0), Expr::Stream(other0)) => StreamHelper(self0) == StreamHelper(other0),
             (Expr::While(self0), Expr::While(other0)) => self0 == other0,
             (Expr::Yield(self0), Expr::Yield(other0)) => self0 == other0,
             _ => false,
@@ -544,7 +544,7 @@ impl PartialEq for item::foreign::Item {
             (item::foreign::Item::Type(self0), item::foreign::Item::Type(other0)) => self0 == other0,
             (item::foreign::Item::Macro(self0), item::foreign::Item::Macro(other0)) => self0 == other0,
             (item::foreign::Item::Stream(self0), item::foreign::Item::Stream(other0)) => {
-                TokenStreamHelper(self0) == TokenStreamHelper(other0)
+                StreamHelper(self0) == StreamHelper(other0)
             },
             _ => false,
         }
@@ -618,7 +618,7 @@ impl PartialEq for item::impl_::Item {
             (item::impl_::Item::Type(self0), item::impl_::Item::Type(other0)) => self0 == other0,
             (item::impl_::Item::Macro(self0), item::impl_::Item::Macro(other0)) => self0 == other0,
             (item::impl_::Item::Stream(self0), item::impl_::Item::Stream(other0)) => {
-                TokenStreamHelper(self0) == TokenStreamHelper(other0)
+                StreamHelper(self0) == StreamHelper(other0)
             },
             _ => false,
         }
@@ -688,7 +688,7 @@ impl PartialEq for Item {
             (Item::Type(self0), Item::Type(other0)) => self0 == other0,
             (Item::Union(self0), Item::Union(other0)) => self0 == other0,
             (Item::Use(self0), Item::Use(other0)) => self0 == other0,
-            (Item::Stream(self0), Item::Stream(other0)) => TokenStreamHelper(self0) == TokenStreamHelper(other0),
+            (Item::Stream(self0), Item::Stream(other0)) => StreamHelper(self0) == StreamHelper(other0),
             _ => false,
         }
     }
@@ -889,9 +889,7 @@ impl PartialEq for stmt::Init {
 impl Eq for Macro {}
 impl PartialEq for Macro {
     fn eq(&self, other: &Self) -> bool {
-        self.path == other.path
-            && self.delim == other.delim
-            && TokenStreamHelper(&self.toks) == TokenStreamHelper(&other.toks)
+        self.path == other.path && self.delim == other.delim && StreamHelper(&self.toks) == StreamHelper(&other.toks)
     }
 }
 impl Eq for tok::Delim {}
@@ -919,9 +917,7 @@ impl PartialEq for meta::Meta {
 impl Eq for meta::List {}
 impl PartialEq for meta::List {
     fn eq(&self, other: &Self) -> bool {
-        self.path == other.path
-            && self.delim == other.delim
-            && TokenStreamHelper(&self.toks) == TokenStreamHelper(&other.toks)
+        self.path == other.path && self.delim == other.delim && StreamHelper(&self.toks) == StreamHelper(&other.toks)
     }
 }
 impl Eq for meta::NameValue {}
@@ -955,9 +951,7 @@ impl PartialEq for pat::Pat {
             (pat::Pat::Tuple(self0), pat::Pat::Tuple(other0)) => self0 == other0,
             (pat::Pat::TupleStruct(self0), pat::Pat::TupleStruct(other0)) => self0 == other0,
             (pat::Pat::Type(self0), pat::Pat::Type(other0)) => self0 == other0,
-            (pat::Pat::Stream(self0), pat::Pat::Stream(other0)) => {
-                TokenStreamHelper(self0) == TokenStreamHelper(other0)
-            },
+            (pat::Pat::Stream(self0), pat::Pat::Stream(other0)) => StreamHelper(self0) == StreamHelper(other0),
             (pat::Pat::Wild(self0), pat::Pat::Wild(other0)) => self0 == other0,
             _ => false,
         }
@@ -1175,7 +1169,7 @@ impl PartialEq for item::trait_::Item {
             (item::trait_::Item::Type(self0), item::trait_::Item::Type(other0)) => self0 == other0,
             (item::trait_::Item::Macro(self0), item::trait_::Item::Macro(other0)) => self0 == other0,
             (item::trait_::Item::Stream(self0), item::trait_::Item::Stream(other0)) => {
-                TokenStreamHelper(self0) == TokenStreamHelper(other0)
+                StreamHelper(self0) == StreamHelper(other0)
             },
             _ => false,
         }
@@ -1232,9 +1226,7 @@ impl PartialEq for typ::Type {
             (typ::Type::Slice(self0), typ::Type::Slice(other0)) => self0 == other0,
             (typ::Type::Trait(self0), typ::Type::Trait(other0)) => self0 == other0,
             (typ::Type::Tuple(self0), typ::Type::Tuple(other0)) => self0 == other0,
-            (typ::Type::Stream(self0), typ::Type::Stream(other0)) => {
-                TokenStreamHelper(self0) == TokenStreamHelper(other0)
-            },
+            (typ::Type::Stream(self0), typ::Type::Stream(other0)) => StreamHelper(self0) == StreamHelper(other0),
             _ => false,
         }
     }
@@ -1304,7 +1296,7 @@ impl PartialEq for gen::bound::Type {
             (gen::bound::Type::Trait(self0), gen::bound::Type::Trait(other0)) => self0 == other0,
             (gen::bound::Type::Life(self0), gen::bound::Type::Life(other0)) => self0 == other0,
             (gen::bound::Type::Stream(self0), gen::bound::Type::Stream(other0)) => {
-                TokenStreamHelper(self0) == TokenStreamHelper(other0)
+                StreamHelper(self0) == StreamHelper(other0)
             },
             _ => false,
         }

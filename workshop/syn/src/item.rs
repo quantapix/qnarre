@@ -494,7 +494,7 @@ impl ToStream for Mod {
                 ys.append_all(xs);
             });
         } else {
-            TokensOrDefault(&self.semi).to_tokens(ys);
+            ToksOrDefault(&self.semi).to_tokens(ys);
         }
     }
 }
@@ -600,11 +600,11 @@ impl ToStream for Struct {
             data::Fields::Unnamed(x) => {
                 x.to_tokens(ys);
                 self.gens.where_.to_tokens(ys);
-                TokensOrDefault(&self.semi).to_tokens(ys);
+                ToksOrDefault(&self.semi).to_tokens(ys);
             },
             data::Fields::Unit => {
                 self.gens.where_.to_tokens(ys);
-                TokensOrDefault(&self.semi).to_tokens(ys);
+                ToksOrDefault(&self.semi).to_tokens(ys);
             },
         }
     }
@@ -646,7 +646,7 @@ impl ToStream for Trait {
         self.ident.to_tokens(ys);
         self.gens.to_tokens(ys);
         if !self.supers.is_empty() {
-            TokensOrDefault(&self.colon).to_tokens(ys);
+            ToksOrDefault(&self.colon).to_tokens(ys);
             self.supers.to_tokens(ys);
         }
         self.gens.where_.to_tokens(ys);
@@ -1650,7 +1650,7 @@ pub mod trait_ {
                     });
                 },
                 None => {
-                    TokensOrDefault(&self.semi).to_tokens(ys);
+                    ToksOrDefault(&self.semi).to_tokens(ys);
                 },
             }
         }
@@ -1695,7 +1695,7 @@ pub mod trait_ {
             self.ident.to_tokens(ys);
             self.gens.to_tokens(ys);
             if !self.bounds.is_empty() {
-                TokensOrDefault(&self.colon).to_tokens(ys);
+                ToksOrDefault(&self.colon).to_tokens(ys);
                 self.bounds.to_tokens(ys);
             }
             if let Some((eq, x)) = &self.default {

@@ -49,8 +49,8 @@ mod look {
     use super::*;
     use std::cell::RefCell;
     pub struct Look1<'a> {
-        scope: pm2::Span,
         cur: Cursor<'a>,
+        scope: pm2::Span,
         comps: RefCell<Vec<&'static str>>,
     }
     impl<'a> Look1<'a> {
@@ -93,17 +93,17 @@ mod look {
 
     pub fn new(scope: pm2::Span, cur: Cursor) -> Look1 {
         Look1 {
-            scope,
             cur,
+            scope,
             comps: RefCell::new(Vec::new()),
         }
     }
 
     pub trait Peek {
-        type Token: tok::Tok;
+        type Tok: tok::Tok;
     }
     impl<F: Copy + FnOnce(Marker) -> T, T: Tok> Peek for F {
-        type Token = T;
+        type Tok = T;
     }
 
     pub enum Marker {}
@@ -119,8 +119,8 @@ mod look {
 }
 use look::{Look1, Peek};
 
-struct TokensOrDefault<'a, T: 'a>(pub &'a Option<T>);
-impl<'a, T> ToStream for TokensOrDefault<'a, T>
+struct ToksOrDefault<'a, T: 'a>(pub &'a Option<T>);
+impl<'a, T> ToStream for ToksOrDefault<'a, T>
 where
     T: ToStream + Default,
 {
@@ -141,11 +141,11 @@ impl<T: ?Sized + quote::Spanned> Spanned for T {
     }
 }
 
-struct TokenTreeHelper<'a>(pub &'a pm2::Tree);
-impl<'a> PartialEq for TokenTreeHelper<'a> {
-    fn eq(&self, other: &Self) -> bool {
+struct TreeHelper<'a>(pub &'a pm2::Tree);
+impl<'a> PartialEq for TreeHelper<'a> {
+    fn eq(&self, x: &Self) -> bool {
         use pm2::{Delim::*, Spacing::*};
-        match (self.0, other.0) {
+        match (self.0, x.0) {
             (pm2::Tree::Group(g1), pm2::Tree::Group(g2)) => {
                 match (g1.delim(), g2.delim()) {
                     (Paren, Paren) | (Brace, Brace) | (Bracket, Bracket) | (None, None) => {},
@@ -153,31 +153,31 @@ impl<'a> PartialEq for TokenTreeHelper<'a> {
                 }
                 let s1 = g1.stream().into_iter();
                 let mut s2 = g2.stream().into_iter();
-                for item1 in s1 {
-                    let item2 = match s2.next() {
+                for x1 in s1 {
+                    let x2 = match s2.next() {
                         Some(x) => x,
                         None => return false,
                     };
-                    if TokenTreeHelper(&item1) != TokenTreeHelper(&item2) {
+                    if TreeHelper(&x1) != TreeHelper(&x2) {
                         return false;
                     }
                 }
                 s2.next().is_none()
             },
-            (pm2::Tree::Punct(o1), pm2::Tree::Punct(o2)) => {
-                o1.as_char() == o2.as_char()
-                    && match (o1.spacing(), o2.spacing()) {
+            (pm2::Tree::Punct(x1), pm2::Tree::Punct(x2)) => {
+                x1.as_char() == x2.as_char()
+                    && match (x1.spacing(), x2.spacing()) {
                         (Alone, Alone) | (Joint, Joint) => true,
                         _ => false,
                     }
             },
-            (pm2::Tree::Lit(l1), pm2::Tree::Lit(l2)) => l1.to_string() == l2.to_string(),
-            (pm2::Tree::Ident(s1), pm2::Tree::Ident(s2)) => s1 == s2,
+            (pm2::Tree::Lit(x1), pm2::Tree::Lit(x2)) => x1.to_string() == x2.to_string(),
+            (pm2::Tree::Ident(x1), pm2::Tree::Ident(x2)) => x1 == x2,
             _ => false,
         }
     }
 }
-impl<'a> Hash for TokenTreeHelper<'a> {
+impl<'a> Hash for TreeHelper<'a> {
     fn hash<H: Hasher>(&self, h: &mut H) {
         match self.0 {
             pm2::Tree::Group(g) => {
@@ -189,16 +189,16 @@ impl<'a> Hash for TokenTreeHelper<'a> {
                     Bracket => 2u8.hash(h),
                     None => 3u8.hash(h),
                 }
-                for item in g.stream() {
-                    TokenTreeHelper(&item).hash(h);
+                for x in g.stream() {
+                    TreeHelper(&x).hash(h);
                 }
                 0xffu8.hash(h);
             },
-            pm2::Tree::Punct(op) => {
+            pm2::Tree::Punct(x) => {
                 1u8.hash(h);
-                op.as_char().hash(h);
+                x.as_char().hash(h);
                 use pm2::Spacing::*;
-                match op.spacing() {
+                match x.spacing() {
                     Alone => 0u8.hash(h),
                     Joint => 1u8.hash(h),
                 }
@@ -209,28 +209,28 @@ impl<'a> Hash for TokenTreeHelper<'a> {
     }
 }
 
-struct TokenStreamHelper<'a>(pub &'a pm2::Stream);
-impl<'a> PartialEq for TokenStreamHelper<'a> {
-    fn eq(&self, other: &Self) -> bool {
+struct StreamHelper<'a>(pub &'a pm2::Stream);
+impl<'a> PartialEq for StreamHelper<'a> {
+    fn eq(&self, x: &Self) -> bool {
         let left = self.0.clone().into_iter().collect::<Vec<_>>();
-        let right = other.0.clone().into_iter().collect::<Vec<_>>();
+        let right = x.0.clone().into_iter().collect::<Vec<_>>();
         if left.len() != right.len() {
             return false;
         }
         for (a, b) in left.into_iter().zip(right) {
-            if TokenTreeHelper(&a) != TokenTreeHelper(&b) {
+            if TreeHelper(&a) != TreeHelper(&b) {
                 return false;
             }
         }
         true
     }
 }
-impl<'a> Hash for TokenStreamHelper<'a> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        let tts = self.0.clone().into_iter().collect::<Vec<_>>();
-        tts.len().hash(state);
-        for tt in tts {
-            TokenTreeHelper(&tt).hash(state);
+impl<'a> Hash for StreamHelper<'a> {
+    fn hash<H: Hasher>(&self, h: &mut H) {
+        let xs = self.0.clone().into_iter().collect::<Vec<_>>();
+        xs.len().hash(h);
+        for x in xs {
+            TreeHelper(&x).hash(h);
         }
     }
 }

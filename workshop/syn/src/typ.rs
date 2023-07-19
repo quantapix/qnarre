@@ -314,7 +314,7 @@ impl ToStream for Ptr {
         match &self.mut_ {
             Some(x) => x.to_tokens(ys),
             None => {
-                TokensOrDefault(&self.const_).to_tokens(ys);
+                ToksOrDefault(&self.const_).to_tokens(ys);
             },
         }
         self.elem.to_tokens(ys);
