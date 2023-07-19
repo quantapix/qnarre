@@ -324,7 +324,7 @@ pub struct Char {
 }
 impl Char {
     pub fn new(x: char, s: pm2::Span) -> Self {
-        let mut tok = pm2::Lit::character(x);
+        let mut tok = pm2::Lit::char(x);
         tok.set_span(s);
         Char {
             repr: Box::new(Repr {

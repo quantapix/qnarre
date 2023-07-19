@@ -267,7 +267,7 @@ primitive! {
 }
 impl ToStream for char {
     fn to_tokens(&self, tokens: &mut Stream) {
-        tokens.append(Lit::character(*self));
+        tokens.append(Lit::char(*self));
     }
 }
 impl ToStream for bool {
