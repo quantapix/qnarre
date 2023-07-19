@@ -1867,10 +1867,10 @@ mod parse {
             self.rest.starts_with(f)
         }
         pub fn advance(&self, n: usize) -> Cursor<'a> {
-            let (x, rest) = self.rest.split_at(n);
+            let (y, rest) = self.rest.split_at(n);
             Cursor {
                 rest,
-                off: self.off + x.chars().count() as u32,
+                off: self.off + y.chars().count() as u32,
             }
         }
         pub fn advance_to_nl_eof(&self) -> (Cursor<'a>, &str) {
@@ -1912,6 +1912,16 @@ mod parse {
             let end = self.len() - y.len();
             Ok((y, Lit::new(self.rest[..end].to_string())))
         }
+        pub fn lex_err(&self) -> LexErr {
+            LexErr {
+                span: Span {
+                    lo: self.off,
+                    hi: self.off,
+                    _marker: util::Marker,
+                },
+                _marker: util::Marker,
+            }
+        }
         fn lit_nocapture(&self) -> Result<Cursor<'a>, Reject> {
             if let Ok(x) = string(self) {
                 Ok(x)
@@ -1932,152 +1942,22 @@ mod parse {
             }
         }
         fn float(&self) -> Result<Cursor<'a>, Reject> {
-            let mut y = self.float_digits()?;
+            let mut y = float_digits(self)?;
             if let Some(x) = y.chars().next() {
                 if is_ident_start(x) {
                     y = ident_not_raw(y)?.0;
                 }
             }
             y.word_break()
-        }
-        fn float_digits(&self) -> Result<Cursor<'a>, Reject> {
-            let mut xs = self.chars().peekable();
-            match xs.next() {
-                Some(x) if x >= '0' && x <= '9' => {},
-                _ => return Err(Reject),
-            }
-            let mut len = 1;
-            let mut has_dot = false;
-            let mut has_exp = false;
-            while let Some(&x) = xs.peek() {
-                match x {
-                    '0'..='9' | '_' => {
-                        xs.next();
-                        len += 1;
-                    },
-                    '.' => {
-                        if has_dot {
-                            break;
-                        }
-                        xs.next();
-                        if xs.peek().map_or(false, |&x| x == '.' || is_ident_start(x)) {
-                            return Err(Reject);
-                        }
-                        len += 1;
-                        has_dot = true;
-                    },
-                    'e' | 'E' => {
-                        xs.next();
-                        len += 1;
-                        has_exp = true;
-                        break;
-                    },
-                    _ => break,
-                }
-            }
-            if !(has_dot || has_exp) {
-                return Err(Reject);
-            }
-            if has_exp {
-                let pre_exp = if has_dot {
-                    Ok(self.advance(len - 1))
-                } else {
-                    Err(Reject)
-                };
-                let mut has_sign = false;
-                let mut has_exp_val = false;
-                while let Some(&x) = xs.peek() {
-                    match x {
-                        '+' | '-' => {
-                            if has_exp_val {
-                                break;
-                            }
-                            if has_sign {
-                                return pre_exp;
-                            }
-                            xs.next();
-                            len += 1;
-                            has_sign = true;
-                        },
-                        '0'..='9' => {
-                            xs.next();
-                            len += 1;
-                            has_exp_val = true;
-                        },
-                        '_' => {
-                            xs.next();
-                            len += 1;
-                        },
-                        _ => break,
-                    }
-                }
-                if !has_exp_val {
-                    return pre_exp;
-                }
-            }
-            Ok(self.advance(len))
         }
         fn int(&self) -> Result<Cursor<'a>, Reject> {
-            let mut y = self.digits()?;
+            let mut y = digits(self)?;
             if let Some(x) = y.chars().next() {
                 if is_ident_start(x) {
                     y = ident_not_raw(y)?.0;
                 }
             }
             y.word_break()
-        }
-        fn digits(&self) -> Result<Cursor<'a>, Reject> {
-            let base = if self.starts_with("0x") {
-                self = &self.advance(2);
-                16
-            } else if self.starts_with("0o") {
-                self = &self.advance(2);
-                8
-            } else if self.starts_with("0b") {
-                self = &self.advance(2);
-                2
-            } else {
-                10
-            };
-            let mut len = 0;
-            let mut empty = true;
-            for x in self.bytes() {
-                match x {
-                    b'0'..=b'9' => {
-                        let y = (x - b'0') as u64;
-                        if y >= base {
-                            return Err(Reject);
-                        }
-                    },
-                    b'a'..=b'f' => {
-                        let y = 10 + (x - b'a') as u64;
-                        if y >= base {
-                            break;
-                        }
-                    },
-                    b'A'..=b'F' => {
-                        let y = 10 + (x - b'A') as u64;
-                        if y >= base {
-                            break;
-                        }
-                    },
-                    b'_' => {
-                        if empty && base == 10 {
-                            return Err(Reject);
-                        }
-                        len += 1;
-                        continue;
-                    },
-                    _ => break,
-                };
-                len += 1;
-                empty = false;
-            }
-            if empty {
-                Err(Reject)
-            } else {
-                Ok(self.advance(len))
-            }
         }
         fn punct(&self) -> Res<Punct> {
             let (y, x) = self.punct_char()?;
@@ -2147,67 +2027,21 @@ mod parse {
     pub struct Reject;
     type Res<'a, T> = Result<(Cursor<'a>, T), Reject>;
 
-    fn skip_ws(x: Cursor) -> Cursor {
-        fn is_ws(x: char) -> bool {
-            x.is_whitespace() || x == '\u{200e}' || x == '\u{200f}'
-        }
-        let mut y = x;
-        while !y.is_empty() {
-            let byte = y.as_bytes()[0];
-            if byte == b'/' {
-                if y.starts_with("//") && (!y.starts_with("///") || y.starts_with("////")) && !y.starts_with("//!") {
-                    let (x, _) = y.advance_to_nl_eof();
-                    y = x;
-                    continue;
-                } else if y.starts_with("/**/") {
-                    y = y.advance(4);
-                    continue;
-                } else if y.starts_with("/*")
-                    && (!y.starts_with("/**") || y.starts_with("/***"))
-                    && !y.starts_with("/*!")
-                {
-                    match y.block_comment() {
-                        Ok((x, _)) => {
-                            y = x;
-                            continue;
-                        },
-                        Err(Reject) => return y,
-                    }
-                }
-            }
-            match byte {
-                b' ' | 0x09..=0x0d => {
-                    y = y.advance(1);
-                    continue;
-                },
-                b if b.is_ascii() => {},
-                _ => {
-                    let x = y.chars().next().unwrap();
-                    if is_ws(x) {
-                        y = y.advance(x.len_utf8());
-                        continue;
-                    }
-                },
-            }
-            return y;
-        }
-        y
-    }
-    pub fn token_stream(mut input: Cursor) -> Result<Stream, LexErr> {
+    pub fn token_stream(mut c: Cursor) -> Result<Stream, LexErr> {
         let mut trees = Builder::new();
         let mut stack = Vec::new();
         loop {
-            input = skip_ws(input);
-            if let Ok((rest, ())) = doc_comment(input, &mut trees) {
-                input = rest;
+            c = skip_ws(c);
+            if let Ok((y, ())) = doc_comment(c, &mut trees) {
+                c = y;
                 continue;
             }
-            let lo = input.off;
-            let first = match input.bytes().next() {
-                Some(first) => first,
+            let lo = c.off;
+            let first = match c.bytes().next() {
+                Some(x) => x,
                 None => match stack.last() {
                     None => return Ok(trees.build()),
-                    Some((lo, _frame)) => {
+                    Some((lo, _)) => {
                         return Err(LexErr {
                             span: Span {
                                 lo: *lo,
@@ -2219,45 +2053,45 @@ mod parse {
                     },
                 },
             };
-            if let Some(open_delimiter) = match first {
+            if let Some(open) = match first {
                 b'(' => Some(Delim::Paren),
                 b'[' => Some(Delim::Bracket),
                 b'{' => Some(Delim::Brace),
                 _ => None,
             } {
-                input = input.advance(1);
-                let frame = (open_delimiter, trees);
+                c = c.advance(1);
+                let frame = (open, trees);
                 let frame = (lo, frame);
                 stack.push(frame);
                 trees = Builder::new();
-            } else if let Some(close_delimiter) = match first {
+            } else if let Some(close) = match first {
                 b')' => Some(Delim::Paren),
                 b']' => Some(Delim::Bracket),
                 b'}' => Some(Delim::Brace),
                 _ => None,
             } {
                 let frame = match stack.pop() {
-                    Some(frame) => frame,
-                    None => return Err(lex_error(input)),
+                    Some(x) => x,
+                    None => return Err(c.lex_err()),
                 };
                 let (lo, frame) = frame;
-                let (open_delimiter, outer) = frame;
-                if open_delimiter != close_delimiter {
-                    return Err(lex_error(input));
+                let (open, outer) = frame;
+                if open != close {
+                    return Err(c.lex_err());
                 }
-                input = input.advance(1);
-                let mut g = Group::new(open_delimiter, trees.build());
+                c = c.advance(1);
+                let mut g = Group::new(open, trees.build());
                 g.set_span(Span {
                     lo,
-                    hi: input.off,
+                    hi: c.off,
                     _marker: util::Marker,
                 });
                 trees = outer;
                 trees.push_from_parser(Tree::Group(super::Group::Fallback(g)));
             } else {
-                let (rest, mut tt) = match leaf_token(input) {
+                let (rest, mut tt) = match leaf_token(c) {
                     Ok((rest, tt)) => (rest, tt),
-                    Err(Reject) => return Err(lex_error(input)),
+                    Err(Reject) => return Err(c.lex_err()),
                 };
                 tt.set_span(super::Span::Fallback(Span {
                     lo,
@@ -2265,20 +2099,137 @@ mod parse {
                     _marker: util::Marker,
                 }));
                 trees.push_from_parser(tt);
-                input = rest;
+                c = rest;
             }
         }
     }
-    fn lex_error(x: Cursor) -> LexErr {
-        LexErr {
-            span: Span {
-                lo: x.off,
-                hi: x.off,
-                _marker: util::Marker,
-            },
-            _marker: util::Marker,
+    fn float_digits(c: Cursor) -> Result<Cursor, Reject> {
+        let mut xs = c.chars().peekable();
+        match xs.next() {
+            Some(x) if x >= '0' && x <= '9' => {},
+            _ => return Err(Reject),
+        }
+        let mut len = 1;
+        let mut has_dot = false;
+        let mut has_exp = false;
+        while let Some(&x) = xs.peek() {
+            match x {
+                '0'..='9' | '_' => {
+                    xs.next();
+                    len += 1;
+                },
+                '.' => {
+                    if has_dot {
+                        break;
+                    }
+                    xs.next();
+                    if xs.peek().map_or(false, |&x| x == '.' || is_ident_start(x)) {
+                        return Err(Reject);
+                    }
+                    len += 1;
+                    has_dot = true;
+                },
+                'e' | 'E' => {
+                    xs.next();
+                    len += 1;
+                    has_exp = true;
+                    break;
+                },
+                _ => break,
+            }
+        }
+        if !(has_dot || has_exp) {
+            return Err(Reject);
+        }
+        if has_exp {
+            let pre_exp = if has_dot { Ok(c.advance(len - 1)) } else { Err(Reject) };
+            let mut has_sign = false;
+            let mut has_exp_val = false;
+            while let Some(&x) = xs.peek() {
+                match x {
+                    '+' | '-' => {
+                        if has_exp_val {
+                            break;
+                        }
+                        if has_sign {
+                            return pre_exp;
+                        }
+                        xs.next();
+                        len += 1;
+                        has_sign = true;
+                    },
+                    '0'..='9' => {
+                        xs.next();
+                        len += 1;
+                        has_exp_val = true;
+                    },
+                    '_' => {
+                        xs.next();
+                        len += 1;
+                    },
+                    _ => break,
+                }
+            }
+            if !has_exp_val {
+                return pre_exp;
+            }
+        }
+        Ok(c.advance(len))
+    }
+    fn digits(mut c: Cursor) -> Result<Cursor, Reject> {
+        let base = if c.starts_with("0x") {
+            c = &c.advance(2);
+            16
+        } else if c.starts_with("0o") {
+            c = &c.advance(2);
+            8
+        } else if c.starts_with("0b") {
+            c = &c.advance(2);
+            2
+        } else {
+            10
+        };
+        let mut len = 0;
+        let mut empty = true;
+        for x in c.bytes() {
+            match x {
+                b'0'..=b'9' => {
+                    let y = (x - b'0') as u64;
+                    if y >= base {
+                        return Err(Reject);
+                    }
+                },
+                b'a'..=b'f' => {
+                    let y = 10 + (x - b'a') as u64;
+                    if y >= base {
+                        break;
+                    }
+                },
+                b'A'..=b'F' => {
+                    let y = 10 + (x - b'A') as u64;
+                    if y >= base {
+                        break;
+                    }
+                },
+                b'_' => {
+                    if empty && base == 10 {
+                        return Err(Reject);
+                    }
+                    len += 1;
+                    continue;
+                },
+                _ => break,
+            };
+            len += 1;
+            empty = false;
+        }
+        if empty {
+            Err(Reject)
+        } else {
+            Ok(c.advance(len))
         }
     }
+
     fn leaf_token(x: Cursor) -> Res<Tree> {
         if let Ok((x, l)) = x.literal() {
             Ok((x, Tree::Lit(super::Lit::Fallback(l))))
@@ -2719,6 +2670,52 @@ mod parse {
         } else {
             Err(Reject)
         }
+    }
+    fn skip_ws(c: Cursor) -> Cursor {
+        fn is_ws(x: char) -> bool {
+            x.is_whitespace() || x == '\u{200e}' || x == '\u{200f}'
+        }
+        let mut y = c;
+        while !y.is_empty() {
+            let byte = y.as_bytes()[0];
+            if byte == b'/' {
+                if y.starts_with("//") && (!y.starts_with("///") || y.starts_with("////")) && !y.starts_with("//!") {
+                    let (x, _) = y.advance_to_nl_eof();
+                    y = &x;
+                    continue;
+                } else if y.starts_with("/**/") {
+                    y = &y.advance(4);
+                    continue;
+                } else if y.starts_with("/*")
+                    && (!y.starts_with("/**") || y.starts_with("/***"))
+                    && !y.starts_with("/*!")
+                {
+                    match y.block_comment() {
+                        Ok((x, _)) => {
+                            y = &x;
+                            continue;
+                        },
+                        Err(Reject) => return y,
+                    }
+                }
+            }
+            match byte {
+                b' ' | 0x09..=0x0d => {
+                    y = &y.advance(1);
+                    continue;
+                },
+                b if b.is_ascii() => {},
+                _ => {
+                    let x = y.chars().next().unwrap();
+                    if is_ws(x) {
+                        y = &y.advance(x.len_utf8());
+                        continue;
+                    }
+                },
+            }
+            return y;
+        }
+        y
     }
 }
 mod rcvec {
