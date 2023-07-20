@@ -199,294 +199,6 @@ fn lookup_node<'a>(xs: &'a Defs, name: &str) -> &'a Node {
     panic!("not found: {}", name)
 }
 
-mod clone {
-    use super::*;
-    const CLONE_SRC: &str = "src/codegen/clone.rs";
-    fn expand_impl_body(defs: &Defs, node: &Node) -> Stream {
-        let type_name = &node.ident;
-        let ident = Ident::new(type_name, Span::call_site());
-        match &node.data {
-            Data::Enum(variants) if variants.is_empty() => quote!(match *self {}),
-            Data::Enum(variants) => {
-                let arms = variants.iter().map(|(variant_name, fields)| {
-                    let variant = Ident::new(variant_name, Span::call_site());
-                    if fields.is_empty() {
-                        quote! {
-                            #ident::#variant => #ident::#variant,
-                        }
-                    } else {
-                        let mut pats = Vec::new();
-                        let mut clones = Vec::new();
-                        for i in 0..fields.len() {
-                            let pat = format_ident!("v{}", i);
-                            clones.push(quote!(#pat.clone()));
-                            pats.push(pat);
-                        }
-                        let mut cfg = None;
-                        if node.ident == "Expr" {
-                            if let Type::Syn(ty) = &fields[0] {
-                                if !lookup_node(defs, ty).feats.any.contains("derive") {
-                                    cfg = Some(quote!(#[cfg(feature = "full")]));
-                                }
-                            }
-                        }
-                        quote! {
-                            #cfg
-                            #ident::#variant(#(#pats),*) => #ident::#variant(#(#clones),*),
-                        }
-                    }
-                });
-                let nonexhaustive = if node.ident == "Expr" {
-                    Some(quote! {
-                        #[cfg(not(feature = "full"))]
-                        _ => unreachable!(),
-                    })
-                } else {
-                    None
-                };
-                quote! {
-                    match self {
-                        #(#arms)*
-                        #nonexhaustive
-                    }
-                }
-            },
-            Data::Struct(fields) => {
-                let fields = fields.keys().map(|f| {
-                    let ident = Ident::new(f, Span::call_site());
-                    quote! {
-                        #ident: self.#ident.clone(),
-                    }
-                });
-                quote!(#ident { #(#fields)* })
-            },
-            Data::Private => unreachable!(),
-        }
-    }
-    fn expand_impl(defs: &Defs, node: &Node) -> Stream {
-        let manual_clone = node.data == Data::Private || node.ident == "Lifetime";
-        if manual_clone {
-            return Stream::new();
-        }
-        let ident = Ident::new(&node.ident, Span::call_site());
-        let cfg_features = config(&node.feats);
-        let copy = node.ident == "AttrStyle"
-            || node.ident == "BinOp"
-            || node.ident == "RangeLimits"
-            || node.ident == "TraitBoundModifier"
-            || node.ident == "UnOp";
-        if copy {
-            return quote! {
-                #cfg_features
-                #[cfg_attr(doc_cfg, doc(cfg(feature = "clone-impls")))]
-                impl Copy for #ident {}
-                #cfg_features
-                #[cfg_attr(doc_cfg, doc(cfg(feature = "clone-impls")))]
-                impl Clone for #ident {
-                    fn clone(&self) -> Self {
-                        *self
-                    }
-                }
-            };
-        }
-        let body = expand_impl_body(defs, node);
-        quote! {
-            #cfg_features
-            #[cfg_attr(doc_cfg, doc(cfg(feature = "clone-impls")))]
-            impl Clone for #ident {
-                fn clone(&self) -> Self {
-                    #body
-                }
-            }
-        }
-    }
-    pub fn generate(defs: &Defs) -> Result<()> {
-        let mut impls = Stream::new();
-        for node in &defs.nodes {
-            impls.extend(expand_impl(defs, node));
-        }
-        file_write(
-            CLONE_SRC,
-            quote! {
-                #![allow(clippy::clone_on_copy, clippy::expl_impl_clone_on_copy)]
-                use crate::*;
-                #impls
-            },
-        )?;
-        Ok(())
-    }
-}
-mod debug {
-    use super::*;
-    use std::collections::BTreeSet as Set;
-    const DEBUG_SRC: &str = "src/codegen/debug.rs";
-    fn syntax_tree_enum<'a>(enum_name: &str, variant_name: &str, fields: &'a [Type]) -> Option<&'a str> {
-        if fields.len() != 1 {
-            return None;
-        }
-        const WHITELIST: &[(&str, &str)] = &[
-            ("Meta", "Path"),
-            ("Pat", "Const"),
-            ("Pat", "Lit"),
-            ("Pat", "Macro"),
-            ("Pat", "Path"),
-            ("Pat", "Range"),
-            ("PathArguments", "AngleBracketed"),
-            ("PathArguments", "Parenthesized"),
-            ("Stmt", "Local"),
-            ("TypeParamBound", "Lifetime"),
-            ("Visibility", "Public"),
-            ("Visibility", "Restricted"),
-        ];
-        match &fields[0] {
-            Type::Syn(ty)
-                if WHITELIST.contains(&(enum_name, variant_name)) || enum_name.to_owned() + variant_name == *ty =>
-            {
-                Some(ty)
-            },
-            _ => None,
-        }
-    }
-    fn expand_impl_body(defs: &Defs, node: &Node, syntax_tree_variants: &Set<&str>) -> Stream {
-        let type_name = &node.ident;
-        let ident = Ident::new(type_name, Span::call_site());
-        let is_syntax_tree_variant = syntax_tree_variants.contains(type_name.as_str());
-        let body = match &node.data {
-            Data::Enum(variants) if variants.is_empty() => quote!(match *self {}),
-            Data::Enum(variants) => {
-                assert!(!is_syntax_tree_variant);
-                let arms = variants.iter().map(|(variant_name, fields)| {
-                    let variant = Ident::new(variant_name, Span::call_site());
-                    if fields.is_empty() {
-                        quote! {
-                            #ident::#variant => formatter.write_str(#variant_name),
-                        }
-                    } else {
-                        let mut cfg = None;
-                        if node.ident == "Expr" {
-                            if let Type::Syn(ty) = &fields[0] {
-                                if !lookup_node(defs, ty).feats.any.contains("derive") {
-                                    cfg = Some(quote!(#[cfg(feature = "full")]));
-                                }
-                            }
-                        }
-                        if syntax_tree_enum(type_name, variant_name, fields).is_some() {
-                            quote! {
-                                #cfg
-                                #ident::#variant(v0) => v0.debug(formatter, #variant_name),
-                            }
-                        } else {
-                            let pats = (0..fields.len()).map(|i| format_ident!("v{}", i)).collect::<Vec<_>>();
-                            quote! {
-                                #cfg
-                                #ident::#variant(#(#pats),*) => {
-                                    let mut formatter = formatter.debug_tuple(#variant_name);
-                                    #(formatter.field(#pats);)*
-                                    formatter.finish()
-                                }
-                            }
-                        }
-                    }
-                });
-                let nonexhaustive = if node.ident == "Expr" {
-                    Some(quote! {
-                        #[cfg(not(feature = "full"))]
-                        _ => unreachable!(),
-                    })
-                } else {
-                    None
-                };
-                let prefix = format!("{}::", type_name);
-                quote! {
-                    formatter.write_str(#prefix)?;
-                    match self {
-                        #(#arms)*
-                        #nonexhaustive
-                    }
-                }
-            },
-            Data::Struct(fields) => {
-                let type_name = if is_syntax_tree_variant {
-                    quote!(name)
-                } else {
-                    quote!(#type_name)
-                };
-                let fields = fields.keys().map(|f| {
-                    let ident = Ident::new(f, Span::call_site());
-                    quote! {
-                        formatter.field(#f, &self.#ident);
-                    }
-                });
-                quote! {
-                    let mut formatter = formatter.debug_struct(#type_name);
-                    #(#fields)*
-                    formatter.finish()
-                }
-            },
-            Data::Private => unreachable!(),
-        };
-        if is_syntax_tree_variant {
-            quote! {
-                impl #ident {
-                    fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                        #body
-                    }
-                }
-                self.debug(formatter, #type_name)
-            }
-        } else {
-            body
-        }
-    }
-    fn expand_impl(defs: &Defs, node: &Node, syntax_tree_variants: &Set<&str>) -> Stream {
-        let manual_debug = node.data == Data::Private || node.ident == "LitBool";
-        if manual_debug {
-            return Stream::new();
-        }
-        let ident = Ident::new(&node.ident, Span::call_site());
-        let cfg_features = config(&node.feats);
-        let body = expand_impl_body(defs, node, syntax_tree_variants);
-        let formatter = match &node.data {
-            Data::Enum(variants) if variants.is_empty() => quote!(_formatter),
-            _ => quote!(formatter),
-        };
-        quote! {
-            #cfg_features
-            #[cfg_attr(doc_cfg, doc(cfg(feature = "extra-traits")))]
-            impl Debug for #ident {
-                fn fmt(&self, #formatter: &mut fmt::Formatter) -> fmt::Result {
-                    #body
-                }
-            }
-        }
-    }
-    pub fn generate(defs: &Defs) -> Result<()> {
-        let mut syntax_tree_variants = Set::new();
-        for node in &defs.nodes {
-            if let Data::Enum(variants) = &node.data {
-                let enum_name = &node.ident;
-                for (variant_name, fields) in variants {
-                    if let Some(inner) = syntax_tree_enum(enum_name, variant_name, fields) {
-                        syntax_tree_variants.insert(inner);
-                    }
-                }
-            }
-        }
-        let mut impls = Stream::new();
-        for node in &defs.nodes {
-            impls.extend(expand_impl(defs, node, &syntax_tree_variants));
-        }
-        file_write(
-            DEBUG_SRC,
-            quote! {
-                use crate::*;
-                use std::fmt::{self, Debug};
-                #impls
-            },
-        )?;
-        Ok(())
-    }
-}
 mod eq {
     use super::*;
     const EQ_SRC: &str = "src/codegen/eq.rs";
@@ -2276,8 +1988,8 @@ mod visit_mut {
 fn main() -> anyhow::Result<()> {
     color_backtrace::install();
     let ys = parse::parse()?;
-    clone::generate(&ys)?;
-    debug::generate(&ys)?;
+    clone_gen(&ys)?;
+    debug_gen(&ys)?;
     eq::generate(&ys)?;
     hash::generate(&ys)?;
     generate(&ys)?;
@@ -2290,9 +2002,284 @@ fn main() -> anyhow::Result<()> {
 fn generate(xs: &Defs) -> Result<()> {
     let mut y = serde_json::to_string_pretty(&xs)?;
     y.push('\n');
-    let check: Defs = serde_json::from_str(&y)?;
-    assert_eq!(*xs, check);
+    let xs2: Defs = serde_json::from_str(&y)?;
+    assert_eq!(*xs, xs2);
     let x = get_rel_path("syn.json");
     fs::write(x, y)?;
+    Ok(())
+}
+
+const CLONE_SRC: &str = "src/codegen/clone.rs";
+fn clone_gen(xs: &Defs) -> Result<()> {
+    fn expand(xs: &Defs, n: &Node) -> Stream {
+        let manual = n.data == Data::Private || n.ident == "Lifetime";
+        if manual {
+            return Stream::new();
+        }
+        fn expand_body(ds: &Defs, n: &Node) -> Stream {
+            let typ = &n.ident;
+            let typ = Ident::new(typ, Span::call_site());
+            match &n.data {
+                Data::Enum(x) if x.is_empty() => quote!(match *self {}),
+                Data::Enum(x) => {
+                    let arms = x.iter().map(|(name, fields)| {
+                        let var = Ident::new(name, Span::call_site());
+                        if fields.is_empty() {
+                            quote! {
+                                #typ::#var => #typ::#var,
+                            }
+                        } else {
+                            let mut pats = Vec::new();
+                            let mut clones = Vec::new();
+                            for i in 0..fields.len() {
+                                let x = format_ident!("v{}", i);
+                                clones.push(quote!(#x.clone()));
+                                pats.push(x);
+                            }
+                            let mut cfg = None;
+                            if n.ident == "Expr" {
+                                if let Type::Syn(x) = &fields[0] {
+                                    if !lookup_node(ds, x).feats.any.contains("derive") {
+                                        cfg = Some(quote!(#[cfg(feature = "full")]));
+                                    }
+                                }
+                            }
+                            quote! {
+                                #cfg
+                                #typ::#var(#(#pats),*) => #typ::#var(#(#clones),*),
+                            }
+                        }
+                    });
+                    let nonexh = if n.ident == "Expr" {
+                        Some(quote! {
+                            #[cfg(not(feature = "full"))]
+                            _ => unreachable!(),
+                        })
+                    } else {
+                        None
+                    };
+                    quote! {
+                        match self {
+                            #(#arms)*
+                            #nonexh
+                        }
+                    }
+                },
+                Data::Struct(x) => {
+                    let fields = x.keys().map(|f| {
+                        let field = Ident::new(f, Span::call_site());
+                        quote! {
+                            #field: self.#field.clone(),
+                        }
+                    });
+                    quote!(#typ { #(#fields)* })
+                },
+                Data::Private => unreachable!(),
+            }
+        }
+        let body = expand_body(xs, n);
+        let typ = Ident::new(&n.ident, Span::call_site());
+        let cfg = config(&n.feats);
+        let copy = n.ident == "AttrStyle"
+            || n.ident == "BinOp"
+            || n.ident == "RangeLimits"
+            || n.ident == "TraitBoundModifier"
+            || n.ident == "UnOp";
+        if copy {
+            return quote! {
+                #cfg
+                impl Copy for #typ {}
+                #cfg
+                impl Clone for #typ {
+                    fn clone(&self) -> Self {
+                        *self
+                    }
+                }
+            };
+        }
+        quote! {
+            #cfg
+            impl Clone for #typ {
+                fn clone(&self) -> Self {
+                    #body
+                }
+            }
+        }
+    }
+    let mut ys = Stream::new();
+    for x in &xs.nodes {
+        ys.extend(expand(xs, x));
+    }
+    file_write(
+        CLONE_SRC,
+        quote! {
+            #![allow(clippy::clone_on_copy, clippy::expl_impl_clone_on_copy)]
+            use crate::*;
+            #ys
+        },
+    )?;
+    Ok(())
+}
+
+const DEBUG_SRC: &str = "src/codegen/debug.rs";
+fn debug_gen(xs: &Defs) -> Result<()> {
+    fn tree_enum<'a>(e: &str, v: &str, fs: &'a [Type]) -> Option<&'a str> {
+        if fs.len() != 1 {
+            return None;
+        }
+        const WHITELIST: &[(&str, &str)] = &[
+            ("Meta", "Path"),
+            ("Pat", "Const"),
+            ("Pat", "Lit"),
+            ("Pat", "Macro"),
+            ("Pat", "Path"),
+            ("Pat", "Range"),
+            ("PathArguments", "AngleBracketed"),
+            ("PathArguments", "Parenthesized"),
+            ("Stmt", "Local"),
+            ("TypeParamBound", "Lifetime"),
+            ("Visibility", "Public"),
+            ("Visibility", "Restricted"),
+        ];
+        match &fs[0] {
+            Type::Syn(x) if WHITELIST.contains(&(e, v)) || e.to_owned() + v == *x => Some(x),
+            _ => None,
+        }
+    }
+    let mut vars = BTreeSet::new();
+    for x in &xs.nodes {
+        if let Data::Enum(ys) = &x.data {
+            let e = &x.ident;
+            for (v, fs) in ys {
+                if let Some(x) = tree_enum(e, v, fs) {
+                    vars.insert(x);
+                }
+            }
+        }
+    }
+    let mut ys = Stream::new();
+    fn expand(xs: &Defs, n: &Node, vars: &BTreeSet<&str>) -> Stream {
+        let manual = n.data == Data::Private || n.ident == "LitBool";
+        if manual {
+            return Stream::new();
+        }
+        fn expand_body(defs: &Defs, n: &Node, vars: &BTreeSet<&str>) -> Stream {
+            let type_name = &n.ident;
+            let ident = Ident::new(type_name, Span::call_site());
+            let is_syntax_tree_variant = vars.contains(type_name.as_str());
+            let body = match &n.data {
+                Data::Enum(x) if x.is_empty() => quote!(match *self {}),
+                Data::Enum(x) => {
+                    assert!(!is_syntax_tree_variant);
+                    let arms = x.iter().map(|(name, fields)| {
+                        let variant = Ident::new(name, Span::call_site());
+                        if fields.is_empty() {
+                            quote! {
+                                #ident::#variant => formatter.write_str(#variant_name),
+                            }
+                        } else {
+                            let mut cfg = None;
+                            if n.ident == "Expr" {
+                                if let Type::Syn(ty) = &fields[0] {
+                                    if !lookup_node(defs, ty).feats.any.contains("derive") {
+                                        cfg = Some(quote!(#[cfg(feature = "full")]));
+                                    }
+                                }
+                            }
+                            if tree_enum(type_name, name, fields).is_some() {
+                                quote! {
+                                    #cfg
+                                    #ident::#variant(v0) => v0.debug(formatter, #variant_name),
+                                }
+                            } else {
+                                let pats = (0..fields.len()).map(|i| format_ident!("v{}", i)).collect::<Vec<_>>();
+                                quote! {
+                                    #cfg
+                                    #ident::#variant(#(#pats),*) => {
+                                        let mut formatter = formatter.debug_tuple(#variant_name);
+                                        #(formatter.field(#pats);)*
+                                        formatter.finish()
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    let nonexhaustive = if n.ident == "Expr" {
+                        Some(quote! {
+                            #[cfg(not(feature = "full"))]
+                            _ => unreachable!(),
+                        })
+                    } else {
+                        None
+                    };
+                    let prefix = format!("{}::", type_name);
+                    quote! {
+                        formatter.write_str(#prefix)?;
+                        match self {
+                            #(#arms)*
+                            #nonexhaustive
+                        }
+                    }
+                },
+                Data::Struct(fields) => {
+                    let type_name = if is_syntax_tree_variant {
+                        quote!(name)
+                    } else {
+                        quote!(#type_name)
+                    };
+                    let fields = fields.keys().map(|f| {
+                        let ident = Ident::new(f, Span::call_site());
+                        quote! {
+                            formatter.field(#f, &self.#ident);
+                        }
+                    });
+                    quote! {
+                        let mut formatter = formatter.debug_struct(#type_name);
+                        #(#fields)*
+                        formatter.finish()
+                    }
+                },
+                Data::Private => unreachable!(),
+            };
+            if is_syntax_tree_variant {
+                quote! {
+                    impl #ident {
+                        fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
+                            #body
+                        }
+                    }
+                    self.debug(formatter, #type_name)
+                }
+            } else {
+                body
+            }
+        }
+        let body = expand_body(xs, n, vars);
+        let typ = Ident::new(&n.ident, Span::call_site());
+        let cfg = config(&n.feats);
+        let f = match &n.data {
+            Data::Enum(x) if x.is_empty() => quote!(_),
+            _ => quote!(f),
+        };
+        quote! {
+            #cfg
+            impl Debug for #typ {
+                fn fmt(&self, #f: &mut fmt::Formatter) -> fmt::Result {
+                    #body
+                }
+            }
+        }
+    }
+    for x in &xs.nodes {
+        ys.extend(expand(xs, x, &vars));
+    }
+    file_write(
+        DEBUG_SRC,
+        quote! {
+            use crate::*;
+            use std::fmt::{self, Debug};
+            #ys
+        },
+    )?;
     Ok(())
 }
