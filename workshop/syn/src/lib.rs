@@ -30,6 +30,7 @@ mod parse;
 mod pat;
 mod path;
 mod pm2;
+mod pretty;
 mod punct;
 mod stmt;
 mod tok;
