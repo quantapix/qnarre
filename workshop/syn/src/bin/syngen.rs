@@ -682,7 +682,6 @@ mod fold {
         file::write(
             FOLD_SRC,
             quote! {
-                // Unreachable code is generated sometimes without the full feature.
                 #![allow(unreachable_code, unused_variables)]
                 #![allow(clippy::match_wildcard_for_single_variants, clippy::needless_match)]
                 #[cfg(any(feature = "full", feature = "derive"))]
@@ -690,11 +689,6 @@ mod fold {
                 use crate::*;
                 use syn::pm2::Span;
                 #full_macro
-                /// Syntax tree traversal to transform the nodes of an owned syntax tree.
-                ///
-                /// See the [module documentation] for details.
-                ///
-                /// [module documentation]: self
                 pub trait Fold {
                     #traits
                 }
@@ -1069,12 +1063,9 @@ mod parse {
     const EXTRA_TYPES: &[&str] = &["Lifetime"];
     struct Lookup {
         items: BTreeMap<Ident, AstItem>,
-        // "+" => "Add"
         tokens: BTreeMap<String, String>,
-        // "PatLit" => "ExprLit"
         aliases: BTreeMap<Ident, Ident>,
     }
-    /// Parse the contents of `src` and return a list of AST types.
     pub fn parse() -> Result<types::Definitions> {
         let tokens = load_token_file(TOKEN_SRC)?;
         let mut lookup = Lookup {
@@ -1092,7 +1083,6 @@ mod parse {
         let tokens = lookup.tokens.into_iter().map(|(name, ty)| (ty, name)).collect();
         Ok(types::Definitions { version, types, tokens })
     }
-    /// Data extracted from syn source
     pub struct AstItem {
         ast: DeriveInput,
         features: Vec<Attribute>,
@@ -1289,8 +1279,6 @@ mod parse {
             let ahead = input.fork();
             ahead.parse::<Token![#]>().is_ok() && ahead.parse::<Ident>().map(|ident| ident == tag).unwrap_or(false)
         }
-        // Parses #full - returns #[cfg(feature = "full")] if it is present, and
-        // nothing otherwise.
         fn full(input: ParseStream) -> Vec<Attribute> {
             if peek_tag(input, "full") {
                 input.parse::<Token![#]>().unwrap();
@@ -1300,7 +1288,6 @@ mod parse {
                 vec![]
             }
         }
-        // Parses a simple AstStruct without the `pub struct` prefix.
         fn ast_struct_inner(input: ParseStream) -> Result<AstItem> {
             let ident: Ident = input.parse()?;
             let features = full(input);
@@ -1347,7 +1334,6 @@ mod parse {
                 })
             })
         }
-        // A single variant of an ast_enum_of_structs!
         struct EosVariant {
             attrs: Vec<Attribute>,
             name: Ident,
@@ -1512,36 +1498,24 @@ mod parse {
     ) -> Result<()> {
         let relative_to_workspace_root = relative_to_workspace_root.as_ref();
         let parent = relative_to_workspace_root.parent().expect("no parent path");
-        // Parse the file
         let src = fs::read_to_string(workspace_path::get(relative_to_workspace_root))?;
         let file = syn::parse_file(&src)?;
-        // Collect all of the interesting AstItems declared in this file or submodules.
         'items: for item in file.items {
             match item {
                 Item::Mod(item) => {
-                    // Don't inspect inline modules.
                     if item.content.is_some() {
                         continue;
                     }
-                    // We don't want to try to load the generated rust files and
-                    // parse them, so we ignore them here.
                     for name in IGNORED_MODS {
                         if item.ident == name {
                             continue 'items;
                         }
                     }
-                    // Lookup any #[cfg()] attributes on the module and add them to
-                    // the feature set.
-                    //
-                    // The derive module is weird because it is built with either
-                    // `full` or `derive` but exported only under `derive`.
                     let features = if item.ident == "derive" {
                         vec![parse_quote!(#[cfg(feature = "derive")])]
                     } else {
                         get_features(&item.attrs, features)
                     };
-                    // Look up the submodule file, and recursively parse it.
-                    // Only handles same-directory .rs file submodules for now.
                     let filename = if let Some(filename) = parsing::path_attr(&item.attrs)? {
                         filename.value()
                     } else {
@@ -1551,10 +1525,7 @@ mod parse {
                     load_file(path, &features, lookup)?;
                 },
                 Item::Macro(item) => {
-                    // Lookip any #[cfg()] attributes directly on the macro
-                    // invocation, and add them to the feature set.
                     let features = get_features(&item.attrs, features);
-                    // Try to parse the AstItem declaration out of the item.
                     let tts = item.mac.tokens.clone();
                     let found = if item.mac.path.is_ident("ast_struct") {
                         Some(parsing::ast_struct.parse2(tts)?)
@@ -1565,7 +1536,6 @@ mod parse {
                     } else {
                         continue;
                     };
-                    // Record our features on the parsed AstItems.
                     if let Some(mut item) = found {
                         item.features.extend(clone_features(&features));
                         lookup.items.insert(item.ast.ident.clone(), item);
@@ -2171,11 +2141,6 @@ mod visit {
                 macro_rules! skip {
                     ($($tt:tt)*) => {};
                 }
-                /// Syntax tree traversal to walk a shared borrow of a syntax tree.
-                ///
-                /// See the [module documentation] for details.
-                ///
-                /// [module documentation]: self
                 pub trait Visit<'ast> {
                     #traits
                 }
@@ -2369,12 +2334,6 @@ mod visit_mut {
                 macro_rules! skip {
                     ($($tt:tt)*) => {};
                 }
-                /// Syntax tree traversal to mutate an exclusive borrow of a syntax tree in
-                /// place.
-                ///
-                /// See the [module documentation] for details.
-                ///
-                /// [module documentation]: self
                 pub trait VisitMut {
                     #traits
                 }
