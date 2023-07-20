@@ -9,25 +9,34 @@
 
 extern crate proc_macro as pm;
 
-mod cfg {
-    use json::Features;
-    use syn::pm2::Stream;
-    use syn::quote::quote;
-    pub fn features(features: &Features) -> Stream {
-        let features = &features.any;
-        match features.len() {
-            0 => quote!(),
-            1 => quote!(#[cfg(feature = #(#features)*)]),
-            _ => quote!(#[cfg(any(#(feature = #features),*))]),
-        }
+use anyhow::Result;
+use indexmap::IndexMap;
+use semver::Version;
+use serde::de::{Deserialize, Deserializer};
+use serde_derive::{Deserialize, Serialize};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fs,
+    io::Write,
+    path::{Path, PathBuf},
+};
+use syn::{
+    pm2::{Ident, Span, Stream},
+    quote::{format_ident, quote},
+    Index,
+};
+
+pub fn cfg_features(x: &Features) -> Stream {
+    let x = &x.any;
+    match x.len() {
+        0 => quote!(),
+        1 => quote!(#[cfg(feature = #(#features)*)]),
+        _ => quote!(#[cfg(any(#(feature = #features),*))]),
     }
 }
+
 mod clone {
-    use crate::{cfg, file, lookup};
-    use anyhow::Result;
-    use json::{Data, Definitions, Node, Type};
-    use syn::pm2::{Ident, Span, Stream};
-    use syn::quote::{format_ident, quote};
+    use super::*;
     const CLONE_SRC: &str = "src/codegen/clone.rs";
     fn expand_impl_body(defs: &Definitions, node: &Node) -> Stream {
         let type_name = &node.ident;
@@ -52,7 +61,7 @@ mod clone {
                         let mut cfg = None;
                         if node.ident == "Expr" {
                             if let Type::Syn(ty) = &fields[0] {
-                                if !lookup::node(defs, ty).features.any.contains("derive") {
+                                if !lookup_node(defs, ty).features.any.contains("derive") {
                                     cfg = Some(quote!(#[cfg(feature = "full")]));
                                 }
                             }
@@ -96,7 +105,7 @@ mod clone {
             return Stream::new();
         }
         let ident = Ident::new(&node.ident, Span::call_site());
-        let cfg_features = cfg::features(&node.features);
+        let cfg_features = cfg_features(&node.features);
         let copy = node.ident == "AttrStyle"
             || node.ident == "BinOp"
             || node.ident == "RangeLimits"
@@ -132,7 +141,7 @@ mod clone {
         for node in &defs.types {
             impls.extend(expand_impl(defs, node));
         }
-        file::write(
+        file_write(
             CLONE_SRC,
             quote! {
                 #![allow(clippy::clone_on_copy, clippy::expl_impl_clone_on_copy)]
@@ -144,12 +153,8 @@ mod clone {
     }
 }
 mod debug {
-    use crate::{cfg, file, lookup};
-    use anyhow::Result;
-    use json::{Data, Definitions, Node, Type};
+    use super::*;
     use std::collections::BTreeSet as Set;
-    use syn::pm2::{Ident, Span, Stream};
-    use syn::quote::{format_ident, quote};
     const DEBUG_SRC: &str = "src/codegen/debug.rs";
     fn syntax_tree_enum<'a>(enum_name: &str, variant_name: &str, fields: &'a [Type]) -> Option<&'a str> {
         if fields.len() != 1 {
@@ -196,7 +201,7 @@ mod debug {
                         let mut cfg = None;
                         if node.ident == "Expr" {
                             if let Type::Syn(ty) = &fields[0] {
-                                if !lookup::node(defs, ty).features.any.contains("derive") {
+                                if !lookup_node(defs, ty).features.any.contains("derive") {
                                     cfg = Some(quote!(#[cfg(feature = "full")]));
                                 }
                             }
@@ -275,7 +280,7 @@ mod debug {
             return Stream::new();
         }
         let ident = Ident::new(&node.ident, Span::call_site());
-        let cfg_features = cfg::features(&node.features);
+        let cfg_features = cfg_features(&node.features);
         let body = expand_impl_body(defs, node, syntax_tree_variants);
         let formatter = match &node.data {
             Data::Enum(variants) if variants.is_empty() => quote!(_formatter),
@@ -307,7 +312,7 @@ mod debug {
         for node in &defs.types {
             impls.extend(expand_impl(defs, node, &syntax_tree_variants));
         }
-        file::write(
+        file_write(
             DEBUG_SRC,
             quote! {
                 use crate::*;
@@ -319,11 +324,7 @@ mod debug {
     }
 }
 mod eq {
-    use crate::{cfg, file, lookup};
-    use anyhow::Result;
-    use json::{Data, Definitions, Node, Type};
-    use syn::pm2::{Ident, Span, Stream};
-    use syn::quote::{format_ident, quote};
+    use super::*;
     const EQ_SRC: &str = "src/codegen/eq.rs";
     fn always_eq(field_type: &Type) -> bool {
         match field_type {
@@ -376,7 +377,7 @@ mod eq {
                         let mut cfg = None;
                         if node.ident == "Expr" {
                             if let Type::Syn(ty) = &fields[0] {
-                                if !lookup::node(defs, ty).features.any.contains("derive") {
+                                if !lookup_node(defs, ty).features.any.contains("derive") {
                                     cfg = Some(quote!(#[cfg(feature = "full")]));
                                 }
                             }
@@ -429,7 +430,7 @@ mod eq {
             return Stream::new();
         }
         let ident = Ident::new(&node.ident, Span::call_site());
-        let cfg_features = cfg::features(&node.features);
+        let cfg_features = cfg_features(&node.features);
         let eq = quote! {
             #cfg_features
             #[cfg_attr(doc_cfg, doc(cfg(feature = "extra-traits")))]
@@ -461,7 +462,7 @@ mod eq {
         for node in &defs.types {
             impls.extend(expand_impl(defs, node));
         }
-        file::write(
+        file_write(
             EQ_SRC,
             quote! {
                 #[cfg(any(feature = "derive", feature = "full"))]
@@ -473,35 +474,25 @@ mod eq {
         Ok(())
     }
 }
-mod file {
-    use crate::workspace_path;
-    use anyhow::Result;
-    use std::fs;
-    use std::io::Write;
-    use std::path::Path;
-    use syn::pm2::Stream;
-    pub fn write(relative_to_workspace_root: impl AsRef<Path>, content: Stream) -> Result<()> {
-        let mut formatted = Vec::new();
-        writeln!(formatted, "// This file is @generated by syn-internal-codegen.")?;
-        writeln!(formatted, "// It is not intended for manual editing.")?;
-        writeln!(formatted)?;
-        let syntax_tree: syn::File = syn::parse2(content).unwrap();
-        let pretty = prettyplease::unparse(&syntax_tree);
-        write!(formatted, "{}", pretty)?;
-        let path = workspace_path::get(relative_to_workspace_root);
-        if path.is_file() && fs::read(&path)? == formatted {
-            return Ok(());
-        }
-        fs::write(path, formatted)?;
-        Ok(())
+
+pub fn file_write(relative_to_workspace_root: impl AsRef<Path>, content: Stream) -> Result<()> {
+    let mut formatted = Vec::new();
+    writeln!(formatted, "// This file is @generated by syn-internal-codegen.")?;
+    writeln!(formatted, "// It is not intended for manual editing.")?;
+    writeln!(formatted)?;
+    let syntax_tree: syn::File = syn::parse2(content).unwrap();
+    let pretty = prettyplease::unparse(&syntax_tree);
+    write!(formatted, "{}", pretty)?;
+    let path = get_relative_path(relative_to_workspace_root);
+    if path.is_file() && fs::read(&path)? == formatted {
+        return Ok(());
     }
+    fs::write(path, formatted)?;
+    Ok(())
 }
+
 mod fold {
-    use crate::{file, full, gen};
-    use anyhow::Result;
-    use json::{Data, Definitions, Features, Node, Type};
-    use syn::pm2::{Ident, Span, Stream};
-    use syn::quote::{format_ident, quote};
+    use super::*;
     use syn::Index;
     const FOLD_SRC: &str = "src/codegen/fold.rs";
     fn simple_visit(item: &str, name: &Stream) -> Stream {
@@ -678,8 +669,8 @@ mod fold {
     }
     pub fn generate(defs: &Definitions) -> Result<()> {
         let (traits, impls) = gen::traverse(defs, node);
-        let full_macro = full::get_macro();
-        file::write(
+        let full_macro = full_get_macro();
+        file_write(
             FOLD_SRC,
             quote! {
                 #![allow(unreachable_code, unused_variables)]
@@ -698,31 +689,27 @@ mod fold {
         Ok(())
     }
 }
-mod full {
-    use syn::pm2::Stream;
-    use syn::quote::quote;
-    pub fn get_macro() -> Stream {
-        quote! {
-            #[cfg(feature = "full")]
-            macro_rules! full {
-                ($e:expr) => {
-                    $e
-                };
-            }
-            #[cfg(all(feature = "derive", not(feature = "full")))]
-            macro_rules! full {
-                ($e:expr) => {
-                    unreachable!()
-                };
-            }
+
+pub fn full_get_macro() -> Stream {
+    quote! {
+        #[cfg(feature = "full")]
+        macro_rules! full {
+            ($e:expr) => {
+                $e
+            };
+        }
+        #[cfg(all(feature = "derive", not(feature = "full")))]
+        macro_rules! full {
+            ($e:expr) => {
+                unreachable!()
+            };
         }
     }
 }
+
 mod gen {
-    use crate::cfg;
+    use super::*;
     use inflections::Inflect;
-    use json::{Data, Definitions, Features, Node};
-    use syn::pm2::{Ident, Span, Stream};
     pub const TERMINAL_TYPES: &[&str] = &["Span", "Ident"];
     pub fn under_name(name: &str) -> Ident {
         Ident::new(&name.to_snake_case(), Span::call_site())
@@ -741,7 +728,7 @@ mod gen {
         let mut traits = Stream::new();
         let mut impls = Stream::new();
         for s in types {
-            let features = cfg::features(&s.features);
+            let features = cfg_features(&s.features);
             traits.extend(features.clone());
             impls.extend(features);
             node(&mut traits, &mut impls, &s, defs);
@@ -750,11 +737,7 @@ mod gen {
     }
 }
 mod hash {
-    use crate::{cfg, file, lookup};
-    use anyhow::Result;
-    use json::{Data, Definitions, Node, Type};
-    use syn::pm2::{Ident, Span, Stream};
-    use syn::quote::{format_ident, quote};
+    use super::*;
     const HASH_SRC: &str = "src/codegen/hash.rs";
     fn skip(field_type: &Type) -> bool {
         match field_type {
@@ -807,7 +790,7 @@ mod hash {
                         let mut cfg = None;
                         if node.ident == "Expr" {
                             if let Type::Syn(ty) = &fields[0] {
-                                if !lookup::node(defs, ty).features.any.contains("derive") {
+                                if !lookup_node(defs, ty).features.any.contains("derive") {
                                     cfg = Some(quote!(#[cfg(feature = "full")]));
                                 }
                             }
@@ -864,7 +847,7 @@ mod hash {
             return Stream::new();
         }
         let ident = Ident::new(&node.ident, Span::call_site());
-        let cfg_features = cfg::features(&node.features);
+        let cfg_features = cfg_features(&node.features);
         let body = expand_impl_body(defs, node);
         let hasher = match &node.data {
             Data::Struct(_) if body.is_empty() => quote!(_state),
@@ -889,7 +872,7 @@ mod hash {
         for node in &defs.types {
             impls.extend(expand_impl(defs, node));
         }
-        file::write(
+        file_write(
             HASH_SRC,
             quote! {
                 #[cfg(any(feature = "derive", feature = "full"))]
@@ -902,155 +885,140 @@ mod hash {
         Ok(())
     }
 }
-mod json {
-    use crate::workspace_path;
-    use anyhow::Result;
-    use std::fs;
-    pub fn generate(defs: &Definitions) -> Result<()> {
-        let mut j = serde_json::to_string_pretty(&defs)?;
-        j.push('\n');
-        let check: Definitions = serde_json::from_str(&j)?;
-        assert_eq!(*defs, check);
-        let json_path = workspace_path::get("syn.json");
-        fs::write(json_path, j)?;
-        Ok(())
-    }
-    use indexmap::IndexMap;
-    use semver::Version;
-    use serde::de::{Deserialize, Deserializer};
-    use serde_derive::{Deserialize, Serialize};
-    use std::collections::{BTreeMap, BTreeSet};
 
-    #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-    pub struct Definitions {
-        pub version: Version,
-        pub types: Vec<Node>,
-        pub tokens: BTreeMap<String, String>,
-    }
+pub fn generate(defs: &Definitions) -> Result<()> {
+    let mut j = serde_json::to_string_pretty(&defs)?;
+    j.push('\n');
+    let check: Definitions = serde_json::from_str(&j)?;
+    assert_eq!(*defs, check);
+    let json_path = get_relative_path("syn.json");
+    fs::write(json_path, j)?;
+    Ok(())
+}
 
-    #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-    pub struct Node {
-        pub ident: String,
-        pub features: Features,
-        #[serde(flatten, skip_serializing_if = "is_private", deserialize_with = "private_if_absent")]
-        pub data: Data,
-        #[serde(skip_serializing_if = "is_true", default = "bool_true")]
-        pub exhaustive: bool,
-    }
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Definitions {
+    pub version: Version,
+    pub types: Vec<Node>,
+    pub tokens: BTreeMap<String, String>,
+}
 
-    #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-    pub enum Data {
-        Private,
-        #[serde(rename = "fields")]
-        Struct(Fields),
-        #[serde(rename = "variants")]
-        Enum(Variants),
-    }
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Node {
+    pub ident: String,
+    pub features: Features,
+    #[serde(flatten, skip_serializing_if = "is_private", deserialize_with = "private_if_absent")]
+    pub data: Data,
+    #[serde(skip_serializing_if = "is_true", default = "bool_true")]
+    pub exhaustive: bool,
+}
 
-    pub type Fields = IndexMap<String, Type>;
-    pub type Variants = IndexMap<String, Vec<Type>>;
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub enum Data {
+    Private,
+    #[serde(rename = "fields")]
+    Struct(Fields),
+    #[serde(rename = "variants")]
+    Enum(Variants),
+}
 
-    #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-    #[serde(rename_all = "lowercase")]
-    pub enum Type {
-        Syn(String),
-        Std(String),
-        #[serde(rename = "proc_macro2")]
-        Ext(String),
-        Token(String),
-        Group(String),
-        Punctuated(Punctuated),
-        Option(Box<Type>),
-        Box(Box<Type>),
-        Vec(Box<Type>),
-        Tuple(Vec<Type>),
-    }
+pub type Fields = IndexMap<String, Type>;
+pub type Variants = IndexMap<String, Vec<Type>>;
 
-    #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-    pub struct Punctuated {
-        pub element: Box<Type>,
-        pub punct: String,
-    }
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Type {
+    Syn(String),
+    Std(String),
+    #[serde(rename = "proc_macro2")]
+    Ext(String),
+    Token(String),
+    Group(String),
+    Punctuated(Punctuated),
+    Option(Box<Type>),
+    Box(Box<Type>),
+    Vec(Box<Type>),
+    Tuple(Vec<Type>),
+}
 
-    #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-    pub struct Features {
-        pub any: BTreeSet<String>,
-    }
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Punctuated {
+    pub element: Box<Type>,
+    pub punct: String,
+}
 
-    fn is_private(data: &Data) -> bool {
-        match data {
-            Data::Private => true,
-            Data::Struct(_) | Data::Enum(_) => false,
-        }
-    }
-    fn private_if_absent<'de, D>(deserializer: D) -> Result<Data, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let option = Option::deserialize(deserializer)?;
-        Ok(option.unwrap_or(Data::Private))
-    }
-    fn is_true(b: &bool) -> bool {
-        *b
-    }
-    fn bool_true() -> bool {
-        true
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct Features {
+    pub any: BTreeSet<String>,
+}
+
+fn is_private(data: &Data) -> bool {
+    match data {
+        Data::Private => true,
+        Data::Struct(_) | Data::Enum(_) => false,
     }
 }
-mod lookup {
-    use json::{Definitions, Node};
-    pub fn node<'a>(defs: &'a Definitions, name: &str) -> &'a Node {
-        for node in &defs.types {
-            if node.ident == name {
-                return node;
-            }
-        }
-        panic!("not found: {}", name)
-    }
+fn private_if_absent<'de, D>(deserializer: D) -> Result<Data, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let option = Option::deserialize(deserializer)?;
+    Ok(option.unwrap_or(Data::Private))
 }
-mod operand {
-    use syn::pm2::Stream;
-    use syn::quote::quote;
-    pub enum Operand {
-        Borrowed(Stream),
-        Owned(Stream),
+fn is_true(b: &bool) -> bool {
+    *b
+}
+fn bool_true() -> bool {
+    true
+}
+
+pub fn lookup_node<'a>(defs: &'a Definitions, name: &str) -> &'a Node {
+    for node in &defs.types {
+        if node.ident == name {
+            return node;
+        }
     }
-    pub use self::Operand::*;
-    impl Operand {
-        pub fn tokens(&self) -> &Stream {
-            match self {
-                Borrowed(n) | Owned(n) => n,
-            }
+    panic!("not found: {}", name)
+}
+
+pub enum Operand {
+    Borrowed(Stream),
+    Owned(Stream),
+}
+use Operand::*;
+
+impl Operand {
+    pub fn tokens(&self) -> &Stream {
+        match self {
+            Borrowed(n) | Owned(n) => n,
         }
-        pub fn ref_tokens(&self) -> Stream {
-            match self {
-                Borrowed(n) => n.clone(),
-                Owned(n) => quote!(&#n),
-            }
+    }
+    pub fn ref_tokens(&self) -> Stream {
+        match self {
+            Borrowed(n) => n.clone(),
+            Owned(n) => quote!(&#n),
         }
-        pub fn ref_mut_tokens(&self) -> Stream {
-            match self {
-                Borrowed(n) => n.clone(),
-                Owned(n) => quote!(&mut #n),
-            }
+    }
+    pub fn ref_mut_tokens(&self) -> Stream {
+        match self {
+            Borrowed(n) => n.clone(),
+            Owned(n) => quote!(&mut #n),
         }
-        pub fn owned_tokens(&self) -> Stream {
-            match self {
-                Borrowed(n) => quote!(*#n),
-                Owned(n) => n.clone(),
-            }
+    }
+    pub fn owned_tokens(&self) -> Stream {
+        match self {
+            Borrowed(n) => quote!(*#n),
+            Owned(n) => n.clone(),
         }
     }
 }
+
 mod parse {
-    use crate::{version, workspace_path};
+    use super::*;
     use anyhow::{bail, Result};
     use indexmap::IndexMap;
     use std::collections::BTreeMap;
-    use std::fs;
-    use std::path::{Path, PathBuf};
     use syn::parse::{Error, Parser};
-    use syn::quote::quote;
     use syn::{
         parse_quote, Attribute, Data, DataEnum, DataStruct, DeriveInput, Fields, GenericArgument, Ident, Item,
         PathArguments, TypeMacro, TypePath, TypeTuple, UseTree, Visibility,
@@ -1498,7 +1466,7 @@ mod parse {
     ) -> Result<()> {
         let relative_to_workspace_root = relative_to_workspace_root.as_ref();
         let parent = relative_to_workspace_root.parent().expect("no parent path");
-        let src = fs::read_to_string(workspace_path::get(relative_to_workspace_root))?;
+        let src = fs::read_to_string(get_relative_path(relative_to_workspace_root))?;
         let file = syn::parse_file(&src)?;
         'items: for item in file.items {
             match item {
@@ -1589,7 +1557,7 @@ mod parse {
         }
     }
     fn load_token_file(relative_to_workspace_root: impl AsRef<Path>) -> Result<BTreeMap<String, String>> {
-        let path = workspace_path::get(relative_to_workspace_root);
+        let path = get_relative_path(relative_to_workspace_root);
         let src = fs::read_to_string(path)?;
         let file = syn::parse_file(&src)?;
         for item in file.items {
@@ -1606,13 +1574,7 @@ mod parse {
     }
 }
 mod snapshot {
-    use crate::operand::{Borrowed, Operand, Owned};
-    use crate::{file, lookup};
-    use anyhow::Result;
-    use json::{Data, Definitions, Node, Type};
-    use syn::pm2::{Ident, Span, Stream};
-    use syn::quote::{format_ident, quote};
-    use syn::Index;
+    use super::*;
     const TESTS_DEBUG_SRC: &str = "tests/debug/gen.rs";
     fn rust_type(ty: &Type) -> Stream {
         match ty {
@@ -1756,7 +1718,7 @@ mod snapshot {
                             syn::#ident::#variant => formatter.write_str(#path),
                         }
                     } else if let Some(inner) = syntax_tree_enum(name, v, fields) {
-                        let format = expand_impl_body(defs, lookup::node(defs, inner), &path, &Borrowed(quote!(_val)));
+                        let format = expand_impl_body(defs, lookup_node(defs, inner), &path, &Borrowed(quote!(_val)));
                         quote! {
                             syn::#ident::#variant(_val) => {
                                 #format
@@ -1925,7 +1887,7 @@ mod snapshot {
         for node in &defs.types {
             impls.extend(expand_impl(defs, node));
         }
-        file::write(
+        file_write(
             TESTS_DEBUG_SRC,
             quote! {
                 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -1939,13 +1901,11 @@ mod snapshot {
     }
 }
 mod version {
-    use crate::workspace_path;
-    use anyhow::Result;
+    use super::*;
     use semver::Version;
     use serde_derive::Deserialize;
-    use std::fs;
     pub fn get() -> Result<Version> {
-        let syn_cargo_toml = workspace_path::get("Cargo.toml");
+        let syn_cargo_toml = get_relative_path("Cargo.toml");
         let manifest = fs::read_to_string(syn_cargo_toml)?;
         let parsed: Manifest = toml::from_str(&manifest)?;
         Ok(parsed.package.version)
@@ -1960,13 +1920,7 @@ mod version {
     }
 }
 mod visit {
-    use crate::operand::{Borrowed, Operand, Owned};
-    use crate::{file, full, gen};
-    use anyhow::Result;
-    use json::{Data, Definitions, Features, Node, Type};
-    use syn::pm2::{Ident, Span, Stream};
-    use syn::quote::{format_ident, quote};
-    use syn::Index;
+    use super::*;
     const VISIT_SRC: &str = "src/codegen/visit.rs";
     fn simple_visit(item: &str, name: &Operand) -> Stream {
         let ident = gen::under_name(item);
@@ -2128,8 +2082,8 @@ mod visit {
     }
     pub fn generate(defs: &Definitions) -> Result<()> {
         let (traits, impls) = gen::traverse(defs, node);
-        let full_macro = full::get_macro();
-        file::write(
+        let full_macro = full_get_macro();
+        file_write(
             VISIT_SRC,
             quote! {
                 #![allow(unused_variables)]
@@ -2151,13 +2105,7 @@ mod visit {
     }
 }
 mod visit_mut {
-    use crate::operand::{Borrowed, Operand, Owned};
-    use crate::{file, full, gen};
-    use anyhow::Result;
-    use json::{Data, Definitions, Features, Node, Type};
-    use syn::pm2::{Ident, Span, Stream};
-    use syn::quote::{format_ident, quote};
-    use syn::Index;
+    use super::*;
     const VISIT_MUT_SRC: &str = "src/codegen/visit_mut.rs";
     fn simple_visit(item: &str, name: &Operand) -> Stream {
         let ident = gen::under_name(item);
@@ -2321,8 +2269,8 @@ mod visit_mut {
     }
     pub fn generate(defs: &Definitions) -> Result<()> {
         let (traits, impls) = gen::traverse(defs, node);
-        let full_macro = full::get_macro();
-        file::write(
+        let full_macro = full_get_macro();
+        file_write(
             VISIT_MUT_SRC,
             quote! {
                 #![allow(unused_variables)]
@@ -2343,15 +2291,14 @@ mod visit_mut {
         Ok(())
     }
 }
-mod workspace_path {
-    use std::path::{Path, PathBuf};
-    pub fn get(relative_to_workspace_root: impl AsRef<Path>) -> PathBuf {
-        let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        assert!(path.pop());
-        path.push(relative_to_workspace_root);
-        path
-    }
+
+fn get_relative_path(x: impl AsRef<Path>) -> PathBuf {
+    let mut y = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    assert!(y.pop());
+    y.push(x);
+    y
 }
+
 fn main() -> anyhow::Result<()> {
     color_backtrace::install();
     let defs = parse::parse()?;
@@ -2359,7 +2306,7 @@ fn main() -> anyhow::Result<()> {
     debug::generate(&defs)?;
     eq::generate(&defs)?;
     hash::generate(&defs)?;
-    json::generate(&defs)?;
+    generate(&defs)?;
     fold::generate(&defs)?;
     visit::generate(&defs)?;
     visit_mut::generate(&defs)?;
