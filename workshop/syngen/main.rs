@@ -6,11 +6,14 @@
     clippy::too_many_lines,
     clippy::uninlined_format_args
 )]
+
+extern crate proc_macro as pm;
+
 mod cfg {
-    use proc_macro2::TokenStream;
-    use quote::quote;
-    use syn_codegen::Features;
-    pub fn features(features: &Features) -> TokenStream {
+    use json::Features;
+    use syn::pm2::Stream;
+    use syn::quote::quote;
+    pub fn features(features: &Features) -> Stream {
         let features = &features.any;
         match features.len() {
             0 => quote!(),
@@ -22,11 +25,11 @@ mod cfg {
 mod clone {
     use crate::{cfg, file, lookup};
     use anyhow::Result;
-    use proc_macro2::{Ident, Span, TokenStream};
-    use quote::{format_ident, quote};
-    use syn_codegen::{Data, Definitions, Node, Type};
+    use json::{Data, Definitions, Node, Type};
+    use syn::pm2::{Ident, Span, Stream};
+    use syn::quote::{format_ident, quote};
     const CLONE_SRC: &str = "src/gen/clone.rs";
-    fn expand_impl_body(defs: &Definitions, node: &Node) -> TokenStream {
+    fn expand_impl_body(defs: &Definitions, node: &Node) -> Stream {
         let type_name = &node.ident;
         let ident = Ident::new(type_name, Span::call_site());
         match &node.data {
@@ -87,10 +90,10 @@ mod clone {
             Data::Private => unreachable!(),
         }
     }
-    fn expand_impl(defs: &Definitions, node: &Node) -> TokenStream {
+    fn expand_impl(defs: &Definitions, node: &Node) -> Stream {
         let manual_clone = node.data == Data::Private || node.ident == "Lifetime";
         if manual_clone {
-            return TokenStream::new();
+            return Stream::new();
         }
         let ident = Ident::new(&node.ident, Span::call_site());
         let cfg_features = cfg::features(&node.features);
@@ -125,7 +128,7 @@ mod clone {
         }
     }
     pub fn generate(defs: &Definitions) -> Result<()> {
-        let mut impls = TokenStream::new();
+        let mut impls = Stream::new();
         for node in &defs.types {
             impls.extend(expand_impl(defs, node));
         }
@@ -143,10 +146,10 @@ mod clone {
 mod debug {
     use crate::{cfg, file, lookup};
     use anyhow::Result;
-    use proc_macro2::{Ident, Span, TokenStream};
-    use quote::{format_ident, quote};
+    use json::{Data, Definitions, Node, Type};
     use std::collections::BTreeSet as Set;
-    use syn_codegen::{Data, Definitions, Node, Type};
+    use syn::pm2::{Ident, Span, Stream};
+    use syn::quote::{format_ident, quote};
     const DEBUG_SRC: &str = "src/gen/debug.rs";
     fn syntax_tree_enum<'a>(enum_name: &str, variant_name: &str, fields: &'a [Type]) -> Option<&'a str> {
         if fields.len() != 1 {
@@ -175,7 +178,7 @@ mod debug {
             _ => None,
         }
     }
-    fn expand_impl_body(defs: &Definitions, node: &Node, syntax_tree_variants: &Set<&str>) -> TokenStream {
+    fn expand_impl_body(defs: &Definitions, node: &Node, syntax_tree_variants: &Set<&str>) -> Stream {
         let type_name = &node.ident;
         let ident = Ident::new(type_name, Span::call_site());
         let is_syntax_tree_variant = syntax_tree_variants.contains(type_name.as_str());
@@ -266,10 +269,10 @@ mod debug {
             body
         }
     }
-    fn expand_impl(defs: &Definitions, node: &Node, syntax_tree_variants: &Set<&str>) -> TokenStream {
+    fn expand_impl(defs: &Definitions, node: &Node, syntax_tree_variants: &Set<&str>) -> Stream {
         let manual_debug = node.data == Data::Private || node.ident == "LitBool";
         if manual_debug {
-            return TokenStream::new();
+            return Stream::new();
         }
         let ident = Ident::new(&node.ident, Span::call_site());
         let cfg_features = cfg::features(&node.features);
@@ -300,7 +303,7 @@ mod debug {
                 }
             }
         }
-        let mut impls = TokenStream::new();
+        let mut impls = Stream::new();
         for node in &defs.types {
             impls.extend(expand_impl(defs, node, &syntax_tree_variants));
         }
@@ -318,9 +321,9 @@ mod debug {
 mod eq {
     use crate::{cfg, file, lookup};
     use anyhow::Result;
-    use proc_macro2::{Ident, Span, TokenStream};
-    use quote::{format_ident, quote};
-    use syn_codegen::{Data, Definitions, Node, Type};
+    use json::{Data, Definitions, Node, Type};
+    use syn::pm2::{Ident, Span, Stream};
+    use syn::quote::{format_ident, quote};
     const EQ_SRC: &str = "src/gen/eq.rs";
     fn always_eq(field_type: &Type) -> bool {
         match field_type {
@@ -331,7 +334,7 @@ mod eq {
             _ => false,
         }
     }
-    fn expand_impl_body(defs: &Definitions, node: &Node) -> TokenStream {
+    fn expand_impl_body(defs: &Definitions, node: &Node) -> Stream {
         let type_name = &node.ident;
         let ident = Ident::new(type_name, Span::call_site());
         match &node.data {
@@ -356,8 +359,8 @@ mod eq {
                             let this = format_ident!("self{}", i);
                             let other = format_ident!("other{}", i);
                             comparisons.push(match field {
-                                Type::Ext(ty) if ty == "TokenStream" => {
-                                    quote!(TokenStreamHelper(#this) == TokenStreamHelper(#other))
+                                Type::Ext(ty) if ty == "Stream" => {
+                                    quote!(StreamHelper(#this) == StreamHelper(#other))
                                 },
                                 Type::Ext(ty) if ty == "Literal" => {
                                     quote!(#this.to_string() == #other.to_string())
@@ -406,8 +409,8 @@ mod eq {
                     }
                     let ident = Ident::new(f, Span::call_site());
                     comparisons.push(match ty {
-                        Type::Ext(ty) if ty == "TokenStream" => {
-                            quote!(TokenStreamHelper(&self.#ident) == TokenStreamHelper(&other.#ident))
+                        Type::Ext(ty) if ty == "Stream" => {
+                            quote!(StreamHelper(&self.#ident) == StreamHelper(&other.#ident))
                         },
                         _ => quote!(self.#ident == other.#ident),
                     });
@@ -421,9 +424,9 @@ mod eq {
             Data::Private => unreachable!(),
         }
     }
-    fn expand_impl(defs: &Definitions, node: &Node) -> TokenStream {
+    fn expand_impl(defs: &Definitions, node: &Node) -> Stream {
         if node.ident == "Member" || node.ident == "Index" || node.ident == "Lifetime" {
-            return TokenStream::new();
+            return Stream::new();
         }
         let ident = Ident::new(&node.ident, Span::call_site());
         let cfg_features = cfg::features(&node.features);
@@ -454,7 +457,7 @@ mod eq {
         }
     }
     pub fn generate(defs: &Definitions) -> Result<()> {
-        let mut impls = TokenStream::new();
+        let mut impls = Stream::new();
         for node in &defs.types {
             impls.extend(expand_impl(defs, node));
         }
@@ -462,7 +465,7 @@ mod eq {
             EQ_SRC,
             quote! {
                 #[cfg(any(feature = "derive", feature = "full"))]
-                use crate::tt::TokenStreamHelper;
+                use crate::tt::StreamHelper;
                 use crate::*;
                 #impls
             },
@@ -473,11 +476,11 @@ mod eq {
 mod file {
     use crate::workspace_path;
     use anyhow::Result;
-    use proc_macro2::TokenStream;
     use std::fs;
     use std::io::Write;
     use std::path::Path;
-    pub fn write(relative_to_workspace_root: impl AsRef<Path>, content: TokenStream) -> Result<()> {
+    use syn::pm2::Stream;
+    pub fn write(relative_to_workspace_root: impl AsRef<Path>, content: Stream) -> Result<()> {
         let mut formatted = Vec::new();
         writeln!(formatted, "// This file is @generated by syn-internal-codegen.")?;
         writeln!(formatted, "// It is not intended for manual editing.")?;
@@ -496,19 +499,19 @@ mod file {
 mod fold {
     use crate::{file, full, gen};
     use anyhow::Result;
-    use proc_macro2::{Ident, Span, TokenStream};
-    use quote::{format_ident, quote};
+    use json::{Data, Definitions, Features, Node, Type};
+    use syn::pm2::{Ident, Span, Stream};
+    use syn::quote::{format_ident, quote};
     use syn::Index;
-    use syn_codegen::{Data, Definitions, Features, Node, Type};
     const FOLD_SRC: &str = "src/gen/fold.rs";
-    fn simple_visit(item: &str, name: &TokenStream) -> TokenStream {
+    fn simple_visit(item: &str, name: &Stream) -> Stream {
         let ident = gen::under_name(item);
         let method = format_ident!("fold_{}", ident);
         quote! {
             f.#method(#name)
         }
     }
-    fn visit(ty: &Type, features: &Features, defs: &Definitions, name: &TokenStream) -> Option<TokenStream> {
+    fn visit(ty: &Type, features: &Features, defs: &Definitions, name: &Stream) -> Option<Stream> {
         match ty {
             Type::Box(t) => {
                 let res = visit(t, features, defs, &quote!(*#name))?;
@@ -538,7 +541,7 @@ mod fold {
                 })
             },
             Type::Tuple(t) => {
-                let mut code = TokenStream::new();
+                let mut code = Stream::new();
                 for (i, elem) in t.iter().enumerate() {
                     let i = Index::from(i);
                     let it = quote!((#name).#i);
@@ -565,14 +568,14 @@ mod fold {
             Type::Ext(_) | Type::Std(_) | Type::Token(_) | Type::Group(_) => None,
         }
     }
-    fn node(traits: &mut TokenStream, impls: &mut TokenStream, s: &Node, defs: &Definitions) {
+    fn node(traits: &mut Stream, impls: &mut Stream, s: &Node, defs: &Definitions) {
         let under_name = gen::under_name(&s.ident);
         let ty = Ident::new(&s.ident, Span::call_site());
         let fold_fn = format_ident!("fold_{}", under_name);
-        let mut fold_impl = TokenStream::new();
+        let mut fold_impl = Stream::new();
         match &s.data {
             Data::Enum(variants) => {
-                let mut fold_variants = TokenStream::new();
+                let mut fold_variants = Stream::new();
                 for (variant, fields) in variants {
                     let variant_ident = Ident::new(variant, Span::call_site());
                     if fields.is_empty() {
@@ -582,8 +585,8 @@ mod fold {
                             }
                         });
                     } else {
-                        let mut bind_fold_fields = TokenStream::new();
-                        let mut fold_fields = TokenStream::new();
+                        let mut bind_fold_fields = Stream::new();
+                        let mut fold_fields = Stream::new();
                         for (idx, ty) in fields.iter().enumerate() {
                             let binding = format_ident!("_binding_{}", idx);
                             bind_fold_fields.extend(quote! {
@@ -609,7 +612,7 @@ mod fold {
                 });
             },
             Data::Struct(fields) => {
-                let mut fold_fields = TokenStream::new();
+                let mut fold_fields = Stream::new();
                 for (field, ty) in fields {
                     let id = Ident::new(field, Span::call_site());
                     let ref_toks = quote!(node.#id);
@@ -685,7 +688,7 @@ mod fold {
                 #[cfg(any(feature = "full", feature = "derive"))]
                 use crate::gen::helper::fold::*;
                 use crate::*;
-                use proc_macro2::Span;
+                use syn::pm2::Span;
                 #full_macro
                 /// Syntax tree traversal to transform the nodes of an owned syntax tree.
                 ///
@@ -702,9 +705,9 @@ mod fold {
     }
 }
 mod full {
-    use proc_macro2::TokenStream;
-    use quote::quote;
-    pub fn get_macro() -> TokenStream {
+    use syn::pm2::Stream;
+    use syn::quote::quote;
+    pub fn get_macro() -> Stream {
         quote! {
             #[cfg(feature = "full")]
             macro_rules! full {
@@ -724,16 +727,13 @@ mod full {
 mod gen {
     use crate::cfg;
     use inflections::Inflect;
-    use proc_macro2::{Ident, Span, TokenStream};
-    use syn_codegen::{Data, Definitions, Features, Node};
+    use json::{Data, Definitions, Features, Node};
+    use syn::pm2::{Ident, Span, Stream};
     pub const TERMINAL_TYPES: &[&str] = &["Span", "Ident"];
     pub fn under_name(name: &str) -> Ident {
         Ident::new(&name.to_snake_case(), Span::call_site())
     }
-    pub fn traverse(
-        defs: &Definitions,
-        node: fn(&mut TokenStream, &mut TokenStream, &Node, &Definitions),
-    ) -> (TokenStream, TokenStream) {
+    pub fn traverse(defs: &Definitions, node: fn(&mut Stream, &mut Stream, &Node, &Definitions)) -> (Stream, Stream) {
         let mut types = defs.types.clone();
         for &terminal in TERMINAL_TYPES {
             types.push(Node {
@@ -744,8 +744,8 @@ mod gen {
             });
         }
         types.sort_by(|a, b| a.ident.cmp(&b.ident));
-        let mut traits = TokenStream::new();
-        let mut impls = TokenStream::new();
+        let mut traits = Stream::new();
+        let mut impls = Stream::new();
         for s in types {
             let features = cfg::features(&s.features);
             traits.extend(features.clone());
@@ -758,9 +758,9 @@ mod gen {
 mod hash {
     use crate::{cfg, file, lookup};
     use anyhow::Result;
-    use proc_macro2::{Ident, Span, TokenStream};
-    use quote::{format_ident, quote};
-    use syn_codegen::{Data, Definitions, Node, Type};
+    use json::{Data, Definitions, Node, Type};
+    use syn::pm2::{Ident, Span, Stream};
+    use syn::quote::{format_ident, quote};
     const HASH_SRC: &str = "src/gen/hash.rs";
     fn skip(field_type: &Type) -> bool {
         match field_type {
@@ -771,7 +771,7 @@ mod hash {
             _ => false,
         }
     }
-    fn expand_impl_body(defs: &Definitions, node: &Node) -> TokenStream {
+    fn expand_impl_body(defs: &Definitions, node: &Node) -> Stream {
         let type_name = &node.ident;
         let ident = Ident::new(type_name, Span::call_site());
         match &node.data {
@@ -797,8 +797,8 @@ mod hash {
                             let var = format_ident!("v{}", i);
                             let mut hashed_val = quote!(#var);
                             match field {
-                                Type::Ext(ty) if ty == "TokenStream" => {
-                                    hashed_val = quote!(TokenStreamHelper(#hashed_val));
+                                Type::Ext(ty) if ty == "Stream" => {
+                                    hashed_val = quote!(StreamHelper(#hashed_val));
                                 },
                                 Type::Ext(ty) if ty == "Literal" => {
                                     hashed_val = quote!(#hashed_val.to_string());
@@ -851,8 +851,8 @@ mod hash {
                     let ident = Ident::new(f, Span::call_site());
                     let mut val = quote!(self.#ident);
                     if let Type::Ext(ty) = ty {
-                        if ty == "TokenStream" {
-                            val = quote!(TokenStreamHelper(&#val));
+                        if ty == "Stream" {
+                            val = quote!(StreamHelper(&#val));
                         }
                     }
                     Some(quote! {
@@ -863,11 +863,11 @@ mod hash {
             Data::Private => unreachable!(),
         }
     }
-    fn expand_impl(defs: &Definitions, node: &Node) -> TokenStream {
+    fn expand_impl(defs: &Definitions, node: &Node) -> Stream {
         let manual_hash =
             node.data == Data::Private || node.ident == "Member" || node.ident == "Index" || node.ident == "Lifetime";
         if manual_hash {
-            return TokenStream::new();
+            return Stream::new();
         }
         let ident = Ident::new(&node.ident, Span::call_site());
         let cfg_features = cfg::features(&node.features);
@@ -891,7 +891,7 @@ mod hash {
         }
     }
     pub fn generate(defs: &Definitions) -> Result<()> {
-        let mut impls = TokenStream::new();
+        let mut impls = Stream::new();
         for node in &defs.types {
             impls.extend(expand_impl(defs, node));
         }
@@ -899,7 +899,7 @@ mod hash {
             HASH_SRC,
             quote! {
                 #[cfg(any(feature = "derive", feature = "full"))]
-                use crate::tt::TokenStreamHelper;
+                use crate::tt::StreamHelper;
                 use crate::*;
                 use std::hash::{Hash, Hasher};
                 #impls
@@ -912,7 +912,6 @@ mod json {
     use crate::workspace_path;
     use anyhow::Result;
     use std::fs;
-    use syn_codegen::Definitions;
     pub fn generate(defs: &Definitions) -> Result<()> {
         let mut j = serde_json::to_string_pretty(&defs)?;
         j.push('\n');
@@ -922,9 +921,90 @@ mod json {
         fs::write(json_path, j)?;
         Ok(())
     }
+    use indexmap::IndexMap;
+    use semver::Version;
+    use serde::de::{Deserialize, Deserializer};
+    use serde_derive::{Deserialize, Serialize};
+    use std::collections::{BTreeMap, BTreeSet};
+
+    #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+    pub struct Definitions {
+        pub version: Version,
+        pub types: Vec<Node>,
+        pub tokens: BTreeMap<String, String>,
+    }
+
+    #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+    pub struct Node {
+        pub ident: String,
+        pub features: Features,
+        #[serde(flatten, skip_serializing_if = "is_private", deserialize_with = "private_if_absent")]
+        pub data: Data,
+        #[serde(skip_serializing_if = "is_true", default = "bool_true")]
+        pub exhaustive: bool,
+    }
+
+    #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+    pub enum Data {
+        Private,
+        #[serde(rename = "fields")]
+        Struct(Fields),
+        #[serde(rename = "variants")]
+        Enum(Variants),
+    }
+
+    pub type Fields = IndexMap<String, Type>;
+    pub type Variants = IndexMap<String, Vec<Type>>;
+
+    #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+    #[serde(rename_all = "lowercase")]
+    pub enum Type {
+        Syn(String),
+        Std(String),
+        #[serde(rename = "proc_macro2")]
+        Ext(String),
+        Token(String),
+        Group(String),
+        Punctuated(Punctuated),
+        Option(Box<Type>),
+        Box(Box<Type>),
+        Vec(Box<Type>),
+        Tuple(Vec<Type>),
+    }
+
+    #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+    pub struct Punctuated {
+        pub element: Box<Type>,
+        pub punct: String,
+    }
+
+    #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+    pub struct Features {
+        pub any: BTreeSet<String>,
+    }
+
+    fn is_private(data: &Data) -> bool {
+        match data {
+            Data::Private => true,
+            Data::Struct(_) | Data::Enum(_) => false,
+        }
+    }
+    fn private_if_absent<'de, D>(deserializer: D) -> Result<Data, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let option = Option::deserialize(deserializer)?;
+        Ok(option.unwrap_or(Data::Private))
+    }
+    fn is_true(b: &bool) -> bool {
+        *b
+    }
+    fn bool_true() -> bool {
+        true
+    }
 }
 mod lookup {
-    use syn_codegen::{Definitions, Node};
+    use json::{Definitions, Node};
     pub fn node<'a>(defs: &'a Definitions, name: &str) -> &'a Node {
         for node in &defs.types {
             if node.ident == name {
@@ -935,32 +1015,32 @@ mod lookup {
     }
 }
 mod operand {
-    use proc_macro2::TokenStream;
-    use quote::quote;
+    use syn::pm2::Stream;
+    use syn::quote::quote;
     pub enum Operand {
-        Borrowed(TokenStream),
-        Owned(TokenStream),
+        Borrowed(Stream),
+        Owned(Stream),
     }
     pub use self::Operand::*;
     impl Operand {
-        pub fn tokens(&self) -> &TokenStream {
+        pub fn tokens(&self) -> &Stream {
             match self {
                 Borrowed(n) | Owned(n) => n,
             }
         }
-        pub fn ref_tokens(&self) -> TokenStream {
+        pub fn ref_tokens(&self) -> Stream {
             match self {
                 Borrowed(n) => n.clone(),
                 Owned(n) => quote!(&#n),
             }
         }
-        pub fn ref_mut_tokens(&self) -> TokenStream {
+        pub fn ref_mut_tokens(&self) -> Stream {
             match self {
                 Borrowed(n) => n.clone(),
                 Owned(n) => quote!(&mut #n),
             }
         }
-        pub fn owned_tokens(&self) -> TokenStream {
+        pub fn owned_tokens(&self) -> Stream {
             match self {
                 Borrowed(n) => quote!(*#n),
                 Owned(n) => n.clone(),
@@ -972,11 +1052,11 @@ mod parse {
     use crate::{version, workspace_path};
     use anyhow::{bail, Result};
     use indexmap::IndexMap;
-    use quote::quote;
     use std::collections::BTreeMap;
     use std::fs;
     use std::path::{Path, PathBuf};
     use syn::parse::{Error, Parser};
+    use syn::quote::quote;
     use syn::{
         parse_quote, Attribute, Data, DataEnum, DataStruct, DeriveInput, Fields, GenericArgument, Ident, Item,
         PathArguments, TypeMacro, TypePath, TypeTuple, UseTree, Visibility,
@@ -1108,7 +1188,7 @@ mod parse {
                         types::Type::Box(Box::new(nested))
                     },
                     "Brace" | "Bracket" | "Paren" | "Group" => types::Type::Group(string),
-                    "TokenStream" | "Literal" | "Ident" | "Span" => types::Type::Ext(string),
+                    "Stream" | "Literal" | "Ident" | "Span" => types::Type::Ext(string),
                     "String" | "u32" | "usize" | "bool" => types::Type::Std(string),
                     _ => {
                         let mut resolved = &last.ident;
@@ -1197,10 +1277,10 @@ mod parse {
     }
     mod parsing {
         use super::AstItem;
-        use proc_macro2::TokenStream;
-        use quote::quote;
         use std::collections::{BTreeMap, BTreeSet};
         use syn::parse::{ParseStream, Result};
+        use syn::pm2::Stream;
+        use syn::quote::quote;
         use syn::{
             braced, bracketed, parenthesized, parse_quote, token, Attribute, Expr, Ident, Lit, LitStr, Path, Token,
         };
@@ -1224,7 +1304,7 @@ mod parse {
         fn ast_struct_inner(input: ParseStream) -> Result<AstItem> {
             let ident: Ident = input.parse()?;
             let features = full(input);
-            let rest: TokenStream = input.parse()?;
+            let rest: Stream = input.parse()?;
             Ok(AstItem {
                 ast: syn::parse2(quote! {
                     pub struct #ident #rest
@@ -1254,7 +1334,7 @@ mod parse {
             input.parse::<Token![enum]>()?;
             let ident: Ident = input.parse()?;
             let no_visit = no_visit(input);
-            let rest: TokenStream = input.parse()?;
+            let rest: Stream = input.parse()?;
             Ok(if no_visit {
                 None
             } else {
@@ -1334,7 +1414,7 @@ mod parse {
             while !input.is_empty() {
                 let pattern;
                 bracketed!(pattern in input);
-                let token = pattern.parse::<TokenStream>()?.to_string();
+                let token = pattern.parse::<Stream>()?.to_string();
                 input.parse::<Token![=>]>()?;
                 let expansion;
                 braced!(expansion in input);
@@ -1559,12 +1639,12 @@ mod snapshot {
     use crate::operand::{Borrowed, Operand, Owned};
     use crate::{file, lookup};
     use anyhow::Result;
-    use proc_macro2::{Ident, Span, TokenStream};
-    use quote::{format_ident, quote};
+    use json::{Data, Definitions, Node, Type};
+    use syn::pm2::{Ident, Span, Stream};
+    use syn::quote::{format_ident, quote};
     use syn::Index;
-    use syn_codegen::{Data, Definitions, Node, Type};
     const TESTS_DEBUG_SRC: &str = "tests/debug/gen.rs";
-    fn rust_type(ty: &Type) -> TokenStream {
+    fn rust_type(ty: &Type) -> Stream {
         match ty {
             Type::Syn(ty) => {
                 let ident = Ident::new(ty, Span::call_site());
@@ -1576,7 +1656,7 @@ mod snapshot {
             },
             Type::Ext(ty) => {
                 let ident = Ident::new(ty, Span::call_site());
-                quote!(proc_macro2::#ident)
+                quote!(syn::pm2::#ident)
             },
             Type::Token(ty) | Type::Group(ty) => {
                 let ident = Ident::new(ty, Span::call_site());
@@ -1614,7 +1694,7 @@ mod snapshot {
             Type::Syn(_) | Type::Std(_) | Type::Punctuated(_) | Type::Option(_) | Type::Vec(_) => true,
         }
     }
-    fn format_field(val: &Operand, ty: &Type) -> Option<TokenStream> {
+    fn format_field(val: &Operand, ty: &Type) -> Option<Stream> {
         if !is_printable(ty) {
             return None;
         }
@@ -1650,7 +1730,7 @@ mod snapshot {
                 }
             },
             Type::Tuple(ty) => {
-                let printable: Vec<TokenStream> = ty
+                let printable: Vec<Stream> = ty
                     .iter()
                     .enumerate()
                     .filter_map(|(i, ty)| {
@@ -1693,7 +1773,7 @@ mod snapshot {
             _ => None,
         }
     }
-    fn expand_impl_body(defs: &Definitions, node: &Node, name: &str, val: &Operand) -> TokenStream {
+    fn expand_impl_body(defs: &Definitions, node: &Node, name: &str, val: &Operand) -> Stream {
         let ident = Ident::new(&node.ident, Span::call_site());
         match &node.data {
             Data::Enum(variants) if variants.is_empty() => quote!(unreachable!()),
@@ -1855,7 +1935,7 @@ mod snapshot {
             },
         }
     }
-    fn expand_impl(defs: &Definitions, node: &Node) -> TokenStream {
+    fn expand_impl(defs: &Definitions, node: &Node) -> Stream {
         let ident = Ident::new(&node.ident, Span::call_site());
         let body = expand_impl_body(defs, node, &node.ident, &Owned(quote!(self.value)));
         let formatter = match &node.data {
@@ -1871,7 +1951,7 @@ mod snapshot {
         }
     }
     pub fn generate(defs: &Definitions) -> Result<()> {
-        let mut impls = TokenStream::new();
+        let mut impls = Stream::new();
         for node in &defs.types {
             impls.extend(expand_impl(defs, node));
         }
@@ -1913,12 +1993,12 @@ mod visit {
     use crate::operand::{Borrowed, Operand, Owned};
     use crate::{file, full, gen};
     use anyhow::Result;
-    use proc_macro2::{Ident, Span, TokenStream};
-    use quote::{format_ident, quote};
+    use json::{Data, Definitions, Features, Node, Type};
+    use syn::pm2::{Ident, Span, Stream};
+    use syn::quote::{format_ident, quote};
     use syn::Index;
-    use syn_codegen::{Data, Definitions, Features, Node, Type};
     const VISIT_SRC: &str = "src/gen/visit.rs";
-    fn simple_visit(item: &str, name: &Operand) -> TokenStream {
+    fn simple_visit(item: &str, name: &Operand) -> Stream {
         let ident = gen::under_name(item);
         let method = format_ident!("visit_{}", ident);
         let name = name.ref_tokens();
@@ -1926,13 +2006,13 @@ mod visit {
             v.#method(#name)
         }
     }
-    fn noop_visit(name: &Operand) -> TokenStream {
+    fn noop_visit(name: &Operand) -> Stream {
         let name = name.tokens();
         quote! {
             skip!(#name)
         }
     }
-    fn visit(ty: &Type, features: &Features, defs: &Definitions, name: &Operand) -> Option<TokenStream> {
+    fn visit(ty: &Type, features: &Features, defs: &Definitions, name: &Operand) -> Option<Stream> {
         match ty {
             Type::Box(t) => {
                 let name = name.owned_tokens();
@@ -1970,7 +2050,7 @@ mod visit {
                 })
             },
             Type::Tuple(t) => {
-                let mut code = TokenStream::new();
+                let mut code = Stream::new();
                 for (i, elem) in t.iter().enumerate() {
                     let name = name.tokens();
                     let i = Index::from(i);
@@ -1996,11 +2076,11 @@ mod visit {
             Type::Ext(_) | Type::Std(_) | Type::Token(_) | Type::Group(_) => None,
         }
     }
-    fn node(traits: &mut TokenStream, impls: &mut TokenStream, s: &Node, defs: &Definitions) {
+    fn node(traits: &mut Stream, impls: &mut Stream, s: &Node, defs: &Definitions) {
         let under_name = gen::under_name(&s.ident);
         let ty = Ident::new(&s.ident, Span::call_site());
         let visit_fn = format_ident!("visit_{}", under_name);
-        let mut visit_impl = TokenStream::new();
+        let mut visit_impl = Stream::new();
         match &s.data {
             Data::Enum(variants) if variants.is_empty() => {
                 visit_impl.extend(quote! {
@@ -2008,7 +2088,7 @@ mod visit {
                 });
             },
             Data::Enum(variants) => {
-                let mut visit_variants = TokenStream::new();
+                let mut visit_variants = Stream::new();
                 for (variant, fields) in variants {
                     let variant_ident = Ident::new(variant, Span::call_site());
                     if fields.is_empty() {
@@ -2016,8 +2096,8 @@ mod visit {
                             #ty::#variant_ident => {}
                         });
                     } else {
-                        let mut bind_visit_fields = TokenStream::new();
-                        let mut visit_fields = TokenStream::new();
+                        let mut bind_visit_fields = Stream::new();
+                        let mut visit_fields = Stream::new();
                         for (idx, ty) in fields.iter().enumerate() {
                             let binding = format_ident!("_binding_{}", idx);
                             bind_visit_fields.extend(quote! {
@@ -2086,7 +2166,7 @@ mod visit {
                 #[cfg(any(feature = "full", feature = "derive"))]
                 use crate::punctuated::Punctuated;
                 use crate::*;
-                use proc_macro2::Span;
+                use syn::pm2::Span;
                 #full_macro
                 macro_rules! skip {
                     ($($tt:tt)*) => {};
@@ -2109,12 +2189,12 @@ mod visit_mut {
     use crate::operand::{Borrowed, Operand, Owned};
     use crate::{file, full, gen};
     use anyhow::Result;
-    use proc_macro2::{Ident, Span, TokenStream};
-    use quote::{format_ident, quote};
+    use json::{Data, Definitions, Features, Node, Type};
+    use syn::pm2::{Ident, Span, Stream};
+    use syn::quote::{format_ident, quote};
     use syn::Index;
-    use syn_codegen::{Data, Definitions, Features, Node, Type};
     const VISIT_MUT_SRC: &str = "src/gen/visit_mut.rs";
-    fn simple_visit(item: &str, name: &Operand) -> TokenStream {
+    fn simple_visit(item: &str, name: &Operand) -> Stream {
         let ident = gen::under_name(item);
         let method = format_ident!("visit_{}_mut", ident);
         let name = name.ref_mut_tokens();
@@ -2122,13 +2202,13 @@ mod visit_mut {
             v.#method(#name)
         }
     }
-    fn noop_visit(name: &Operand) -> TokenStream {
+    fn noop_visit(name: &Operand) -> Stream {
         let name = name.tokens();
         quote! {
             skip!(#name)
         }
     }
-    fn visit(ty: &Type, features: &Features, defs: &Definitions, name: &Operand) -> Option<TokenStream> {
+    fn visit(ty: &Type, features: &Features, defs: &Definitions, name: &Operand) -> Option<Stream> {
         match ty {
             Type::Box(t) => {
                 let name = name.owned_tokens();
@@ -2166,7 +2246,7 @@ mod visit_mut {
                 })
             },
             Type::Tuple(t) => {
-                let mut code = TokenStream::new();
+                let mut code = Stream::new();
                 for (i, elem) in t.iter().enumerate() {
                     let name = name.tokens();
                     let i = Index::from(i);
@@ -2192,11 +2272,11 @@ mod visit_mut {
             Type::Ext(_) | Type::Std(_) | Type::Token(_) | Type::Group(_) => None,
         }
     }
-    fn node(traits: &mut TokenStream, impls: &mut TokenStream, s: &Node, defs: &Definitions) {
+    fn node(traits: &mut Stream, impls: &mut Stream, s: &Node, defs: &Definitions) {
         let under_name = gen::under_name(&s.ident);
         let ty = Ident::new(&s.ident, Span::call_site());
         let visit_mut_fn = format_ident!("visit_{}_mut", under_name);
-        let mut visit_mut_impl = TokenStream::new();
+        let mut visit_mut_impl = Stream::new();
         match &s.data {
             Data::Enum(variants) if variants.is_empty() => {
                 visit_mut_impl.extend(quote! {
@@ -2204,7 +2284,7 @@ mod visit_mut {
                 });
             },
             Data::Enum(variants) => {
-                let mut visit_mut_variants = TokenStream::new();
+                let mut visit_mut_variants = Stream::new();
                 for (variant, fields) in variants {
                     let variant_ident = Ident::new(variant, Span::call_site());
                     if fields.is_empty() {
@@ -2212,8 +2292,8 @@ mod visit_mut {
                             #ty::#variant_ident => {}
                         });
                     } else {
-                        let mut bind_visit_mut_fields = TokenStream::new();
-                        let mut visit_mut_fields = TokenStream::new();
+                        let mut bind_visit_mut_fields = Stream::new();
+                        let mut visit_mut_fields = Stream::new();
                         for (idx, ty) in fields.iter().enumerate() {
                             let binding = format_ident!("_binding_{}", idx);
                             bind_visit_mut_fields.extend(quote! {
@@ -2284,7 +2364,7 @@ mod visit_mut {
                 #[cfg(any(feature = "full", feature = "derive"))]
                 use crate::punctuated::Punctuated;
                 use crate::*;
-                use proc_macro2::Span;
+                use syn::pm2::Span;
                 #full_macro
                 macro_rules! skip {
                     ($($tt:tt)*) => {};
