@@ -1,449 +1,453 @@
 use crate::StreamHelper;
 use crate::*;
 use std::hash::{Hash, Hasher};
-impl Hash for Abi {
-    fn hash<H>(&self, state: &mut H)
+impl Hash for typ::Abi {
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.name.hash(state);
+        self.name.hash(h);
     }
 }
-impl Hash for AngledArgs {
-    fn hash<H>(&self, state: &mut H)
+impl Hash for path::AngledArgs {
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.colon2.hash(state);
-        self.args.hash(state);
+        self.colon2.hash(h);
+        self.args.hash(h);
     }
 }
-impl Hash for Arm {
-    fn hash<H>(&self, state: &mut H)
+impl Hash for expr::Arm {
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.pat.hash(state);
-        self.guard.hash(state);
-        self.body.hash(state);
-        self.comma.hash(state);
+        self.attrs.hash(h);
+        self.pat.hash(h);
+        self.guard.hash(h);
+        self.body.hash(h);
+        self.comma.hash(h);
     }
 }
-impl Hash for AssocConst {
-    fn hash<H>(&self, state: &mut H)
+impl Hash for path::AssocConst {
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.ident.hash(state);
-        self.gnrs.hash(state);
-        self.val.hash(state);
+        self.ident.hash(h);
+        self.args.hash(h);
+        self.val.hash(h);
     }
 }
-impl Hash for AssocType {
-    fn hash<H>(&self, state: &mut H)
+impl Hash for path::AssocType {
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.ident.hash(state);
-        self.gnrs.hash(state);
-        self.ty.hash(state);
+        self.ident.hash(h);
+        self.args.hash(h);
+        self.typ.hash(h);
     }
 }
 impl Hash for attr::Style {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
+        use attr::Style::*;
         match self {
-            attr::Style::Outer => {
-                state.write_u8(0u8);
+            Outer => {
+                h.write_u8(0u8);
             },
-            attr::Style::Inner(_) => {
-                state.write_u8(1u8);
+            Inner(_) => {
+                h.write_u8(1u8);
             },
         }
     }
 }
 impl Hash for attr::Attr {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.style.hash(state);
-        self.meta.hash(state);
+        self.style.hash(h);
+        self.meta.hash(h);
     }
 }
 impl Hash for typ::FnArg {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.name.hash(state);
-        self.typ.hash(state);
+        self.attrs.hash(h);
+        self.name.hash(h);
+        self.typ.hash(h);
     }
 }
 impl Hash for typ::Variadic {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.name.hash(state);
-        self.comma.hash(state);
+        self.attrs.hash(h);
+        self.name.hash(h);
+        self.comma.hash(h);
     }
 }
-impl Hash for BinOp {
-    fn hash<H>(&self, state: &mut H)
+impl Hash for expr::BinOp {
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
+        use expr::BinOp::*;
         match self {
-            BinOp::Add(_) => {
-                state.write_u8(0u8);
+            Add(_) => {
+                h.write_u8(0u8);
             },
-            BinOp::Sub(_) => {
-                state.write_u8(1u8);
+            Sub(_) => {
+                h.write_u8(1u8);
             },
-            BinOp::Mul(_) => {
-                state.write_u8(2u8);
+            Mul(_) => {
+                h.write_u8(2u8);
             },
-            BinOp::Div(_) => {
-                state.write_u8(3u8);
+            Div(_) => {
+                h.write_u8(3u8);
             },
-            BinOp::Rem(_) => {
-                state.write_u8(4u8);
+            Rem(_) => {
+                h.write_u8(4u8);
             },
-            BinOp::And(_) => {
-                state.write_u8(5u8);
+            And(_) => {
+                h.write_u8(5u8);
             },
-            BinOp::Or(_) => {
-                state.write_u8(6u8);
+            Or(_) => {
+                h.write_u8(6u8);
             },
-            BinOp::BitXor(_) => {
-                state.write_u8(7u8);
+            BitXor(_) => {
+                h.write_u8(7u8);
             },
-            BinOp::BitAnd(_) => {
-                state.write_u8(8u8);
+            BitAnd(_) => {
+                h.write_u8(8u8);
             },
-            BinOp::BitOr(_) => {
-                state.write_u8(9u8);
+            BitOr(_) => {
+                h.write_u8(9u8);
             },
-            BinOp::Shl(_) => {
-                state.write_u8(10u8);
+            Shl(_) => {
+                h.write_u8(10u8);
             },
-            BinOp::Shr(_) => {
-                state.write_u8(11u8);
+            Shr(_) => {
+                h.write_u8(11u8);
             },
-            BinOp::Eq(_) => {
-                state.write_u8(12u8);
+            Eq(_) => {
+                h.write_u8(12u8);
             },
-            BinOp::Lt(_) => {
-                state.write_u8(13u8);
+            Lt(_) => {
+                h.write_u8(13u8);
             },
-            BinOp::Le(_) => {
-                state.write_u8(14u8);
+            Le(_) => {
+                h.write_u8(14u8);
             },
-            BinOp::Ne(_) => {
-                state.write_u8(15u8);
+            Ne(_) => {
+                h.write_u8(15u8);
             },
-            BinOp::Ge(_) => {
-                state.write_u8(16u8);
+            Ge(_) => {
+                h.write_u8(16u8);
             },
-            BinOp::Gt(_) => {
-                state.write_u8(17u8);
+            Gt(_) => {
+                h.write_u8(17u8);
             },
-            BinOp::AddAssign(_) => {
-                state.write_u8(18u8);
+            AddAssign(_) => {
+                h.write_u8(18u8);
             },
-            BinOp::SubAssign(_) => {
-                state.write_u8(19u8);
+            SubAssign(_) => {
+                h.write_u8(19u8);
             },
-            BinOp::MulAssign(_) => {
-                state.write_u8(20u8);
+            MulAssign(_) => {
+                h.write_u8(20u8);
             },
-            BinOp::DivAssign(_) => {
-                state.write_u8(21u8);
+            DivAssign(_) => {
+                h.write_u8(21u8);
             },
-            BinOp::RemAssign(_) => {
-                state.write_u8(22u8);
+            RemAssign(_) => {
+                h.write_u8(22u8);
             },
-            BinOp::BitXorAssign(_) => {
-                state.write_u8(23u8);
+            BitXorAssign(_) => {
+                h.write_u8(23u8);
             },
-            BinOp::BitAndAssign(_) => {
-                state.write_u8(24u8);
+            BitAndAssign(_) => {
+                h.write_u8(24u8);
             },
-            BinOp::BitOrAssign(_) => {
-                state.write_u8(25u8);
+            BitOrAssign(_) => {
+                h.write_u8(25u8);
             },
-            BinOp::ShlAssign(_) => {
-                state.write_u8(26u8);
+            ShlAssign(_) => {
+                h.write_u8(26u8);
             },
-            BinOp::ShrAssign(_) => {
-                state.write_u8(27u8);
+            ShrAssign(_) => {
+                h.write_u8(27u8);
             },
         }
     }
 }
-impl Hash for Block {
-    fn hash<H>(&self, state: &mut H)
+impl Hash for stmt::Block {
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.stmts.hash(state);
+        self.stmts.hash(h);
     }
 }
-impl Hash for Bgen::bound::Lifes {
-    fn hash<H>(&self, state: &mut H)
+impl Hash for gen::bound::Lifes {
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.lifes.hash(state);
+        self.lifes.hash(h);
     }
 }
 impl Hash for gen::param::Const {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.ident.hash(state);
-        self.typ.hash(state);
-        self.eq.hash(state);
-        self.default.hash(state);
+        self.attrs.hash(h);
+        self.ident.hash(h);
+        self.typ.hash(h);
+        self.eq.hash(h);
+        self.default.hash(h);
     }
 }
-impl Hash for Constraint {
-    fn hash<H>(&self, state: &mut H)
+impl Hash for path::Constraint {
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.ident.hash(state);
-        self.gnrs.hash(state);
-        self.bounds.hash(state);
+        self.ident.hash(h);
+        self.args.hash(h);
+        self.bounds.hash(h);
     }
 }
-impl Hash for Data {
-    fn hash<H>(&self, state: &mut H)
+impl Hash for data::Data {
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
+        use data::Data::*;
         match self {
-            Data::Struct(v0) => {
-                state.write_u8(0u8);
-                v0.hash(state);
+            Struct(x) => {
+                h.write_u8(0u8);
+                x.hash(h);
             },
-            Data::Enum(v0) => {
-                state.write_u8(1u8);
-                v0.hash(state);
+            Enum(x) => {
+                h.write_u8(1u8);
+                x.hash(h);
             },
-            Data::Union(v0) => {
-                state.write_u8(2u8);
-                v0.hash(state);
+            Union(x) => {
+                h.write_u8(2u8);
+                x.hash(h);
             },
         }
     }
 }
 impl Hash for data::Enum {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.variants.hash(state);
+        self.variants.hash(h);
     }
 }
 impl Hash for data::Struct {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.fields.hash(state);
-        self.semi.hash(state);
+        self.fields.hash(h);
+        self.semi.hash(h);
     }
 }
 impl Hash for data::Union {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.fields.hash(state);
+        self.fields.hash(h);
     }
 }
 impl Hash for DeriveInput {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.vis.hash(state);
-        self.ident.hash(state);
-        self.gens.hash(state);
-        self.data.hash(state);
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.ident.hash(h);
+        self.gens.hash(h);
+        self.data.hash(h);
     }
 }
-impl Hash for Expr {
-    fn hash<H>(&self, state: &mut H)
+impl Hash for expr::Expr {
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
+        use expr::Expr::*;
         match self {
-            Expr::Array(v0) => {
-                state.write_u8(0u8);
-                v0.hash(state);
+            Array(x) => {
+                h.write_u8(0u8);
+                x.hash(h);
             },
-            Expr::Assign(v0) => {
-                state.write_u8(1u8);
-                v0.hash(state);
+            Assign(x) => {
+                h.write_u8(1u8);
+                x.hash(h);
             },
-            Expr::Async(v0) => {
-                state.write_u8(2u8);
-                v0.hash(state);
+            Async(x) => {
+                h.write_u8(2u8);
+                x.hash(h);
             },
-            Expr::Await(v0) => {
-                state.write_u8(3u8);
-                v0.hash(state);
+            Await(x) => {
+                h.write_u8(3u8);
+                x.hash(h);
             },
-            Expr::Binary(v0) => {
-                state.write_u8(4u8);
-                v0.hash(state);
+            Binary(x) => {
+                h.write_u8(4u8);
+                x.hash(h);
             },
-            Expr::Block(v0) => {
-                state.write_u8(5u8);
-                v0.hash(state);
+            Block(x) => {
+                h.write_u8(5u8);
+                x.hash(h);
             },
-            Expr::Break(v0) => {
-                state.write_u8(6u8);
-                v0.hash(state);
+            Break(x) => {
+                h.write_u8(6u8);
+                x.hash(h);
             },
-            Expr::Call(v0) => {
-                state.write_u8(7u8);
-                v0.hash(state);
+            Call(x) => {
+                h.write_u8(7u8);
+                x.hash(h);
             },
-            Expr::Cast(v0) => {
-                state.write_u8(8u8);
-                v0.hash(state);
+            Cast(x) => {
+                h.write_u8(8u8);
+                x.hash(h);
             },
-            Expr::Closure(v0) => {
-                state.write_u8(9u8);
-                v0.hash(state);
+            Closure(x) => {
+                h.write_u8(9u8);
+                x.hash(h);
             },
-            Expr::Const(v0) => {
-                state.write_u8(10u8);
-                v0.hash(state);
+            Const(x) => {
+                h.write_u8(10u8);
+                x.hash(h);
             },
-            Expr::Continue(v0) => {
-                state.write_u8(11u8);
-                v0.hash(state);
+            Continue(x) => {
+                h.write_u8(11u8);
+                x.hash(h);
             },
-            Expr::Field(v0) => {
-                state.write_u8(12u8);
-                v0.hash(state);
+            Field(x) => {
+                h.write_u8(12u8);
+                x.hash(h);
             },
-            Expr::ForLoop(v0) => {
-                state.write_u8(13u8);
-                v0.hash(state);
+            ForLoop(x) => {
+                h.write_u8(13u8);
+                x.hash(h);
             },
-            Expr::Group(v0) => {
-                state.write_u8(14u8);
-                v0.hash(state);
+            Group(x) => {
+                h.write_u8(14u8);
+                x.hash(h);
             },
-            Expr::If(v0) => {
-                state.write_u8(15u8);
-                v0.hash(state);
+            If(x) => {
+                h.write_u8(15u8);
+                x.hash(h);
             },
-            Expr::Index(v0) => {
-                state.write_u8(16u8);
-                v0.hash(state);
+            Index(x) => {
+                h.write_u8(16u8);
+                x.hash(h);
             },
-            Expr::Infer(v0) => {
-                state.write_u8(17u8);
-                v0.hash(state);
+            Infer(x) => {
+                h.write_u8(17u8);
+                x.hash(h);
             },
-            Expr::Let(v0) => {
-                state.write_u8(18u8);
-                v0.hash(state);
+            Let(x) => {
+                h.write_u8(18u8);
+                x.hash(h);
             },
-            Expr::Lit(v0) => {
-                state.write_u8(19u8);
-                v0.hash(state);
+            Lit(x) => {
+                h.write_u8(19u8);
+                x.hash(h);
             },
-            Expr::Loop(v0) => {
-                state.write_u8(20u8);
-                v0.hash(state);
+            Loop(x) => {
+                h.write_u8(20u8);
+                x.hash(h);
             },
-            Expr::Macro(v0) => {
-                state.write_u8(21u8);
-                v0.hash(state);
+            Macro(x) => {
+                h.write_u8(21u8);
+                x.hash(h);
             },
-            Expr::Match(v0) => {
-                state.write_u8(22u8);
-                v0.hash(state);
+            Match(x) => {
+                h.write_u8(22u8);
+                x.hash(h);
             },
-            Expr::MethodCall(v0) => {
-                state.write_u8(23u8);
-                v0.hash(state);
+            MethodCall(x) => {
+                h.write_u8(23u8);
+                x.hash(h);
             },
-            Expr::Paren(v0) => {
-                state.write_u8(24u8);
-                v0.hash(state);
+            Paren(x) => {
+                h.write_u8(24u8);
+                x.hash(h);
             },
-            Expr::Path(v0) => {
-                state.write_u8(25u8);
-                v0.hash(state);
+            Path(x) => {
+                h.write_u8(25u8);
+                x.hash(h);
             },
-            Expr::Range(v0) => {
-                state.write_u8(26u8);
-                v0.hash(state);
+            Range(x) => {
+                h.write_u8(26u8);
+                x.hash(h);
             },
-            Expr::Reference(v0) => {
-                state.write_u8(27u8);
-                v0.hash(state);
+            Reference(x) => {
+                h.write_u8(27u8);
+                x.hash(h);
             },
-            Expr::Repeat(v0) => {
-                state.write_u8(28u8);
-                v0.hash(state);
+            Repeat(x) => {
+                h.write_u8(28u8);
+                x.hash(h);
             },
-            Expr::Return(v0) => {
-                state.write_u8(29u8);
-                v0.hash(state);
+            Return(x) => {
+                h.write_u8(29u8);
+                x.hash(h);
             },
-            Expr::Struct(v0) => {
-                state.write_u8(30u8);
-                v0.hash(state);
+            Struct(x) => {
+                h.write_u8(30u8);
+                x.hash(h);
             },
-            Expr::Try(v0) => {
-                state.write_u8(31u8);
-                v0.hash(state);
+            Try(x) => {
+                h.write_u8(31u8);
+                x.hash(h);
             },
-            Expr::TryBlock(v0) => {
-                state.write_u8(32u8);
-                v0.hash(state);
+            TryBlock(x) => {
+                h.write_u8(32u8);
+                x.hash(h);
             },
-            Expr::Tuple(v0) => {
-                state.write_u8(33u8);
-                v0.hash(state);
+            Tuple(x) => {
+                h.write_u8(33u8);
+                x.hash(h);
             },
-            Expr::Unary(v0) => {
-                state.write_u8(34u8);
-                v0.hash(state);
+            Unary(x) => {
+                h.write_u8(34u8);
+                x.hash(h);
             },
-            Expr::Unsafe(v0) => {
-                state.write_u8(35u8);
-                v0.hash(state);
+            Unsafe(x) => {
+                h.write_u8(35u8);
+                x.hash(h);
             },
-            Expr::Stream(v0) => {
-                state.write_u8(36u8);
-                StreamHelper(v0).hash(state);
+            Stream(x) => {
+                h.write_u8(36u8);
+                StreamHelper(x).hash(h);
             },
-            Expr::While(v0) => {
-                state.write_u8(37u8);
-                v0.hash(state);
+            While(x) => {
+                h.write_u8(37u8);
+                x.hash(h);
             },
-            Expr::Yield(v0) => {
-                state.write_u8(38u8);
-                v0.hash(state);
+            Yield(x) => {
+                h.write_u8(38u8);
+                x.hash(h);
             },
         }
     }
@@ -882,13 +886,13 @@ impl Hash for data::Fields {
         H: Hasher,
     {
         match self {
-            data::Fields::Named(v0) => {
+            data::Fields::Named(x) => {
                 state.write_u8(0u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            data::Fields::Unnamed(v0) => {
+            data::Fields::Unnamed(x) => {
                 state.write_u8(1u8);
-                v0.hash(state);
+                x.hash(state);
             },
             data::Fields::Unit => {
                 state.write_u8(2u8);
@@ -928,13 +932,13 @@ impl Hash for item::FnArg {
         H: Hasher,
     {
         match self {
-            item::FnArg::Receiver(v0) => {
+            item::FnArg::Receiver(x) => {
                 state.write_u8(0u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            item::FnArg::Type(v0) => {
+            item::FnArg::Type(x) => {
                 state.write_u8(1u8);
-                v0.hash(state);
+                x.hash(state);
             },
         }
     }
@@ -945,25 +949,25 @@ impl Hash for item::foreign::Item {
         H: Hasher,
     {
         match self {
-            item::foreign::Item::Fn(v0) => {
+            item::foreign::Item::Fn(x) => {
                 state.write_u8(0u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            item::foreign::Item::Static(v0) => {
+            item::foreign::Item::Static(x) => {
                 state.write_u8(1u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            item::foreign::Item::Type(v0) => {
+            item::foreign::Item::Type(x) => {
                 state.write_u8(2u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            item::foreign::Item::Macro(v0) => {
+            item::foreign::Item::Macro(x) => {
                 state.write_u8(3u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            item::foreign::Item::Stream(v0) => {
+            item::foreign::Item::Stream(x) => {
                 state.write_u8(4u8);
-                StreamHelper(v0).hash(state);
+                StreamHelper(x).hash(state);
             },
         }
     }
@@ -1017,29 +1021,29 @@ impl Hash for Arg {
         H: Hasher,
     {
         match self {
-            Arg::Life(v0) => {
+            Arg::Life(x) => {
                 state.write_u8(0u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            Arg::Type(v0) => {
+            Arg::Type(x) => {
                 state.write_u8(1u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            Arg::Const(v0) => {
+            Arg::Const(x) => {
                 state.write_u8(2u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            Arg::AssocType(v0) => {
+            Arg::AssocType(x) => {
                 state.write_u8(3u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            Arg::AssocConst(v0) => {
+            Arg::AssocConst(x) => {
                 state.write_u8(4u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            Arg::Constraint(v0) => {
+            Arg::Constraint(x) => {
                 state.write_u8(5u8);
-                v0.hash(state);
+                x.hash(state);
             },
         }
     }
@@ -1050,17 +1054,17 @@ impl Hash for gen::Param {
         H: Hasher,
     {
         match self {
-            gen::Param::Life(v0) => {
+            gen::Param::Life(x) => {
                 state.write_u8(0u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            gen::Param::Type(v0) => {
+            gen::Param::Type(x) => {
                 state.write_u8(1u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            gen::Param::Const(v0) => {
+            gen::Param::Const(x) => {
                 state.write_u8(2u8);
-                v0.hash(state);
+                x.hash(state);
             },
         }
     }
@@ -1082,25 +1086,25 @@ impl Hash for item::impl_::Item {
         H: Hasher,
     {
         match self {
-            item::impl_::Item::Const(v0) => {
+            item::impl_::Item::Const(x) => {
                 state.write_u8(0u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            item::impl_::Item::Fn(v0) => {
+            item::impl_::Item::Fn(x) => {
                 state.write_u8(1u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            item::impl_::Item::Type(v0) => {
+            item::impl_::Item::Type(x) => {
                 state.write_u8(2u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            item::impl_::Item::Macro(v0) => {
+            item::impl_::Item::Macro(x) => {
                 state.write_u8(3u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            item::impl_::Item::Stream(v0) => {
+            item::impl_::Item::Stream(x) => {
                 state.write_u8(4u8);
-                StreamHelper(v0).hash(state);
+                StreamHelper(x).hash(state);
             },
         }
     }
@@ -1168,69 +1172,69 @@ impl Hash for Item {
         H: Hasher,
     {
         match self {
-            Item::Const(v0) => {
+            Item::Const(x) => {
                 state.write_u8(0u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            Item::Enum(v0) => {
+            Item::Enum(x) => {
                 state.write_u8(1u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            Item::Extern(v0) => {
+            Item::Extern(x) => {
                 state.write_u8(2u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            Item::Fn(v0) => {
+            Item::Fn(x) => {
                 state.write_u8(3u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            Item::Foreign(v0) => {
+            Item::Foreign(x) => {
                 state.write_u8(4u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            Item::Impl(v0) => {
+            Item::Impl(x) => {
                 state.write_u8(5u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            Item::Macro(v0) => {
+            Item::Macro(x) => {
                 state.write_u8(6u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            Item::Mod(v0) => {
+            Item::Mod(x) => {
                 state.write_u8(7u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            Item::Static(v0) => {
+            Item::Static(x) => {
                 state.write_u8(8u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            Item::Struct(v0) => {
+            Item::Struct(x) => {
                 state.write_u8(9u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            Item::Trait(v0) => {
+            Item::Trait(x) => {
                 state.write_u8(10u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            Item::TraitAlias(v0) => {
+            Item::TraitAlias(x) => {
                 state.write_u8(11u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            Item::Type(v0) => {
+            Item::Type(x) => {
                 state.write_u8(12u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            Item::Union(v0) => {
+            Item::Union(x) => {
                 state.write_u8(13u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            Item::Use(v0) => {
+            Item::Use(x) => {
                 state.write_u8(14u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            Item::Stream(v0) => {
+            Item::Stream(x) => {
                 state.write_u8(15u8);
-                StreamHelper(v0).hash(state);
+                StreamHelper(x).hash(state);
             },
         }
     }
@@ -1446,37 +1450,37 @@ impl Hash for Lit {
         H: Hasher,
     {
         match self {
-            Lit::Str(v0) => {
+            Lit::Str(x) => {
                 state.write_u8(0u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            Lit::ByteStr(v0) => {
+            Lit::ByteStr(x) => {
                 state.write_u8(1u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            Lit::Byte(v0) => {
+            Lit::Byte(x) => {
                 state.write_u8(2u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            Lit::Char(v0) => {
+            Lit::Char(x) => {
                 state.write_u8(3u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            Lit::Int(v0) => {
+            Lit::Int(x) => {
                 state.write_u8(4u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            Lit::Float(v0) => {
+            Lit::Float(x) => {
                 state.write_u8(5u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            Lit::Bool(v0) => {
+            Lit::Bool(x) => {
                 state.write_u8(6u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            Lit::Stream(v0) => {
+            Lit::Stream(x) => {
                 state.write_u8(7u8);
-                v0.to_string().hash(state);
+                x.to_string().hash(state);
             },
         }
     }
@@ -1542,17 +1546,17 @@ impl Hash for meta::Meta {
         H: Hasher,
     {
         match self {
-            meta::Meta::Path(v0) => {
+            meta::Meta::Path(x) => {
                 state.write_u8(0u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            meta::Meta::List(v0) => {
+            meta::Meta::List(x) => {
                 state.write_u8(1u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            meta::Meta::NameValue(v0) => {
+            meta::Meta::NameValue(x) => {
                 state.write_u8(2u8);
-                v0.hash(state);
+                x.hash(state);
             },
         }
     }
@@ -1591,73 +1595,73 @@ impl Hash for pat::Pat {
         H: Hasher,
     {
         match self {
-            pat::Pat::Const(v0) => {
+            pat::Pat::Const(x) => {
                 state.write_u8(0u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            pat::Pat::Ident(v0) => {
+            pat::Pat::Ident(x) => {
                 state.write_u8(1u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            pat::Pat::Lit(v0) => {
+            pat::Pat::Lit(x) => {
                 state.write_u8(2u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            pat::Pat::Mac(v0) => {
+            pat::Pat::Mac(x) => {
                 state.write_u8(3u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            pat::Pat::Or(v0) => {
+            pat::Pat::Or(x) => {
                 state.write_u8(4u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            pat::Pat::Paren(v0) => {
+            pat::Pat::Paren(x) => {
                 state.write_u8(5u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            pat::Pat::Path(v0) => {
+            pat::Pat::Path(x) => {
                 state.write_u8(6u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            pat::Pat::Range(v0) => {
+            pat::Pat::Range(x) => {
                 state.write_u8(7u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            pat::Pat::Ref(v0) => {
+            pat::Pat::Ref(x) => {
                 state.write_u8(8u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            pat::Pat::Rest(v0) => {
+            pat::Pat::Rest(x) => {
                 state.write_u8(9u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            pat::Pat::Slice(v0) => {
+            pat::Pat::Slice(x) => {
                 state.write_u8(10u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            pat::Pat::Struct(v0) => {
+            pat::Pat::Struct(x) => {
                 state.write_u8(11u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            pat::Pat::Tuple(v0) => {
+            pat::Pat::Tuple(x) => {
                 state.write_u8(12u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            pat::Pat::TupleStruct(v0) => {
+            pat::Pat::TupleStruct(x) => {
                 state.write_u8(13u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            pat::Pat::Type(v0) => {
+            pat::Pat::Type(x) => {
                 state.write_u8(14u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            pat::Pat::Stream(v0) => {
+            pat::Pat::Stream(x) => {
                 state.write_u8(15u8);
-                StreamHelper(v0).hash(state);
+                StreamHelper(x).hash(state);
             },
-            pat::Pat::Wild(v0) => {
+            pat::Pat::Wild(x) => {
                 state.write_u8(16u8);
-                v0.hash(state);
+                x.hash(state);
             },
         }
     }
@@ -1788,13 +1792,13 @@ impl Hash for Args {
             Args::None => {
                 state.write_u8(0u8);
             },
-            Args::Angled(v0) => {
+            Args::Angled(x) => {
                 state.write_u8(1u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            Args::Parenthesized(v0) => {
+            Args::Parenthesized(x) => {
                 state.write_u8(2u8);
-                v0.hash(state);
+                x.hash(state);
             },
         }
     }
@@ -1917,22 +1921,22 @@ impl Hash for stmt::Stmt {
         H: Hasher,
     {
         match self {
-            stmt::Stmt::stmt::Local(v0) => {
+            stmt::Stmt::stmt::Local(x) => {
                 state.write_u8(0u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            stmt::Stmt::Item(v0) => {
+            stmt::Stmt::Item(x) => {
                 state.write_u8(1u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            stmt::Stmt::Expr(v0, v1) => {
+            stmt::Stmt::Expr(x, v1) => {
                 state.write_u8(2u8);
-                v0.hash(state);
+                x.hash(state);
                 v1.hash(state);
             },
-            stmt::Stmt::Mac(v0) => {
+            stmt::Stmt::Mac(x) => {
                 state.write_u8(3u8);
-                v0.hash(state);
+                x.hash(state);
             },
         }
     }
@@ -1979,25 +1983,25 @@ impl Hash for item::trait_::Item {
         H: Hasher,
     {
         match self {
-            item::trait_::Item::Const(v0) => {
+            item::trait_::Item::Const(x) => {
                 state.write_u8(0u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            item::trait_::Item::Fn(v0) => {
+            item::trait_::Item::Fn(x) => {
                 state.write_u8(1u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            item::trait_::Item::Type(v0) => {
+            item::trait_::Item::Type(x) => {
                 state.write_u8(2u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            item::trait_::Item::Macro(v0) => {
+            item::trait_::Item::Macro(x) => {
                 state.write_u8(3u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            item::trait_::Item::Stream(v0) => {
+            item::trait_::Item::Stream(x) => {
                 state.write_u8(4u8);
-                StreamHelper(v0).hash(state);
+                StreamHelper(x).hash(state);
             },
         }
     }
@@ -2054,65 +2058,65 @@ impl Hash for typ::Type {
         H: Hasher,
     {
         match self {
-            typ::Type::Array(v0) => {
+            typ::Type::Array(x) => {
                 state.write_u8(0u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            typ::Type::Fn(v0) => {
+            typ::Type::Fn(x) => {
                 state.write_u8(1u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            typ::Type::Group(v0) => {
+            typ::Type::Group(x) => {
                 state.write_u8(2u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            typ::Type::Impl(v0) => {
+            typ::Type::Impl(x) => {
                 state.write_u8(3u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            typ::Type::Infer(v0) => {
+            typ::Type::Infer(x) => {
                 state.write_u8(4u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            typ::Type::Mac(v0) => {
+            typ::Type::Mac(x) => {
                 state.write_u8(5u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            typ::Type::Never(v0) => {
+            typ::Type::Never(x) => {
                 state.write_u8(6u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            typ::Type::Paren(v0) => {
+            typ::Type::Paren(x) => {
                 state.write_u8(7u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            typ::Type::Path(v0) => {
+            typ::Type::Path(x) => {
                 state.write_u8(8u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            typ::Type::Ptr(v0) => {
+            typ::Type::Ptr(x) => {
                 state.write_u8(9u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            typ::Type::Ref(v0) => {
+            typ::Type::Ref(x) => {
                 state.write_u8(10u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            typ::Type::Slice(v0) => {
+            typ::Type::Slice(x) => {
                 state.write_u8(11u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            typ::Type::Trait(v0) => {
+            typ::Type::Trait(x) => {
                 state.write_u8(12u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            typ::Type::Tuple(v0) => {
+            typ::Type::Tuple(x) => {
                 state.write_u8(13u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            typ::Type::Stream(v0) => {
+            typ::Type::Stream(x) => {
                 state.write_u8(14u8);
-                StreamHelper(v0).hash(state);
+                StreamHelper(x).hash(state);
             },
         }
     }
@@ -2196,17 +2200,17 @@ impl Hash for gen::bound::Type {
         H: Hasher,
     {
         match self {
-            gen::bound::Type::Trait(v0) => {
+            gen::bound::Type::Trait(x) => {
                 state.write_u8(0u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            gen::bound::Type::Life(v0) => {
+            gen::bound::Type::Life(x) => {
                 state.write_u8(1u8);
-                v0.hash(state);
+                x.hash(state);
             },
-            gen::bound::Type::Stream(v0) => {
+            gen::bound::Type::Stream(x) => {
                 state.write_u8(2u8);
-                StreamHelper(v0).hash(state);
+                StreamHelper(x).hash(state);
             },
         }
     }
@@ -2273,164 +2277,168 @@ impl Hash for typ::Tuple {
         self.elems.hash(state);
     }
 }
-impl Hash for UnOp {
-    fn hash<H>(&self, state: &mut H)
+impl Hash for expr::UnOp {
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
+        use expr::UnOp::*;
         match self {
-            UnOp::Deref(_) => {
-                state.write_u8(0u8);
+            Deref(_) => {
+                h.write_u8(0u8);
             },
-            UnOp::Not(_) => {
-                state.write_u8(1u8);
+            Not(_) => {
+                h.write_u8(1u8);
             },
-            UnOp::Neg(_) => {
-                state.write_u8(2u8);
+            Neg(_) => {
+                h.write_u8(2u8);
             },
         }
     }
 }
 impl Hash for item::use_::Glob {
-    fn hash<H>(&self, _state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
     }
 }
 impl Hash for item::use_::Group {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.elems.hash(state);
+        self.elems.hash(h);
     }
 }
 impl Hash for item::use_::Name {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.ident.hash(state);
+        self.ident.hash(h);
     }
 }
 impl Hash for item::use_::Path {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.ident.hash(state);
-        self.tree.hash(state);
+        self.ident.hash(h);
+        self.tree.hash(h);
     }
 }
 impl Hash for item::use_::Rename {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.ident.hash(state);
-        self.rename.hash(state);
+        self.ident.hash(h);
+        self.rename.hash(h);
     }
 }
 impl Hash for item::use_::Tree {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
+        use item::use_::Tree::*;
         match self {
-            item::use_::Tree::Path(v0) => {
-                state.write_u8(0u8);
-                v0.hash(state);
+            Path(x) => {
+                h.write_u8(0u8);
+                x.hash(h);
             },
-            item::use_::Tree::Name(v0) => {
-                state.write_u8(1u8);
-                v0.hash(state);
+            Name(x) => {
+                h.write_u8(1u8);
+                x.hash(h);
             },
-            item::use_::Tree::Rename(v0) => {
-                state.write_u8(2u8);
-                v0.hash(state);
+            Rename(x) => {
+                h.write_u8(2u8);
+                x.hash(h);
             },
-            item::use_::Tree::Glob(v0) => {
-                state.write_u8(3u8);
-                v0.hash(state);
+            Glob(x) => {
+                h.write_u8(3u8);
+                x.hash(h);
             },
-            item::use_::Tree::Group(v0) => {
-                state.write_u8(4u8);
-                v0.hash(state);
+            Group(x) => {
+                h.write_u8(4u8);
+                x.hash(h);
             },
         }
     }
 }
 impl Hash for item::Variadic {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.pat.hash(state);
-        self.comma.hash(state);
+        self.attrs.hash(h);
+        self.pat.hash(h);
+        self.comma.hash(h);
     }
 }
 impl Hash for data::Variant {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.ident.hash(state);
-        self.fields.hash(state);
-        self.discrim.hash(state);
+        self.attrs.hash(h);
+        self.ident.hash(h);
+        self.fields.hash(h);
+        self.discrim.hash(h);
     }
 }
 impl Hash for data::Restricted {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.in_.hash(state);
-        self.path.hash(state);
+        self.in_.hash(h);
+        self.path.hash(h);
     }
 }
 impl Hash for data::Visibility {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
+        use data::Visibility::*;
         match self {
-            data::Visibility::Public(_) => {
-                state.write_u8(0u8);
+            Public(_) => {
+                h.write_u8(0u8);
             },
-            data::Visibility::Restricted(v0) => {
-                state.write_u8(1u8);
-                v0.hash(state);
+            Restricted(x) => {
+                h.write_u8(1u8);
+                x.hash(h);
             },
-            data::Visibility::Inherited => {
-                state.write_u8(2u8);
+            Inherited => {
+                h.write_u8(2u8);
             },
         }
     }
 }
 impl Hash for gen::Where {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.preds.hash(state);
+        self.preds.hash(h);
     }
 }
-impl Hash for gen::Where::Pred {
-    fn hash<H>(&self, state: &mut H)
+impl Hash for gen::where_::Pred {
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
+        gen::Where::Pred::*;
         match self {
-            gen::Where::Pred::Life(v0) => {
-                state.write_u8(0u8);
-                v0.hash(state);
+            Life(v0) => {
+                h.write_u8(0u8);
+                v0.hash(h);
             },
-            gen::Where::Pred::Type(v0) => {
-                state.write_u8(1u8);
-                v0.hash(state);
+            Type(v0) => {
+                h.write_u8(1u8);
+                v0.hash(h);
             },
         }
     }

@@ -140,36 +140,36 @@ impl ErrMsg {
         };
         use pm2::{Spacing::*, Tree::*};
         pm2::Stream::from_iter(vec![
-            pm2::Tree::Punct({
+            Punct({
                 let mut y = pm2::Punct::new(':', Joint);
                 y.set_span(start);
                 y
             }),
-            pm2::Tree::Punct({
+            Punct({
                 let mut y = pm2::Punct::new(':', Alone);
                 y.set_span(start);
                 y
             }),
-            pm2::Tree::Ident(pm2::Ident::new("core", start)),
-            pm2::Tree::Punct({
+            Ident(pm2::Ident::new("core", start)),
+            Punct({
                 let mut y = pm2::Punct::new(':', Joint);
                 y.set_span(start);
                 y
             }),
-            pm2::Tree::Punct({
+            Punct({
                 let mut y = pm2::Punct::new(':', Alone);
                 y.set_span(start);
                 y
             }),
-            pm2::Tree::Ident(pm2::Ident::new("compile_error", start)),
-            pm2::Tree::Punct({
+            Ident(pm2::Ident::new("compile_error", start)),
+            Punct({
                 let mut y = pm2::Punct::new('!', Alone);
                 y.set_span(start);
                 y
             }),
-            pm2::Tree::Group({
+            Group({
                 let mut y = pm2::Group::new(pm2::Delim::Brace, {
-                    pm2::Stream::from_iter(vec![pm2::Tree::Lit({
+                    pm2::Stream::from_iter(vec![Lit({
                         let mut y = pm2::Lit::string(&self.msg);
                         y.set_span(end);
                         y
