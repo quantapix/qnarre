@@ -28,7 +28,7 @@ mod clone {
     use json::{Data, Definitions, Node, Type};
     use syn::pm2::{Ident, Span, Stream};
     use syn::quote::{format_ident, quote};
-    const CLONE_SRC: &str = "src/gen/clone.rs";
+    const CLONE_SRC: &str = "src/codegen/clone.rs";
     fn expand_impl_body(defs: &Definitions, node: &Node) -> Stream {
         let type_name = &node.ident;
         let ident = Ident::new(type_name, Span::call_site());
@@ -150,7 +150,7 @@ mod debug {
     use std::collections::BTreeSet as Set;
     use syn::pm2::{Ident, Span, Stream};
     use syn::quote::{format_ident, quote};
-    const DEBUG_SRC: &str = "src/gen/debug.rs";
+    const DEBUG_SRC: &str = "src/codegen/debug.rs";
     fn syntax_tree_enum<'a>(enum_name: &str, variant_name: &str, fields: &'a [Type]) -> Option<&'a str> {
         if fields.len() != 1 {
             return None;
@@ -324,7 +324,7 @@ mod eq {
     use json::{Data, Definitions, Node, Type};
     use syn::pm2::{Ident, Span, Stream};
     use syn::quote::{format_ident, quote};
-    const EQ_SRC: &str = "src/gen/eq.rs";
+    const EQ_SRC: &str = "src/codegen/eq.rs";
     fn always_eq(field_type: &Type) -> bool {
         match field_type {
             Type::Ext(ty) => ty == "Span",
@@ -503,7 +503,7 @@ mod fold {
     use syn::pm2::{Ident, Span, Stream};
     use syn::quote::{format_ident, quote};
     use syn::Index;
-    const FOLD_SRC: &str = "src/gen/fold.rs";
+    const FOLD_SRC: &str = "src/codegen/fold.rs";
     fn simple_visit(item: &str, name: &Stream) -> Stream {
         let ident = gen::under_name(item);
         let method = format_ident!("fold_{}", ident);
@@ -755,7 +755,7 @@ mod hash {
     use json::{Data, Definitions, Node, Type};
     use syn::pm2::{Ident, Span, Stream};
     use syn::quote::{format_ident, quote};
-    const HASH_SRC: &str = "src/gen/hash.rs";
+    const HASH_SRC: &str = "src/codegen/hash.rs";
     fn skip(field_type: &Type) -> bool {
         match field_type {
             Type::Ext(ty) => ty == "Span",
@@ -1967,7 +1967,7 @@ mod visit {
     use syn::pm2::{Ident, Span, Stream};
     use syn::quote::{format_ident, quote};
     use syn::Index;
-    const VISIT_SRC: &str = "src/gen/visit.rs";
+    const VISIT_SRC: &str = "src/codegen/visit.rs";
     fn simple_visit(item: &str, name: &Operand) -> Stream {
         let ident = gen::under_name(item);
         let method = format_ident!("visit_{}", ident);
@@ -2158,7 +2158,7 @@ mod visit_mut {
     use syn::pm2::{Ident, Span, Stream};
     use syn::quote::{format_ident, quote};
     use syn::Index;
-    const VISIT_MUT_SRC: &str = "src/gen/visit_mut.rs";
+    const VISIT_MUT_SRC: &str = "src/codegen/visit_mut.rs";
     fn simple_visit(item: &str, name: &Operand) -> Stream {
         let ident = gen::under_name(item);
         let method = format_ident!("visit_{}_mut", ident);

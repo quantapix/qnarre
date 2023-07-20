@@ -37,7 +37,7 @@ proc-macro = true
 
 [[bin]]
 proc-macro = true
-name = "syngen"
+name = "codegen"
 
 [[bench]]
 name = "rust"
