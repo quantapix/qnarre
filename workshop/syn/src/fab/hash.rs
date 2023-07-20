@@ -1942,339 +1942,342 @@ impl Hash for stmt::Stmt {
     }
 }
 impl Hash for stmt::Mac {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.mac.hash(state);
-        self.semi.hash(state);
+        self.attrs.hash(h);
+        self.mac.hash(h);
+        self.semi.hash(h);
     }
 }
 impl Hash for gen::bound::Trait {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.paren.hash(state);
-        self.modif.hash(state);
-        self.lifes.hash(state);
-        self.path.hash(state);
+        self.paren.hash(h);
+        self.modif.hash(h);
+        self.lifes.hash(h);
+        self.path.hash(h);
     }
 }
 impl Hash for gen::bound::Modifier {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
+        use gen::bound::Modifier::*;
         match self {
-            gen::bound::Modifier::None => {
-                state.write_u8(0u8);
+            None => {
+                h.write_u8(0u8);
             },
-            gen::bound::Modifier::Maybe(_) => {
-                state.write_u8(1u8);
+            Maybe(_) => {
+                h.write_u8(1u8);
             },
         }
     }
 }
 impl Hash for item::trait_::Item {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
+        use item::trait_::Item::*;
         match self {
-            item::trait_::Item::Const(x) => {
-                state.write_u8(0u8);
-                x.hash(state);
+            Const(x) => {
+                h.write_u8(0u8);
+                x.hash(h);
             },
-            item::trait_::Item::Fn(x) => {
-                state.write_u8(1u8);
-                x.hash(state);
+            Fn(x) => {
+                h.write_u8(1u8);
+                x.hash(h);
             },
-            item::trait_::Item::Type(x) => {
-                state.write_u8(2u8);
-                x.hash(state);
+            Type(x) => {
+                h.write_u8(2u8);
+                x.hash(h);
             },
-            item::trait_::Item::Macro(x) => {
-                state.write_u8(3u8);
-                x.hash(state);
+            Macro(x) => {
+                h.write_u8(3u8);
+                x.hash(h);
             },
-            item::trait_::Item::Stream(x) => {
-                state.write_u8(4u8);
-                StreamHelper(x).hash(state);
+            Stream(x) => {
+                h.write_u8(4u8);
+                StreamHelper(x).hash(h);
             },
         }
     }
 }
 impl Hash for item::trait_::Const {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.ident.hash(state);
-        self.gens.hash(state);
-        self.typ.hash(state);
-        self.default.hash(state);
+        self.attrs.hash(h);
+        self.ident.hash(h);
+        self.gens.hash(h);
+        self.typ.hash(h);
+        self.default.hash(h);
     }
 }
 impl Hash for item::trait_::Fn {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.sig.hash(state);
-        self.default.hash(state);
-        self.semi.hash(state);
+        self.attrs.hash(h);
+        self.sig.hash(h);
+        self.default.hash(h);
+        self.semi.hash(h);
     }
 }
 impl Hash for item::trait_::Mac {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.mac.hash(state);
-        self.semi.hash(state);
+        self.attrs.hash(h);
+        self.mac.hash(h);
+        self.semi.hash(h);
     }
 }
 impl Hash for item::trait_::Type {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.ident.hash(state);
-        self.gens.hash(state);
-        self.colon.hash(state);
-        self.bounds.hash(state);
-        self.default.hash(state);
+        self.attrs.hash(h);
+        self.ident.hash(h);
+        self.gens.hash(h);
+        self.colon.hash(h);
+        self.bounds.hash(h);
+        self.default.hash(h);
     }
 }
 impl Hash for typ::Type {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
+        use typ::Type::*;
         match self {
-            typ::Type::Array(x) => {
-                state.write_u8(0u8);
-                x.hash(state);
+            Array(x) => {
+                h.write_u8(0u8);
+                x.hash(h);
             },
-            typ::Type::Fn(x) => {
-                state.write_u8(1u8);
-                x.hash(state);
+            Fn(x) => {
+                h.write_u8(1u8);
+                x.hash(h);
             },
-            typ::Type::Group(x) => {
-                state.write_u8(2u8);
-                x.hash(state);
+            Group(x) => {
+                h.write_u8(2u8);
+                x.hash(h);
             },
-            typ::Type::Impl(x) => {
-                state.write_u8(3u8);
-                x.hash(state);
+            Impl(x) => {
+                h.write_u8(3u8);
+                x.hash(h);
             },
-            typ::Type::Infer(x) => {
-                state.write_u8(4u8);
-                x.hash(state);
+            Infer(x) => {
+                h.write_u8(4u8);
+                x.hash(h);
             },
-            typ::Type::Mac(x) => {
-                state.write_u8(5u8);
-                x.hash(state);
+            Mac(x) => {
+                h.write_u8(5u8);
+                x.hash(h);
             },
-            typ::Type::Never(x) => {
-                state.write_u8(6u8);
-                x.hash(state);
+            Never(x) => {
+                h.write_u8(6u8);
+                x.hash(h);
             },
-            typ::Type::Paren(x) => {
-                state.write_u8(7u8);
-                x.hash(state);
+            Paren(x) => {
+                h.write_u8(7u8);
+                x.hash(h);
             },
-            typ::Type::Path(x) => {
-                state.write_u8(8u8);
-                x.hash(state);
+            Path(x) => {
+                h.write_u8(8u8);
+                x.hash(h);
             },
-            typ::Type::Ptr(x) => {
-                state.write_u8(9u8);
-                x.hash(state);
+            Ptr(x) => {
+                h.write_u8(9u8);
+                x.hash(h);
             },
-            typ::Type::Ref(x) => {
-                state.write_u8(10u8);
-                x.hash(state);
+            Ref(x) => {
+                h.write_u8(10u8);
+                x.hash(h);
             },
-            typ::Type::Slice(x) => {
-                state.write_u8(11u8);
-                x.hash(state);
+            Slice(x) => {
+                h.write_u8(11u8);
+                x.hash(h);
             },
-            typ::Type::Trait(x) => {
-                state.write_u8(12u8);
-                x.hash(state);
+            Trait(x) => {
+                h.write_u8(12u8);
+                x.hash(h);
             },
-            typ::Type::Tuple(x) => {
-                state.write_u8(13u8);
-                x.hash(state);
+            Tuple(x) => {
+                h.write_u8(13u8);
+                x.hash(h);
             },
-            typ::Type::Stream(x) => {
-                state.write_u8(14u8);
-                StreamHelper(x).hash(state);
+            Stream(x) => {
+                h.write_u8(14u8);
+                StreamHelper(x).hash(h);
             },
         }
     }
 }
 impl Hash for typ::Array {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.elem.hash(state);
-        self.len.hash(state);
+        self.elem.hash(h);
+        self.len.hash(h);
     }
 }
 impl Hash for typ::Fn {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.lifes.hash(state);
-        self.unsafe_.hash(state);
-        self.abi.hash(state);
-        self.args.hash(state);
-        self.vari.hash(state);
-        self.ret.hash(state);
+        self.lifes.hash(h);
+        self.unsafe_.hash(h);
+        self.abi.hash(h);
+        self.args.hash(h);
+        self.vari.hash(h);
+        self.ret.hash(h);
     }
 }
 impl Hash for typ::Group {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.elem.hash(state);
+        self.elem.hash(h);
     }
 }
 impl Hash for typ::Impl {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.bounds.hash(state);
+        self.bounds.hash(h);
     }
 }
 impl Hash for typ::Infer {
-    fn hash<H>(&self, _state: &mut H)
+    fn hash<H>(&self, _: &mut H)
     where
         H: Hasher,
     {
     }
 }
 impl Hash for typ::Mac {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.mac.hash(state);
+        self.mac.hash(h);
     }
 }
 impl Hash for typ::Never {
-    fn hash<H>(&self, _state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
     }
 }
 impl Hash for gen::param::Type {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.ident.hash(state);
-        self.colon.hash(state);
-        self.bounds.hash(state);
-        self.eq.hash(state);
-        self.default.hash(state);
+        self.attrs.hash(h);
+        self.ident.hash(h);
+        self.colon.hash(h);
+        self.bounds.hash(h);
+        self.eq.hash(h);
+        self.default.hash(h);
     }
 }
 impl Hash for gen::bound::Type {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
         match self {
             gen::bound::Type::Trait(x) => {
-                state.write_u8(0u8);
-                x.hash(state);
+                h.write_u8(0u8);
+                x.hash(h);
             },
             gen::bound::Type::Life(x) => {
-                state.write_u8(1u8);
-                x.hash(state);
+                h.write_u8(1u8);
+                x.hash(h);
             },
             gen::bound::Type::Stream(x) => {
-                state.write_u8(2u8);
-                StreamHelper(x).hash(state);
+                h.write_u8(2u8);
+                StreamHelper(x).hash(h);
             },
         }
     }
 }
 impl Hash for typ::Paren {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.elem.hash(state);
+        self.elem.hash(h);
     }
 }
 impl Hash for typ::Path {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.qself.hash(state);
-        self.path.hash(state);
+        self.qself.hash(h);
+        self.path.hash(h);
     }
 }
 impl Hash for typ::Ptr {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.const_.hash(state);
-        self.mut_.hash(state);
-        self.elem.hash(state);
+        self.const_.hash(h);
+        self.mut_.hash(h);
+        self.elem.hash(h);
     }
 }
 impl Hash for typ::Ref {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.life.hash(state);
-        self.mut_.hash(state);
-        self.elem.hash(state);
+        self.life.hash(h);
+        self.mut_.hash(h);
+        self.elem.hash(h);
     }
 }
 impl Hash for typ::Slice {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.elem.hash(state);
+        self.elem.hash(h);
     }
 }
 impl Hash for typ::Trait {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.dyn_.hash(state);
-        self.bounds.hash(state);
+        self.dyn_.hash(h);
+        self.bounds.hash(h);
     }
 }
 impl Hash for typ::Tuple {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.elems.hash(state);
+        self.elems.hash(h);
     }
 }
 impl Hash for expr::UnOp {
@@ -2430,7 +2433,7 @@ impl Hash for gen::where_::Pred {
     where
         H: Hasher,
     {
-        gen::Where::Pred::*;
+        use gen::where_::Pred::*;
         match self {
             Life(v0) => {
                 h.write_u8(0u8);
