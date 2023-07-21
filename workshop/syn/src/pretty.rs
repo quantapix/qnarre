@@ -1,29 +1,21 @@
 use super::pm2::{Delim, Group, Ident, Literal, Spacing, Stream, Tree};
 use super::{
-    attr, braced,
-    item::File,
-    parse::{ParseStream, Result},
-    punct::Punctuated,
-    tok, Abi, AngleBracketedGenericArguments, Arm, AssocConst, AssocType, BareFnArg, BareVariadic, BinOp, BinOp, Block,
-    Block, BoundLifetimes, ConstParam, Constraint, Expr, Expr, Expr, Expr, Expr, ExprArray, ExprAssign, ExprAsync,
-    ExprAwait, ExprBinary, ExprBlock, ExprBreak, ExprCall, ExprCast, ExprClosure, ExprConst, ExprContinue, ExprField,
-    ExprForLoop, ExprGroup, ExprIf, ExprIndex, ExprInfer, ExprLet, ExprLit, ExprLoop, ExprMacro, ExprMatch,
-    ExprMethodCall, ExprParen, ExprPath, ExprRange, ExprReference, ExprRepeat, ExprReturn, ExprStruct, ExprTry,
-    ExprTryBlock, ExprTuple, ExprUnary, ExprUnsafe, ExprWhile, ExprYield, Field, FieldPat, FieldValue, Fields, Fields,
-    FieldsUnnamed, FnArg, ForeignItem, ForeignItemFn, ForeignItemMacro, ForeignItemStatic, ForeignItemType,
-    GenericArgument, GenericParam, Generics, Generics, Ident, Ident, IdentExt, ImplItem, ImplItemConst, ImplItemFn,
-    ImplItemMacro, ImplItemType, Index, Item, ItemConst, ItemEnum, ItemExternCrate, ItemFn, ItemForeignMod, ItemImpl,
-    ItemMacro, ItemMod, ItemStatic, ItemStruct, ItemTrait, ItemTraitAlias, ItemType, ItemUnion, ItemUse, Label,
-    Lifetime, LifetimeParam, Lit, Lit, LitBool, LitByte, LitByteStr, LitChar, LitFloat, LitInt, LitStr, Macro,
-    MacroDelim, MacroDelim, Member, Meta, MetaList, MetaNameValue, ParenthesizedGenericArguments, Pat, PatIdent, PatOr,
-    PatParen, PatReference, PatRest, PatSlice, PatStruct, PatTuple, PatTupleStruct, PatType, PatWild, Path,
-    PathArguments, PathSegment, PredicateLifetime, PredicateType, QSelf, RangeLimits, Receiver, ReturnType, ReturnType,
-    Signature, Signature, StaticMutability, StaticMutability, Stmt, Stmt, Stmt, Token, Token, TraitBound,
-    TraitBoundModifier, TraitItem, TraitItemConst, TraitItemFn, TraitItemMacro, TraitItemType, Type, Type, Type,
-    TypeArray, TypeBareFn, TypeGroup, TypeImplTrait, TypeInfer, TypeMacro, TypeNever, TypeParam, TypeParamBound,
-    TypeParamBound, TypeParen, TypePath, TypePtr, TypeReference, TypeSlice, TypeTraitObject, TypeTuple, UnOp, UseGlob,
-    UseGroup, UseName, UsePath, UseRename, UseTree, Variadic, Variant, VisRestricted, Visibility, Visibility,
-    WhereClause, WhereClause, WherePredicate,
+    braced, item::File, AngleBracketedGenericArguments, Arm, AssocConst, AssocType, BinOp, Block, Block,
+    BoundLifetimes, ConstParam, Constraint, Expr, ExprArray, ExprAssign, ExprAsync, ExprAwait, ExprBinary, ExprBlock,
+    ExprBreak, ExprCall, ExprCast, ExprClosure, ExprConst, ExprContinue, ExprField, ExprForLoop, ExprGroup, ExprIf,
+    ExprIndex, ExprInfer, ExprLet, ExprLit, ExprLoop, ExprMacro, ExprMatch, ExprMethodCall, ExprParen, ExprPath,
+    ExprRange, ExprReference, ExprRepeat, ExprReturn, ExprStruct, ExprTry, ExprTryBlock, ExprTuple, ExprUnary,
+    ExprUnsafe, ExprWhile, ExprYield, Field, FieldPat, FieldValue, Fields, FieldsUnnamed, FnArg, ForeignItem,
+    ForeignItemFn, ForeignItemMacro, ForeignItemStatic, ForeignItemType, GenericArgument, GenericParam, Generics,
+    Ident, IdentExt, ImplItem, ImplItemConst, ImplItemFn, ImplItemMacro, ImplItemType, Index, Item, ItemConst,
+    ItemEnum, ItemExternCrate, ItemFn, ItemForeignMod, ItemImpl, ItemMacro, ItemMod, ItemStatic, ItemStruct, ItemTrait,
+    ItemTraitAlias, ItemType, ItemUnion, ItemUse, Label, Lifetime, LifetimeParam, Lit, LitBool, LitByte, LitByteStr,
+    LitChar, LitFloat, LitInt, LitStr, Macro, MacroDelim, MacroDelim, Member, Meta, MetaList, MetaNameValue,
+    ParenthesizedGenericArguments, Path, PathArguments, PathSegment, PredicateLifetime, PredicateType, QSelf,
+    RangeLimits, Receiver, Signature, Signature, StaticMutability, Stmt, Token, TraitBound, TraitBoundModifier,
+    TraitItem, TraitItemConst, TraitItemFn, TraitItemMacro, TraitItemType, TypeImplTrait, TypeParam, TypeParamBound,
+    TypeParamBound, UnOp, UseGlob, UseGroup, UseName, UsePath, UseRename, UseTree, Variant, VisRestricted, Visibility,
+    Visibility, WhereClause, WherePredicate, *,
 };
 
 use std::iter::Peekable;
@@ -994,7 +986,7 @@ impl Printer {
             }
         }
         match &expr.output {
-            ReturnType::Default => {
+            typ::Ret::Default => {
                 self.word("|");
                 self.space();
                 self.offset(-INDENT);
@@ -1023,7 +1015,7 @@ impl Printer {
                     self.expr(&expr.body);
                 }
             },
-            ReturnType::Type(_arrow, ty) => {
+            typ::Ret::Type(_arrow, ty) => {
                 if !expr.inputs.is_empty() {
                     self.trailing_comma(true);
                     self.offset(-INDENT);
@@ -1370,9 +1362,6 @@ impl Printer {
     }
     #[cfg(feature = "verbatim")]
     fn expr_verbatim(&mut self, tokens: &Stream) {
-        use crate::parse::discouraged::Speculative;
-        use crate::parse::{Parse, ParseStream, Result};
-        use crate::{parenthesized, Ident};
         enum ExprVerbatim {
             Empty,
             Ellipsis,
@@ -1393,8 +1382,8 @@ impl Printer {
             syn::custom_keyword!(builtin);
             syn::custom_keyword!(raw);
         }
-        impl Parse for ExprVerbatim {
-            fn parse(input: ParseStream) -> Result<Self> {
+        impl parse::Parse for ExprVerbatim {
+            fn parse(input: parse::Stream) -> Res<Self> {
                 let ahead = input.fork();
                 let attrs = ahead.call(attr::Attr::parse_outer)?;
                 let lookahead = ahead.lookahead1();
@@ -1573,7 +1562,7 @@ impl Printer {
             self.end();
         }
     }
-    fn call_args(&mut self, args: &Punctuated<Expr, Token![,]>) {
+    fn call_args(&mut self, args: &punct::Puncted<Expr, Token![,]>) {
         let mut iter = args.iter();
         match (iter.next(), iter.next()) {
             (Some(expr), None) if is_blocklike(expr) => {
@@ -2060,14 +2049,12 @@ impl Printer {
     }
     #[cfg(feature = "verbatim")]
     fn type_param_bound_verbatim(&mut self, tokens: &Stream) {
-        use crate::parse::{Parse, ParseStream, Result};
-        use crate::{parenthesized, token, Token};
         enum TypeParamBoundVerbatim {
             Ellipsis,
             TildeConst(TraitBound),
         }
-        impl Parse for TypeParamBoundVerbatim {
-            fn parse(input: ParseStream) -> Result<Self> {
+        impl parse::Parse for TypeParamBoundVerbatim {
+            fn parse(input: parse::Stream) -> Res<Self> {
                 let content;
                 let (paren_token, content) = if input.peek(tok::Paren) {
                     (Some(parenthesized!(content in input)), &content)
@@ -2562,9 +2549,6 @@ impl Printer {
     }
     #[cfg(feature = "verbatim")]
     fn item_verbatim(&mut self, tokens: &Stream) {
-        use crate::parse::{Parse, ParseStream, Result};
-        use crate::punctuated::Punctuated;
-        use crate::{attr::Attr, braced, parenthesized, token, Generics, Ident, Lifetime, Token, Visibility};
         use verbatim::{FlexibleItemConst, FlexibleItemFn, FlexibleItemStatic, FlexibleItemType, WhereClauseLocation};
         enum ItemVerbatim {
             Empty,
@@ -2604,14 +2588,14 @@ impl Printer {
         struct UseBrace {
             attrs: Vec<attr::Attr>,
             vis: Visibility,
-            trees: Punctuated<RootUseTree, Token![,]>,
+            trees: punct::Puncted<RootUseTree, Token![,]>,
         }
         struct RootUseTree {
             leading_colon: Option<Token![::]>,
             inner: UseTree,
         }
-        impl Parse for ImplConstness {
-            fn parse(input: ParseStream) -> Result<Self> {
+        impl parse::Parse for ImplConstness {
+            fn parse(input: parse::Stream) -> Res<Self> {
                 if input.parse::<Option<Token![?]>>()?.is_some() {
                     input.parse::<Token![const]>()?;
                     Ok(ImplConstness::MaybeConst)
@@ -2622,16 +2606,16 @@ impl Printer {
                 }
             }
         }
-        impl Parse for RootUseTree {
-            fn parse(input: ParseStream) -> Result<Self> {
+        impl parse::Parse for RootUseTree {
+            fn parse(input: parse::Stream) -> Res<Self> {
                 Ok(RootUseTree {
                     leading_colon: input.parse()?,
                     inner: input.parse()?,
                 })
             }
         }
-        impl Parse for ItemVerbatim {
-            fn parse(input: ParseStream) -> Result<Self> {
+        impl parse::Parse for ItemVerbatim {
+            fn parse(input: parse::Stream) -> Res<Self> {
                 if input.is_empty() {
                     return Ok(ItemVerbatim::Empty);
                 } else if input.peek(Token![...]) {
@@ -2999,8 +2983,6 @@ impl Printer {
     }
     #[cfg(feature = "verbatim")]
     fn foreign_item_verbatim(&mut self, tokens: &Stream) {
-        use crate::parse::{Parse, ParseStream, Result};
-        use crate::{attr::Attr, Token, Visibility};
         use verbatim::{FlexibleItemFn, FlexibleItemStatic, FlexibleItemType, WhereClauseLocation};
         enum ForeignItemVerbatim {
             Empty,
@@ -3009,8 +2991,8 @@ impl Printer {
             StaticFlexible(FlexibleItemStatic),
             TypeFlexible(FlexibleItemType),
         }
-        impl Parse for ForeignItemVerbatim {
-            fn parse(input: ParseStream) -> Result<Self> {
+        impl parse::Parse for ForeignItemVerbatim {
+            fn parse(input: parse::Stream) -> Res<Self> {
                 if input.is_empty() {
                     return Ok(ForeignItemVerbatim::Empty);
                 } else if input.peek(Token![...]) {
@@ -3154,8 +3136,6 @@ impl Printer {
     }
     #[cfg(feature = "verbatim")]
     fn trait_item_verbatim(&mut self, tokens: &Stream) {
-        use crate::parse::{Parse, ParseStream, Result};
-        use crate::{attr::Attr, Token, Visibility};
         use verbatim::{FlexibleItemType, WhereClauseLocation};
         enum TraitItemVerbatim {
             Empty,
@@ -3169,8 +3149,8 @@ impl Printer {
             defaultness: bool,
             trait_item: TraitItem,
         }
-        impl Parse for TraitItemVerbatim {
-            fn parse(input: ParseStream) -> Result<Self> {
+        impl parse::Parse for TraitItemVerbatim {
+            fn parse(input: parse::Stream) -> Res<Self> {
                 if input.is_empty() {
                     return Ok(TraitItemVerbatim::Empty);
                 } else if input.peek(Token![...]) {
@@ -3312,8 +3292,6 @@ impl Printer {
     }
     #[cfg(feature = "verbatim")]
     fn impl_item_verbatim(&mut self, tokens: &Stream) {
-        use crate::parse::{Parse, ParseStream, Result};
-        use crate::{attr::Attr, Ident, Token, Visibility};
         use verbatim::{FlexibleItemConst, FlexibleItemFn, FlexibleItemType, WhereClauseLocation};
         enum ImplItemVerbatim {
             Empty,
@@ -3322,8 +3300,8 @@ impl Printer {
             FnFlexible(FlexibleItemFn),
             TypeFlexible(FlexibleItemType),
         }
-        impl Parse for ImplItemVerbatim {
-            fn parse(input: ParseStream) -> Result<Self> {
+        impl parse::Parse for ImplItemVerbatim {
+            fn parse(input: parse::Stream) -> Res<Self> {
                 if input.is_empty() {
                     return Ok(ImplItemVerbatim::Empty);
                 } else if input.peek(Token![...]) {
@@ -3437,14 +3415,14 @@ impl Printer {
             self.ty(&receiver.ty);
         } else {
             let consistent = match (&receiver.reference, &receiver.mutability, &*receiver.ty) {
-                (Some(_), mutability, Type::Reference(ty)) => {
+                (Some(_), mutability, item::Type::Reference(ty)) => {
                     mutability.is_some() == ty.mutability.is_some()
                         && match &*ty.elem {
-                            Type::Path(ty) => ty.qself.is_none() && ty.path.is_ident("Self"),
+                            item::Type::Path(ty) => ty.qself.is_none() && ty.path.is_ident("Self"),
                             _ => false,
                         }
                 },
-                (None, _, Type::Path(ty)) => ty.qself.is_none() && ty.path.is_ident("Self"),
+                (None, _, item::Type::Path(ty)) => ty.qself.is_none() && ty.path.is_ident("Self"),
                 _ => false,
             };
             if !consistent {
@@ -3453,7 +3431,7 @@ impl Printer {
             }
         }
     }
-    fn variadic(&mut self, variadic: &Variadic) {
+    fn variadic(&mut self, variadic: &item::Variadic) {
         self.outer_attrs(&variadic.attrs);
         if let Some((pat, _colon)) = &variadic.pat {
             self.pat(pat);
@@ -3510,7 +3488,7 @@ mod verbatim {
         Both,
     }
     impl FlexibleItemConst {
-        pub fn parse(attrs: Vec<attr::Attr>, vis: Visibility, defaultness: bool, input: ParseStream) -> Result<Self> {
+        pub fn parse(attrs: Vec<attr::Attr>, vis: Visibility, defaultness: bool, input: parse::Stream) -> Res<Self> {
             input.parse::<Token![const]>()?;
             let ident = input.call(Ident::parse_any)?;
             input.parse::<Token![:]>()?;
@@ -3530,8 +3508,8 @@ mod verbatim {
             mut attrs: Vec<attr::Attr>,
             vis: Visibility,
             defaultness: bool,
-            input: ParseStream,
-        ) -> Result<Self> {
+            input: parse::Stream,
+        ) -> Res<Self> {
             let sig: Signature = input.parse()?;
             let lookahead = input.lookahead1();
             let body = if lookahead.peek(Token![;]) {
@@ -3555,7 +3533,7 @@ mod verbatim {
         }
     }
     impl FlexibleItemStatic {
-        pub fn parse(attrs: Vec<attr::Attr>, vis: Visibility, input: ParseStream) -> Result<Self> {
+        pub fn parse(attrs: Vec<attr::Attr>, vis: Visibility, input: parse::Stream) -> Res<Self> {
             input.parse::<Token![static]>()?;
             let mutability: StaticMutability = input.parse()?;
             let ident = input.parse()?;
@@ -3592,9 +3570,9 @@ mod verbatim {
             attrs: Vec<attr::Attr>,
             vis: Visibility,
             defaultness: bool,
-            input: ParseStream,
+            input: parse::Stream,
             where_clause_location: WhereClauseLocation,
-        ) -> Result<Self> {
+        ) -> Res<Self> {
             input.parse::<Token![type]>()?;
             let ident: Ident = input.parse()?;
             let mut generics: Generics = input.parse()?;
@@ -4030,12 +4008,6 @@ fn is_keyword(ident: &Ident) -> bool {
 }
 #[cfg(feature = "verbatim")]
 mod standard_library {
-    use crate::ext::IdentExt;
-    use crate::parse::{Parse, ParseStream, Parser, Result};
-    use crate::{
-        attr::Attr, parenthesized, token, Expr, ExprAssign, ExprPath, Ident, Lit, Macro, Pat, Path, Token, Type,
-        Visibility,
-    };
     enum KnownMacro {
         Expr(Expr),
         Exprs(Vec<Expr>),
@@ -4051,7 +4023,7 @@ mod standard_library {
     }
     struct Matches {
         expression: Expr,
-        pattern: Pat,
+        pattern: pat::Pat,
         guard: Option<Expr>,
     }
     struct ThreadLocal {
@@ -4065,8 +4037,8 @@ mod standard_library {
         format_string: Expr,
         args: Vec<Expr>,
     }
-    impl Parse for FormatArgs {
-        fn parse(input: ParseStream) -> Result<Self> {
+    impl parse::Parse for FormatArgs {
+        fn parse(input: parse::Stream) -> Res<Self> {
             let format_string: Expr = input.parse()?;
             let mut args = Vec::new();
             while !input.is_empty() {
@@ -4097,20 +4069,20 @@ mod standard_library {
         }
     }
     impl KnownMacro {
-        fn parse_expr(input: ParseStream) -> Result<Self> {
+        fn parse_expr(input: parse::Stream) -> Res<Self> {
             let expr: Expr = input.parse()?;
             Ok(KnownMacro::Expr(expr))
         }
-        fn parse_expr_comma(input: ParseStream) -> Result<Self> {
+        fn parse_expr_comma(input: parse::Stream) -> Res<Self> {
             let expr: Expr = input.parse()?;
             input.parse::<Option<Token![,]>>()?;
             Ok(KnownMacro::Exprs(vec![expr]))
         }
-        fn parse_exprs(input: ParseStream) -> Result<Self> {
+        fn parse_exprs(input: parse::Stream) -> Res<Self> {
             let exprs = input.parse_terminated(Expr::parse, Token![,])?;
             Ok(KnownMacro::Exprs(Vec::from_iter(exprs)))
         }
-        fn parse_assert(input: ParseStream) -> Result<Self> {
+        fn parse_assert(input: parse::Stream) -> Res<Self> {
             let mut exprs = Vec::new();
             let cond: Expr = input.parse()?;
             exprs.push(cond);
@@ -4121,7 +4093,7 @@ mod standard_library {
             }
             Ok(KnownMacro::Exprs(exprs))
         }
-        fn parse_assert_cmp(input: ParseStream) -> Result<Self> {
+        fn parse_assert_cmp(input: parse::Stream) -> Res<Self> {
             let mut exprs = Vec::new();
             let left: Expr = input.parse()?;
             exprs.push(left);
@@ -4135,8 +4107,8 @@ mod standard_library {
             }
             Ok(KnownMacro::Exprs(exprs))
         }
-        fn parse_cfg(input: ParseStream) -> Result<Self> {
-            fn parse_single(input: ParseStream) -> Result<Cfg> {
+        fn parse_cfg(input: parse::Stream) -> Res<Self> {
+            fn parse_single(input: parse::Stream) -> Res<Cfg> {
                 let ident: Ident = input.parse()?;
                 if input.peek(tok::Paren) && (ident == "all" || ident == "any") {
                     let content;
@@ -4157,7 +4129,7 @@ mod standard_library {
                     Ok(Cfg::Eq(ident, None))
                 }
             }
-            fn parse_multiple(input: ParseStream) -> Result<Vec<Cfg>> {
+            fn parse_multiple(input: parse::Stream) -> Res<Vec<Cfg>> {
                 let mut vec = Vec::new();
                 while !input.is_empty() {
                     let cfg = input.call(parse_single)?;
@@ -4173,7 +4145,7 @@ mod standard_library {
             input.parse::<Option<Token![,]>>()?;
             Ok(KnownMacro::Cfg(cfg))
         }
-        fn parse_env(input: ParseStream) -> Result<Self> {
+        fn parse_env(input: parse::Stream) -> Res<Self> {
             let mut exprs = Vec::new();
             let name: Expr = input.parse()?;
             exprs.push(name);
@@ -4184,16 +4156,16 @@ mod standard_library {
             }
             Ok(KnownMacro::Exprs(exprs))
         }
-        fn parse_format_args(input: ParseStream) -> Result<Self> {
+        fn parse_format_args(input: parse::Stream) -> Res<Self> {
             let format_args: FormatArgs = input.parse()?;
             let mut exprs = format_args.args;
             exprs.insert(0, format_args.format_string);
             Ok(KnownMacro::Exprs(exprs))
         }
-        fn parse_matches(input: ParseStream) -> Result<Self> {
+        fn parse_matches(input: parse::Stream) -> Res<Self> {
             let expression: Expr = input.parse()?;
             input.parse::<Token![,]>()?;
-            let pattern = input.call(Pat::parse_multi_with_leading_vert)?;
+            let pattern = input.call(pat::Pat::parse_multi_with_leading_vert)?;
             let guard = if input.parse::<Option<Token![if]>>()?.is_some() {
                 Some(input.parse()?)
             } else {
@@ -4206,7 +4178,7 @@ mod standard_library {
                 guard,
             }))
         }
-        fn parse_thread_local(input: ParseStream) -> Result<Self> {
+        fn parse_thread_local(input: parse::Stream) -> Res<Self> {
             let mut items = Vec::new();
             while !input.is_empty() {
                 let attrs = input.call(attr::Attr::parse_outer)?;
@@ -4231,7 +4203,7 @@ mod standard_library {
             }
             Ok(KnownMacro::ThreadLocal(items))
         }
-        fn parse_vec(input: ParseStream) -> Result<Self> {
+        fn parse_vec(input: parse::Stream) -> Res<Self> {
             if input.is_empty() {
                 return Ok(KnownMacro::VecArray(Vec::new()));
             }
@@ -4252,7 +4224,7 @@ mod standard_library {
                 Ok(KnownMacro::VecArray(vec))
             }
         }
-        fn parse_write(input: ParseStream) -> Result<Self> {
+        fn parse_write(input: parse::Stream) -> Res<Self> {
             let mut exprs = Vec::new();
             let dst: Expr = input.parse()?;
             exprs.push(dst);
@@ -4262,7 +4234,7 @@ mod standard_library {
             exprs.extend(format_args.args);
             Ok(KnownMacro::Exprs(exprs))
         }
-        fn parse_writeln(input: ParseStream) -> Result<Self> {
+        fn parse_writeln(input: parse::Stream) -> Res<Self> {
             let mut exprs = Vec::new();
             let dst: Expr = input.parse()?;
             exprs.push(dst);
@@ -4432,30 +4404,31 @@ mod standard_library {
 
 impl Printer {
     //pat
-    pub fn pat(&mut self, pat: &Pat) {
+    pub fn pat(&mut self, pat: &pat::Pat) {
+        use pat::Pat::*;
         match pat {
-            Pat::Const(pat) => self.expr_const(pat),
-            Pat::Ident(pat) => self.pat_ident(pat),
-            Pat::Lit(pat) => self.expr_lit(pat),
-            Pat::Macro(pat) => self.expr_macro(pat),
-            Pat::Or(pat) => self.pat_or(pat),
-            Pat::Paren(pat) => self.pat_paren(pat),
-            Pat::Path(pat) => self.expr_path(pat),
-            Pat::Range(pat) => self.expr_range(pat),
-            Pat::Reference(pat) => self.pat_reference(pat),
-            Pat::Rest(pat) => self.pat_rest(pat),
-            Pat::Slice(pat) => self.pat_slice(pat),
-            Pat::Struct(pat) => self.pat_struct(pat),
-            Pat::Tuple(pat) => self.pat_tuple(pat),
-            Pat::TupleStruct(pat) => self.pat_tuple_struct(pat),
-            Pat::Type(pat) => self.pat_type(pat),
-            Pat::Verbatim(pat) => self.pat_verbatim(pat),
-            Pat::Wild(pat) => self.pat_wild(pat),
+            Const(pat) => self.expr_const(pat),
+            Ident(pat) => self.pat_ident(pat),
+            Lit(pat) => self.expr_lit(pat),
+            Mac(pat) => self.expr_macro(pat),
+            Or(pat) => self.pat_or(pat),
+            Paren(pat) => self.pat_paren(pat),
+            Path(pat) => self.expr_path(pat),
+            Range(pat) => self.expr_range(pat),
+            Ref(pat) => self.pat_reference(pat),
+            Rest(pat) => self.pat_rest(pat),
+            Slice(pat) => self.pat_slice(pat),
+            Struct(pat) => self.pat_struct(pat),
+            Tuple(pat) => self.pat_tuple(pat),
+            TupleStruct(pat) => self.pat_tuple_struct(pat),
+            Type(pat) => self.pat_type(pat),
+            Stream(pat) => self.pat_verbatim(pat),
+            Wild(pat) => self.pat_wild(pat),
             #[cfg_attr(all(test, exhaustive), deny(non_exhaustive_omitted_patterns))]
             _ => unimplemented!("unknown Pat"),
         }
     }
-    fn pat_ident(&mut self, pat: &PatIdent) {
+    fn pat_ident(&mut self, pat: &pat::Ident) {
         self.outer_attrs(&pat.attrs);
         if pat.by_ref.is_some() {
             self.word("ref ");
@@ -4469,12 +4442,12 @@ impl Printer {
             self.pat(subpat);
         }
     }
-    fn pat_or(&mut self, pat: &PatOr) {
+    fn pat_or(&mut self, pat: &pat::Or) {
         self.outer_attrs(&pat.attrs);
         let mut consistent_break = false;
         for case in &pat.cases {
             match case {
-                Pat::Lit(_) | Pat::Wild(_) => {},
+                pat::Pat::Lit(_) | pat::Pat::Wild(_) => {},
                 _ => {
                     consistent_break = true;
                     break;
@@ -4495,13 +4468,13 @@ impl Printer {
         }
         self.end();
     }
-    fn pat_paren(&mut self, pat: &PatParen) {
+    fn pat_paren(&mut self, pat: &pat::Paren) {
         self.outer_attrs(&pat.attrs);
         self.word("(");
         self.pat(&pat.pat);
         self.word(")");
     }
-    fn pat_reference(&mut self, pat: &PatReference) {
+    fn pat_reference(&mut self, pat: &pat::Ref) {
         self.outer_attrs(&pat.attrs);
         self.word("&");
         if pat.mutability.is_some() {
@@ -4509,11 +4482,11 @@ impl Printer {
         }
         self.pat(&pat.pat);
     }
-    fn pat_rest(&mut self, pat: &PatRest) {
+    fn pat_rest(&mut self, pat: &pat::Rest) {
         self.outer_attrs(&pat.attrs);
         self.word("..");
     }
-    fn pat_slice(&mut self, pat: &PatSlice) {
+    fn pat_slice(&mut self, pat: &pat::Slice) {
         self.outer_attrs(&pat.attrs);
         self.word("[");
         for elem in pat.elems.iter().delimited() {
@@ -4522,7 +4495,7 @@ impl Printer {
         }
         self.word("]");
     }
-    fn pat_struct(&mut self, pat: &PatStruct) {
+    fn pat_struct(&mut self, pat: &pat::Struct) {
         self.outer_attrs(&pat.attrs);
         self.cbox(INDENT);
         self.path(&pat.path, PathKind::Expr);
@@ -4540,7 +4513,7 @@ impl Printer {
         self.end();
         self.word("}");
     }
-    fn pat_tuple(&mut self, pat: &PatTuple) {
+    fn pat_tuple(&mut self, pat: &pat::Tuple) {
         self.outer_attrs(&pat.attrs);
         self.word("(");
         self.cbox(INDENT);
@@ -4560,7 +4533,7 @@ impl Printer {
         self.end();
         self.word(")");
     }
-    fn pat_tuple_struct(&mut self, pat: &PatTupleStruct) {
+    fn pat_tuple_struct(&mut self, pat: &pat::TupleStruct) {
         self.outer_attrs(&pat.attrs);
         self.path(&pat.path, PathKind::Expr);
         self.word("(");
@@ -4574,7 +4547,7 @@ impl Printer {
         self.end();
         self.word(")");
     }
-    pub fn pat_type(&mut self, pat: &PatType) {
+    pub fn pat_type(&mut self, pat: &pat::Type) {
         self.outer_attrs(&pat.attrs);
         self.pat(&pat.pat);
         self.word(": ");
@@ -4582,12 +4555,10 @@ impl Printer {
     }
     #[cfg(not(feature = "verbatim"))]
     fn pat_verbatim(&mut self, pat: &Stream) {
-        unimplemented!("Pat::Verbatim `{}`", pat);
+        unimplemented!("Pat::Stream `{}`", pat);
     }
     #[cfg(feature = "verbatim")]
     fn pat_verbatim(&mut self, tokens: &Stream) {
-        use crate::parse::{Parse, ParseStream, Result};
-        use crate::{attr::Attr, braced, Block, Token};
         enum PatVerbatim {
             Ellipsis,
             Box(Pat),
@@ -4597,12 +4568,12 @@ impl Printer {
             attrs: Vec<attr::Attr>,
             block: Block,
         }
-        impl Parse for PatVerbatim {
-            fn parse(input: ParseStream) -> Result<Self> {
+        impl parse::Parse for PatVerbatim {
+            fn parse(input: parse::Stream) -> Res<Self> {
                 let lookahead = input.lookahead1();
                 if lookahead.peek(Token![box]) {
                     input.parse::<Token![box]>()?;
-                    let inner = Pat::parse_single(input)?;
+                    let inner = pat::Pat::parse_single(input)?;
                     Ok(PatVerbatim::Box(inner))
                 } else if lookahead.peek(Token![const]) {
                     input.parse::<Token![const]>()?;
@@ -4624,7 +4595,7 @@ impl Printer {
         }
         let pat: PatVerbatim = match syn::parse2(tokens.clone()) {
             Ok(pat) => pat,
-            Err(_) => unimplemented!("Pat::Verbatim `{}`", tokens),
+            Err(_) => unimplemented!("Pat::Stream `{}`", tokens),
         };
         match pat {
             PatVerbatim::Ellipsis => {
@@ -4642,7 +4613,7 @@ impl Printer {
             },
         }
     }
-    fn pat_wild(&mut self, pat: &PatWild) {
+    fn pat_wild(&mut self, pat: &pat::Wild) {
         self.outer_attrs(&pat.attrs);
         self.word("_");
     }
@@ -5156,35 +5127,36 @@ impl From<Tree> for Token {
 
 impl Printer {
     //ty
-    pub fn ty(&mut self, ty: &Type) {
+    pub fn ty(&mut self, ty: &typ::Type) {
+        use typ::Type::*;
         match ty {
-            Type::Array(ty) => self.type_array(ty),
-            Type::BareFn(ty) => self.type_bare_fn(ty),
-            Type::Group(ty) => self.type_group(ty),
-            Type::ImplTrait(ty) => self.type_impl_trait(ty),
-            Type::Infer(ty) => self.type_infer(ty),
-            Type::Macro(ty) => self.type_macro(ty),
-            Type::Never(ty) => self.type_never(ty),
-            Type::Paren(ty) => self.type_paren(ty),
-            Type::Path(ty) => self.type_path(ty),
-            Type::Ptr(ty) => self.type_ptr(ty),
-            Type::Reference(ty) => self.type_reference(ty),
-            Type::Slice(ty) => self.type_slice(ty),
-            Type::TraitObject(ty) => self.type_trait_object(ty),
-            Type::Tuple(ty) => self.type_tuple(ty),
-            Type::Verbatim(ty) => self.type_verbatim(ty),
+            Array(ty) => self.type_array(ty),
+            Fn(ty) => self.type_bare_fn(ty),
+            Group(ty) => self.type_group(ty),
+            Impl(ty) => self.type_impl_trait(ty),
+            Infer(ty) => self.type_infer(ty),
+            Mac(ty) => self.type_macro(ty),
+            Never(ty) => self.type_never(ty),
+            Paren(ty) => self.type_paren(ty),
+            Path(ty) => self.type_path(ty),
+            Ptr(ty) => self.type_ptr(ty),
+            Ref(ty) => self.type_reference(ty),
+            Slice(ty) => self.type_slice(ty),
+            Trait(ty) => self.type_trait_object(ty),
+            Tuple(ty) => self.type_tuple(ty),
+            Stream(ty) => self.type_verbatim(ty),
             #[cfg_attr(all(test, exhaustive), deny(non_exhaustive_omitted_patterns))]
             _ => unimplemented!("unknown Type"),
         }
     }
-    fn type_array(&mut self, ty: &TypeArray) {
+    fn type_array(&mut self, ty: &typ::Array) {
         self.word("[");
         self.ty(&ty.elem);
         self.word("; ");
         self.expr(&ty.len);
         self.word("]");
     }
-    fn type_bare_fn(&mut self, ty: &TypeBareFn) {
+    fn type_bare_fn(&mut self, ty: &typ::Fn) {
         if let Some(bound_lifetimes) = &ty.lifetimes {
             self.bound_lifetimes(bound_lifetimes);
         }
@@ -5210,7 +5182,7 @@ impl Printer {
         self.word(")");
         self.return_type(&ty.output);
     }
-    fn type_group(&mut self, ty: &TypeGroup) {
+    fn type_group(&mut self, ty: &typ::Group) {
         self.ty(&ty.elem);
     }
     fn type_impl_trait(&mut self, ty: &TypeImplTrait) {
@@ -5222,27 +5194,27 @@ impl Printer {
             self.type_param_bound(&type_param_bound);
         }
     }
-    fn type_infer(&mut self, ty: &TypeInfer) {
+    fn type_infer(&mut self, ty: &typ::Infer) {
         let _ = ty;
         self.word("_");
     }
-    fn type_macro(&mut self, ty: &TypeMacro) {
+    fn type_macro(&mut self, ty: &typ::Mac) {
         let semicolon = false;
         self.mac(&ty.mac, None, semicolon);
     }
-    fn type_never(&mut self, ty: &TypeNever) {
+    fn type_never(&mut self, ty: &typ::Never) {
         let _ = ty;
         self.word("!");
     }
-    fn type_paren(&mut self, ty: &TypeParen) {
+    fn type_paren(&mut self, ty: &typ::Paren) {
         self.word("(");
         self.ty(&ty.elem);
         self.word(")");
     }
-    fn type_path(&mut self, ty: &TypePath) {
+    fn type_path(&mut self, ty: &typ::Path) {
         self.qpath(&ty.qself, &ty.path, PathKind::Type);
     }
-    fn type_ptr(&mut self, ty: &TypePtr) {
+    fn type_ptr(&mut self, ty: &typ::Ptr) {
         self.word("*");
         if ty.mutability.is_some() {
             self.word("mut ");
@@ -5251,7 +5223,7 @@ impl Printer {
         }
         self.ty(&ty.elem);
     }
-    fn type_reference(&mut self, ty: &TypeReference) {
+    fn type_reference(&mut self, ty: &typ::Ref) {
         self.word("&");
         if let Some(lifetime) = &ty.lifetime {
             self.lifetime(lifetime);
@@ -5262,12 +5234,12 @@ impl Printer {
         }
         self.ty(&ty.elem);
     }
-    fn type_slice(&mut self, ty: &TypeSlice) {
+    fn type_slice(&mut self, ty: &typ::Slice) {
         self.word("[");
         self.ty(&ty.elem);
         self.word("]");
     }
-    fn type_trait_object(&mut self, ty: &TypeTraitObject) {
+    fn type_trait_object(&mut self, ty: &typ::Trait) {
         self.word("dyn ");
         for type_param_bound in ty.bounds.iter().delimited() {
             if !type_param_bound.is_first {
@@ -5276,7 +5248,7 @@ impl Printer {
             self.type_param_bound(&type_param_bound);
         }
     }
-    fn type_tuple(&mut self, ty: &TypeTuple) {
+    fn type_tuple(&mut self, ty: &typ::Tuple) {
         self.word("(");
         self.cbox(INDENT);
         self.zerobreak();
@@ -5295,13 +5267,10 @@ impl Printer {
     }
     #[cfg(not(feature = "verbatim"))]
     fn type_verbatim(&mut self, ty: &Stream) {
-        unimplemented!("Type::Verbatim `{}`", ty);
+        unimplemented!("Type::Stream `{}`", ty);
     }
     #[cfg(feature = "verbatim")]
     fn type_verbatim(&mut self, tokens: &Stream) {
-        use crate::parse::{Parse, ParseStream, Result};
-        use crate::punctuated::Punctuated;
-        use crate::{Token, TypeParamBound};
         enum TypeVerbatim {
             Ellipsis,
             DynStar(DynStar),
@@ -5309,7 +5278,7 @@ impl Printer {
             NotType(NotType),
         }
         struct DynStar {
-            bounds: Punctuated<TypeParamBound, Token![+]>,
+            bounds: punct::Puncted<TypeParamBound, Token![+]>,
         }
         struct MutSelf {
             ty: Option<Type>,
@@ -5317,8 +5286,8 @@ impl Printer {
         struct NotType {
             inner: Type,
         }
-        impl Parse for TypeVerbatim {
-            fn parse(input: ParseStream) -> Result<Self> {
+        impl parse::Parse for TypeVerbatim {
+            fn parse(input: parse::Stream) -> Res<Self> {
                 let lookahead = input.lookahead1();
                 if lookahead.peek(Token![dyn]) {
                     input.parse::<Token![dyn]>()?;
@@ -5350,7 +5319,7 @@ impl Printer {
         }
         let ty: TypeVerbatim = match syn::parse2(tokens.clone()) {
             Ok(ty) => ty,
-            Err(_) => unimplemented!("Type::Verbatim `{}`", tokens),
+            Err(_) => unimplemented!("Type::Stream`{}`", tokens),
         };
         match ty {
             TypeVerbatim::Ellipsis => {
@@ -5378,16 +5347,16 @@ impl Printer {
             },
         }
     }
-    pub fn return_type(&mut self, ty: &ReturnType) {
+    pub fn return_type(&mut self, ty: &typ::Ret) {
         match ty {
-            ReturnType::Default => {},
-            ReturnType::Type(_arrow, ty) => {
+            typ::Ret::Default => {},
+            typ::Ret::Type(_arrow, ty) => {
                 self.word(" -> ");
                 self.ty(ty);
             },
         }
     }
-    fn bare_fn_arg(&mut self, bare_fn_arg: &BareFnArg) {
+    fn bare_fn_arg(&mut self, bare_fn_arg: &typ::FnArg) {
         self.outer_attrs(&bare_fn_arg.attrs);
         if let Some((name, _colon)) = &bare_fn_arg.name {
             self.ident(name);
@@ -5395,7 +5364,7 @@ impl Printer {
         }
         self.ty(&bare_fn_arg.ty);
     }
-    fn bare_variadic(&mut self, variadic: &BareVariadic) {
+    fn bare_variadic(&mut self, variadic: &typ::Variadic) {
         self.outer_attrs(&variadic.attrs);
         if let Some((name, _colon)) = &variadic.name {
             self.ident(name);
@@ -5403,7 +5372,7 @@ impl Printer {
         }
         self.word("...");
     }
-    pub fn abi(&mut self, abi: &Abi) {
+    pub fn abi(&mut self, abi: &typ::Abi) {
         self.word("extern ");
         if let Some(name) = &abi.name {
             self.lit_str(name);
