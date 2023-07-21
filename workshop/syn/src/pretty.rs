@@ -1,18 +1,14 @@
 use super::pm2::{Delim, Group, Ident, Literal, Spacing, Stream, Tree};
 use super::{
     braced, item::File, AngleBracketedGenericArguments, Arm, AssocConst, AssocType, BinOp, Block, Block,
-    BoundLifetimes, ConstParam, Constraint, Expr, ExprArray, ExprAssign, ExprAsync, ExprAwait, ExprBinary, ExprBlock,
-    ExprBreak, ExprCall, ExprCast, ExprClosure, ExprConst, ExprContinue, ExprField, ExprForLoop, ExprGroup, ExprIf,
-    ExprIndex, ExprInfer, ExprLet, ExprLit, ExprLoop, ExprMacro, ExprMatch, ExprMethodCall, ExprParen, ExprPath,
-    ExprRange, ExprReference, ExprRepeat, ExprReturn, ExprStruct, ExprTry, ExprTryBlock, ExprTuple, ExprUnary,
-    ExprUnsafe, ExprWhile, ExprYield, Field, FieldPat, FieldValue, Fields, FieldsUnnamed, FnArg, ForeignItem,
-    ForeignItemFn, ForeignItemMacro, ForeignItemStatic, ForeignItemType, GenericArgument, GenericParam, Generics,
-    Ident, IdentExt, ImplItem, ImplItemConst, ImplItemFn, ImplItemMacro, ImplItemType, Index, Item, ItemConst,
-    ItemEnum, ItemExternCrate, ItemFn, ItemForeignMod, ItemImpl, ItemMacro, ItemMod, ItemStatic, ItemStruct, ItemTrait,
-    ItemTraitAlias, ItemType, ItemUnion, ItemUse, Label, Lifetime, LifetimeParam, Lit, LitBool, LitByte, LitByteStr,
-    LitChar, LitFloat, LitInt, LitStr, Macro, MacroDelim, MacroDelim, Member, Meta, MetaList, MetaNameValue,
-    ParenthesizedGenericArguments, Path, PathArguments, PathSegment, PredicateLifetime, PredicateType, QSelf,
-    RangeLimits, Receiver, Signature, Signature, StaticMutability, Stmt, Token, TraitBound, TraitBoundModifier,
+    BoundLifetimes, ConstParam, Constraint, Expr, Field, FieldPat, FieldValue, Fields, FieldsUnnamed, FnArg,
+    ForeignItem, ForeignItemFn, ForeignItemMacro, ForeignItemStatic, ForeignItemType, GenericArgument, GenericParam,
+    Generics, Ident, IdentExt, ImplItem, ImplItemConst, ImplItemFn, ImplItemMacro, ImplItemType, Index, Item,
+    ItemConst, ItemEnum, ItemExternCrate, ItemFn, ItemForeignMod, ItemImpl, ItemMacro, ItemMod, ItemStatic, ItemStruct,
+    ItemTrait, ItemTraitAlias, ItemType, ItemUnion, ItemUse, Label, Lifetime, LifetimeParam, Lit, LitBool, LitByte,
+    LitByteStr, LitChar, LitFloat, LitInt, LitStr, Macro, MacroDelim, MacroDelim, Member, Meta, MetaList,
+    MetaNameValue, ParenthesizedGenericArguments, Path, PathArguments, PathSegment, PredicateLifetime, PredicateType,
+    QSelf, RangeLimits, Receiver, Signature, Signature, StaticMutability, Stmt, Token, TraitBound, TraitBoundModifier,
     TraitItem, TraitItemConst, TraitItemFn, TraitItemMacro, TraitItemType, TypeImplTrait, TypeParam, TypeParamBound,
     TypeParamBound, UnOp, UseGlob, UseGroup, UseName, UsePath, UseRename, UseTree, Variant, VisRestricted, Visibility,
     Visibility, WhereClause, WherePredicate, *,
@@ -856,7 +852,7 @@ impl Printer {
         }
         self.end();
     }
-    fn expr_array(&mut self, expr: &ExprArray) {
+    fn expr_array(&mut self, expr: &expr::Array) {
         self.outer_attrs(&expr.attrs);
         self.word("[");
         self.cbox(INDENT);
@@ -869,7 +865,7 @@ impl Printer {
         self.end();
         self.word("]");
     }
-    fn expr_assign(&mut self, expr: &ExprAssign) {
+    fn expr_assign(&mut self, expr: &expr::Assign) {
         self.outer_attrs(&expr.attrs);
         self.ibox(0);
         self.expr(&expr.left);
@@ -877,7 +873,7 @@ impl Printer {
         self.expr(&expr.right);
         self.end();
     }
-    fn expr_async(&mut self, expr: &ExprAsync) {
+    fn expr_async(&mut self, expr: &expr::Async) {
         self.outer_attrs(&expr.attrs);
         self.word("async ");
         if expr.capture.is_some() {
@@ -887,18 +883,18 @@ impl Printer {
         self.small_block(&expr.block, &expr.attrs);
         self.end();
     }
-    fn expr_await(&mut self, expr: &ExprAwait, beginning_of_line: bool) {
+    fn expr_await(&mut self, expr: &expr::Await, beginning_of_line: bool) {
         self.outer_attrs(&expr.attrs);
         self.cbox(INDENT);
         self.subexpr_await(expr, beginning_of_line);
         self.end();
     }
-    fn subexpr_await(&mut self, expr: &ExprAwait, beginning_of_line: bool) {
+    fn subexpr_await(&mut self, expr: &expr::Await, beginning_of_line: bool) {
         self.subexpr(&expr.base, beginning_of_line);
         self.zerobreak_unless_short_ident(beginning_of_line, &expr.base);
         self.word(".await");
     }
-    fn expr_binary(&mut self, expr: &ExprBinary) {
+    fn expr_binary(&mut self, expr: &expr::Binary) {
         self.outer_attrs(&expr.attrs);
         self.ibox(INDENT);
         self.ibox(-INDENT);
@@ -910,7 +906,7 @@ impl Printer {
         self.expr(&expr.right);
         self.end();
     }
-    pub fn expr_block(&mut self, expr: &ExprBlock) {
+    pub fn expr_block(&mut self, expr: &expr::Block) {
         self.outer_attrs(&expr.attrs);
         if let Some(label) = &expr.label {
             self.label(label);
@@ -919,7 +915,7 @@ impl Printer {
         self.small_block(&expr.block, &expr.attrs);
         self.end();
     }
-    fn expr_break(&mut self, expr: &ExprBreak) {
+    fn expr_break(&mut self, expr: &expr::Break) {
         self.outer_attrs(&expr.attrs);
         self.word("break");
         if let Some(lifetime) = &expr.label {
@@ -931,20 +927,20 @@ impl Printer {
             self.expr(value);
         }
     }
-    fn expr_call(&mut self, expr: &ExprCall, beginning_of_line: bool) {
+    fn expr_call(&mut self, expr: &expr::Call, beginning_of_line: bool) {
         self.outer_attrs(&expr.attrs);
         self.expr_beginning_of_line(&expr.func, beginning_of_line);
         self.word("(");
         self.call_args(&expr.args);
         self.word(")");
     }
-    fn subexpr_call(&mut self, expr: &ExprCall) {
+    fn subexpr_call(&mut self, expr: &expr::Call) {
         self.subexpr(&expr.func, false);
         self.word("(");
         self.call_args(&expr.args);
         self.word(")");
     }
-    fn expr_cast(&mut self, expr: &ExprCast) {
+    fn expr_cast(&mut self, expr: &expr::Cast) {
         self.outer_attrs(&expr.attrs);
         self.ibox(INDENT);
         self.ibox(-INDENT);
@@ -955,7 +951,7 @@ impl Printer {
         self.ty(&expr.ty);
         self.end();
     }
-    fn expr_closure(&mut self, expr: &ExprClosure) {
+    fn expr_closure(&mut self, expr: &expr::Closure) {
         self.outer_attrs(&expr.attrs);
         self.ibox(0);
         if let Some(bound_lifetimes) = &expr.lifetimes {
@@ -993,7 +989,7 @@ impl Printer {
                 self.end();
                 self.neverbreak();
                 let wrap_in_brace = match &*expr.body {
-                    Expr::Match(ExprMatch { attrs, .. }) | Expr::Call(ExprCall { attrs, .. }) => has_outer(attrs),
+                    Expr::Match(expr::Match { attrs, .. }) | Expr::Call(expr::Call { attrs, .. }) => has_outer(attrs),
                     body => !is_blocklike(body),
                 };
                 if wrap_in_brace {
@@ -1031,14 +1027,14 @@ impl Printer {
         }
         self.end();
     }
-    pub fn expr_const(&mut self, expr: &ExprConst) {
+    pub fn expr_const(&mut self, expr: &expr::Const) {
         self.outer_attrs(&expr.attrs);
         self.word("const ");
         self.cbox(INDENT);
         self.small_block(&expr.block, &expr.attrs);
         self.end();
     }
-    fn expr_continue(&mut self, expr: &ExprContinue) {
+    fn expr_continue(&mut self, expr: &expr::Continue) {
         self.outer_attrs(&expr.attrs);
         self.word("continue");
         if let Some(lifetime) = &expr.label {
@@ -1046,19 +1042,19 @@ impl Printer {
             self.lifetime(lifetime);
         }
     }
-    fn expr_field(&mut self, expr: &ExprField, beginning_of_line: bool) {
+    fn expr_field(&mut self, expr: &expr::Field, beginning_of_line: bool) {
         self.outer_attrs(&expr.attrs);
         self.cbox(INDENT);
         self.subexpr_field(expr, beginning_of_line);
         self.end();
     }
-    fn subexpr_field(&mut self, expr: &ExprField, beginning_of_line: bool) {
+    fn subexpr_field(&mut self, expr: &expr::Field, beginning_of_line: bool) {
         self.subexpr(&expr.base, beginning_of_line);
         self.zerobreak_unless_short_ident(beginning_of_line, &expr.base);
         self.word(".");
         self.member(&expr.member);
     }
-    fn expr_for_loop(&mut self, expr: &ExprForLoop) {
+    fn expr_for_loop(&mut self, expr: &expr::ForLoop) {
         self.outer_attrs(&expr.attrs);
         self.ibox(0);
         if let Some(label) = &expr.label {
@@ -1082,11 +1078,11 @@ impl Printer {
         self.word("}");
         self.end();
     }
-    fn expr_group(&mut self, expr: &ExprGroup) {
+    fn expr_group(&mut self, expr: &expr::Group) {
         self.outer_attrs(&expr.attrs);
         self.expr(&expr.expr);
     }
-    fn expr_if(&mut self, expr: &ExprIf) {
+    fn expr_if(&mut self, expr: &expr::If) {
         self.outer_attrs(&expr.attrs);
         self.cbox(INDENT);
         self.word("if ");
@@ -1139,24 +1135,24 @@ impl Printer {
         }
         self.end();
     }
-    fn expr_index(&mut self, expr: &ExprIndex, beginning_of_line: bool) {
+    fn expr_index(&mut self, expr: &expr::Index, beginning_of_line: bool) {
         self.outer_attrs(&expr.attrs);
         self.expr_beginning_of_line(&expr.expr, beginning_of_line);
         self.word("[");
         self.expr(&expr.index);
         self.word("]");
     }
-    fn subexpr_index(&mut self, expr: &ExprIndex, beginning_of_line: bool) {
+    fn subexpr_index(&mut self, expr: &expr::Index, beginning_of_line: bool) {
         self.subexpr(&expr.expr, beginning_of_line);
         self.word("[");
         self.expr(&expr.index);
         self.word("]");
     }
-    fn expr_infer(&mut self, expr: &ExprInfer) {
+    fn expr_infer(&mut self, expr: &expr::Infer) {
         self.outer_attrs(&expr.attrs);
         self.word("_");
     }
-    fn expr_let(&mut self, expr: &ExprLet) {
+    fn expr_let(&mut self, expr: &expr::Let) {
         self.outer_attrs(&expr.attrs);
         self.ibox(INDENT);
         self.word("let ");
@@ -1175,11 +1171,11 @@ impl Printer {
         }
         self.end();
     }
-    pub fn expr_lit(&mut self, expr: &ExprLit) {
+    pub fn expr_lit(&mut self, expr: &expr::Lit) {
         self.outer_attrs(&expr.attrs);
         self.lit(&expr.lit);
     }
-    fn expr_loop(&mut self, expr: &ExprLoop) {
+    fn expr_loop(&mut self, expr: &expr::Loop) {
         self.outer_attrs(&expr.attrs);
         if let Some(label) = &expr.label {
             self.label(label);
@@ -1195,12 +1191,12 @@ impl Printer {
         self.end();
         self.word("}");
     }
-    pub fn expr_macro(&mut self, expr: &ExprMacro) {
+    pub fn expr_macro(&mut self, expr: &expr::Mac) {
         self.outer_attrs(&expr.attrs);
         let semicolon = false;
         self.mac(&expr.mac, None, semicolon);
     }
-    fn expr_match(&mut self, expr: &ExprMatch) {
+    fn expr_match(&mut self, expr: &expr::Match) {
         self.outer_attrs(&expr.attrs);
         self.ibox(0);
         self.word("match ");
@@ -1219,14 +1215,14 @@ impl Printer {
         self.word("}");
         self.end();
     }
-    fn expr_method_call(&mut self, expr: &ExprMethodCall, beginning_of_line: bool) {
+    fn expr_method_call(&mut self, expr: &expr::MethodCall, beginning_of_line: bool) {
         self.outer_attrs(&expr.attrs);
         self.cbox(INDENT);
         let unindent_call_args = beginning_of_line && is_short_ident(&expr.receiver);
         self.subexpr_method_call(expr, beginning_of_line, unindent_call_args);
         self.end();
     }
-    fn subexpr_method_call(&mut self, expr: &ExprMethodCall, beginning_of_line: bool, unindent_call_args: bool) {
+    fn subexpr_method_call(&mut self, expr: &expr::MethodCall, beginning_of_line: bool, unindent_call_args: bool) {
         self.subexpr(&expr.receiver, beginning_of_line);
         self.zerobreak_unless_short_ident(beginning_of_line, &expr.receiver);
         self.word(".");
@@ -1240,17 +1236,17 @@ impl Printer {
         self.word(")");
         self.end();
     }
-    fn expr_paren(&mut self, expr: &ExprParen) {
+    fn expr_paren(&mut self, expr: &expr::Paren) {
         self.outer_attrs(&expr.attrs);
         self.word("(");
         self.expr(&expr.expr);
         self.word(")");
     }
-    pub fn expr_path(&mut self, expr: &ExprPath) {
+    pub fn expr_path(&mut self, expr: &expr::Path) {
         self.outer_attrs(&expr.attrs);
         self.qpath(&expr.qself, &expr.path, PathKind::Expr);
     }
-    pub fn expr_range(&mut self, expr: &ExprRange) {
+    pub fn expr_range(&mut self, expr: &expr::Range) {
         self.outer_attrs(&expr.attrs);
         if let Some(start) = &expr.start {
             self.expr(start);
@@ -1263,7 +1259,7 @@ impl Printer {
             self.expr(end);
         }
     }
-    fn expr_reference(&mut self, expr: &ExprReference) {
+    fn expr_reference(&mut self, expr: &expr::Ref) {
         self.outer_attrs(&expr.attrs);
         self.word("&");
         if expr.mutability.is_some() {
@@ -1271,7 +1267,7 @@ impl Printer {
         }
         self.expr(&expr.expr);
     }
-    fn expr_repeat(&mut self, expr: &ExprRepeat) {
+    fn expr_repeat(&mut self, expr: &expr::Repeat) {
         self.outer_attrs(&expr.attrs);
         self.word("[");
         self.expr(&expr.expr);
@@ -1279,7 +1275,7 @@ impl Printer {
         self.expr(&expr.len);
         self.word("]");
     }
-    fn expr_return(&mut self, expr: &ExprReturn) {
+    fn expr_return(&mut self, expr: &expr::Ret) {
         self.outer_attrs(&expr.attrs);
         self.word("return");
         if let Some(value) = &expr.expr {
@@ -1287,7 +1283,7 @@ impl Printer {
             self.expr(value);
         }
     }
-    fn expr_struct(&mut self, expr: &ExprStruct) {
+    fn expr_struct(&mut self, expr: &expr::Struct) {
         self.outer_attrs(&expr.attrs);
         self.cbox(INDENT);
         self.ibox(-INDENT);
@@ -1308,16 +1304,16 @@ impl Printer {
         self.end_with_max_width(34);
         self.word("}");
     }
-    fn expr_try(&mut self, expr: &ExprTry, beginning_of_line: bool) {
+    fn expr_try(&mut self, expr: &expr::Try, beginning_of_line: bool) {
         self.outer_attrs(&expr.attrs);
         self.expr_beginning_of_line(&expr.expr, beginning_of_line);
         self.word("?");
     }
-    fn subexpr_try(&mut self, expr: &ExprTry, beginning_of_line: bool) {
+    fn subexpr_try(&mut self, expr: &expr::Try, beginning_of_line: bool) {
         self.subexpr(&expr.expr, beginning_of_line);
         self.word("?");
     }
-    fn expr_try_block(&mut self, expr: &ExprTryBlock) {
+    fn expr_try_block(&mut self, expr: &expr::TryBlock) {
         self.outer_attrs(&expr.attrs);
         self.word("try ");
         self.cbox(INDENT);
@@ -1342,12 +1338,12 @@ impl Printer {
         self.end();
         self.word(")");
     }
-    fn expr_unary(&mut self, expr: &ExprUnary) {
+    fn expr_unary(&mut self, expr: &expr::Unary) {
         self.outer_attrs(&expr.attrs);
         self.unary_operator(&expr.op);
         self.expr(&expr.expr);
     }
-    fn expr_unsafe(&mut self, expr: &ExprUnsafe) {
+    fn expr_unsafe(&mut self, expr: &expr::Unsafe) {
         self.outer_attrs(&expr.attrs);
         self.word("unsafe ");
         self.cbox(INDENT);
@@ -1450,7 +1446,7 @@ impl Printer {
             },
         }
     }
-    fn expr_while(&mut self, expr: &ExprWhile) {
+    fn expr_while(&mut self, expr: &expr::While) {
         self.outer_attrs(&expr.attrs);
         if let Some(label) = &expr.label {
             self.label(label);
@@ -1469,7 +1465,7 @@ impl Printer {
         self.end();
         self.word("}");
     }
-    fn expr_yield(&mut self, expr: &ExprYield) {
+    fn expr_yield(&mut self, expr: &expr::Yield) {
         self.outer_attrs(&expr.attrs);
         self.word("yield");
         if let Some(value) = &expr.expr {
@@ -1514,7 +1510,7 @@ impl Printer {
         }
         if let Expr::Tuple(expr) = body {
             if expr.elems.is_empty() && expr.attrs.is_empty() {
-                empty_block = Expr::Block(ExprBlock {
+                empty_block = Expr::Block(expr::Block {
                     attrs: Vec::new(),
                     label: None,
                     block: Block {
@@ -1709,16 +1705,16 @@ fn requires_terminator(expr: &Expr) -> bool {
 fn contains_exterior_struct_lit(expr: &Expr) -> bool {
     match expr {
         Expr::Struct(_) => true,
-        Expr::Assign(ExprAssign { left, right, .. }) | Expr::Binary(ExprBinary { left, right, .. }) => {
+        Expr::Assign(expr::Assign { left, right, .. }) | Expr::Binary(expr::Binary { left, right, .. }) => {
             contains_exterior_struct_lit(left) || contains_exterior_struct_lit(right)
         },
-        Expr::Await(ExprAwait { base: e, .. })
-        | Expr::Cast(ExprCast { expr: e, .. })
-        | Expr::Field(ExprField { base: e, .. })
-        | Expr::Index(ExprIndex { expr: e, .. })
-        | Expr::MethodCall(ExprMethodCall { receiver: e, .. })
-        | Expr::Reference(ExprReference { expr: e, .. })
-        | Expr::Unary(ExprUnary { expr: e, .. }) => contains_exterior_struct_lit(e),
+        Expr::Await(expr::Await { base: e, .. })
+        | Expr::Cast(expr::Cast { expr: e, .. })
+        | Expr::Field(expr::Field { base: e, .. })
+        | Expr::Index(expr::Index { expr: e, .. })
+        | Expr::MethodCall(expr::MethodCall { receiver: e, .. })
+        | Expr::Reference(expr::Ref { expr: e, .. })
+        | Expr::Unary(expr::Unary { expr: e, .. }) => contains_exterior_struct_lit(e),
         Expr::Array(_)
         | Expr::Async(_)
         | Expr::Block(_)
@@ -1757,7 +1753,7 @@ fn needs_newline_if_wrap(expr: &Expr) -> bool {
         Expr::Array(_)
         | Expr::Async(_)
         | Expr::Block(_)
-        | Expr::Break(ExprBreak { expr: None, .. })
+        | Expr::Break(expr::Break { expr: None, .. })
         | Expr::Closure(_)
         | Expr::Const(_)
         | Expr::Continue(_)
@@ -1769,16 +1765,16 @@ fn needs_newline_if_wrap(expr: &Expr) -> bool {
         | Expr::Macro(_)
         | Expr::Match(_)
         | Expr::Path(_)
-        | Expr::Range(ExprRange { end: None, .. })
+        | Expr::Range(expr::Range { end: None, .. })
         | Expr::Repeat(_)
-        | Expr::Return(ExprReturn { expr: None, .. })
+        | Expr::Return(expr::Ret { expr: None, .. })
         | Expr::Struct(_)
         | Expr::TryBlock(_)
         | Expr::Tuple(_)
         | Expr::Unsafe(_)
         | Expr::Verbatim(_)
         | Expr::While(_)
-        | Expr::Yield(ExprYield { expr: None, .. }) => false,
+        | Expr::Yield(expr::Yield { expr: None, .. }) => false,
         Expr::Assign(_)
         | Expr::Await(_)
         | Expr::Binary(_)
@@ -1786,17 +1782,17 @@ fn needs_newline_if_wrap(expr: &Expr) -> bool {
         | Expr::Field(_)
         | Expr::Index(_)
         | Expr::MethodCall(_) => true,
-        Expr::Break(ExprBreak { expr: Some(e), .. })
-        | Expr::Call(ExprCall { func: e, .. })
-        | Expr::Group(ExprGroup { expr: e, .. })
-        | Expr::Let(ExprLet { expr: e, .. })
-        | Expr::Paren(ExprParen { expr: e, .. })
-        | Expr::Range(ExprRange { end: Some(e), .. })
-        | Expr::Reference(ExprReference { expr: e, .. })
-        | Expr::Return(ExprReturn { expr: Some(e), .. })
-        | Expr::Try(ExprTry { expr: e, .. })
-        | Expr::Unary(ExprUnary { expr: e, .. })
-        | Expr::Yield(ExprYield { expr: Some(e), .. }) => needs_newline_if_wrap(e),
+        Expr::Break(expr::Break { expr: Some(e), .. })
+        | Expr::Call(expr::Call { func: e, .. })
+        | Expr::Group(expr::Group { expr: e, .. })
+        | Expr::Let(expr::Let { expr: e, .. })
+        | Expr::Paren(expr::Paren { expr: e, .. })
+        | Expr::Range(expr::Range { end: Some(e), .. })
+        | Expr::Reference(expr::Ref { expr: e, .. })
+        | Expr::Return(expr::Ret { expr: Some(e), .. })
+        | Expr::Try(expr::Try { expr: e, .. })
+        | Expr::Unary(expr::Unary { expr: e, .. })
+        | Expr::Yield(expr::Yield { expr: Some(e), .. }) => needs_newline_if_wrap(e),
         #[cfg_attr(all(test, exhaustive), deny(non_exhaustive_omitted_patterns))]
         _ => false,
     }
@@ -1814,15 +1810,15 @@ fn is_short_ident(expr: &Expr) -> bool {
 }
 fn is_blocklike(expr: &Expr) -> bool {
     match expr {
-        Expr::Array(ExprArray { attrs, .. })
-        | Expr::Async(ExprAsync { attrs, .. })
-        | Expr::Block(ExprBlock { attrs, .. })
-        | Expr::Closure(ExprClosure { attrs, .. })
-        | Expr::Const(ExprConst { attrs, .. })
-        | Expr::Struct(ExprStruct { attrs, .. })
-        | Expr::TryBlock(ExprTryBlock { attrs, .. })
+        Expr::Array(expr::Array { attrs, .. })
+        | Expr::Async(expr::Async { attrs, .. })
+        | Expr::Block(expr::Block { attrs, .. })
+        | Expr::Closure(expr::Closure { attrs, .. })
+        | Expr::Const(expr::Const { attrs, .. })
+        | Expr::Struct(expr::Struct { attrs, .. })
+        | Expr::TryBlock(expr::TryBlock { attrs, .. })
         | Expr::Tuple(ExprTuple { attrs, .. })
-        | Expr::Unsafe(ExprUnsafe { attrs, .. }) => !has_outer(attrs),
+        | Expr::Unsafe(expr::Unsafe { attrs, .. }) => !has_outer(attrs),
         Expr::Assign(_)
         | Expr::Await(_)
         | Expr::Binary(_)
@@ -4050,9 +4046,9 @@ mod standard_library {
                     let key = input.call(Ident::parse_any)?;
                     let eq_token: Token![=] = input.parse()?;
                     let value: Expr = input.parse()?;
-                    Expr::Assign(ExprAssign {
+                    Expr::Assign(expr::Assign {
                         attrs: Vec::new(),
-                        left: Box::new(Expr::Path(ExprPath {
+                        left: Box::new(Expr::Path(expr::Path {
                             attrs: Vec::new(),
                             qself: None,
                             path: Path::from(key),
