@@ -15,7 +15,6 @@ flate2 = "1"
 indexmap = { version = "2", features = ["serde"] }
 inflections = "1"
 insta = "1"
-prettyplease = "0.2"
 rayon = "1"
 ref-cast = "1"
 regex = "1"
