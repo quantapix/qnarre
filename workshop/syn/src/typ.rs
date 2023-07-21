@@ -51,12 +51,12 @@ impl Parse for Array {
         })
     }
 }
-impl ToStream for Array {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.bracket.surround(ys, |ys| {
-            self.elem.to_tokens(ys);
-            self.semi.to_tokens(ys);
-            self.len.to_tokens(ys);
+impl Lower for Array {
+    fn lower(&self, s: &mut Stream) {
+        self.bracket.surround(s, |s| {
+            self.elem.lower(s);
+            self.semi.lower(s);
+            self.len.lower(s);
         });
     }
 }
@@ -108,23 +108,23 @@ impl Parse for Fn {
         })
     }
 }
-impl ToStream for Fn {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.lifes.to_tokens(ys);
-        self.unsafe_.to_tokens(ys);
-        self.abi.to_tokens(ys);
-        self.fn_.to_tokens(ys);
-        self.paren.surround(ys, |ys| {
-            self.args.to_tokens(ys);
+impl Lower for Fn {
+    fn lower(&self, s: &mut Stream) {
+        self.lifes.lower(s);
+        self.unsafe_.lower(s);
+        self.abi.lower(s);
+        self.fn_.lower(s);
+        self.paren.surround(s, |s| {
+            self.args.lower(s);
             if let Some(x) = &self.vari {
                 if !self.args.empty_or_trailing() {
                     let s = x.dots.spans[0];
-                    Token![,](s).to_tokens(ys);
+                    Token![,](s).lower(s);
                 }
-                x.to_tokens(ys);
+                x.lower(s);
             }
         });
-        self.ret.to_tokens(ys);
+        self.ret.lower(s);
     }
 }
 
@@ -141,10 +141,10 @@ impl Parse for Group {
         })
     }
 }
-impl ToStream for Group {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.group.surround(ys, |ys| {
-            self.elem.to_tokens(ys);
+impl Lower for Group {
+    fn lower(&self, s: &mut Stream) {
+        self.group.surround(s, |s| {
+            self.elem.lower(s);
         });
     }
 }
@@ -187,10 +187,10 @@ impl Parse for Impl {
         Self::parse(x, plus)
     }
 }
-impl ToStream for Impl {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.impl_.to_tokens(ys);
-        self.bounds.to_tokens(ys);
+impl Lower for Impl {
+    fn lower(&self, s: &mut Stream) {
+        self.impl_.lower(s);
+        self.bounds.lower(s);
     }
 }
 
@@ -202,9 +202,9 @@ impl Parse for Infer {
         Ok(Infer { underscore: x.parse()? })
     }
 }
-impl ToStream for Infer {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.underscore.to_tokens(ys);
+impl Lower for Infer {
+    fn lower(&self, s: &mut Stream) {
+        self.underscore.lower(s);
     }
 }
 
@@ -216,9 +216,9 @@ impl Parse for Mac {
         Ok(Mac { mac: x.parse()? })
     }
 }
-impl ToStream for Mac {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.mac.to_tokens(ys);
+impl Lower for Mac {
+    fn lower(&self, s: &mut Stream) {
+        self.mac.lower(s);
     }
 }
 
@@ -230,9 +230,9 @@ impl Parse for Never {
         Ok(Never { bang: x.parse()? })
     }
 }
-impl ToStream for Never {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.bang.to_tokens(ys);
+impl Lower for Never {
+    fn lower(&self, s: &mut Stream) {
+        self.bang.lower(s);
     }
 }
 
@@ -258,10 +258,10 @@ impl Parse for Paren {
         Self::parse(x, plus)
     }
 }
-impl ToStream for Paren {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.paren.surround(ys, |ys| {
-            self.elem.to_tokens(ys);
+impl Lower for Paren {
+    fn lower(&self, s: &mut Stream) {
+        self.paren.surround(s, |s| {
+            self.elem.lower(s);
         });
     }
 }
@@ -277,9 +277,9 @@ impl Parse for Path {
         Ok(Path { qself, path })
     }
 }
-impl ToStream for Path {
-    fn to_tokens(&self, ys: &mut Stream) {
-        path::path_to_tokens(ys, &self.qself, &self.path);
+impl Lower for Path {
+    fn lower(&self, s: &mut Stream) {
+        path::path_to_tokens(s, &self.qself, &self.path);
     }
 }
 
@@ -308,16 +308,16 @@ impl Parse for Ptr {
         })
     }
 }
-impl ToStream for Ptr {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.star.to_tokens(ys);
+impl Lower for Ptr {
+    fn lower(&self, s: &mut Stream) {
+        self.star.lower(s);
         match &self.mut_ {
-            Some(x) => x.to_tokens(ys),
+            Some(x) => x.lower(s),
             None => {
-                ToksOrDefault(&self.const_).to_tokens(ys);
+                ToksOrDefault(&self.const_).lower(s);
             },
         }
-        self.elem.to_tokens(ys);
+        self.elem.lower(s);
     }
 }
 
@@ -337,12 +337,12 @@ impl Parse for Ref {
         })
     }
 }
-impl ToStream for Ref {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.and.to_tokens(ys);
-        self.life.to_tokens(ys);
-        self.mut_.to_tokens(ys);
-        self.elem.to_tokens(ys);
+impl Lower for Ref {
+    fn lower(&self, s: &mut Stream) {
+        self.and.lower(s);
+        self.life.lower(s);
+        self.mut_.lower(s);
+        self.elem.lower(s);
     }
 }
 
@@ -359,10 +359,10 @@ impl Parse for Slice {
         })
     }
 }
-impl ToStream for Slice {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.bracket.surround(ys, |ys| {
-            self.elem.to_tokens(ys);
+impl Lower for Slice {
+    fn lower(&self, s: &mut Stream) {
+        self.bracket.surround(s, |s| {
+            self.elem.lower(s);
         });
     }
 }
@@ -413,10 +413,10 @@ impl Parse for Trait {
         Self::parse(x, plus)
     }
 }
-impl ToStream for Trait {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.dyn_.to_tokens(ys);
-        self.bounds.to_tokens(ys);
+impl Lower for Trait {
+    fn lower(&self, s: &mut Stream) {
+        self.dyn_.lower(s);
+        self.bounds.lower(s);
     }
 }
 
@@ -453,12 +453,12 @@ impl Parse for Tuple {
         })
     }
 }
-impl ToStream for Tuple {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.paren.surround(ys, |ys| {
-            self.elems.to_tokens(ys);
+impl Lower for Tuple {
+    fn lower(&self, s: &mut Stream) {
+        self.paren.surround(s, |s| {
+            self.elems.lower(s);
             if self.elems.len() == 1 && !self.elems.trailing_punct() {
-                <Token![,]>::default().to_tokens(ys);
+                <Token![,]>::default().lower(s);
             }
         });
     }
@@ -485,10 +485,10 @@ impl Parse for Option<Abi> {
         }
     }
 }
-impl ToStream for Abi {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.extern_.to_tokens(ys);
-        self.name.to_tokens(ys);
+impl Lower for Abi {
+    fn lower(&self, s: &mut Stream) {
+        self.extern_.lower(s);
+        self.name.lower(s);
     }
 }
 
@@ -503,14 +503,14 @@ impl Parse for FnArg {
         parse_fn_arg(x, self_)
     }
 }
-impl ToStream for FnArg {
-    fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outers());
+impl Lower for FnArg {
+    fn lower(&self, s: &mut Stream) {
+        s.append_all(self.attrs.outers());
         if let Some((name, colon)) = &self.name {
-            name.to_tokens(ys);
-            colon.to_tokens(ys);
+            name.lower(s);
+            colon.lower(s);
         }
-        self.typ.to_tokens(ys);
+        self.typ.lower(s);
     }
 }
 
@@ -520,15 +520,15 @@ pub struct Variadic {
     pub dots: Token![...],
     pub comma: Option<Token![,]>,
 }
-impl ToStream for Variadic {
-    fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outers());
+impl Lower for Variadic {
+    fn lower(&self, s: &mut Stream) {
+        s.append_all(self.attrs.outers());
         if let Some((name, colon)) = &self.name {
-            name.to_tokens(ys);
-            colon.to_tokens(ys);
+            name.lower(s);
+            colon.lower(s);
         }
-        self.dots.to_tokens(ys);
-        self.comma.to_tokens(ys);
+        self.dots.lower(s);
+        self.comma.lower(s);
     }
 }
 
@@ -558,12 +558,12 @@ impl Parse for Ret {
         Self::parse(x, plus)
     }
 }
-impl ToStream for Ret {
-    fn to_tokens(&self, ys: &mut Stream) {
+impl Lower for Ret {
+    fn lower(&self, s: &mut Stream) {
         match self {
-            Ret::Type(arrow, ty) => {
-                arrow.to_tokens(ys);
-                ty.to_tokens(ys);
+            Ret::Type(arrow, x) => {
+                arrow.lower(s);
+                x.lower(s);
             },
             Ret::Default => {},
         }

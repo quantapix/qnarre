@@ -330,13 +330,13 @@ impl<T, P> IndexMut<usize> for Puncted<T, P> {
         }
     }
 }
-impl<T, P> ToStream for Puncted<T, P>
+impl<T, P> Lower for Puncted<T, P>
 where
-    T: ToStream,
-    P: ToStream,
+    T: Lower,
+    P: Lower,
 {
-    fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.pairs());
+    fn lower(&self, s: &mut Stream) {
+        s.append_all(self.pairs());
     }
 }
 
@@ -726,18 +726,18 @@ where
     P: Copy,
 {
 }
-impl<T, P> ToStream for Pair<T, P>
+impl<T, P> Lower for Pair<T, P>
 where
-    T: ToStream,
-    P: ToStream,
+    T: Lower,
+    P: Lower,
 {
-    fn to_tokens(&self, ys: &mut Stream) {
+    fn lower(&self, s: &mut Stream) {
         match self {
             Pair::Puncted(a, b) => {
-                a.to_tokens(ys);
-                b.to_tokens(ys);
+                a.lower(s);
+                b.lower(s);
             },
-            Pair::End(a) => a.to_tokens(ys),
+            Pair::End(a) => a.lower(s),
         }
     }
 }

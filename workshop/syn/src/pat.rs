@@ -78,15 +78,15 @@ pub struct Ident {
     pub ident: super::Ident,
     pub sub: Option<(Token![@], Box<Pat>)>,
 }
-impl ToStream for Ident {
-    fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outers());
-        self.ref_.to_tokens(ys);
-        self.mut_.to_tokens(ys);
-        self.ident.to_tokens(ys);
+impl Lower for Ident {
+    fn lower(&self, s: &mut Stream) {
+        s.append_all(self.attrs.outers());
+        self.ref_.lower(s);
+        self.mut_.lower(s);
+        self.ident.lower(s);
         if let Some((at_, sub)) = &self.sub {
-            at_.to_tokens(ys);
-            sub.to_tokens(ys);
+            at_.lower(s);
+            sub.lower(s);
         }
     }
 }
@@ -96,11 +96,11 @@ pub struct Or {
     pub vert: Option<Token![|]>,
     pub cases: Puncted<Pat, Token![|]>,
 }
-impl ToStream for Or {
-    fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outers());
-        self.vert.to_tokens(ys);
-        self.cases.to_tokens(ys);
+impl Lower for Or {
+    fn lower(&self, s: &mut Stream) {
+        s.append_all(self.attrs.outers());
+        self.vert.lower(s);
+        self.cases.lower(s);
     }
 }
 
@@ -109,11 +109,11 @@ pub struct Paren {
     pub paren: tok::Paren,
     pub pat: Box<Pat>,
 }
-impl ToStream for Paren {
-    fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outers());
-        self.paren.surround(ys, |ys| {
-            self.pat.to_tokens(ys);
+impl Lower for Paren {
+    fn lower(&self, s: &mut Stream) {
+        s.append_all(self.attrs.outers());
+        self.paren.surround(s, |s| {
+            self.pat.lower(s);
         });
     }
 }
@@ -124,12 +124,12 @@ pub struct Ref {
     pub mut_: Option<Token![mut]>,
     pub pat: Box<Pat>,
 }
-impl ToStream for Ref {
-    fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outers());
-        self.and.to_tokens(ys);
-        self.mut_.to_tokens(ys);
-        self.pat.to_tokens(ys);
+impl Lower for Ref {
+    fn lower(&self, s: &mut Stream) {
+        s.append_all(self.attrs.outers());
+        self.and.lower(s);
+        self.mut_.lower(s);
+        self.pat.lower(s);
     }
 }
 
@@ -137,10 +137,10 @@ pub struct Rest {
     pub attrs: Vec<attr::Attr>,
     pub dot2: Token![..],
 }
-impl ToStream for Rest {
-    fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outers());
-        self.dot2.to_tokens(ys);
+impl Lower for Rest {
+    fn lower(&self, s: &mut Stream) {
+        s.append_all(self.attrs.outers());
+        self.dot2.lower(s);
     }
 }
 
@@ -149,11 +149,11 @@ pub struct Slice {
     pub bracket: tok::Bracket,
     pub elems: Puncted<Pat, Token![,]>,
 }
-impl ToStream for Slice {
-    fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outers());
-        self.bracket.surround(ys, |ys| {
-            self.elems.to_tokens(ys);
+impl Lower for Slice {
+    fn lower(&self, s: &mut Stream) {
+        s.append_all(self.attrs.outers());
+        self.bracket.surround(s, |s| {
+            self.elems.lower(s);
         });
     }
 }
@@ -166,16 +166,16 @@ pub struct Struct {
     pub fields: Puncted<Field, Token![,]>,
     pub rest: Option<Rest>,
 }
-impl ToStream for Struct {
-    fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outers());
-        path::path_to_tokens(ys, &self.qself, &self.path);
-        self.brace.surround(ys, |ys| {
-            self.fields.to_tokens(ys);
+impl Lower for Struct {
+    fn lower(&self, s: &mut Stream) {
+        s.append_all(self.attrs.outers());
+        path::path_to_tokens(s, &self.qself, &self.path);
+        self.brace.surround(s, |s| {
+            self.fields.lower(s);
             if !self.fields.empty_or_trailing() && self.rest.is_some() {
-                <Token![,]>::default().to_tokens(ys);
+                <Token![,]>::default().lower(s);
             }
-            self.rest.to_tokens(ys);
+            self.rest.lower(s);
         });
     }
 }
@@ -186,14 +186,14 @@ pub struct Field {
     pub colon: Option<Token![:]>,
     pub pat: Box<Pat>,
 }
-impl ToStream for Field {
-    fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outers());
+impl Lower for Field {
+    fn lower(&self, s: &mut Stream) {
+        s.append_all(self.attrs.outers());
         if let Some(x) = &self.colon {
-            self.memb.to_tokens(ys);
-            x.to_tokens(ys);
+            self.memb.lower(s);
+            x.lower(s);
         }
-        self.pat.to_tokens(ys);
+        self.pat.lower(s);
     }
 }
 
@@ -211,11 +211,11 @@ pub struct Tuple {
     pub paren: tok::Paren,
     pub elems: Puncted<Pat, Token![,]>,
 }
-impl ToStream for Tuple {
-    fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outers());
-        self.paren.surround(ys, |ys| {
-            self.elems.to_tokens(ys);
+impl Lower for Tuple {
+    fn lower(&self, s: &mut Stream) {
+        s.append_all(self.attrs.outers());
+        self.paren.surround(s, |s| {
+            self.elems.lower(s);
         });
     }
 }
@@ -227,12 +227,12 @@ pub struct TupleStruct {
     pub paren: tok::Paren,
     pub elems: Puncted<Pat, Token![,]>,
 }
-impl ToStream for TupleStruct {
-    fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outers());
-        path::path_to_tokens(ys, &self.qself, &self.path);
-        self.paren.surround(ys, |ys| {
-            self.elems.to_tokens(ys);
+impl Lower for TupleStruct {
+    fn lower(&self, s: &mut Stream) {
+        s.append_all(self.attrs.outers());
+        path::path_to_tokens(s, &self.qself, &self.path);
+        self.paren.surround(s, |s| {
+            self.elems.lower(s);
         });
     }
 }
@@ -243,12 +243,12 @@ pub struct Type {
     pub colon: Token![:],
     pub typ: Box<typ::Type>,
 }
-impl ToStream for Type {
-    fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outers());
-        self.pat.to_tokens(ys);
-        self.colon.to_tokens(ys);
-        self.typ.to_tokens(ys);
+impl Lower for Type {
+    fn lower(&self, s: &mut Stream) {
+        s.append_all(self.attrs.outers());
+        self.pat.lower(s);
+        self.colon.lower(s);
+        self.typ.lower(s);
     }
 }
 
@@ -256,10 +256,10 @@ pub struct Wild {
     pub attrs: Vec<attr::Attr>,
     pub underscore: Token![_],
 }
-impl ToStream for Wild {
-    fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(self.attrs.outers());
-        self.underscore.to_tokens(ys);
+impl Lower for Wild {
+    fn lower(&self, s: &mut Stream) {
+        s.append_all(self.attrs.outers());
+        self.underscore.lower(s);
     }
 }
 

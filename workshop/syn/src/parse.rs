@@ -297,7 +297,7 @@ impl Parse for pm2::Stream {
 impl Parse for pm2::Tree {
     fn parse(s: Stream) -> Res<Self> {
         s.step(|x| match x.token_tree() {
-            Some((y, rest)) => Ok((y, rest)),
+            Some((y, c)) => Ok((y, c)),
             None => Err(x.err("expected token tree")),
         })
     }
@@ -305,9 +305,9 @@ impl Parse for pm2::Tree {
 impl Parse for pm2::Group {
     fn parse(s: Stream) -> Res<Self> {
         s.step(|x| {
-            if let Some((y, rest)) = x.any_group_token() {
+            if let Some((y, c)) = x.any_group_token() {
                 if y.delim() != Delim::None {
-                    return Ok((y, rest));
+                    return Ok((y, c));
                 }
             }
             Err(x.err("expected group token"))
@@ -317,7 +317,7 @@ impl Parse for pm2::Group {
 impl Parse for Punct {
     fn parse(s: Stream) -> Res<Self> {
         s.step(|x| match x.punct() {
-            Some((y, rest)) => Ok((y, rest)),
+            Some((y, c)) => Ok((y, c)),
             None => Err(x.err("expected punctuation token")),
         })
     }
@@ -325,7 +325,7 @@ impl Parse for Punct {
 impl Parse for pm2::Lit {
     fn parse(s: Stream) -> Res<Self> {
         s.step(|x| match x.literal() {
-            Some((y, rest)) => Ok((y, rest)),
+            Some((y, c)) => Ok((y, c)),
             None => Err(x.err("expected literal token")),
         })
     }
@@ -333,16 +333,16 @@ impl Parse for pm2::Lit {
 
 pub trait Parser: Sized {
     type Output;
-    fn parse2(self, tokens: pm2::Stream) -> Res<Self::Output>;
-    fn parse(self, tokens: pm2::Stream) -> Res<Self::Output> {
-        self.parse2(pm2::Stream::from(tokens))
+    fn parse2(self, s: pm2::Stream) -> Res<Self::Output>;
+    fn parse(self, s: pm2::Stream) -> Res<Self::Output> {
+        self.parse2(pm2::Stream::from(s))
     }
-    fn parse_str(self, s: &str) -> Res<Self::Output> {
-        self.parse2(pm2::Stream::from_str(s)?)
+    fn parse_str(self, x: &str) -> Res<Self::Output> {
+        self.parse2(pm2::Stream::from_str(x)?)
     }
-    fn __parse_scoped(self, scope: Span, tokens: pm2::Stream) -> Res<Self::Output> {
+    fn parse_scoped(self, scope: Span, s: pm2::Stream) -> Res<Self::Output> {
         let _ = scope;
-        self.parse2(tokens)
+        self.parse2(s)
     }
 }
 impl<F, T> Parser for F
@@ -361,7 +361,7 @@ where
             Ok(node)
         }
     }
-    fn __parse_scoped(self, scope: Span, s: pm2::Stream) -> Res<Self::Output> {
+    fn parse_scoped(self, scope: Span, s: pm2::Stream) -> Res<Self::Output> {
         let buf = cur::Buffer::new2(s);
         let cursor = buf.begin();
         let unexpected = Rc::new(Cell::new(Unexpected::None));
@@ -501,8 +501,8 @@ fn tokens_to_parse_buffer(x: &cur::Buffer) -> Buffer {
     new_parse_buffer(scope, cur, unexp)
 }
 
-pub fn parse_scoped<F: Parser>(f: F, s: Span, xs: pm2::Stream) -> Res<F::Output> {
-    f.__parse_scoped(s, xs)
+pub fn parse_scoped<F: Parser>(f: F, scope: Span, s: pm2::Stream) -> Res<F::Output> {
+    f.parse_scoped(scope, s)
 }
 
 pub fn parse_verbatim<'a>(beg: Stream<'a>, end: Stream<'a>) -> Stream<'a> {

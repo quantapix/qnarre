@@ -117,12 +117,12 @@ impl Parse for Life {
         x.step(|c| c.life().ok_or_else(|| c.err("expected life")))
     }
 }
-impl ToStream for Life {
-    fn to_tokens(&self, ys: &mut Stream) {
-        let mut apos = Punct::new('\'', pm2::Spacing::Joint);
-        apos.set_span(self.apos);
-        ys.append(apos);
-        self.ident.to_tokens(ys);
+impl Lower for Life {
+    fn lower(&self, s: &mut Stream) {
+        let mut y = Punct::new('\'', pm2::Spacing::Joint);
+        y.set_span(self.apos);
+        s.append(y);
+        self.ident.lower(s);
     }
 }
 

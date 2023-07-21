@@ -169,11 +169,11 @@ impl Parse for Array {
         })
     }
 }
-impl ToStream for Array {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.bracket.surround(ys, |ys| {
-            self.elems.to_tokens(ys);
+impl Lower for Array {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.bracket.surround(s, |s| {
+            self.elems.lower(s);
         });
     }
 }
@@ -184,12 +184,12 @@ pub struct Assign {
     pub eq: Token![=],
     pub right: Box<Expr>,
 }
-impl ToStream for Assign {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.left.to_tokens(ys);
-        self.eq.to_tokens(ys);
-        self.right.to_tokens(ys);
+impl Lower for Assign {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.left.lower(s);
+        self.eq.lower(s);
+        self.right.lower(s);
     }
 }
 
@@ -209,12 +209,12 @@ impl Parse for Async {
         })
     }
 }
-impl ToStream for Async {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.async_.to_tokens(ys);
-        self.move_.to_tokens(ys);
-        self.block.to_tokens(ys);
+impl Lower for Async {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.async_.lower(s);
+        self.move_.lower(s);
+        self.block.lower(s);
     }
 }
 
@@ -224,12 +224,12 @@ pub struct Await {
     pub dot: Token![.],
     pub await_: Token![await],
 }
-impl ToStream for Await {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.expr.to_tokens(ys);
-        self.dot.to_tokens(ys);
-        self.await_.to_tokens(ys);
+impl Lower for Await {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.expr.lower(s);
+        self.dot.lower(s);
+        self.await_.lower(s);
     }
 }
 
@@ -239,12 +239,12 @@ pub struct Binary {
     pub op: BinOp,
     pub right: Box<Expr>,
 }
-impl ToStream for Binary {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.left.to_tokens(ys);
-        self.op.to_tokens(ys);
-        self.right.to_tokens(ys);
+impl Lower for Binary {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.left.lower(s);
+        self.op.lower(s);
+        self.right.lower(s);
     }
 }
 
@@ -268,13 +268,13 @@ impl Parse for Block {
         })
     }
 }
-impl ToStream for Block {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.label.to_tokens(ys);
-        self.block.brace.surround(ys, |ys| {
-            attr::inners_to_tokens(&self.attrs, ys);
-            ys.append_all(&self.block.stmts);
+impl Lower for Block {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.label.lower(s);
+        self.block.brace.surround(s, |s| {
+            attr::inners_to_tokens(&self.attrs, s);
+            s.append_all(&self.block.stmts);
         });
     }
 }
@@ -291,12 +291,12 @@ impl Parse for Break {
         expr_break(x, allow)
     }
 }
-impl ToStream for Break {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.break_.to_tokens(ys);
-        self.label.to_tokens(ys);
-        self.expr.to_tokens(ys);
+impl Lower for Break {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.break_.lower(s);
+        self.label.lower(s);
+        self.expr.lower(s);
     }
 }
 
@@ -306,12 +306,12 @@ pub struct Call {
     pub paren: tok::Paren,
     pub args: Puncted<Expr, Token![,]>,
 }
-impl ToStream for Call {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.func.to_tokens(ys);
-        self.paren.surround(ys, |ys| {
-            self.args.to_tokens(ys);
+impl Lower for Call {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.func.lower(s);
+        self.paren.surround(s, |s| {
+            self.args.lower(s);
         });
     }
 }
@@ -322,12 +322,12 @@ pub struct Cast {
     pub as_: Token![as],
     pub typ: Box<typ::Type>,
 }
-impl ToStream for Cast {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.expr.to_tokens(ys);
-        self.as_.to_tokens(ys);
-        self.typ.to_tokens(ys);
+impl Lower for Cast {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.expr.lower(s);
+        self.as_.lower(s);
+        self.typ.lower(s);
     }
 }
 
@@ -350,19 +350,19 @@ impl Parse for Closure {
         expr_closure(x, allow)
     }
 }
-impl ToStream for Closure {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.lifes.to_tokens(ys);
-        self.const_.to_tokens(ys);
-        self.static_.to_tokens(ys);
-        self.async_.to_tokens(ys);
-        self.move_.to_tokens(ys);
-        self.or1.to_tokens(ys);
-        self.inputs.to_tokens(ys);
-        self.or2.to_tokens(ys);
-        self.ret.to_tokens(ys);
-        self.body.to_tokens(ys);
+impl Lower for Closure {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.lifes.lower(s);
+        self.const_.lower(s);
+        self.static_.lower(s);
+        self.async_.lower(s);
+        self.move_.lower(s);
+        self.or1.lower(s);
+        self.inputs.lower(s);
+        self.or2.lower(s);
+        self.ret.lower(s);
+        self.body.lower(s);
     }
 }
 
@@ -385,13 +385,13 @@ impl Parse for Const {
         })
     }
 }
-impl ToStream for Const {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.const_.to_tokens(ys);
-        self.block.brace.surround(ys, |ys| {
-            attr::inners_to_tokens(&self.attrs, ys);
-            ys.append_all(&self.block.stmts);
+impl Lower for Const {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.const_.lower(s);
+        self.block.brace.surround(s, |s| {
+            attr::inners_to_tokens(&self.attrs, s);
+            s.append_all(&self.block.stmts);
         });
     }
 }
@@ -410,11 +410,11 @@ impl Parse for Continue {
         })
     }
 }
-impl ToStream for Continue {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.continue_.to_tokens(ys);
-        self.label.to_tokens(ys);
+impl Lower for Continue {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.continue_.lower(s);
+        self.label.lower(s);
     }
 }
 
@@ -424,12 +424,12 @@ pub struct Field {
     pub dot: Token![.],
     pub memb: Member,
 }
-impl ToStream for Field {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.base.to_tokens(ys);
-        self.dot.to_tokens(ys);
-        self.memb.to_tokens(ys);
+impl Lower for Field {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.base.lower(s);
+        self.dot.lower(s);
+        self.memb.lower(s);
     }
 }
 
@@ -465,17 +465,17 @@ impl Parse for ForLoop {
         })
     }
 }
-impl ToStream for ForLoop {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.label.to_tokens(ys);
-        self.for_.to_tokens(ys);
-        self.pat.to_tokens(ys);
-        self.in_.to_tokens(ys);
-        wrap_bare_struct(ys, &self.expr);
-        self.body.brace.surround(ys, |ys| {
-            attr::inners_to_tokens(&self.attrs, ys);
-            ys.append_all(&self.body.stmts);
+impl Lower for ForLoop {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.label.lower(s);
+        self.for_.lower(s);
+        self.pat.lower(s);
+        self.in_.lower(s);
+        wrap_bare_struct(s, &self.expr);
+        self.body.brace.surround(s, |s| {
+            attr::inners_to_tokens(&self.attrs, s);
+            s.append_all(&self.body.stmts);
         });
     }
 }
@@ -485,11 +485,11 @@ pub struct Group {
     pub group: tok::Group,
     pub expr: Box<Expr>,
 }
-impl ToStream for Group {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.group.surround(ys, |ys| {
-            self.expr.to_tokens(ys);
+impl Lower for Group {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.group.surround(s, |s| {
+            self.expr.lower(s);
         });
     }
 }
@@ -519,17 +519,17 @@ impl Parse for If {
         })
     }
 }
-impl ToStream for If {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.if_.to_tokens(ys);
-        wrap_bare_struct(ys, &self.cond);
-        self.then_.to_tokens(ys);
+impl Lower for If {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.if_.lower(s);
+        wrap_bare_struct(s, &self.cond);
+        self.then_.lower(s);
         if let Some((else_, x)) = &self.else_ {
-            else_.to_tokens(ys);
+            else_.lower(s);
             match **x {
-                Expr::If(_) | Expr::Block(_) => x.to_tokens(ys),
-                _ => tok::Brace::default().surround(ys, |ys| x.to_tokens(ys)),
+                Expr::If(_) | Expr::Block(_) => x.lower(s),
+                _ => tok::Brace::default().surround(s, |s| x.lower(s)),
             }
         }
     }
@@ -554,12 +554,12 @@ impl Parse for Index {
         }
     }
 }
-impl ToStream for Index {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.expr.to_tokens(ys);
-        self.bracket.surround(ys, |ys| {
-            self.idx.to_tokens(ys);
+impl Lower for Index {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.expr.lower(s);
+        self.bracket.surround(s, |s| {
+            self.idx.lower(s);
         });
     }
 }
@@ -576,10 +576,10 @@ impl Parse for Infer {
         })
     }
 }
-impl ToStream for Infer {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.underscore.to_tokens(ys);
+impl Lower for Infer {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.underscore.lower(s);
     }
 }
 
@@ -605,13 +605,13 @@ impl Parse for Let {
         })
     }
 }
-impl ToStream for Let {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.let_.to_tokens(ys);
-        self.pat.to_tokens(ys);
-        self.eq.to_tokens(ys);
-        wrap_bare_struct(ys, &self.expr);
+impl Lower for Let {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.let_.lower(s);
+        self.pat.lower(s);
+        self.eq.lower(s);
+        wrap_bare_struct(s, &self.expr);
     }
 }
 
@@ -627,10 +627,10 @@ impl Parse for Lit {
         })
     }
 }
-impl ToStream for Lit {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.lit.to_tokens(ys);
+impl Lower for Lit {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.lit.lower(s);
     }
 }
 
@@ -657,14 +657,14 @@ impl Parse for Loop {
         })
     }
 }
-impl ToStream for Loop {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.label.to_tokens(ys);
-        self.loop_.to_tokens(ys);
-        self.body.brace.surround(ys, |ys| {
-            attr::inners_to_tokens(&self.attrs, ys);
-            ys.append_all(&self.body.stmts);
+impl Lower for Loop {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.label.lower(s);
+        self.loop_.lower(s);
+        self.body.brace.surround(s, |s| {
+            attr::inners_to_tokens(&self.attrs, s);
+            s.append_all(&self.body.stmts);
         });
     }
 }
@@ -681,10 +681,10 @@ impl Parse for Mac {
         })
     }
 }
-impl ToStream for Mac {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.mac.to_tokens(ys);
+impl Lower for Mac {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.mac.lower(s);
     }
 }
 
@@ -716,18 +716,18 @@ impl Parse for Match {
         })
     }
 }
-impl ToStream for Match {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.match_.to_tokens(ys);
-        wrap_bare_struct(ys, &self.expr);
-        self.brace.surround(ys, |ys| {
-            attr::inners_to_tokens(&self.attrs, ys);
+impl Lower for Match {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.match_.lower(s);
+        wrap_bare_struct(s, &self.expr);
+        self.brace.surround(s, |s| {
+            attr::inners_to_tokens(&self.attrs, s);
             for (i, arm) in self.arms.iter().enumerate() {
-                arm.to_tokens(ys);
+                arm.lower(s);
                 let is_last = i == self.arms.len() - 1;
                 if !is_last && requires_terminator(&arm.body) && arm.comma.is_none() {
-                    <Token![,]>::default().to_tokens(ys);
+                    <Token![,]>::default().lower(s);
                 }
             }
         });
@@ -743,15 +743,15 @@ pub struct MethodCall {
     pub paren: tok::Paren,
     pub args: Puncted<Expr, Token![,]>,
 }
-impl ToStream for MethodCall {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.expr.to_tokens(ys);
-        self.dot.to_tokens(ys);
-        self.method.to_tokens(ys);
-        self.turbofish.to_tokens(ys);
-        self.paren.surround(ys, |ys| {
-            self.args.to_tokens(ys);
+impl Lower for MethodCall {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.expr.lower(s);
+        self.dot.lower(s);
+        self.method.lower(s);
+        self.turbofish.lower(s);
+        self.paren.surround(s, |s| {
+            self.args.lower(s);
         });
     }
 }
@@ -766,11 +766,11 @@ impl Parse for Paren {
         expr_paren(x)
     }
 }
-impl ToStream for Paren {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.paren.surround(ys, |ys| {
-            self.expr.to_tokens(ys);
+impl Lower for Paren {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.paren.surround(s, |s| {
+            self.expr.lower(s);
         });
     }
 }
@@ -787,10 +787,10 @@ impl Parse for Path {
         Ok(Path { attrs, qself, path })
     }
 }
-impl ToStream for Path {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        path::path_to_tokens(ys, &self.qself, &self.path);
+impl Lower for Path {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        path::path_to_tokens(s, &self.qself, &self.path);
     }
 }
 
@@ -800,12 +800,12 @@ pub struct Range {
     pub limits: Limits,
     pub end: Option<Box<Expr>>,
 }
-impl ToStream for Range {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.beg.to_tokens(ys);
-        self.limits.to_tokens(ys);
-        self.end.to_tokens(ys);
+impl Lower for Range {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.beg.lower(s);
+        self.limits.lower(s);
+        self.end.lower(s);
     }
 }
 
@@ -826,12 +826,12 @@ impl Parse for Ref {
         })
     }
 }
-impl ToStream for Ref {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.and.to_tokens(ys);
-        self.mut_.to_tokens(ys);
-        self.expr.to_tokens(ys);
+impl Lower for Ref {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.and.lower(s);
+        self.mut_.lower(s);
+        self.expr.lower(s);
     }
 }
 
@@ -854,13 +854,13 @@ impl Parse for Repeat {
         })
     }
 }
-impl ToStream for Repeat {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.bracket.surround(ys, |ys| {
-            self.expr.to_tokens(ys);
-            self.semi.to_tokens(ys);
-            self.len.to_tokens(ys);
+impl Lower for Repeat {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.bracket.surround(s, |s| {
+            self.expr.lower(s);
+            self.semi.lower(s);
+            self.len.lower(s);
         });
     }
 }
@@ -876,11 +876,11 @@ impl Parse for Return {
         expr_ret(x, allow)
     }
 }
-impl ToStream for Return {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.return_.to_tokens(ys);
-        self.expr.to_tokens(ys);
+impl Lower for Return {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.return_.lower(s);
+        self.expr.lower(s);
     }
 }
 
@@ -899,18 +899,18 @@ impl Parse for Struct {
         expr_struct_helper(x, qself, path)
     }
 }
-impl ToStream for Struct {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        path::path_to_tokens(ys, &self.qself, &self.path);
-        self.brace.surround(ys, |ys| {
-            self.fields.to_tokens(ys);
+impl Lower for Struct {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        path::path_to_tokens(s, &self.qself, &self.path);
+        self.brace.surround(s, |s| {
+            self.fields.lower(s);
             if let Some(dot2) = &self.dot2 {
-                dot2.to_tokens(ys);
+                dot2.lower(s);
             } else if self.rest.is_some() {
-                Token![..](pm2::Span::call_site()).to_tokens(ys);
+                Token![..](pm2::Span::call_site()).lower(s);
             }
-            self.rest.to_tokens(ys);
+            self.rest.lower(s);
         });
     }
 }
@@ -920,11 +920,11 @@ pub struct Try {
     pub expr: Box<Expr>,
     pub question: Token![?],
 }
-impl ToStream for Try {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.expr.to_tokens(ys);
-        self.question.to_tokens(ys);
+impl Lower for Try {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.expr.lower(s);
+        self.question.lower(s);
     }
 }
 
@@ -942,11 +942,11 @@ impl Parse for TryBlock {
         })
     }
 }
-impl ToStream for TryBlock {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.try_.to_tokens(ys);
-        self.block.to_tokens(ys);
+impl Lower for TryBlock {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.try_.lower(s);
+        self.block.lower(s);
     }
 }
 
@@ -955,13 +955,13 @@ pub struct Tuple {
     pub paren: tok::Paren,
     pub elems: Puncted<Expr, Token![,]>,
 }
-impl ToStream for Tuple {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.paren.surround(ys, |ys| {
-            self.elems.to_tokens(ys);
+impl Lower for Tuple {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.paren.surround(s, |s| {
+            self.elems.lower(s);
             if self.elems.len() == 1 && !self.elems.trailing_punct() {
-                <Token![,]>::default().to_tokens(ys);
+                <Token![,]>::default().lower(s);
             }
         });
     }
@@ -979,11 +979,11 @@ impl Parse for Unary {
         expr_unary(x, attrs, allow)
     }
 }
-impl ToStream for Unary {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.op.to_tokens(ys);
-        self.expr.to_tokens(ys);
+impl Lower for Unary {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.op.lower(s);
+        self.expr.lower(s);
     }
 }
 
@@ -1006,13 +1006,13 @@ impl Parse for Unsafe {
         })
     }
 }
-impl ToStream for Unsafe {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.unsafe_.to_tokens(ys);
-        self.block.brace.surround(ys, |ys| {
-            attr::inners_to_tokens(&self.attrs, ys);
-            ys.append_all(&self.block.stmts);
+impl Lower for Unsafe {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.unsafe_.lower(s);
+        self.block.brace.surround(s, |s| {
+            attr::inners_to_tokens(&self.attrs, s);
+            s.append_all(&self.block.stmts);
         });
     }
 }
@@ -1043,15 +1043,15 @@ impl Parse for While {
         })
     }
 }
-impl ToStream for While {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.label.to_tokens(ys);
-        self.while_.to_tokens(ys);
-        wrap_bare_struct(ys, &self.cond);
-        self.block.brace.surround(ys, |ys| {
-            attr::inners_to_tokens(&self.attrs, ys);
-            ys.append_all(&self.block.stmts);
+impl Lower for While {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.label.lower(s);
+        self.while_.lower(s);
+        wrap_bare_struct(s, &self.cond);
+        self.block.brace.surround(s, |s| {
+            attr::inners_to_tokens(&self.attrs, s);
+            s.append_all(&self.block.stmts);
         });
     }
 }
@@ -1076,11 +1076,11 @@ impl Parse for Yield {
         })
     }
 }
-impl ToStream for Yield {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.yield_.to_tokens(ys);
-        self.expr.to_tokens(ys);
+impl Lower for Yield {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.yield_.lower(s);
+        self.expr.lower(s);
     }
 }
 
@@ -1158,11 +1158,11 @@ impl Parse for Member {
         }
     }
 }
-impl ToStream for Member {
-    fn to_tokens(&self, ys: &mut Stream) {
+impl Lower for Member {
+    fn lower(&self, s: &mut Stream) {
         match self {
-            Member::Named(x) => x.to_tokens(ys),
-            Member::Unnamed(x) => x.to_tokens(ys),
+            Member::Named(x) => x.lower(s),
+            Member::Unnamed(x) => x.lower(s),
         }
     }
 }
@@ -1199,11 +1199,11 @@ impl Fragment for Idx {
         Some(self.span)
     }
 }
-impl ToStream for Idx {
-    fn to_tokens(&self, ys: &mut Stream) {
-        let mut lit = pm2::Lit::i64_unsuffixed(i64::from(self.idx));
-        lit.set_span(self.span);
-        ys.append(lit);
+impl Lower for Idx {
+    fn lower(&self, s: &mut Stream) {
+        let mut y = pm2::Lit::i64_unsuffixed(i64::from(self.idx));
+        y.set_span(self.span);
+        s.append(y);
     }
 }
 
@@ -1264,38 +1264,38 @@ impl Parse for BinOp {
         }
     }
 }
-impl ToStream for BinOp {
-    fn to_tokens(&self, ys: &mut Stream) {
+impl Lower for BinOp {
+    fn lower(&self, s: &mut Stream) {
         use BinOp::*;
         match self {
-            Add(x) => x.to_tokens(ys),
-            Sub(x) => x.to_tokens(ys),
-            Mul(x) => x.to_tokens(ys),
-            Div(x) => x.to_tokens(ys),
-            Rem(x) => x.to_tokens(ys),
-            And(x) => x.to_tokens(ys),
-            Or(x) => x.to_tokens(ys),
-            BitXor(x) => x.to_tokens(ys),
-            BitAnd(x) => x.to_tokens(ys),
-            BitOr(x) => x.to_tokens(ys),
-            Shl(x) => x.to_tokens(ys),
-            Shr(x) => x.to_tokens(ys),
-            Eq(x) => x.to_tokens(ys),
-            Lt(x) => x.to_tokens(ys),
-            Le(x) => x.to_tokens(ys),
-            Ne(x) => x.to_tokens(ys),
-            Ge(x) => x.to_tokens(ys),
-            Gt(x) => x.to_tokens(ys),
-            AddAssign(x) => x.to_tokens(ys),
-            SubAssign(x) => x.to_tokens(ys),
-            MulAssign(x) => x.to_tokens(ys),
-            DivAssign(x) => x.to_tokens(ys),
-            RemAssign(x) => x.to_tokens(ys),
-            BitXorAssign(x) => x.to_tokens(ys),
-            BitAndAssign(x) => x.to_tokens(ys),
-            BitOrAssign(x) => x.to_tokens(ys),
-            ShlAssign(x) => x.to_tokens(ys),
-            ShrAssign(x) => x.to_tokens(ys),
+            Add(x) => x.lower(s),
+            Sub(x) => x.lower(s),
+            Mul(x) => x.lower(s),
+            Div(x) => x.lower(s),
+            Rem(x) => x.lower(s),
+            And(x) => x.lower(s),
+            Or(x) => x.lower(s),
+            BitXor(x) => x.lower(s),
+            BitAnd(x) => x.lower(s),
+            BitOr(x) => x.lower(s),
+            Shl(x) => x.lower(s),
+            Shr(x) => x.lower(s),
+            Eq(x) => x.lower(s),
+            Lt(x) => x.lower(s),
+            Le(x) => x.lower(s),
+            Ne(x) => x.lower(s),
+            Ge(x) => x.lower(s),
+            Gt(x) => x.lower(s),
+            AddAssign(x) => x.lower(s),
+            SubAssign(x) => x.lower(s),
+            MulAssign(x) => x.lower(s),
+            DivAssign(x) => x.lower(s),
+            RemAssign(x) => x.lower(s),
+            BitXorAssign(x) => x.lower(s),
+            BitAndAssign(x) => x.lower(s),
+            BitOrAssign(x) => x.lower(s),
+            ShlAssign(x) => x.lower(s),
+            ShrAssign(x) => x.lower(s),
         }
     }
 }
@@ -1319,12 +1319,12 @@ impl Parse for UnOp {
         }
     }
 }
-impl ToStream for UnOp {
-    fn to_tokens(&self, ys: &mut Stream) {
+impl Lower for UnOp {
+    fn lower(&self, s: &mut Stream) {
         match self {
-            UnOp::Deref(x) => x.to_tokens(ys),
-            UnOp::Not(x) => x.to_tokens(ys),
-            UnOp::Neg(x) => x.to_tokens(ys),
+            UnOp::Deref(x) => x.lower(s),
+            UnOp::Not(x) => x.lower(s),
+            UnOp::Neg(x) => x.lower(s),
         }
     }
 }
@@ -1361,13 +1361,13 @@ impl Parse for FieldValue {
         })
     }
 }
-impl ToStream for FieldValue {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.member.to_tokens(ys);
+impl Lower for FieldValue {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.memb.lower(s);
         if let Some(colon) = &self.colon {
-            colon.to_tokens(ys);
-            self.val.to_tokens(ys);
+            colon.lower(s);
+            self.val.lower(s);
         }
     }
 }
@@ -1393,10 +1393,10 @@ impl Parse for Option<Label> {
         }
     }
 }
-impl ToStream for Label {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.name.to_tokens(ys);
-        self.colon.to_tokens(ys);
+impl Lower for Label {
+    fn lower(&self, s: &mut Stream) {
+        self.name.lower(s);
+        self.colon.lower(s);
     }
 }
 
@@ -1439,17 +1439,17 @@ impl Parse for Arm {
         })
     }
 }
-impl ToStream for Arm {
-    fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(&self.attrs);
-        self.pat.to_tokens(ys);
-        if let Some((if_, guard)) = &self.guard {
-            if_.to_tokens(ys);
-            guard.to_tokens(ys);
+impl Lower for Arm {
+    fn lower(&self, s: &mut Stream) {
+        s.append_all(&self.attrs);
+        self.pat.lower(s);
+        if let Some((if_, x)) = &self.guard {
+            if_.lower(s);
+            x.lower(s);
         }
-        self.fat_arrow.to_tokens(ys);
-        self.body.to_tokens(ys);
-        self.comma.to_tokens(ys);
+        self.fat_arrow.lower(s);
+        self.body.lower(s);
+        self.comma.lower(s);
     }
 }
 
@@ -1490,11 +1490,11 @@ impl Parse for Limits {
         }
     }
 }
-impl ToStream for Limits {
-    fn to_tokens(&self, ys: &mut Stream) {
+impl Lower for Limits {
+    fn lower(&self, s: &mut Stream) {
         match self {
-            Limits::HalfOpen(x) => x.to_tokens(ys),
-            Limits::Closed(x) => x.to_tokens(ys),
+            Limits::HalfOpen(x) => x.lower(s),
+            Limits::Closed(x) => x.lower(s),
         }
     }
 }
@@ -2392,12 +2392,12 @@ fn parse_binop(x: Stream) -> Res<BinOp> {
         Err(x.error("expected binary operator"))
     }
 }
-fn wrap_bare_struct(ys: &mut Stream, e: &Expr) {
+fn wrap_bare_struct(s: &mut Stream, e: &Expr) {
     if let Expr::Struct(_) = *e {
-        tok::Paren::default().surround(ys, |ys| {
-            e.to_tokens(ys);
+        tok::Paren::default().surround(s, |s| {
+            e.lower(s);
         });
     } else {
-        e.to_tokens(ys);
+        e.lower(s);
     }
 }

@@ -22,7 +22,7 @@ impl Err {
             }
         }
     }
-    pub fn new_spanned<T: ToStream, U: Display>(tokens: T, msg: U) -> Self {
+    pub fn new_spanned<T: Lower, U: Display>(tokens: T, msg: U) -> Self {
         return new_spanned(tokens.into_stream(), msg.to_string());
         fn new_spanned(tokens: pm2::Stream, msg: String) -> Err {
             let mut iter = tokens.into_iter();

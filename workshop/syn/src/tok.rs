@@ -131,9 +131,9 @@ macro_rules! def_keywords {
                     })
                 }
             }
-            impl ToStream for $n {
-                fn to_tokens(&self, ys: &mut pm2::Stream) {
-                    crate::tok::kw_to_toks($t, self.span, ys);
+            impl Lower for $n {
+                fn lower(&self, s: &mut pm2::Stream) {
+                    crate::tok::kw_to_toks($t, self.span, s);
                 }
             }
             impl Tok for $n {
@@ -265,8 +265,8 @@ macro_rules! def_punct_structs {
 def_punct_structs! {
     "_" pub struct Underscore/1
 }
-impl ToStream for Underscore {
-    fn to_tokens(&self, ts: &mut pm2::Stream) {
+impl Lower for Underscore {
+    fn lower(&self, ts: &mut pm2::Stream) {
         ts.append(Ident::new("_", self.span));
     }
 }
@@ -339,9 +339,9 @@ macro_rules! def_punct {
                     })
                 }
             }
-            impl ToStream for $n {
-                fn to_tokens(&self, ts: &mut pm2::Stream) {
-                    crate::tok::punct_to_tokens($t, &self.spans, ts);
+            impl Lower for $n {
+                fn lower(&self, s: &mut pm2::Stream) {
+                    crate::tok::punct_to_tokens($t, &self.spans, s);
                 }
             }
         )*

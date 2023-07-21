@@ -31,8 +31,8 @@ thiserror = "1"
 toml = "0.5"
 walkdir = "2"
 
-[lib]
-proc-macro = true
+#[lib]
+#proc-macro = true
 
 [[bin]]
 name = "codegen"

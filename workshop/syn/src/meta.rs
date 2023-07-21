@@ -80,10 +80,10 @@ impl Parse for List {
         parse_list_after_path(y, x)
     }
 }
-impl ToStream for List {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.path.to_tokens(ys);
-        self.delim.surround(ys, self.toks.clone());
+impl Lower for List {
+    fn lower(&self, s: &mut Stream) {
+        self.path.lower(s);
+        self.delim.surround(s, self.toks.clone());
     }
 }
 
@@ -98,11 +98,11 @@ impl Parse for NameValue {
         parse_name_value_after_path(y, x)
     }
 }
-impl ToStream for NameValue {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.path.to_tokens(ys);
-        self.eq.to_tokens(ys);
-        self.expr.to_tokens(ys);
+impl Lower for NameValue {
+    fn lower(&self, s: &mut Stream) {
+        self.path.lower(s);
+        self.eq.lower(s);
+        self.expr.lower(s);
     }
 }
 

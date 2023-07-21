@@ -30,11 +30,11 @@ impl Parse for Mac {
         })
     }
 }
-impl ToStream for Mac {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.path.to_tokens(ys);
-        self.bang.to_tokens(ys);
-        self.delim.surround(ys, self.toks.clone());
+impl Lower for Mac {
+    fn lower(&self, s: &mut Stream) {
+        self.path.lower(s);
+        self.bang.lower(s);
+        self.delim.surround(s, self.toks.clone());
     }
 }
 
@@ -117,13 +117,13 @@ macro_rules! generate_to_tokens {
         }
     ) => {
         generate_to_tokens!(
-            ($($arms)* $n::$variant(_e) => _e.to_tokens($ys),)
+            ($($arms)* $n::$variant(_e) => _e.lower($ys),)
             $ys $n { $($next)* }
         );
     };
-    (($($arms:tt)*) $ys:ident $n:ident {}) => {
-        impl crate::quote::ToStream for $n {
-            fn to_tokens(&self, $ys: &mut crate::pm2::Stream) {
+    (($($arms:tt)*) $s:ident $n:ident {}) => {
+        impl crate::Lower for $n {
+            fn lower(&self, $s: &mut crate::pm2::Stream) {
                 match self {
                     $($arms)*
                 }
@@ -192,10 +192,10 @@ macro_rules! impl_parse_for_custom_kw {
 #[macro_export]
 macro_rules! impl_to_tokens_for_custom_kw {
     ($n:ident) => {
-        impl<'a> $crate::quote::ToStream for $n<'a> {
-            fn to_tokens(&self, ys: &mut $crate::pm2::Stream) {
+        impl<'a> $crate::Lower for $n<'a> {
+            fn lower(&self, s: &mut $crate::pm2::Stream) {
                 let y = $crate::Ident::new(std::stringify!($n), self.span);
-                $crate::quote::StreamExt::append(ys, y);
+                $crate::quote::StreamExt::append(s, y);
             }
         }
     };
@@ -283,9 +283,9 @@ macro_rules! impl_parse_for_custom_punct {
 #[macro_export]
 macro_rules! impl_to_tokens_for_custom_punct {
     ($n:ident, $($tt:tt)+) => {
-        impl $crate::quote::ToStream for $n {
-            fn to_tokens(&self, ys: &mut $crate::pm2::TokenStream) {
-                $crate::tok::punct_to_tokens($crate::stringify_punct!($($tt)+), &self.spans, ys)
+        impl $crate::Lower for $n {
+            fn lower(&self, s: &mut $crate::pm2::TokenStream) {
+                $crate::tok::punct_to_tokens($crate::stringify_punct!($($tt)+), &self.spans, s)
             }
         }
     };

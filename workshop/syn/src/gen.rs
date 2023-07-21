@@ -88,16 +88,16 @@ pub mod bound {
             })
         }
     }
-    impl ToStream for Trait {
-        fn to_tokens(&self, ys: &mut Stream) {
-            let f = |ys: &mut Stream| {
-                self.modif.to_tokens(ys);
-                self.lifes.to_tokens(ys);
-                self.path.to_tokens(ys);
+    impl Lower for Trait {
+        fn lower(&self, s: &mut Stream) {
+            let y = |s: &mut Stream| {
+                self.modif.lower(s);
+                self.lifes.lower(s);
+                self.path.lower(s);
             };
             match &self.paren {
-                Some(x) => x.surround(ys, f),
-                None => f(ys),
+                Some(x) => x.surround(s, y),
+                None => y(s),
             }
         }
     }
@@ -115,12 +115,12 @@ pub mod bound {
             }
         }
     }
-    impl ToStream for Modifier {
-        fn to_tokens(&self, ys: &mut Stream) {
+    impl Lower for Modifier {
+        fn lower(&self, s: &mut Stream) {
             use Modifier::*;
             match self {
                 None => {},
-                Maybe(y) => y.to_tokens(ys),
+                Maybe(x) => x.lower(s),
             }
         }
     }
@@ -177,12 +177,12 @@ pub mod bound {
             }
         }
     }
-    impl ToStream for Lifes {
-        fn to_tokens(&self, ys: &mut Stream) {
-            self.for_.to_tokens(ys);
-            self.lt.to_tokens(ys);
-            self.lifes.to_tokens(ys);
-            self.gt.to_tokens(ys);
+    impl Lower for Lifes {
+        fn lower(&self, s: &mut Stream) {
+            self.for_.lower(s);
+            self.lt.lower(s);
+            self.lifes.lower(s);
+            self.gt.lower(s);
         }
     }
 }
@@ -263,13 +263,13 @@ pub mod param {
             })
         }
     }
-    impl ToStream for Life {
-        fn to_tokens(&self, ys: &mut Stream) {
-            ys.append_all(self.attrs.outers());
-            self.life.to_tokens(ys);
+    impl Lower for Life {
+        fn lower(&self, s: &mut Stream) {
+            s.append_all(self.attrs.outers());
+            self.life.lower(s);
             if !self.bounds.is_empty() {
-                ToksOrDefault(&self.colon).to_tokens(ys);
-                self.bounds.to_tokens(ys);
+                ToksOrDefault(&self.colon).lower(s);
+                self.bounds.lower(s);
             }
         }
     }
@@ -361,17 +361,17 @@ pub mod param {
             })
         }
     }
-    impl ToStream for Type {
-        fn to_tokens(&self, ys: &mut Stream) {
-            ys.append_all(self.attrs.outers());
-            self.ident.to_tokens(ys);
+    impl Lower for Type {
+        fn lower(&self, s: &mut Stream) {
+            s.append_all(self.attrs.outers());
+            self.ident.lower(s);
             if !self.bounds.is_empty() {
-                ToksOrDefault(&self.colon).to_tokens(ys);
-                self.bounds.to_tokens(ys);
+                ToksOrDefault(&self.colon).lower(s);
+                self.bounds.lower(s);
             }
             if let Some(y) = &self.default {
-                ToksOrDefault(&self.eq).to_tokens(ys);
-                y.to_tokens(ys);
+                ToksOrDefault(&self.eq).lower(s);
+                y.lower(s);
             }
         }
     }
@@ -437,16 +437,16 @@ pub mod param {
             })
         }
     }
-    impl ToStream for Const {
-        fn to_tokens(&self, ys: &mut Stream) {
-            ys.append_all(self.attrs.outers());
-            self.const_.to_tokens(ys);
-            self.ident.to_tokens(ys);
-            self.colon.to_tokens(ys);
-            self.typ.to_tokens(ys);
+    impl Lower for Const {
+        fn lower(&self, s: &mut Stream) {
+            s.append_all(self.attrs.outers());
+            self.const_.lower(s);
+            self.ident.lower(s);
+            self.colon.lower(s);
+            self.typ.lower(s);
             if let Some(y) = &self.default {
-                ToksOrDefault(&self.eq).to_tokens(ys);
-                y.to_tokens(ys);
+                ToksOrDefault(&self.eq).lower(s);
+                y.lower(s);
             }
         }
     }
@@ -526,11 +526,11 @@ impl Parse for Option<Where> {
         }
     }
 }
-impl ToStream for Where {
-    fn to_tokens(&self, ys: &mut Stream) {
+impl Lower for Where {
+    fn lower(&self, s: &mut Stream) {
         if !self.preds.is_empty() {
-            self.where_.to_tokens(ys);
-            self.preds.to_tokens(ys);
+            self.where_.lower(s);
+            self.preds.lower(s);
         }
     }
 }
@@ -609,11 +609,11 @@ pub mod where_ {
         pub colon: Token![:],
         pub bounds: Puncted<Life, Token![+]>,
     }
-    impl ToStream for Life {
-        fn to_tokens(&self, ys: &mut Stream) {
-            self.life.to_tokens(ys);
-            self.colon.to_tokens(ys);
-            self.bounds.to_tokens(ys);
+    impl Lower for Life {
+        fn lower(&self, s: &mut Stream) {
+            self.life.lower(s);
+            self.colon.lower(s);
+            self.bounds.lower(s);
         }
     }
 
@@ -623,12 +623,12 @@ pub mod where_ {
         pub colon: Token![:],
         pub bounds: Puncted<bound::Type, Token![+]>,
     }
-    impl ToStream for Type {
-        fn to_tokens(&self, ys: &mut Stream) {
-            self.lifes.to_tokens(ys);
-            self.bounded.to_tokens(ys);
-            self.colon.to_tokens(ys);
-            self.bounds.to_tokens(ys);
+    impl Lower for Type {
+        fn lower(&self, s: &mut Stream) {
+            self.lifes.lower(s);
+            self.bounded.lower(s);
+            self.colon.lower(s);
+            self.bounds.lower(s);
         }
     }
 }
@@ -724,16 +724,16 @@ impl Parse for Gens {
         })
     }
 }
-impl ToStream for Gens {
-    fn to_tokens(&self, ys: &mut Stream) {
+impl Lower for Gens {
+    fn lower(&self, s: &mut Stream) {
         if self.ps.is_empty() {
             return;
         }
-        ToksOrDefault(&self.lt).to_tokens(ys);
+        ToksOrDefault(&self.lt).lower(s);
         let mut trail_or_empty = true;
         for x in self.ps.pairs() {
             if let Param::Life(_) = **x.value() {
-                x.to_tokens(ys);
+                x.lower(s);
                 trail_or_empty = x.punct().is_some();
             }
         }
@@ -741,15 +741,15 @@ impl ToStream for Gens {
             match x.value() {
                 Param::Type(_) | Param::Const(_) => {
                     if !trail_or_empty {
-                        <Token![,]>::default().to_tokens(ys);
+                        <Token![,]>::default().lower(s);
                         trail_or_empty = true;
                     }
-                    x.to_tokens(ys);
+                    x.lower(s);
                 },
                 Param::Life(_) => {},
             }
         }
-        ToksOrDefault(&self.gt).to_tokens(ys);
+        ToksOrDefault(&self.gt).lower(s);
     }
 }
 
@@ -780,16 +780,16 @@ macro_rules! gens_impls {
     };
 }
 gens_impls!(Impl);
-impl<'a> ToStream for Impl<'a> {
-    fn to_tokens(&self, ys: &mut Stream) {
+impl<'a> Lower for Impl<'a> {
+    fn lower(&self, s: &mut Stream) {
         if self.0.ps.is_empty() {
             return;
         }
-        ToksOrDefault(&self.0.lt).to_tokens(ys);
+        ToksOrDefault(&self.0.lt).lower(s);
         let mut trail_or_empty = true;
         for x in self.0.ps.pairs() {
             if let Param::Life(_) = **x.value() {
-                x.to_tokens(ys);
+                x.lower(s);
                 trail_or_empty = x.punct().is_some();
             }
         }
@@ -798,46 +798,46 @@ impl<'a> ToStream for Impl<'a> {
                 continue;
             }
             if !trail_or_empty {
-                <Token![,]>::default().to_tokens(ys);
+                <Token![,]>::default().lower(s);
                 trail_or_empty = true;
             }
             match x.value() {
                 Param::Life(_) => unreachable!(),
                 Param::Type(x) => {
-                    ys.append_all(x.attrs.outers());
-                    x.ident.to_tokens(ys);
+                    s.append_all(x.attrs.outers());
+                    x.ident.lower(s);
                     if !x.bounds.is_empty() {
-                        ToksOrDefault(&x.colon).to_tokens(ys);
-                        x.bounds.to_tokens(ys);
+                        ToksOrDefault(&x.colon).lower(s);
+                        x.bounds.lower(s);
                     }
                 },
                 Param::Const(x) => {
-                    ys.append_all(x.attrs.outers());
-                    x.const_.to_tokens(ys);
-                    x.ident.to_tokens(ys);
-                    x.colon.to_tokens(ys);
-                    x.typ.to_tokens(ys);
+                    s.append_all(x.attrs.outers());
+                    x.const_.lower(s);
+                    x.ident.lower(s);
+                    x.colon.lower(s);
+                    x.typ.lower(s);
                 },
             }
-            x.punct().to_tokens(ys);
+            x.punct().lower(s);
         }
-        ToksOrDefault(&self.0.gt).to_tokens(ys);
+        ToksOrDefault(&self.0.gt).lower(s);
     }
 }
 
 pub struct Type<'a>(pub &'a Gens);
 gens_impls!(Type);
-impl<'a> ToStream for Type<'a> {
-    fn to_tokens(&self, ys: &mut Stream) {
+impl<'a> Lower for Type<'a> {
+    fn lower(&self, s: &mut Stream) {
         if self.0.ps.is_empty() {
             return;
         }
-        ToksOrDefault(&self.0.lt).to_tokens(ys);
+        ToksOrDefault(&self.0.lt).lower(s);
         let mut trail_or_empty = true;
         for x in self.0.ps.pairs() {
             if let Param::Life(y) = *x.value() {
-                y.life.to_tokens(ys);
-                x.punct().to_tokens(ys);
+                y.life.lower(s);
+                x.punct().lower(s);
                 trail_or_empty = x.punct().is_some();
             }
         }
@@ -846,21 +846,21 @@ impl<'a> ToStream for Type<'a> {
                 continue;
             }
             if !trail_or_empty {
-                <Token![,]>::default().to_tokens(ys);
+                <Token![,]>::default().lower(s);
                 trail_or_empty = true;
             }
             match x.value() {
                 Param::Life(_) => unreachable!(),
                 Param::Type(x) => {
-                    x.ident.to_tokens(ys);
+                    x.ident.lower(s);
                 },
                 Param::Const(x) => {
-                    x.ident.to_tokens(ys);
+                    x.ident.lower(s);
                 },
             }
-            x.punct().to_tokens(ys);
+            x.punct().lower(s);
         }
-        ToksOrDefault(&self.0.gt).to_tokens(ys);
+        ToksOrDefault(&self.0.gt).lower(s);
     }
 }
 impl<'a> Type<'a> {
@@ -871,11 +871,11 @@ impl<'a> Type<'a> {
 
 pub struct Turbofish<'a>(pub &'a Gens);
 gens_impls!(Turbofish);
-impl<'a> ToStream for Turbofish<'a> {
-    fn to_tokens(&self, ys: &mut Stream) {
+impl<'a> Lower for Turbofish<'a> {
+    fn lower(&self, s: &mut Stream) {
         if !self.0.ps.is_empty() {
-            <Token![::]>::default().to_tokens(ys);
-            Type(self.0).to_tokens(ys);
+            <Token![::]>::default().lower(s);
+            Type(self.0).lower(s);
         }
     }
 }

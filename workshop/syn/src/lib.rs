@@ -11,7 +11,7 @@ use std::{
 
 #[macro_use]
 mod quote;
-use quote::{StreamExt, ToStream};
+use quote::{Lower, StreamExt};
 
 #[macro_use]
 mod mac;
@@ -121,14 +121,14 @@ mod look {
 use look::{Look1, Peek};
 
 struct ToksOrDefault<'a, T: 'a>(pub &'a Option<T>);
-impl<'a, T> ToStream for ToksOrDefault<'a, T>
+impl<'a, T> Lower for ToksOrDefault<'a, T>
 where
-    T: ToStream + Default,
+    T: Lower + Default,
 {
-    fn to_tokens(&self, ys: &mut Stream) {
+    fn lower(&self, s: &mut Stream) {
         match self.0 {
-            Some(x) => x.to_tokens(ys),
-            None => T::default().to_tokens(ys),
+            Some(x) => x.lower(s),
+            None => T::default().lower(s),
         }
     }
 }
@@ -236,7 +236,7 @@ impl<'a> Hash for StreamHelper<'a> {
     }
 }
 
-mod fab {
+mod codegen {
     #[rustfmt::skip]
     pub mod fold;
     #[rustfmt::skip]
@@ -284,7 +284,7 @@ mod fab {
         }
     }
 }
-pub use fab::*;
+pub use codegen::*;
 
 pub fn parse<T: parse::Parse>(s: Stream) -> Res<T> {
     Parser::parse(T::parse, s)

@@ -424,60 +424,60 @@ impl<'a> Display for DisplayPath<'a> {
     }
 }
 
-impl ToStream for Path {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.colon.to_tokens(ys);
-        self.segs.to_tokens(ys);
+impl Lower for Path {
+    fn lower(&self, s: &mut Stream) {
+        self.colon.lower(s);
+        self.segs.lower(s);
     }
 }
-impl ToStream for Segment {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.ident.to_tokens(ys);
-        self.args.to_tokens(ys);
+impl Lower for Segment {
+    fn lower(&self, s: &mut Stream) {
+        self.ident.lower(s);
+        self.args.lower(s);
     }
 }
-impl ToStream for Args {
-    fn to_tokens(&self, ys: &mut Stream) {
+impl Lower for Args {
+    fn lower(&self, s: &mut Stream) {
         match self {
             Args::None => {},
             Args::Angled(x) => {
-                x.to_tokens(ys);
+                x.lower(s);
             },
             Args::Parenthesized(x) => {
-                x.to_tokens(ys);
+                x.lower(s);
             },
         }
     }
 }
-impl ToStream for Arg {
+impl Lower for Arg {
     #[allow(clippy::match_same_arms)]
-    fn to_tokens(&self, ys: &mut Stream) {
+    fn lower(&self, s: &mut Stream) {
         use Arg::*;
         match self {
-            Life(x) => x.to_tokens(ys),
-            Type(x) => x.to_tokens(ys),
+            Life(x) => x.lower(s),
+            Type(x) => x.lower(s),
             Const(x) => match x {
-                Expr::Lit(_) => x.to_tokens(ys),
-                Expr::Block(_) => x.to_tokens(ys),
-                _ => tok::Brace::default().surround(ys, |ys| {
-                    x.to_tokens(ys);
+                Expr::Lit(_) => x.lower(s),
+                Expr::Block(_) => x.lower(s),
+                _ => tok::Brace::default().surround(s, |s| {
+                    x.lower(s);
                 }),
             },
-            AssocType(x) => x.to_tokens(ys),
-            AssocConst(x) => x.to_tokens(ys),
-            Constraint(x) => x.to_tokens(ys),
+            AssocType(x) => x.lower(s),
+            AssocConst(x) => x.lower(s),
+            Constraint(x) => x.lower(s),
         }
     }
 }
-impl ToStream for AngledArgs {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.colon2.to_tokens(ys);
-        self.lt.to_tokens(ys);
+impl Lower for AngledArgs {
+    fn lower(&self, s: &mut Stream) {
+        self.colon2.lower(s);
+        self.lt.lower(s);
         let mut trailing_or_empty = true;
         for x in self.args.pairs() {
             match x.value() {
                 Arg::Life(_) => {
-                    x.to_tokens(ys);
+                    x.lower(s);
                     trailing_or_empty = x.punct().is_some();
                 },
                 Arg::Type(_) | Arg::Const(_) | Arg::AssocType(_) | Arg::AssocConst(_) | Arg::Constraint(_) => {},
@@ -487,78 +487,78 @@ impl ToStream for AngledArgs {
             match x.value() {
                 Arg::Type(_) | Arg::Const(_) | Arg::AssocType(_) | Arg::AssocConst(_) | Arg::Constraint(_) => {
                     if !trailing_or_empty {
-                        <Token![,]>::default().to_tokens(ys);
+                        <Token![,]>::default().lower(s);
                     }
-                    x.to_tokens(ys);
+                    x.lower(s);
                     trailing_or_empty = x.punct().is_some();
                 },
                 Arg::Life(_) => {},
             }
         }
-        self.gt.to_tokens(ys);
+        self.gt.lower(s);
     }
 }
-impl ToStream for AssocType {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.ident.to_tokens(ys);
-        self.args.to_tokens(ys);
-        self.eq.to_tokens(ys);
-        self.typ.to_tokens(ys);
+impl Lower for AssocType {
+    fn lower(&self, s: &mut Stream) {
+        self.ident.lower(s);
+        self.args.lower(s);
+        self.eq.lower(s);
+        self.typ.lower(s);
     }
 }
-impl ToStream for AssocConst {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.ident.to_tokens(ys);
-        self.args.to_tokens(ys);
-        self.eq.to_tokens(ys);
-        self.val.to_tokens(ys);
+impl Lower for AssocConst {
+    fn lower(&self, s: &mut Stream) {
+        self.ident.lower(s);
+        self.args.lower(s);
+        self.eq.lower(s);
+        self.val.lower(s);
     }
 }
-impl ToStream for Constraint {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.ident.to_tokens(ys);
-        self.args.to_tokens(ys);
-        self.colon.to_tokens(ys);
-        self.bounds.to_tokens(ys);
+impl Lower for Constraint {
+    fn lower(&self, s: &mut Stream) {
+        self.ident.lower(s);
+        self.args.lower(s);
+        self.colon.lower(s);
+        self.bounds.lower(s);
     }
 }
-impl ToStream for ParenthesizedArgs {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.paren.surround(ys, |ys| {
-            self.args.to_tokens(ys);
+impl Lower for ParenthesizedArgs {
+    fn lower(&self, s: &mut Stream) {
+        self.paren.surround(s, |s| {
+            self.args.lower(s);
         });
-        self.ret.to_tokens(ys);
+        self.ret.lower(s);
     }
 }
 pub fn path_to_tokens(ys: &mut Stream, qself: &Option<QSelf>, path: &Path) {
     let qself = match qself {
         Some(x) => x,
         None => {
-            path.to_tokens(ys);
+            path.lower(ys);
             return;
         },
     };
-    qself.lt.to_tokens(ys);
-    qself.typ.to_tokens(ys);
+    qself.lt.lower(ys);
+    qself.typ.lower(ys);
     let pos = cmp::min(qself.pos, path.segs.len());
     let mut segs = path.segs.pairs();
     if pos > 0 {
-        ToksOrDefault(&qself.as_).to_tokens(ys);
-        path.colon.to_tokens(ys);
+        ToksOrDefault(&qself.as_).lower(ys);
+        path.colon.lower(ys);
         for (i, x) in segs.by_ref().take(pos).enumerate() {
             if i + 1 == pos {
-                x.value().to_tokens(ys);
-                qself.gt.to_tokens(ys);
-                x.punct().to_tokens(ys);
+                x.value().lower(ys);
+                qself.gt.lower(ys);
+                x.punct().lower(ys);
             } else {
-                x.to_tokens(ys);
+                x.lower(ys);
             }
         }
     } else {
-        qself.gt.to_tokens(ys);
-        path.colon.to_tokens(ys);
+        qself.gt.lower(ys);
+        path.colon.lower(ys);
     }
     for x in segs {
-        x.to_tokens(ys);
+        x.lower(ys);
     }
 }

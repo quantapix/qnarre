@@ -58,14 +58,14 @@ impl Attr {
         Ok(y)
     }
 }
-impl ToStream for Attr {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.pound.to_tokens(ys);
+impl Lower for Attr {
+    fn lower(&self, s: &mut Stream) {
+        self.pound.lower(s);
         if let Style::Inner(x) = &self.style {
-            x.to_tokens(ys);
+            x.lower(s);
         }
-        self.bracket.surround(ys, |ys| {
-            self.meta.to_tokens(ys);
+        self.bracket.surround(s, |s| {
+            self.meta.lower(s);
         });
     }
 }

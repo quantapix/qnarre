@@ -16,17 +16,17 @@ pub trait StreamExt {
     fn append_all<I>(&mut self, xs: I)
     where
         I: IntoIterator,
-        I::Item: ToStream;
+        I::Item: Lower;
     fn append_sep<I, U>(&mut self, xs: I, op: U)
     where
         I: IntoIterator,
-        I::Item: ToStream,
-        U: ToStream;
+        I::Item: Lower,
+        U: Lower;
     fn append_term<I, U>(&mut self, xs: I, term: U)
     where
         I: IntoIterator,
-        I::Item: ToStream,
-        U: ToStream;
+        I::Item: Lower,
+        U: Lower;
 }
 impl StreamExt for Stream {
     fn append<U>(&mut self, x: U)
@@ -38,34 +38,34 @@ impl StreamExt for Stream {
     fn append_all<I>(&mut self, xs: I)
     where
         I: IntoIterator,
-        I::Item: ToStream,
+        I::Item: Lower,
     {
         for x in xs {
-            x.to_tokens(self);
+            x.lower(self);
         }
     }
     fn append_sep<I, U>(&mut self, xs: I, op: U)
     where
         I: IntoIterator,
-        I::Item: ToStream,
-        U: ToStream,
+        I::Item: Lower,
+        U: Lower,
     {
         for (i, x) in xs.into_iter().enumerate() {
             if i > 0 {
-                op.to_tokens(self);
+                op.lower(self);
             }
-            x.to_tokens(self);
+            x.lower(self);
         }
     }
     fn append_term<I, U>(&mut self, xs: I, term: U)
     where
         I: IntoIterator,
-        I::Item: ToStream,
-        U: ToStream,
+        I::Item: Lower,
+        U: Lower,
     {
         for x in xs {
-            x.to_tokens(self);
-            term.to_tokens(self);
+            x.lower(self);
+            term.lower(self);
         }
     }
 }
@@ -181,12 +181,12 @@ macro_rules! ident_fragment_display {
 ident_fragment_display!(bool, str, String, char);
 ident_fragment_display!(u8, u16, u32, u64, u128, usize);
 
-pub trait ToStream {
-    fn to_tokens(&self, tokens: &mut Stream);
+pub trait Lower {
+    fn lower(&self, s: &mut Stream);
     fn to_stream(&self) -> Stream {
-        let mut tokens = Stream::new();
-        self.to_tokens(&mut tokens);
-        tokens
+        let mut y = Stream::new();
+        self.lower(&mut y);
+        y
     }
     fn into_stream(self) -> Stream
     where
@@ -195,55 +195,55 @@ pub trait ToStream {
         self.to_stream()
     }
 }
-impl<'a, T: ?Sized + ToStream> ToStream for &'a T {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        (**self).to_tokens(tokens);
+impl<'a, T: ?Sized + Lower> Lower for &'a T {
+    fn lower(&self, s: &mut Stream) {
+        (**self).lower(s);
     }
 }
-impl<'a, T: ?Sized + ToStream> ToStream for &'a mut T {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        (**self).to_tokens(tokens);
+impl<'a, T: ?Sized + Lower> Lower for &'a mut T {
+    fn lower(&self, s: &mut Stream) {
+        (**self).lower(s);
     }
 }
-impl<'a, T: ?Sized + ToOwned + ToStream> ToStream for Cow<'a, T> {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        (**self).to_tokens(tokens);
+impl<'a, T: ?Sized + ToOwned + Lower> Lower for Cow<'a, T> {
+    fn lower(&self, s: &mut Stream) {
+        (**self).lower(s);
     }
 }
-impl<T: ?Sized + ToStream> ToStream for Box<T> {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        (**self).to_tokens(tokens);
+impl<T: ?Sized + Lower> Lower for Box<T> {
+    fn lower(&self, s: &mut Stream) {
+        (**self).lower(s);
     }
 }
-impl<T: ?Sized + ToStream> ToStream for Rc<T> {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        (**self).to_tokens(tokens);
+impl<T: ?Sized + Lower> Lower for Rc<T> {
+    fn lower(&self, s: &mut Stream) {
+        (**self).lower(s);
     }
 }
-impl<T: ToStream> ToStream for Option<T> {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        if let Some(ref t) = *self {
-            t.to_tokens(tokens);
+impl<T: Lower> Lower for Option<T> {
+    fn lower(&self, s: &mut Stream) {
+        if let Some(ref x) = *self {
+            x.lower(s);
         }
     }
 }
-impl ToStream for str {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        tokens.append(Lit::string(self));
+impl Lower for str {
+    fn lower(&self, s: &mut Stream) {
+        s.append(Lit::string(self));
     }
 }
-impl ToStream for String {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        self.as_str().to_tokens(tokens);
+impl Lower for String {
+    fn lower(&self, s: &mut Stream) {
+        self.as_str().lower(s);
     }
 }
 
 macro_rules! primitive {
-    ($($t:ident => $name:ident)*) => {
+    ($($ty:ident => $n:ident)*) => {
         $(
-            impl ToStream for $t {
-                fn to_tokens(&self, tokens: &mut Stream) {
-                    tokens.append(Lit::$name(*self));
+            impl Lower for $ty {
+                fn lower(&self, s: &mut Stream) {
+                    s.append(Lit::$n(*self));
                 }
             }
         )*
@@ -265,45 +265,45 @@ primitive! {
     f32 => f32_suffixed
     f64 => f64_suffixed
 }
-impl ToStream for char {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        tokens.append(Lit::char(*self));
+impl Lower for char {
+    fn lower(&self, s: &mut Stream) {
+        s.append(Lit::char(*self));
     }
 }
-impl ToStream for bool {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        let word = if *self { "true" } else { "false" };
-        tokens.append(Ident::new(word, Span::call_site()));
+impl Lower for bool {
+    fn lower(&self, s: &mut Stream) {
+        let y = if *self { "true" } else { "false" };
+        s.append(Ident::new(y, Span::call_site()));
     }
 }
-impl ToStream for Group {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        tokens.append(self.clone());
+impl Lower for Group {
+    fn lower(&self, s: &mut Stream) {
+        s.append(self.clone());
     }
 }
-impl ToStream for Ident {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        tokens.append(self.clone());
+impl Lower for Ident {
+    fn lower(&self, s: &mut Stream) {
+        s.append(self.clone());
     }
 }
-impl ToStream for Punct {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        tokens.append(self.clone());
+impl Lower for Punct {
+    fn lower(&self, s: &mut Stream) {
+        s.append(self.clone());
     }
 }
-impl ToStream for Lit {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        tokens.append(self.clone());
+impl Lower for Lit {
+    fn lower(&self, s: &mut Stream) {
+        s.append(self.clone());
     }
 }
-impl ToStream for Tree {
-    fn to_tokens(&self, dst: &mut Stream) {
-        dst.append(self.clone());
+impl Lower for Tree {
+    fn lower(&self, s: &mut Stream) {
+        s.append(self.clone());
     }
 }
-impl ToStream for Stream {
-    fn to_tokens(&self, dst: &mut Stream) {
-        dst.extend(iter::once(self.clone()));
+impl Lower for Stream {
+    fn lower(&self, s: &mut Stream) {
+        s.extend(iter::once(self.clone()));
     }
     fn into_stream(self) -> Stream {
         self
@@ -323,7 +323,7 @@ impl Spanned for DelimSpan {
         self.join()
     }
 }
-impl<T: ?Sized + ToStream> Spanned for T {
+impl<T: ?Sized + Lower> Spanned for T {
     fn __span(&self) -> Span {
         join_spans(self.into_stream())
     }
@@ -382,7 +382,7 @@ pub trait RepToTokensExt {
         (self, HasNoIter)
     }
 }
-impl<T: ToStream + ?Sized> RepToTokensExt for T {}
+impl<T: Lower + ?Sized> RepToTokensExt for T {}
 
 pub trait RepAsIteratorExt<'q> {
     type Iter: Iterator;
@@ -438,9 +438,9 @@ impl<T: Iterator> Iterator for RepInterp<T> {
         self.0.next()
     }
 }
-impl<T: ToStream> ToStream for RepInterp<T> {
-    fn to_tokens(&self, tokens: &mut Stream) {
-        self.0.to_tokens(tokens);
+impl<T: Lower> Lower for RepInterp<T> {
+    fn lower(&self, tokens: &mut Stream) {
+        self.0.lower(tokens);
     }
 }
 
@@ -721,26 +721,26 @@ impl<T: Fragment + fmt::Binary> fmt::Binary for IdentFragmentAdapter<T> {
 #[macro_export]
 macro_rules! quote {
     () => {
-        $crate::TokenStream::new()
+        $crate::Stream::new()
     };
     ($tt:tt) => {{
-        let mut _s = $crate::TokenStream::new();
+        let mut _s = $crate::Stream::new();
         $crate::quote_token!{$tt _s}
         _s
     }};
     (# $var:ident) => {{
-        let mut _s = $crate::TokenStream::new();
-        $crate::ToStream::to_tokens(&$var, &mut _s);
+        let mut _s = $crate::Stream::new();
+        $crate::Lower::lower(&$var, &mut _s);
         _s
     }};
     ($tt1:tt $tt2:tt) => {{
-        let mut _s = $crate::TokenStream::new();
+        let mut _s = $crate::Stream::new();
         $crate::quote_token!{$tt1 _s}
         $crate::quote_token!{$tt2 _s}
         _s
     }};
     ($($tt:tt)*) => {{
-        let mut _s = $crate::TokenStream::new();
+        let mut _s = $crate::Stream::new();
         $crate::quote_each_token!{_s $($tt)*}
         _s
     }};
@@ -749,29 +749,29 @@ macro_rules! quote {
 macro_rules! quote_spanned {
     ($span:expr=>) => {{
         let _: $crate::Span = $crate::get_span($span).__into_span();
-        $crate::TokenStream::new()
+        $crate::Stream::new()
     }};
     ($span:expr=> $tt:tt) => {{
-        let mut _s = $crate::TokenStream::new();
+        let mut _s = $crate::Stream::new();
         let _span: $crate::Span = $crate::get_span($span).__into_span();
         $crate::quote_token_spanned!{$tt _s _span}
         _s
     }};
     ($span:expr=> # $var:ident) => {{
-        let mut _s = $crate::TokenStream::new();
+        let mut _s = $crate::Stream::new();
         let _: $crate::Span = $crate::get_span($span).__into_span();
-        $crate::ToStream::to_tokens(&$var, &mut _s);
+        $crate::Lower::lower(&$var, &mut _s);
         _s
     }};
     ($span:expr=> $tt1:tt $tt2:tt) => {{
-        let mut _s = $crate::TokenStream::new();
+        let mut _s = $crate::Stream::new();
         let _span: $crate::Span = $crate::get_span($span).__into_span();
         $crate::quote_token_spanned!{$tt1 _s _span}
         $crate::quote_token_spanned!{$tt2 _s _span}
         _s
     }};
     ($span:expr=> $($tt:tt)*) => {{
-        let mut _s = $crate::TokenStream::new();
+        let mut _s = $crate::Stream::new();
         let _span: $crate::Span = $crate::get_span($span).__into_span();
         $crate::quote_each_token_spanned!{_s _span $($tt)*}
         _s
@@ -914,7 +914,7 @@ macro_rules! quote_token_with_context {
     };
     ($tokens:ident # ( $($inner:tt)* ) $sep:tt (*) $a1:tt $a2:tt $a3:tt) => {};
     ($tokens:ident $b3:tt $b2:tt $b1:tt (#) $var:ident $a2:tt $a3:tt) => {
-        $crate::ToStream::to_tokens(&$var, &mut $tokens);
+        $crate::Lower::lower(&$var, &mut $tokens);
     };
     ($tokens:ident $b3:tt $b2:tt # ($var:ident) $a1:tt $a2:tt $a3:tt) => {};
     ($tokens:ident $b3:tt $b2:tt $b1:tt ($curr:tt) $a1:tt $a2:tt $a3:tt) => {
@@ -956,7 +956,7 @@ macro_rules! quote_token_with_context_spanned {
     };
     ($tokens:ident $span:ident # ( $($inner:tt)* ) $sep:tt (*) $a1:tt $a2:tt $a3:tt) => {};
     ($tokens:ident $span:ident $b3:tt $b2:tt $b1:tt (#) $var:ident $a2:tt $a3:tt) => {
-        $crate::ToStream::to_tokens(&$var, &mut $tokens);
+        $crate::Lower::lower(&$var, &mut $tokens);
     };
     ($tokens:ident $span:ident $b3:tt $b2:tt # ($var:ident) $a1:tt $a2:tt $a3:tt) => {};
     ($tokens:ident $span:ident $b3:tt $b2:tt $b1:tt ($curr:tt) $a1:tt $a2:tt $a3:tt) => {

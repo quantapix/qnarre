@@ -41,10 +41,10 @@ impl Parse for Block {
         })
     }
 }
-impl ToStream for Block {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.brace.surround(ys, |ys| {
-            ys.append_all(&self.stmts);
+impl Lower for Block {
+    fn lower(&self, s: &mut Stream) {
+        self.brace.surround(s, |s| {
+            s.append_all(&self.stmts);
         });
     }
 }
@@ -61,16 +61,16 @@ impl Parse for Stmt {
         parse_stmt(x, nosemi)
     }
 }
-impl ToStream for Stmt {
-    fn to_tokens(&self, ys: &mut Stream) {
+impl Lower for Stmt {
+    fn lower(&self, s: &mut Stream) {
         match self {
-            Stmt::Local(x) => x.to_tokens(ys),
-            Stmt::Item(x) => x.to_tokens(ys),
+            Stmt::Local(x) => x.lower(s),
+            Stmt::Item(x) => x.lower(s),
             Stmt::Expr(x, semi) => {
-                x.to_tokens(ys);
-                semi.to_tokens(ys);
+                x.lower(s);
+                semi.lower(s);
             },
-            Stmt::Mac(x) => x.to_tokens(ys),
+            Stmt::Mac(x) => x.lower(s),
         }
     }
 }
@@ -85,20 +85,20 @@ pub struct Local {
     pub init: Option<Init>,
     pub semi: Token![;],
 }
-impl ToStream for Local {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.let_.to_tokens(ys);
-        self.pat.to_tokens(ys);
+impl Lower for Local {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.let_.lower(s);
+        self.pat.lower(s);
         if let Some(x) = &self.init {
-            x.eq.to_tokens(ys);
-            x.expr.to_tokens(ys);
+            x.eq.lower(s);
+            x.expr.lower(s);
             if let Some((else_, diverge)) = &x.diverge {
-                else_.to_tokens(ys);
-                diverge.to_tokens(ys);
+                else_.lower(s);
+                diverge.lower(s);
             }
         }
-        self.semi.to_tokens(ys);
+        self.semi.lower(s);
     }
 }
 
@@ -113,11 +113,11 @@ pub struct Mac {
     pub mac: mac::Mac,
     pub semi: Option<Token![;]>,
 }
-impl ToStream for Mac {
-    fn to_tokens(&self, ys: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, ys);
-        self.mac.to_tokens(ys);
-        self.semi.to_tokens(ys);
+impl Lower for Mac {
+    fn lower(&self, s: &mut Stream) {
+        attr::outers_to_tokens(&self.attrs, s);
+        self.mac.lower(s);
+        self.semi.lower(s);
     }
 }
 

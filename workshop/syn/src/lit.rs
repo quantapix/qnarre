@@ -1190,38 +1190,38 @@ impl Parse for Bool {
     }
 }
 
-impl ToStream for Str {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.repr.tok.to_tokens(ys);
+impl Lower for Str {
+    fn lower(&self, s: &mut Stream) {
+        self.repr.tok.lower(s);
     }
 }
-impl ToStream for ByteStr {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.repr.tok.to_tokens(ys);
+impl Lower for ByteStr {
+    fn lower(&self, s: &mut Stream) {
+        self.repr.tok.lower(s);
     }
 }
-impl ToStream for Byte {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.repr.tok.to_tokens(ys);
+impl Lower for Byte {
+    fn lower(&self, s: &mut Stream) {
+        self.repr.tok.lower(s);
     }
 }
-impl ToStream for Char {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.repr.tok.to_tokens(ys);
+impl Lower for Char {
+    fn lower(&self, s: &mut Stream) {
+        self.repr.tok.lower(s);
     }
 }
-impl ToStream for Int {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.repr.tok.to_tokens(ys);
+impl Lower for Int {
+    fn lower(&self, s: &mut Stream) {
+        self.repr.tok.lower(s);
     }
 }
-impl ToStream for Float {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.repr.tok.to_tokens(ys);
+impl Lower for Float {
+    fn lower(&self, s: &mut Stream) {
+        self.repr.tok.lower(s);
     }
 }
-impl ToStream for Bool {
-    fn to_tokens(&self, ys: &mut Stream) {
-        ys.append(self.token());
+impl Lower for Bool {
+    fn lower(&self, s: &mut Stream) {
+        s.append(self.token());
     }
 }

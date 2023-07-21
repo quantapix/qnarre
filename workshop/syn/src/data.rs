@@ -53,44 +53,44 @@ impl Parse for DeriveInput {
         }
     }
 }
-impl ToStream for DeriveInput {
-    fn to_tokens(&self, ys: &mut Stream) {
+impl Lower for DeriveInput {
+    fn lower(&self, s: &mut Stream) {
         for x in self.attrs.outers() {
-            x.to_tokens(ys);
+            x.lower(s);
         }
-        self.vis.to_tokens(ys);
+        self.vis.lower(s);
         match &self.data {
-            Data::Struct(x) => x.struct_.to_tokens(ys),
-            Data::Enum(x) => x.enum_.to_tokens(ys),
-            Data::Union(x) => x.union_.to_tokens(ys),
+            Data::Struct(x) => x.struct_.lower(s),
+            Data::Enum(x) => x.enum_.lower(s),
+            Data::Union(x) => x.union_.lower(s),
         }
-        self.ident.to_tokens(ys);
-        self.gens.to_tokens(ys);
+        self.ident.lower(s);
+        self.gens.lower(s);
         match &self.data {
             Data::Struct(data) => match &data.fields {
                 Fields::Named(x) => {
-                    self.gens.where_.to_tokens(ys);
-                    x.to_tokens(ys);
+                    self.gens.where_.lower(s);
+                    x.lower(s);
                 },
                 Fields::Unnamed(x) => {
-                    x.to_tokens(ys);
-                    self.gens.where_.to_tokens(ys);
-                    ToksOrDefault(&data.semi).to_tokens(ys);
+                    x.lower(s);
+                    self.gens.where_.lower(s);
+                    ToksOrDefault(&data.semi).lower(s);
                 },
                 Fields::Unit => {
-                    self.gens.where_.to_tokens(ys);
-                    ToksOrDefault(&data.semi).to_tokens(ys);
+                    self.gens.where_.lower(s);
+                    ToksOrDefault(&data.semi).lower(s);
                 },
             },
             Data::Enum(x) => {
-                self.gens.where_.to_tokens(ys);
-                x.brace.surround(ys, |ys| {
-                    x.variants.to_tokens(ys);
+                self.gens.where_.lower(s);
+                x.brace.surround(s, |s| {
+                    x.variants.lower(s);
                 });
             },
             Data::Union(x) => {
-                self.gens.where_.to_tokens(ys);
-                x.fields.to_tokens(ys);
+                self.gens.where_.lower(s);
+                x.fields.lower(s);
             },
         }
     }
@@ -163,11 +163,11 @@ impl Parse for Visibility {
         }
     }
 }
-impl ToStream for Visibility {
-    fn to_tokens(&self, ys: &mut Stream) {
+impl Lower for Visibility {
+    fn lower(&self, s: &mut Stream) {
         match self {
-            Visibility::Public(x) => x.to_tokens(ys),
-            Visibility::Restricted(x) => x.to_tokens(ys),
+            Visibility::Public(x) => x.lower(s),
+            Visibility::Restricted(x) => x.lower(s),
             Visibility::Inherited => {},
         }
     }
@@ -179,12 +179,12 @@ pub struct Restricted {
     pub in_: Option<Token![in]>,
     pub path: Box<Path>,
 }
-impl ToStream for Restricted {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.pub_.to_tokens(ys);
-        self.paren.surround(ys, |ys| {
-            self.in_.to_tokens(ys);
-            self.path.to_tokens(ys);
+impl Lower for Restricted {
+    fn lower(&self, s: &mut Stream) {
+        self.pub_.lower(s);
+        self.paren.surround(s, |s| {
+            self.in_.lower(s);
+            self.path.lower(s);
         });
     }
 }
@@ -243,14 +243,14 @@ impl Parse for Variant {
         })
     }
 }
-impl ToStream for Variant {
-    fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(&self.attrs);
-        self.ident.to_tokens(ys);
-        self.fields.to_tokens(ys);
+impl Lower for Variant {
+    fn lower(&self, s: &mut Stream) {
+        s.append_all(&self.attrs);
+        self.ident.lower(s);
+        self.fields.lower(s);
         if let Some((eq, disc)) = &self.discrim {
-            eq.to_tokens(ys);
-            disc.to_tokens(ys);
+            eq.lower(s);
+            disc.lower(s);
         }
     }
 }
@@ -336,10 +336,10 @@ impl Parse for Named {
         })
     }
 }
-impl ToStream for Named {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.brace.surround(ys, |ys| {
-            self.fields.to_tokens(ys);
+impl Lower for Named {
+    fn lower(&self, s: &mut Stream) {
+        self.brace.surround(s, |s| {
+            self.fields.lower(s);
         });
     }
 }
@@ -357,10 +357,10 @@ impl Parse for Unnamed {
         })
     }
 }
-impl ToStream for Unnamed {
-    fn to_tokens(&self, ys: &mut Stream) {
-        self.paren.surround(ys, |ys| {
-            self.fields.to_tokens(ys);
+impl Lower for Unnamed {
+    fn lower(&self, s: &mut Stream) {
+        self.paren.surround(s, |s| {
+            self.fields.lower(s);
         });
     }
 }
@@ -399,15 +399,15 @@ impl Field {
         })
     }
 }
-impl ToStream for Field {
-    fn to_tokens(&self, ys: &mut Stream) {
-        ys.append_all(&self.attrs);
-        self.vis.to_tokens(ys);
+impl Lower for Field {
+    fn lower(&self, s: &mut Stream) {
+        s.append_all(&self.attrs);
+        self.vis.lower(s);
         if let Some(x) = &self.ident {
-            x.to_tokens(ys);
-            ToksOrDefault(&self.colon).to_tokens(ys);
+            x.lower(s);
+            ToksOrDefault(&self.colon).lower(s);
         }
-        self.typ.to_tokens(ys);
+        self.typ.lower(s);
     }
 }
 
