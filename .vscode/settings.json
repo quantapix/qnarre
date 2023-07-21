@@ -1,29 +1,26 @@
 {
-  "files.exclude": {
-    "**/.git": true,
-    "**/.DS_Store": true,
-    "**/node_modules": true
-  },
   "C_Cpp.default.compilerPath": "/usr/bin/clang",
+  "C_Cpp.intelliSenseEngine": "disabled",
   "cmake.configureOnOpen": false,
-  "cmake.sourceDirectory": "/home/qpix/clone/qnarre/tools",
-  "editor.formatOnSave": true,
+  "cmake.sourceDirectory": "/Users/qpix/clone/qnarre/tools",
   "git.autoRepositoryDetection": false,
   "git.ignoreLimitWarning": true,
   "git.ignoredRepositories": [
     "dev/*",
   ],
   "rust-analyzer.showUnlinkedFileNotification": false,
-  "rust-analyzer.check.command": "clippy",
-  "rust-analyzer.check.features": [],
   "rust-analyzer.cargo.features": [],
-  "[python]": {
-    "editor.defaultFormatter": "ms-python.black-formatter",
+  "rust-analyzer.server.extraEnv": {
+    "RUSTUP_TOOLCHAIN": "nightly"
   },
-  "[rust]": {
-    "editor.formatOnSave": true
-  },
-  "[typescript]": {
-    "editor.formatOnSave": true
-  },
+  "rust-analyzer.linkedProjects": [
+    "./Cargo.toml"
+  ],
+  "rust-analyzer.cargo.buildScripts.overrideCommand": [
+    "cargo clippy --quiet --workspace --message-format=json --all-targets"
+  ],
+  "rust-analyzer.check.command": "clippy",
+  "rust-analyzer.diagnostics.previewRustcOutput": true,
+  "rust-analyzer.imports.merge.glob": false,
+  //"rust-analyzer.procMacro.server": null,
 }
