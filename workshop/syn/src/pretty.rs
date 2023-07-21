@@ -53,7 +53,7 @@ enum PrintFrame {
     Broken(usize, Breaks),
 }
 pub const SIZE_INFINITY: isize = 0xffff;
-pub struct Printer {
+pub struct Pretty {
     out: String,
     space: isize,
     buf: RingBuffer<BufEntry>,
@@ -64,9 +64,9 @@ pub struct Printer {
     indent: usize,
     pending_indentation: usize,
 }
-impl Printer {
+impl Pretty {
     pub fn new() -> Self {
-        Printer {
+        Pretty {
             out: String::new(),
             space: MARGIN,
             buf: RingBuffer::new(),
@@ -344,7 +344,7 @@ struct BufEntry {
     size: isize,
 }
 
-impl Printer {
+impl Pretty {
     //attr
     pub fn outer_attrs(&mut self, attrs: &[attr::Attr]) {
         for attr in attrs {
@@ -609,7 +609,7 @@ fn can_be_block_comment(value: &str) -> bool {
     depth == 0
 }
 
-impl Printer {
+impl Pretty {
     //convenience
     pub fn ibox(&mut self, indent: isize) {
         self.scan_begin(BeginToken {
@@ -693,7 +693,7 @@ impl Printer {
     }
 }
 
-impl Printer {
+impl Pretty {
     //data
     pub fn variant(&mut self, variant: &Variant) {
         self.outer_attrs(&variant.attrs);
@@ -763,7 +763,7 @@ impl Printer {
     }
 }
 
-impl Printer {
+impl Pretty {
     //expr
     pub fn expr(&mut self, expr: &Expr) {
         match expr {
@@ -1902,7 +1902,7 @@ fn parseable_as_stmt(expr: &Expr) -> bool {
     }
 }
 
-impl Printer {
+impl Pretty {
     //file
     pub fn file(&mut self, file: &File) {
         self.cbox(0);
@@ -1918,7 +1918,7 @@ impl Printer {
     }
 }
 
-impl Printer {
+impl Pretty {
     //generics
     pub fn generics(&mut self, generics: &Generics) {
         if generics.params.is_empty() {
@@ -2211,7 +2211,7 @@ impl Printer {
     }
 }
 
-impl Printer {
+impl Pretty {
     //item
     pub fn item(&mut self, item: &Item) {
         match item {
@@ -3615,7 +3615,7 @@ mod verbatim {
             })
         }
     }
-    impl Printer {
+    impl Pretty {
         pub fn flexible_item_const(&mut self, item: &FlexibleItemConst) {
             self.outer_attrs(&item.attrs);
             self.cbox(0);
@@ -3749,7 +3749,7 @@ impl<T> Deref for IteratorItem<T> {
     }
 }
 
-impl Printer {
+impl Pretty {
     //lifetime
     pub fn lifetime(&mut self, lifetime: &Lifetime) {
         self.word("'");
@@ -3757,7 +3757,7 @@ impl Printer {
     }
 }
 
-impl Printer {
+impl Pretty {
     //lit
     pub fn lit(&mut self, lit: &Lit) {
         match lit {
@@ -3799,7 +3799,7 @@ impl Printer {
     }
 }
 
-impl Printer {
+impl Pretty {
     //mac
     pub fn mac(&mut self, mac: &Macro, ident: Option<&Ident>, semicolon: bool) {
         if mac.path.is_ident("macro_rules") {
@@ -4242,7 +4242,7 @@ mod standard_library {
             Ok(KnownMacro::Exprs(exprs))
         }
     }
-    impl Printer {
+    impl Pretty {
         pub fn standard_library_macro(&mut self, mac: &Macro, mut semicolon: bool) -> bool {
             let name = mac.path.segments.last().unwrap().ident.to_string();
             let parser = match name.as_str() {
@@ -4398,7 +4398,7 @@ mod standard_library {
     }
 }
 
-impl Printer {
+impl Pretty {
     //pat
     pub fn pat(&mut self, pat: &pat::Pat) {
         use pat::Pat::*;
@@ -4629,7 +4629,7 @@ pub enum PathKind {
     Type,
     Expr,
 }
-impl Printer {
+impl Pretty {
     //path
     pub fn path(&mut self, path: &Path, kind: PathKind) {
         assert!(!path.segments.is_empty());
@@ -4857,7 +4857,7 @@ impl<T> IndexMut<usize> for RingBuffer<T> {
     }
 }
 
-impl Printer {
+impl Pretty {
     //stmt
     pub fn stmt(&mut self, stmt: &Stmt) {
         match stmt {
@@ -5055,7 +5055,7 @@ fn remove_semi(expr: &Expr) -> bool {
     }
 }
 
-impl Printer {
+impl Pretty {
     //token
     pub fn single_token(&mut self, token: Token, group_contents: fn(&mut Self, Stream)) {
         match token {
@@ -5121,7 +5121,7 @@ impl From<Tree> for Token {
     }
 }
 
-impl Printer {
+impl Pretty {
     //ty
     pub fn ty(&mut self, ty: &typ::Type) {
         use typ::Type::*;
@@ -5381,7 +5381,7 @@ const MARGIN: isize = 89;
 const INDENT: isize = 4;
 const MIN_SPACE: isize = 60;
 pub fn unparse(file: &File) -> String {
-    let mut p = Printer::new();
+    let mut p = Pretty::new();
     p.file(file);
     p.eof()
 }
