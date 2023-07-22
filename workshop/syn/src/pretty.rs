@@ -696,7 +696,7 @@ impl Print {
             self.space();
             self.inner_attrs(attrs);
             match (block.stmts.get(0), block.stmts.get(1)) {
-                (Some(Stmt::Expr(expr, None)), None) if break_after(expr) => {
+                (Some(Stmt::Expr(expr, None)), None) if expr.break_after() => {
                     self.ibox(0);
                     self.expr_beginning_of_line(expr, true);
                     self.end();
@@ -845,7 +845,7 @@ impl Print {
             if !segment.is_first || trait_bound.path.leading_colon.is_some() {
                 self.word("::");
             }
-            self.path_segment(&segment, PathKind::Type);
+            self.path_segment(&segment, path::Kind::Type);
         }
         if trait_bound.paren_token.is_some() {
             self.word(")");
@@ -1155,7 +1155,7 @@ impl Print {
             if negative_polarity.is_some() {
                 self.word("!");
             }
-            self.path(path, PathKind::Type);
+            self.path(path, path::Kind::Type);
             self.space();
             self.word("for ");
         }
@@ -2630,7 +2630,7 @@ impl Print {
         if ident.is_none() && self.standard_library_macro(mac, semicolon) {
             return;
         }
-        self.path(&mac.path, PathKind::Simple);
+        self.path(&mac.path, path::Kind::Simple);
         self.word("!");
         if let Some(ident) = ident {
             self.nbsp();
@@ -3086,7 +3086,7 @@ mod standard_library {
                 Ok(known_macro) => known_macro,
                 Err(_) => return false,
             };
-            self.path(&mac.path, PathKind::Simple);
+            self.path(&mac.path, path::Kind::Simple);
             self.word("!");
             match &known_macro {
                 KnownMacro::Expr(expr) => {
@@ -3312,7 +3312,7 @@ impl Print {
     fn pat_struct(&mut self, pat: &pat::Struct) {
         self.outer_attrs(&pat.attrs);
         self.cbox(INDENT);
-        self.path(&pat.path, PathKind::Expr);
+        self.path(&pat.path, path::Kind::Expr);
         self.word(" {");
         self.space_if_nonempty();
         for field in pat.fields.iter().delimited() {
@@ -3349,7 +3349,7 @@ impl Print {
     }
     fn pat_tuple_struct(&mut self, pat: &pat::TupleStruct) {
         self.outer_attrs(&pat.attrs);
-        self.path(&pat.path, PathKind::Expr);
+        self.path(&pat.path, path::Kind::Expr);
         self.word("(");
         self.cbox(INDENT);
         self.zerobreak();
@@ -3438,177 +3438,6 @@ impl Print {
             self.word(": ");
         }
         self.pat(&field_pat.pat);
-    }
-}
-
-#[derive(Copy, Clone, PartialEq)]
-pub enum PathKind {
-    Simple,
-    Type,
-    Expr,
-}
-impl Print {
-    //path
-    pub fn path(&mut self, path: &Path, kind: PathKind) {
-        assert!(!path.segments.is_empty());
-        for segment in path.segments.iter().delimited() {
-            if !segment.is_first || path.leading_colon.is_some() {
-                self.word("::");
-            }
-            self.path_segment(&segment, kind);
-        }
-    }
-    pub fn path_segment(&mut self, segment: &PathSegment, kind: PathKind) {
-        self.ident(&segment.ident);
-        self.path_arguments(&segment.arguments, kind);
-    }
-    fn path_arguments(&mut self, arguments: &PathArguments, kind: PathKind) {
-        match arguments {
-            PathArguments::None => {},
-            PathArguments::AngleBracketed(arguments) => {
-                self.angle_bracketed_generic_arguments(arguments, kind);
-            },
-            PathArguments::Parenthesized(arguments) => {
-                self.parenthesized_generic_arguments(arguments);
-            },
-        }
-    }
-    fn generic_argument(&mut self, arg: &GenericArgument) {
-        match arg {
-            GenericArgument::Lifetime(lifetime) => self.lifetime(lifetime),
-            GenericArgument::Type(ty) => self.ty(ty),
-            GenericArgument::Const(expr) => match expr {
-                Expr::Lit(expr) => self.expr_lit(expr),
-                Expr::Block(expr) => self.expr_block(expr),
-                _ => {
-                    self.word("{");
-                    self.expr(expr);
-                    self.word("}");
-                },
-            },
-            GenericArgument::AssocType(assoc) => self.assoc_type(assoc),
-            GenericArgument::AssocConst(assoc) => self.assoc_const(assoc),
-            GenericArgument::Constraint(constraint) => self.constraint(constraint),
-            #[cfg_attr(all(test, exhaustive), deny(non_exhaustive_omitted_patterns))]
-            _ => unimplemented!("unknown GenericArgument"),
-        }
-    }
-    pub fn angle_bracketed_generic_arguments(&mut self, generic: &AngleBracketedGenericArguments, path_kind: PathKind) {
-        if generic.args.is_empty() || path_kind == PathKind::Simple {
-            return;
-        }
-        if path_kind == PathKind::Expr {
-            self.word("::");
-        }
-        self.word("<");
-        self.cbox(INDENT);
-        self.zerobreak();
-        #[derive(Ord, PartialOrd, Eq, PartialEq)]
-        enum Group {
-            First,
-            Second,
-        }
-        fn group(arg: &GenericArgument) -> Group {
-            match arg {
-                GenericArgument::Lifetime(_) => Group::First,
-                GenericArgument::Type(_)
-                | GenericArgument::Const(_)
-                | GenericArgument::AssocType(_)
-                | GenericArgument::AssocConst(_)
-                | GenericArgument::Constraint(_) => Group::Second,
-                #[cfg_attr(all(test, exhaustive), deny(non_exhaustive_omitted_patterns))]
-                _ => Group::Second,
-            }
-        }
-        let last = generic.args.iter().max_by_key(|param| group(param));
-        for current_group in [Group::First, Group::Second] {
-            for arg in &generic.args {
-                if group(arg) == current_group {
-                    self.generic_argument(arg);
-                    self.trailing_comma(ptr::eq(arg, last.unwrap()));
-                }
-            }
-        }
-        self.offset(-INDENT);
-        self.end();
-        self.word(">");
-    }
-    fn assoc_type(&mut self, assoc: &AssocType) {
-        self.ident(&assoc.ident);
-        if let Some(generics) = &assoc.generics {
-            self.angle_bracketed_generic_arguments(generics, PathKind::Type);
-        }
-        self.word(" = ");
-        self.ty(&assoc.ty);
-    }
-    fn assoc_const(&mut self, assoc: &AssocConst) {
-        self.ident(&assoc.ident);
-        if let Some(generics) = &assoc.generics {
-            self.angle_bracketed_generic_arguments(generics, PathKind::Type);
-        }
-        self.word(" = ");
-        self.expr(&assoc.value);
-    }
-    fn constraint(&mut self, constraint: &Constraint) {
-        self.ident(&constraint.ident);
-        if let Some(generics) = &constraint.generics {
-            self.angle_bracketed_generic_arguments(generics, PathKind::Type);
-        }
-        self.ibox(INDENT);
-        for bound in constraint.bounds.iter().delimited() {
-            if bound.is_first {
-                self.word(": ");
-            } else {
-                self.space();
-                self.word("+ ");
-            }
-            self.type_param_bound(&bound);
-        }
-        self.end();
-    }
-    fn parenthesized_generic_arguments(&mut self, arguments: &ParenthesizedGenericArguments) {
-        self.cbox(INDENT);
-        self.word("(");
-        self.zerobreak();
-        for ty in arguments.inputs.iter().delimited() {
-            self.ty(&ty);
-            self.trailing_comma(ty.is_last);
-        }
-        self.offset(-INDENT);
-        self.word(")");
-        self.return_type(&arguments.output);
-        self.end();
-    }
-    pub fn qpath(&mut self, qself: &Option<QSelf>, path: &Path, kind: PathKind) {
-        let qself = match qself {
-            Some(qself) => qself,
-            None => {
-                self.path(path, kind);
-                return;
-            },
-        };
-        assert!(qself.position < path.segments.len());
-        self.word("<");
-        self.ty(&qself.ty);
-        let mut segments = path.segments.iter();
-        if qself.position > 0 {
-            self.word(" as ");
-            for segment in segments.by_ref().take(qself.position).delimited() {
-                if !segment.is_first || path.leading_colon.is_some() {
-                    self.word("::");
-                }
-                self.path_segment(&segment, PathKind::Type);
-                if segment.is_last {
-                    self.word(">");
-                }
-            }
-        } else {
-            self.word(">");
-        }
-        for segment in segments {
-            self.word("::");
-            self.path_segment(segment, kind);
-        }
     }
 }
 
@@ -3708,18 +3537,18 @@ impl Print {
                 self.end();
                 self.hardbreak();
             },
-            Stmt::Item(item) => self.item(item),
-            Stmt::Expr(expr, None) => {
-                if break_after(expr) {
+            Stmt::Item(x) => self.item(x),
+            Stmt::Expr(x, None) => {
+                if x.break_after() {
                     self.ibox(0);
-                    self.expr_beginning_of_line(expr, true);
-                    if add_semi(expr) {
+                    self.expr_beginning_of_line(x, true);
+                    if x.add_semi() {
                         self.word(";");
                     }
                     self.end();
                     self.hardbreak();
                 } else {
-                    self.expr_beginning_of_line(expr, true);
+                    self.expr_beginning_of_line(x, true);
                 }
             },
             Stmt::Expr(expr, Some(_semi)) => {
@@ -3744,86 +3573,6 @@ impl Print {
             },
         }
     }
-}
-pub fn add_semi(expr: &Expr) -> bool {
-    match expr {
-        Expr::Assign(_) | Expr::Break(_) | Expr::Continue(_) | Expr::Return(_) | Expr::Yield(_) => true,
-        Expr::Binary(expr) => match expr.op {
-            BinOp::AddAssign(_)
-            | BinOp::SubAssign(_)
-            | BinOp::MulAssign(_)
-            | BinOp::DivAssign(_)
-            | BinOp::RemAssign(_)
-            | BinOp::BitXorAssign(_)
-            | BinOp::BitAndAssign(_)
-            | BinOp::BitOrAssign(_)
-            | BinOp::ShlAssign(_)
-            | BinOp::ShrAssign(_) => true,
-            BinOp::Add(_)
-            | BinOp::Sub(_)
-            | BinOp::Mul(_)
-            | BinOp::Div(_)
-            | BinOp::Rem(_)
-            | BinOp::And(_)
-            | BinOp::Or(_)
-            | BinOp::BitXor(_)
-            | BinOp::BitAnd(_)
-            | BinOp::BitOr(_)
-            | BinOp::Shl(_)
-            | BinOp::Shr(_)
-            | BinOp::Eq(_)
-            | BinOp::Lt(_)
-            | BinOp::Le(_)
-            | BinOp::Ne(_)
-            | BinOp::Ge(_)
-            | BinOp::Gt(_) => false,
-            #[cfg_attr(all(test, exhaustive), deny(non_exhaustive_omitted_patterns))]
-            _ => unimplemented!("unknown BinOp"),
-        },
-        Expr::Group(group) => add_semi(&group.expr),
-        Expr::Array(_)
-        | Expr::Async(_)
-        | Expr::Await(_)
-        | Expr::Block(_)
-        | Expr::Call(_)
-        | Expr::Cast(_)
-        | Expr::Closure(_)
-        | Expr::Const(_)
-        | Expr::Field(_)
-        | Expr::ForLoop(_)
-        | Expr::If(_)
-        | Expr::Index(_)
-        | Expr::Infer(_)
-        | Expr::Let(_)
-        | Expr::Lit(_)
-        | Expr::Loop(_)
-        | Expr::Macro(_)
-        | Expr::Match(_)
-        | Expr::MethodCall(_)
-        | Expr::Paren(_)
-        | Expr::Path(_)
-        | Expr::Range(_)
-        | Expr::Reference(_)
-        | Expr::Repeat(_)
-        | Expr::Struct(_)
-        | Expr::Try(_)
-        | Expr::TryBlock(_)
-        | Expr::Tuple(_)
-        | Expr::Unary(_)
-        | Expr::Unsafe(_)
-        | Expr::Verbatim(_)
-        | Expr::While(_) => false,
-        #[cfg_attr(all(test, exhaustive), deny(non_exhaustive_omitted_patterns))]
-        _ => false,
-    }
-}
-pub fn break_after(expr: &Expr) -> bool {
-    if let Expr::Group(group) = expr {
-        if let Expr::Verbatim(verbatim) = group.expr.as_ref() {
-            return !verbatim.is_empty();
-        }
-    }
-    true
 }
 
 impl Print {
@@ -3979,7 +3728,7 @@ impl Print {
         self.word(")");
     }
     fn type_path(&mut self, ty: &typ::Path) {
-        self.qpath(&ty.qself, &ty.path, PathKind::Type);
+        &ty.path.pretty_qpath(self, &ty.qself, path::Kind::Type);
     }
     fn type_ptr(&mut self, ty: &typ::Ptr) {
         self.word("*");
@@ -3992,7 +3741,7 @@ impl Print {
     }
     fn type_reference(&mut self, ty: &typ::Ref) {
         self.word("&");
-        if let Some(lifetime) = &ty.lifetime {
+        if let Some(lifetime) = &ty.life {
             self.lifetime(lifetime);
             self.nbsp();
         }

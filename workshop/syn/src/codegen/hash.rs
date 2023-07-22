@@ -9,7 +9,7 @@ impl Hash for typ::Abi {
         self.name.hash(h);
     }
 }
-impl Hash for path::AngledArgs {
+impl Hash for path::Angled {
     fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,

@@ -334,7 +334,7 @@ impl Pretty for Meta {
         match self {
             List(x) => x.pretty(p),
             NameValue(x) => x.pretty(p),
-            Path(x) => p.path(x, pretty::PathKind::Simple),
+            Path(x) => p.path(x, path::Kind::Simple),
         }
     }
 }
@@ -370,7 +370,7 @@ impl Lower for List {
 }
 impl Pretty for List {
     fn pretty(&self, p: &mut Print) {
-        p.path(&self.path, PathKind::Simple);
+        p.path(&self.path, path::Kind::Simple);
         let delim = match self.delim {
             MacroDelim::Paren(_) => Delim::Parenthesis,
             MacroDelim::Brace(_) => Delim::Brace,
@@ -401,7 +401,7 @@ impl Lower for NameValue {
 }
 impl Pretty for NameValue {
     fn pretty(&self, p: &mut Print) {
-        p.path(&self.name, PathKind::Simple);
+        p.path(&self.name, path::Kind::Simple);
         p.word(" = ");
         p.expr(&self.val);
     }

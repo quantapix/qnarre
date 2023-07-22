@@ -239,6 +239,24 @@ impl Expr {
             },
         }
     }
+    pub fn add_semi(&self) -> bool {
+        use BinOp::*;
+        use Expr::*;
+        match self {
+            Assign(_) | Break(_) | Continue(_) | Return(_) | Yield(_) => true,
+            Binary(x) => match x.op {
+                AddAssign(_) | SubAssign(_) | MulAssign(_) | DivAssign(_) | RemAssign(_) | BitXorAssign(_)
+                | BitAndAssign(_) | BitOrAssign(_) | ShlAssign(_) | ShrAssign(_) => true,
+                Add(_) | Sub(_) | Mul(_) | Div(_) | Rem(_) | And(_) | Or(_) | BitXor(_) | BitAnd(_) | BitOr(_)
+                | Shl(_) | Shr(_) | Eq(_) | Lt(_) | Le(_) | Ne(_) | Ge(_) | Gt(_) => false,
+            },
+            Group(x) => &x.expr.add_semi(),
+            Array(_) | Async(_) | Await(_) | Block(_) | Call(_) | Cast(_) | Closure(_) | Const(_) | Field(_)
+            | ForLoop(_) | If(_) | Index(_) | Infer(_) | Let(_) | Lit(_) | Loop(_) | Mac(_) | Match(_)
+            | MethodCall(_) | Paren(_) | Path(_) | Range(_) | Ref(_) | Repeat(_) | Struct(_) | Try(_) | TryBlock(_)
+            | Tuple(_) | Unary(_) | Unsafe(_) | Stream(_) | While(_) => false,
+        }
+    }
     pub fn remove_semi(&self) -> bool {
         use Expr::*;
         match self {
@@ -253,6 +271,14 @@ impl Expr {
             | Mac(_) | Match(_) | MethodCall(_) | Paren(_) | Path(_) | Range(_) | Ref(_) | Repeat(_) | Return(_)
             | Struct(_) | Try(_) | TryBlock(_) | Tuple(_) | Unary(_) | Unsafe(_) | Stream(_) | Yield(_) => false,
         }
+    }
+    fn break_after(&self) -> bool {
+        if let Expr::Group(x) = self {
+            if let Expr::Stream(x) = x.expr.as_ref() {
+                return !x.is_empty();
+            }
+        }
+        true
     }
 }
 impl Parse for Expr {
@@ -738,7 +764,7 @@ impl Pretty for Closure {
                     &self.body.pretty(p);
                     p.scan_break(BreakToken {
                         offset: -pretty::INDENT,
-                        pre_break: (okay_to_brace && add_semi(&self.body)).then(|| ';'),
+                        pre_break: (okay_to_brace && &self.body.add_semi()).then(|| ';'),
                         post_break: Some(if okay_to_brace { '}' } else { ')' }),
                         ..BreakToken::default()
                     });
@@ -1356,7 +1382,7 @@ pub struct MethodCall {
     pub expr: Box<Expr>,
     pub dot: Token![.],
     pub method: Ident,
-    pub turbofish: Option<path::AngledArgs>,
+    pub turbofish: Option<path::Angled>,
     pub paren: tok::Paren,
     pub args: Puncted<Expr, Token![,]>,
 }
@@ -1367,7 +1393,7 @@ impl MethodCall {
         p.word(".");
         &self.method.pretty(p);
         if let Some(x) = &self.turbofish {
-            p.angle_bracketed_generic_arguments(x, PathKind::Expr);
+            p.angle_bracketed_generic_arguments(x, path::Kind::Expr);
         }
         p.cbox(if unindent { -INDENT } else { 0 });
         p.word("(");
@@ -1446,7 +1472,7 @@ impl Lower for Path {
 impl Pretty for Path {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
-        p.qpath(&self.qself, &self.path, pretty::PathKind::Expr);
+        &self.path.pretty_qpath(p, &self.qself, path::Kind::Expr);
     }
 }
 
@@ -1620,7 +1646,7 @@ impl Pretty for Struct {
         p.outer_attrs(&self.attrs);
         p.cbox(pretty::INDENT);
         p.ibox(-pretty::INDENT);
-        p.qpath(&self.qself, &self.path, pretty::PathKind::Expr);
+        &self.path.pretty_qpath(p, &self.qself, path::Kind::Expr);
         p.end();
         p.word(" {");
         p.space_if_nonempty();
@@ -2409,7 +2435,7 @@ impl Pretty for Arm {
             p.expr_beginning_of_line(body, true);
             p.scan_break(BreakToken {
                 offset: -pretty::INDENT,
-                pre_break: add_semi(body).then(|| ';'),
+                pre_break: body.add_semi().then(|| ';'),
                 post_break: Some('}'),
                 no_break: body.needs_terminator().then(|| ','),
                 ..BreakToken::default()
@@ -2731,7 +2757,7 @@ fn trailer_helper(x: Stream, mut y: Expr) -> Res<Expr> {
             }
             let memb: Member = x.parse()?;
             let turbofish = if memb.is_named() && x.peek(Token![::]) {
-                Some(path::AngledArgs::parse_turbofish(x)?)
+                Some(path::Angled::parse_turbofish(x)?)
             } else {
                 None
             };

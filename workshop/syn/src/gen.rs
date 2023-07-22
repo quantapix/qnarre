@@ -76,7 +76,7 @@ pub mod bound {
                 && (s.peek(tok::Paren) || s.peek(Token![::]) && s.peek3(tok::Paren))
             {
                 s.parse::<Option<Token![::]>>()?;
-                let y: path::ParenthesizedArgs = s.parse()?;
+                let y: path::Parenthesized = s.parse()?;
                 let y = path::Args::Parenthesized(y);
                 path.segs.last_mut().unwrap().args = y;
             }
@@ -427,7 +427,7 @@ pub mod param {
                 eq: {
                     if x.peek(Token![=]) {
                         let eq = x.parse()?;
-                        default = Some(path::const_argument(x)?);
+                        default = Some(path::const_arg(x)?);
                         Some(eq)
                     } else {
                         None

@@ -208,7 +208,7 @@ impl Pretty for Restricted {
         if !omit_in {
             p.word("in ");
         }
-        p.path(&self.path, pretty::PathKind::Simple);
+        p.path(&self.path, path::Kind::Simple);
         p.word(") ");
     }
 }
