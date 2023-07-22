@@ -239,6 +239,21 @@ impl Expr {
             },
         }
     }
+    pub fn remove_semi(&self) -> bool {
+        use Expr::*;
+        match self {
+            ForLoop(_) | While(_) => true,
+            Group(x) => &x.expr.remove_semi(),
+            If(x) => match &x.else_ {
+                Some((_, x)) => x.remove_semi(),
+                None => true,
+            },
+            Array(_) | Assign(_) | Async(_) | Await(_) | Binary(_) | Block(_) | Break(_) | Call(_) | Cast(_)
+            | Closure(_) | Continue(_) | Const(_) | Field(_) | Index(_) | Infer(_) | Let(_) | Lit(_) | Loop(_)
+            | Mac(_) | Match(_) | MethodCall(_) | Paren(_) | Path(_) | Range(_) | Ref(_) | Repeat(_) | Return(_)
+            | Struct(_) | Try(_) | TryBlock(_) | Tuple(_) | Unary(_) | Unsafe(_) | Stream(_) | Yield(_) => false,
+        }
+    }
 }
 impl Parse for Expr {
     fn parse(x: Stream) -> Res<Self> {
