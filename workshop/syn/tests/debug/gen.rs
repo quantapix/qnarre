@@ -1123,7 +1123,7 @@ impl Debug for Lite<syn::expr::Break> {
         if !self.value.attrs.is_empty() {
             f.field("attrs", Lite(&self.value.attrs));
         }
-        if let Some(val) = &self.value.label {
+        if let Some(val) = &self.value.life {
             #[derive(RefCast)]
             #[repr(transparent)]
             struct Print(syn::Life);
@@ -1137,7 +1137,7 @@ impl Debug for Lite<syn::expr::Break> {
             }
             f.field("label", Print::ref_cast(val));
         }
-        if let Some(val) = &self.value.expr {
+        if let Some(val) = &self.value.val {
             #[derive(RefCast)]
             #[repr(transparent)]
             struct Print(Box<syn::Expr>);
@@ -1234,7 +1234,7 @@ impl Debug for Lite<syn::expr::Continue> {
         if !self.value.attrs.is_empty() {
             f.field("attrs", Lite(&self.value.attrs));
         }
-        if let Some(val) = &self.value.label {
+        if let Some(val) = &self.value.life {
             #[derive(RefCast)]
             #[repr(transparent)]
             struct Print(syn::Life);

@@ -287,8 +287,8 @@ impl Clone for expr::Break {
         expr::Break {
             attrs: self.attrs.clone(),
             break_: self.break_.clone(),
-            label: self.label.clone(),
-            expr: self.expr.clone(),
+            life: self.life.clone(),
+            val: self.val.clone(),
         }
     }
 }
@@ -343,7 +343,7 @@ impl Clone for expr::Continue {
         expr::Continue {
             attrs: self.attrs.clone(),
             continue_: self.continue_.clone(),
-            label: self.label.clone(),
+            life: self.life.clone(),
         }
     }
 }

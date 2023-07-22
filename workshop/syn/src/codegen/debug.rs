@@ -492,8 +492,8 @@ impl Debug for expr::Break {
                 let mut f = f.debug_struct(name);
                 f.field("attrs", &self.attrs);
                 f.field("break_", &self.break_);
-                f.field("label", &self.label);
-                f.field("expr", &self.expr);
+                f.field("label", &self.life);
+                f.field("expr", &self.val);
                 f.finish()
             }
         }
@@ -573,7 +573,7 @@ impl Debug for expr::Continue {
                 let mut f = f.debug_struct(name);
                 f.field("attrs", &self.attrs);
                 f.field("continue_", &self.continue_);
-                f.field("label", &self.label);
+                f.field("label", &self.life);
                 f.finish()
             }
         }

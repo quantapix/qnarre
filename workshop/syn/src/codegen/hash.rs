@@ -517,8 +517,8 @@ impl Hash for expr::Break {
         H: Hasher,
     {
         self.attrs.hash(state);
-        self.label.hash(state);
-        self.expr.hash(state);
+        self.life.hash(state);
+        self.val.hash(state);
     }
 }
 impl Hash for expr::Call {
@@ -572,7 +572,7 @@ impl Hash for expr::Continue {
         H: Hasher,
     {
         self.attrs.hash(state);
-        self.label.hash(state);
+        self.life.hash(state);
     }
 }
 impl Hash for expr::Field {

@@ -43,6 +43,7 @@ use ident::Life;
 use parse::{Parse, Parser, Stream};
 use path::Path;
 use pm2::{Ident, IntoSpans, Punct};
+use pretty::{Pretty, Print};
 use punct::Puncted;
 use tok::Tok;
 

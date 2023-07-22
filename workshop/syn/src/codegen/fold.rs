@@ -901,8 +901,8 @@ where
     expr::Break {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         break_: node.break_,
-        label: (node.label).map(|it| f.fold_lifetime(it)),
-        expr: (node.expr).map(|it| Box::new(f.fold_expr(*it))),
+        life: (node.life).map(|it| f.fold_lifetime(it)),
+        val: (node.val).map(|it| Box::new(f.fold_expr(*it))),
     }
 }
 pub fn fold_expr_call<F>(f: &mut F, node: expr::Call) -> expr::Call
@@ -962,7 +962,7 @@ where
     expr::Continue {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         continue_: node.continue_,
-        label: (node.label).map(|it| f.fold_lifetime(it)),
+        life: (node.life).map(|it| f.fold_lifetime(it)),
     }
 }
 pub fn fold_expr_field<F>(f: &mut F, node: expr::Field) -> expr::Field

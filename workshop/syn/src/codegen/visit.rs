@@ -1062,10 +1062,10 @@ where
         v.visit_attribute(it);
     }
     skip!(node.break_);
-    if let Some(it) = &node.label {
+    if let Some(it) = &node.life {
         v.visit_lifetime(it);
     }
-    if let Some(it) = &node.expr {
+    if let Some(it) = &node.val {
         v.visit_expr(&**it);
     }
 }
@@ -1135,7 +1135,7 @@ where
         v.visit_attribute(it);
     }
     skip!(node.continue_);
-    if let Some(it) = &node.label {
+    if let Some(it) = &node.life {
         v.visit_lifetime(it);
     }
 }

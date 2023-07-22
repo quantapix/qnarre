@@ -1062,10 +1062,10 @@ where
         v.visit_attribute_mut(it);
     }
     skip!(node.break_);
-    if let Some(it) = &mut node.label {
+    if let Some(it) = &mut node.life {
         v.visit_lifetime_mut(it);
     }
-    if let Some(it) = &mut node.expr {
+    if let Some(it) = &mut node.val {
         v.visit_expr_mut(&mut **it);
     }
 }
@@ -1135,7 +1135,7 @@ where
         v.visit_attribute_mut(it);
     }
     skip!(node.continue_);
-    if let Some(it) = &mut node.label {
+    if let Some(it) = &mut node.life {
         v.visit_lifetime_mut(it);
     }
 }

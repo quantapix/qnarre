@@ -252,7 +252,7 @@ impl PartialEq for expr::Block {
 impl Eq for expr::Break {}
 impl PartialEq for expr::Break {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs && self.label == other.label && self.expr == other.expr
+        self.attrs == other.attrs && self.life == other.life && self.val == other.val
     }
 }
 impl Eq for expr::Call {}
@@ -290,7 +290,7 @@ impl PartialEq for expr::Const {
 impl Eq for expr::Continue {}
 impl PartialEq for expr::Continue {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs && self.label == other.label
+        self.attrs == other.attrs && self.life == other.life
     }
 }
 impl Eq for expr::Field {}

@@ -106,6 +106,52 @@ impl Parse for Expr {
         ambiguous_expr(x, AllowStruct(true))
     }
 }
+impl Pretty for Expr {
+    fn pretty(&self, p: &mut Print) {
+        use Expr::*;
+        match self {
+            Array(x) => x.pretty(p),
+            Assign(x) => x.pretty(p),
+            Async(x) => x.pretty(p),
+            Await(x) => x.pretty(p, false),
+            Binary(x) => x.pretty(p),
+            Block(x) => x.pretty(p),
+            Break(x) => x.pretty(p),
+            Call(x) => x.pretty(p, false),
+            Cast(x) => x.pretty(p),
+            Closure(x) => x.pretty(p),
+            Const(x) => x.pretty(p),
+            Continue(x) => x.pretty(p),
+            Field(x) => x.pretty(p, false),
+            ForLoop(x) => x.pretty(p),
+            Group(x) => x.pretty(p),
+            If(x) => x.pretty(p),
+            Index(x) => x.pretty(p, false),
+            Infer(x) => x.pretty(p),
+            Let(x) => x.pretty(p),
+            Lit(x) => x.pretty(p),
+            Loop(x) => x.pretty(p),
+            Mac(x) => x.pretty(p),
+            Match(x) => x.pretty(p),
+            MethodCall(x) => x.pretty(p, false),
+            Paren(x) => x.pretty(p),
+            Path(x) => x.pretty(p),
+            Range(x) => x.pretty(p),
+            Ref(x) => x.pretty(p),
+            Repeat(x) => x.pretty(p),
+            Return(x) => x.pretty(p),
+            Struct(x) => x.pretty(p),
+            Try(x) => x.pretty(p),
+            TryBlock(x) => x.pretty(p),
+            Tuple(x) => x.pretty(p),
+            Unary(x) => x.pretty(p),
+            Unsafe(x) => x.pretty(p),
+            Stream(x) => x.pretty(p),
+            While(x) => x.pretty(p),
+            Yield(x) => x.pretty(p),
+        }
+    }
+}
 
 macro_rules! impl_by_parsing_expr {
     (
@@ -177,6 +223,21 @@ impl Lower for Array {
         });
     }
 }
+impl Pretty for Array {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.word("[");
+        p.cbox(pretty::INDENT);
+        p.zerobreak();
+        for x in self.elems.iter().delimited() {
+            p.expr(&x);
+            p.trailing_comma(x.is_last);
+        }
+        p.offset(-pretty::INDENT);
+        p.end();
+        p.word("]");
+    }
+}
 
 pub struct Assign {
     pub attrs: Vec<attr::Attr>,
@@ -190,6 +251,16 @@ impl Lower for Assign {
         self.left.lower(s);
         self.eq.lower(s);
         self.right.lower(s);
+    }
+}
+impl Pretty for Assign {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.ibox(0);
+        p.expr(&self.left);
+        p.word(" = ");
+        p.expr(&self.right);
+        p.end();
     }
 }
 
@@ -217,6 +288,18 @@ impl Lower for Async {
         self.block.lower(s);
     }
 }
+impl Pretty for Async {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.word("async ");
+        if self.move_.is_some() {
+            p.word("move ");
+        }
+        p.cbox(pretty::INDENT);
+        p.small_block(&self.block, &self.attrs);
+        p.end();
+    }
+}
 
 pub struct Await {
     pub attrs: Vec<attr::Attr>,
@@ -232,6 +315,19 @@ impl Lower for Await {
         self.await_.lower(s);
     }
 }
+impl Pretty for Await {
+    fn pretty(&self, p: &mut Print, beg_of_line: bool) {
+        p.outer_attrs(&self.attrs);
+        p.cbox(pretty::INDENT);
+        p.subexpr_await(self, beg_of_line);
+        p.end();
+    }
+    fn subexpr_await(&self, p: &mut Print, beg_of_line: bool) {
+        p.subexpr(&self.expr, beg_of_line);
+        p.zerobreak_unless_short_ident(beg_of_line, &self.base);
+        p.word(".await");
+    }
+}
 
 pub struct Binary {
     pub attrs: Vec<attr::Attr>,
@@ -245,6 +341,20 @@ impl Lower for Binary {
         self.left.lower(s);
         self.op.lower(s);
         self.right.lower(s);
+    }
+}
+impl Pretty for Binary {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.ibox(pretty::INDENT);
+        p.ibox(-pretty::INDENT);
+        p.expr(&self.left);
+        p.end();
+        p.space();
+        p.binary_operator(&self.op);
+        p.nbsp();
+        p.expr(&self.right);
+        p.end();
     }
 }
 
@@ -278,12 +388,23 @@ impl Lower for Block {
         });
     }
 }
+impl Pretty for Block {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        if let Some(x) = &self.label {
+            p.label(x);
+        }
+        p.cbox(pretty::INDENT);
+        p.small_block(&self.block, &self.attrs);
+        p.end();
+    }
+}
 
 pub struct Break {
     pub attrs: Vec<attr::Attr>,
     pub break_: Token![break],
-    pub label: Option<Life>,
-    pub expr: Option<Box<Expr>>,
+    pub life: Option<Life>,
+    pub val: Option<Box<Expr>>,
 }
 impl Parse for Break {
     fn parse(x: Stream) -> Res<Self> {
@@ -295,8 +416,22 @@ impl Lower for Break {
     fn lower(&self, s: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, s);
         self.break_.lower(s);
-        self.label.lower(s);
-        self.expr.lower(s);
+        self.life.lower(s);
+        self.val.lower(s);
+    }
+}
+impl Pretty for Break {
+    fn pretty(&self, p: &mut Break) {
+        p.outer_attrs(&self.attrs);
+        p.word("break");
+        if let Some(x) = &self.life {
+            p.nbsp();
+            p.lifetime(x);
+        }
+        if let Some(x) = &self.val {
+            p.nbsp();
+            p.value(x);
+        }
     }
 }
 
@@ -315,6 +450,15 @@ impl Lower for Call {
         });
     }
 }
+impl Pretty for Call {
+    fn pretty(&self, p: &mut Call, beg_of_line: bool) {
+        p.outer_attrs(&self.attrs);
+        p.expr_beginning_of_line(&self.func, beg_of_line);
+        p.word("(");
+        p.call_args(&self.args);
+        p.word(")");
+    }
+}
 
 pub struct Cast {
     pub attrs: Vec<attr::Attr>,
@@ -328,6 +472,19 @@ impl Lower for Cast {
         self.expr.lower(s);
         self.as_.lower(s);
         self.typ.lower(s);
+    }
+}
+impl Pretty for Cast {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.ibox(pretty::INDENT);
+        p.ibox(-pretty::INDENT);
+        p.expr(&self.expr);
+        p.end();
+        p.space();
+        p.word("as ");
+        p.ty(&self.typ);
+        p.end();
     }
 }
 
@@ -359,10 +516,88 @@ impl Lower for Closure {
         self.async_.lower(s);
         self.move_.lower(s);
         self.or1.lower(s);
-        self.inputs.lower(s);
+        self.ins.lower(s);
         self.or2.lower(s);
         self.ret.lower(s);
         self.body.lower(s);
+    }
+}
+impl Pretty for Closure {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.ibox(0);
+        if let Some(x) = &self.lifes {
+            p.bound_lifetimes(x);
+        }
+        if self.const_.is_some() {
+            p.word("const ");
+        }
+        if self.static_.is_some() {
+            p.word("static ");
+        }
+        if self.async_.is_some() {
+            p.word("async ");
+        }
+        if self.move_.is_some() {
+            p.word("move ");
+        }
+        p.cbox(pretty::INDENT);
+        p.word("|");
+        for x in self.ins.iter().delimited() {
+            if x.is_first {
+                p.zerobreak();
+            }
+            p.pat(&x);
+            if !x.is_last {
+                p.word(",");
+                p.space();
+            }
+        }
+        match &self.ret {
+            typ::Ret::Default => {
+                p.word("|");
+                p.space();
+                p.offset(-pretty::INDENT);
+                p.end();
+                p.neverbreak();
+                let wrap_in_brace = match &*self.body {
+                    Expr::Match(Match { attrs, .. }) | Expr::Call(Call { attrs, .. }) => has_outer(attrs),
+                    x => !is_blocklike(x),
+                };
+                if wrap_in_brace {
+                    p.cbox(pretty::INDENT);
+                    let okay_to_brace = parseable_as_stmt(&self.body);
+                    p.scan_break(BreakToken {
+                        pre_break: Some(if okay_to_brace { '{' } else { '(' }),
+                        ..BreakToken::default()
+                    });
+                    p.expr(&self.body);
+                    p.scan_break(BreakToken {
+                        offset: -pretty::INDENT,
+                        pre_break: (okay_to_brace && add_semi(&self.body)).then(|| ';'),
+                        post_break: Some(if okay_to_brace { '}' } else { ')' }),
+                        ..BreakToken::default()
+                    });
+                    p.end();
+                } else {
+                    p.expr(&self.body);
+                }
+            },
+            typ::Ret::Type(_, x) => {
+                if !self.ins.is_empty() {
+                    p.trailing_comma(true);
+                    p.offset(-pretty::INDENT);
+                }
+                p.word("|");
+                p.end();
+                p.word(" -> ");
+                p.ty(x);
+                p.nbsp();
+                p.neverbreak();
+                p.expr(&self.body);
+            },
+        }
+        p.end();
     }
 }
 
@@ -395,18 +630,27 @@ impl Lower for Const {
         });
     }
 }
+impl Pretty for Const {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.word("const ");
+        p.cbox(pretty::INDENT);
+        p.small_block(&self.block, &self.attrs);
+        p.end();
+    }
+}
 
 pub struct Continue {
     pub attrs: Vec<attr::Attr>,
     pub continue_: Token![continue],
-    pub label: Option<Life>,
+    pub life: Option<Life>,
 }
 impl Parse for Continue {
     fn parse(x: Stream) -> Res<Self> {
         Ok(Continue {
             attrs: Vec::new(),
             continue_: x.parse()?,
-            label: x.parse()?,
+            life: x.parse()?,
         })
     }
 }
@@ -414,7 +658,17 @@ impl Lower for Continue {
     fn lower(&self, s: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, s);
         self.continue_.lower(s);
-        self.label.lower(s);
+        self.life.lower(s);
+    }
+}
+impl Pretty for Continue {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.word("continue");
+        if let Some(x) = &self.life {
+            p.nbsp();
+            p.lifetime(x);
+        }
     }
 }
 
@@ -430,6 +684,14 @@ impl Lower for Field {
         self.base.lower(s);
         self.dot.lower(s);
         self.memb.lower(s);
+    }
+}
+impl Pretty for Field {
+    fn pretty(&self, p: &mut Print, beg_of_line: bool) {
+        p.outer_attrs(&self.attrs);
+        p.cbox(pretty::INDENT);
+        p.subexpr_field(self, beg_of_line);
+        p.end();
     }
 }
 
@@ -479,6 +741,32 @@ impl Lower for ForLoop {
         });
     }
 }
+impl Pretty for ForLoop {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.ibox(0);
+        if let Some(x) = &self.label {
+            p.label(x);
+        }
+        p.word("for ");
+        p.pat(&self.pat);
+        p.word(" in ");
+        p.neverbreak();
+        p.wrap_exterior_struct(&self.expr);
+        p.word("{");
+        p.neverbreak();
+        p.cbox(pretty::INDENT);
+        p.hardbreak_if_nonempty();
+        p.inner_attrs(&self.attrs);
+        for x in &self.body.stmts {
+            p.stmt(x);
+        }
+        p.offset(-pretty::INDENT);
+        p.end();
+        p.word("}");
+        p.end();
+    }
+}
 
 pub struct Group {
     pub attrs: Vec<attr::Attr>,
@@ -491,6 +779,12 @@ impl Lower for Group {
         self.group.surround(s, |s| {
             self.expr.lower(s);
         });
+    }
+}
+impl Pretty for Group {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.expr(&self.expr);
     }
 }
 
@@ -534,6 +828,61 @@ impl Lower for If {
         }
     }
 }
+impl Pretty for If {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.cbox(pretty::INDENT);
+        p.word("if ");
+        p.cbox(-pretty::INDENT);
+        p.wrap_exterior_struct(&self.cond);
+        p.end();
+        if let Some((_, else_)) = &self.else_ {
+            let mut else_ = &**else_;
+            p.small_block(&self.then_, &[]);
+            loop {
+                p.word(" else ");
+                match else_ {
+                    Expr::If(x) => {
+                        p.word("if ");
+                        p.cbox(-pretty::INDENT);
+                        p.wrap_exterior_struct(&x.cond);
+                        p.end();
+                        p.small_block(&x.then_, &[]);
+                        if let Some((_, x)) = &x.else_ {
+                            else_ = x;
+                            continue;
+                        }
+                    },
+                    Expr::Block(x) => {
+                        p.small_block(&x.block, &[]);
+                    },
+                    x => {
+                        p.word("{");
+                        p.space();
+                        p.ibox(pretty::INDENT);
+                        p.expr(x);
+                        p.end();
+                        p.space();
+                        p.offset(-pretty::INDENT);
+                        p.word("}");
+                    },
+                }
+                break;
+            }
+        } else if self.then_.stmts.is_empty() {
+            p.word("{}");
+        } else {
+            p.word("{");
+            p.hardbreak();
+            for x in &self.then_.stmts {
+                p.stmt(x);
+            }
+            p.offset(-pretty::INDENT);
+            p.word("}");
+        }
+        p.end();
+    }
+}
 
 pub struct Index {
     pub attrs: Vec<attr::Attr>,
@@ -563,6 +912,15 @@ impl Lower for Index {
         });
     }
 }
+impl Pretty for Index {
+    fn pretty(&self, p: &mut Print, beg_of_line: bool) {
+        p.outer_attrs(&self.attrs);
+        p.expr_beginning_of_line(&self.expr, beg_of_line);
+        p.word("[");
+        p.expr(&self.idx);
+        p.word("]");
+    }
+}
 
 pub struct Infer {
     pub attrs: Vec<attr::Attr>,
@@ -580,6 +938,12 @@ impl Lower for Infer {
     fn lower(&self, s: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, s);
         self.underscore.lower(s);
+    }
+}
+impl Pretty for Infer {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.word("_");
     }
 }
 
@@ -614,6 +978,27 @@ impl Lower for Let {
         wrap_bare_struct(s, &self.expr);
     }
 }
+impl Pretty for Let {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.ibox(pretty::INDENT);
+        p.word("let ");
+        p.ibox(-pretty::INDENT);
+        p.pat(&self.pat);
+        p.end();
+        p.space();
+        p.word("= ");
+        let paren = contains_exterior_struct_lit(&self.expr);
+        if paren {
+            p.word("(");
+        }
+        p.expr(&self.expr);
+        if paren {
+            p.word(")");
+        }
+        p.end();
+    }
+}
 
 pub struct Lit {
     pub attrs: Vec<attr::Attr>,
@@ -631,6 +1016,12 @@ impl Lower for Lit {
     fn lower(&self, s: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, s);
         self.lit.lower(s);
+    }
+}
+impl Pretty for Lit {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.lit(&self.lit);
     }
 }
 
@@ -668,6 +1059,24 @@ impl Lower for Loop {
         });
     }
 }
+impl Pretty for Loop {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        if let Some(x) = &self.label {
+            p.label(x);
+        }
+        p.word("loop {");
+        p.cbox(pretty::INDENT);
+        p.hardbreak_if_nonempty();
+        p.inner_attrs(&self.attrs);
+        for x in &self.body.stmts {
+            p.stmt(x);
+        }
+        p.offset(-pretty::INDENT);
+        p.end();
+        p.word("}");
+    }
+}
 
 pub struct Mac {
     pub attrs: Vec<attr::Attr>,
@@ -685,6 +1094,13 @@ impl Lower for Mac {
     fn lower(&self, s: &mut Stream) {
         attr::outers_to_tokens(&self.attrs, s);
         self.mac.lower(s);
+    }
+}
+impl Pretty for Mac {
+    fn pretty(&self, p: &mut Mac) {
+        p.outer_attrs(&self.attrs);
+        let semicolon = false;
+        p.mac(&self.mac, None, semicolon);
     }
 }
 
@@ -733,6 +1149,27 @@ impl Lower for Match {
         });
     }
 }
+impl Pretty for Match {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.ibox(0);
+        p.word("match ");
+        p.wrap_exterior_struct(&self.expr);
+        p.word("{");
+        p.neverbreak();
+        p.cbox(pretty::INDENT);
+        p.hardbreak_if_nonempty();
+        p.inner_attrs(&self.attrs);
+        for x in &self.arms {
+            p.arm(x);
+            p.hardbreak();
+        }
+        p.offset(-pretty::INDENT);
+        p.end();
+        p.word("}");
+        p.end();
+    }
+}
 
 pub struct MethodCall {
     pub attrs: Vec<attr::Attr>,
@@ -755,6 +1192,15 @@ impl Lower for MethodCall {
         });
     }
 }
+impl Pretty for MethodCall {
+    fn pretty(&self, p: &mut Print, beg_of_line: bool) {
+        p.outer_attrs(&self.attrs);
+        p.cbox(pretty::INDENT);
+        let unindent_call_args = beg_of_line && is_short_ident(&self.receiver);
+        p.subexpr_method_call(self, beg_of_line, unindent_call_args);
+        p.end();
+    }
+}
 
 pub struct Paren {
     pub attrs: Vec<attr::Attr>,
@@ -772,6 +1218,14 @@ impl Lower for Paren {
         self.paren.surround(s, |s| {
             self.expr.lower(s);
         });
+    }
+}
+impl Pretty for Paren {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.word("(");
+        p.expr(&self.expr);
+        p.word(")");
     }
 }
 
@@ -793,6 +1247,12 @@ impl Lower for Path {
         path::path_to_tokens(s, &self.qself, &self.path);
     }
 }
+impl Pretty for Path {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.qpath(&self.qself, &self.path, pretty::PathKind::Expr);
+    }
+}
 
 pub struct Range {
     pub attrs: Vec<attr::Attr>,
@@ -806,6 +1266,21 @@ impl Lower for Range {
         self.beg.lower(s);
         self.limits.lower(s);
         self.end.lower(s);
+    }
+}
+impl Pretty for Range {
+    fn pretty(&self, p: &mut Range) {
+        p.outer_attrs(&self.attrs);
+        if let Some(x) = &self.beg {
+            p.expr(x);
+        }
+        p.word(match self.limits {
+            RangeLimits::HalfOpen(_) => "..",
+            RangeLimits::Closed(_) => "..=",
+        });
+        if let Some(x) = &self.end {
+            p.expr(x);
+        }
     }
 }
 
@@ -832,6 +1307,16 @@ impl Lower for Ref {
         self.and.lower(s);
         self.mut_.lower(s);
         self.expr.lower(s);
+    }
+}
+impl Pretty for Ref {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.word("&");
+        if self.mut_.is_some() {
+            p.word("mut ");
+        }
+        p.expr(&self.expr);
     }
 }
 
@@ -864,6 +1349,16 @@ impl Lower for Repeat {
         });
     }
 }
+impl Pretty for Repeat {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.word("[");
+        p.expr(&self.expr);
+        p.word("; ");
+        p.expr(&self.len);
+        p.word("]");
+    }
+}
 
 pub struct Return {
     pub attrs: Vec<attr::Attr>,
@@ -881,6 +1376,16 @@ impl Lower for Return {
         attr::outers_to_tokens(&self.attrs, s);
         self.return_.lower(s);
         self.expr.lower(s);
+    }
+}
+impl Pretty for Return {
+    fn pretty(expr: &expr::Ret, p: &mut Print) {
+        p.outer_attrs(&expr.attrs);
+        p.word("return");
+        if let Some(x) = &expr.expr {
+            p.nbsp();
+            p.expr(x);
+        }
     }
 }
 
@@ -914,6 +1419,29 @@ impl Lower for Struct {
         });
     }
 }
+impl Pretty for Struct {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.cbox(pretty::INDENT);
+        p.ibox(-pretty::INDENT);
+        p.qpath(&self.qself, &self.path, pretty::PathKind::Expr);
+        p.end();
+        p.word(" {");
+        p.space_if_nonempty();
+        for x in self.fields.iter().delimited() {
+            p.field_value(&x);
+            p.trailing_comma_or_space(x.is_last && self.rest.is_none());
+        }
+        if let Some(x) = &self.rest {
+            p.word("..");
+            p.expr(x);
+            p.space();
+        }
+        p.offset(-pretty::INDENT);
+        p.end_with_max_width(34);
+        p.word("}");
+    }
+}
 
 pub struct Try {
     pub attrs: Vec<attr::Attr>,
@@ -925,6 +1453,13 @@ impl Lower for Try {
         attr::outers_to_tokens(&self.attrs, s);
         self.expr.lower(s);
         self.question.lower(s);
+    }
+}
+impl Pretty for Try {
+    fn pretty(&self, p: &mut Print, beg_of_line: bool) {
+        p.outer_attrs(&self.attrs);
+        p.expr_beginning_of_line(&self.expr, beg_of_line);
+        p.word("?");
     }
 }
 
@@ -949,6 +1484,15 @@ impl Lower for TryBlock {
         self.block.lower(s);
     }
 }
+impl Pretty for TryBlock {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.word("try ");
+        p.cbox(pretty::INDENT);
+        p.small_block(&self.block, &self.attrs);
+        p.end();
+    }
+}
 
 pub struct Tuple {
     pub attrs: Vec<attr::Attr>,
@@ -964,6 +1508,26 @@ impl Lower for Tuple {
                 <Token![,]>::default().lower(s);
             }
         });
+    }
+}
+impl Pretty for Tuple {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.word("(");
+        p.cbox(pretty::INDENT);
+        p.zerobreak();
+        for x in self.elems.iter().delimited() {
+            p.expr(&x);
+            if self.elems.len() == 1 {
+                p.word(",");
+                p.zerobreak();
+            } else {
+                p.trailing_comma(x.is_last);
+            }
+        }
+        p.offset(-pretty::INDENT);
+        p.end();
+        p.word(")");
     }
 }
 
@@ -984,6 +1548,13 @@ impl Lower for Unary {
         attr::outers_to_tokens(&self.attrs, s);
         self.op.lower(s);
         self.expr.lower(s);
+    }
+}
+impl Pretty for Unary {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.unary_operator(&self.op);
+        p.expr(&self.expr);
     }
 }
 
@@ -1014,6 +1585,15 @@ impl Lower for Unsafe {
             attr::inners_to_tokens(&self.attrs, s);
             s.append_all(&self.block.stmts);
         });
+    }
+}
+impl Pretty for Unsafe {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.word("unsafe ");
+        p.cbox(pretty::INDENT);
+        p.small_block(&self.block, &self.attrs);
+        p.end();
     }
 }
 
@@ -1055,6 +1635,27 @@ impl Lower for While {
         });
     }
 }
+impl Pretty for While {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        if let Some(x) = &self.label {
+            p.label(x);
+        }
+        p.word("while ");
+        p.wrap_exterior_struct(&self.cond);
+        p.word("{");
+        p.neverbreak();
+        p.cbox(pretty::INDENT);
+        p.hardbreak_if_nonempty();
+        p.inner_attrs(&self.attrs);
+        for x in &self.block.stmts {
+            p.stmt(x);
+        }
+        p.offset(-pretty::INDENT);
+        p.end();
+        p.word("}");
+    }
+}
 
 pub struct Yield {
     pub attrs: Vec<attr::Attr>,
@@ -1081,6 +1682,16 @@ impl Lower for Yield {
         attr::outers_to_tokens(&self.attrs, s);
         self.yield_.lower(s);
         self.expr.lower(s);
+    }
+}
+impl Pretty for Yield {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.word("yield");
+        if let Some(x) = &self.expr {
+            p.nbsp();
+            p.expr(x);
+        }
     }
 }
 
@@ -1166,6 +1777,14 @@ impl Lower for Member {
         }
     }
 }
+impl Pretty for Member {
+    fn pretty(&self, p: &mut Print) {
+        match self {
+            Member::Named(x) => x.pretty(p),
+            Member::Unnamed(x) => x.pretty(p),
+        }
+    }
+}
 
 pub struct Idx {
     pub idx: u32,
@@ -1206,6 +1825,11 @@ impl Lower for Idx {
         s.append(y);
     }
 }
+impl Pretty for Idx {
+    fn pretty(&self, p: &mut Print) {
+        p.word(self.idx.to_string());
+    }
+}
 
 pub enum BinOp {
     Add(Token![+]),
@@ -1239,26 +1863,27 @@ pub enum BinOp {
 }
 impl Parse for BinOp {
     fn parse(x: Stream) -> Res<Self> {
+        use BinOp::*;
         if x.peek(Token![+=]) {
-            x.parse().map(BinOp::AddAssign)
+            x.parse().map(AddAssign)
         } else if x.peek(Token![-=]) {
-            x.parse().map(BinOp::SubAssign)
+            x.parse().map(SubAssign)
         } else if x.peek(Token![*=]) {
-            x.parse().map(BinOp::MulAssign)
+            x.parse().map(MulAssign)
         } else if x.peek(Token![/=]) {
-            x.parse().map(BinOp::DivAssign)
+            x.parse().map(DivAssign)
         } else if x.peek(Token![%=]) {
-            x.parse().map(BinOp::RemAssign)
+            x.parse().map(RemAssign)
         } else if x.peek(Token![^=]) {
-            x.parse().map(BinOp::BitXorAssign)
+            x.parse().map(BitXorAssign)
         } else if x.peek(Token![&=]) {
-            x.parse().map(BinOp::BitAndAssign)
+            x.parse().map(BitAndAssign)
         } else if x.peek(Token![|=]) {
-            x.parse().map(BinOp::BitOrAssign)
+            x.parse().map(BitOrAssign)
         } else if x.peek(Token![<<=]) {
-            x.parse().map(BinOp::ShlAssign)
+            x.parse().map(ShlAssign)
         } else if x.peek(Token![>>=]) {
-            x.parse().map(BinOp::ShrAssign)
+            x.parse().map(ShrAssign)
         } else {
             parse_binop(x)
         }
@@ -1299,6 +1924,41 @@ impl Lower for BinOp {
         }
     }
 }
+impl Pretty for BinOp {
+    fn pretty(&self, p: &mut Print) {
+        use BinOp::*;
+        p.word(match self {
+            Add(_) => "+",
+            Sub(_) => "-",
+            Mul(_) => "*",
+            Div(_) => "/",
+            Rem(_) => "%",
+            And(_) => "&&",
+            Or(_) => "||",
+            BitXor(_) => "^",
+            BitAnd(_) => "&",
+            BitOr(_) => "|",
+            Shl(_) => "<<",
+            Shr(_) => ">>",
+            Eq(_) => "==",
+            Lt(_) => "<",
+            Le(_) => "<=",
+            Ne(_) => "!=",
+            Ge(_) => ">=",
+            Gt(_) => ">",
+            AddAssign(_) => "+=",
+            SubAssign(_) => "-=",
+            MulAssign(_) => "*=",
+            DivAssign(_) => "/=",
+            RemAssign(_) => "%=",
+            BitXorAssign(_) => "^=",
+            BitAndAssign(_) => "&=",
+            BitOrAssign(_) => "|=",
+            ShlAssign(_) => "<<=",
+            ShrAssign(_) => ">>=",
+        });
+    }
+}
 
 pub enum UnOp {
     Deref(Token![*]),
@@ -1307,13 +1967,14 @@ pub enum UnOp {
 }
 impl Parse for UnOp {
     fn parse(x: Stream) -> Res<Self> {
+        use UnOp::*;
         let look = x.look1();
         if look.peek(Token![*]) {
-            x.parse().map(UnOp::Deref)
+            x.parse().map(Deref)
         } else if look.peek(Token![!]) {
-            x.parse().map(UnOp::Not)
+            x.parse().map(Not)
         } else if look.peek(Token![-]) {
-            x.parse().map(UnOp::Neg)
+            x.parse().map(Neg)
         } else {
             Err(look.err())
         }
@@ -1321,11 +1982,24 @@ impl Parse for UnOp {
 }
 impl Lower for UnOp {
     fn lower(&self, s: &mut Stream) {
+        use UnOp::*;
         match self {
-            UnOp::Deref(x) => x.lower(s),
-            UnOp::Not(x) => x.lower(s),
-            UnOp::Neg(x) => x.lower(s),
+            Deref(x) => x.lower(s),
+            Not(x) => x.lower(s),
+            Neg(x) => x.lower(s),
         }
+    }
+}
+impl Pretty for UnOp {
+    fn pretty(&self, p: &mut Print) {
+        use UnOp::*;
+        p.word(match self {
+            Deref(_) => "*",
+            Not(_) => "!",
+            Neg(_) => "-",
+            #[cfg_attr(all(test, exhaustive), deny(non_exhaustive_omitted_patterns))]
+            _ => unimplemented!("unknown UnOp"),
+        });
     }
 }
 
@@ -1333,7 +2007,7 @@ pub struct FieldValue {
     pub attrs: Vec<attr::Attr>,
     pub memb: Member,
     pub colon: Option<Token![:]>,
-    pub val: Expr,
+    pub expr: Expr,
 }
 impl Parse for FieldValue {
     fn parse(x: Stream) -> Res<Self> {
@@ -1357,7 +2031,7 @@ impl Parse for FieldValue {
             attrs,
             memb,
             colon,
-            val,
+            expr: val,
         })
     }
 }
@@ -1367,7 +2041,19 @@ impl Lower for FieldValue {
         self.memb.lower(s);
         if let Some(colon) = &self.colon {
             colon.lower(s);
-            self.val.lower(s);
+            self.expr.lower(s);
+        }
+    }
+}
+impl Pretty for FieldValue {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.member(&self.memb);
+        if self.colon.is_some() {
+            p.word(": ");
+            p.ibox(0);
+            p.expr(&self.expr);
+            p.end();
         }
     }
 }
@@ -1397,6 +2083,12 @@ impl Lower for Label {
     fn lower(&self, s: &mut Stream) {
         self.name.lower(s);
         self.colon.lower(s);
+    }
+}
+impl Pretty for Label {
+    fn pretty(&self, p: &mut Print) {
+        p.lifetime(&self.name);
+        p.word(": ");
     }
 }
 
@@ -1450,6 +2142,79 @@ impl Lower for Arm {
         self.fat_arrow.lower(s);
         self.body.lower(s);
         self.comma.lower(s);
+    }
+}
+impl Pretty for Arm {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.ibox(0);
+        p.pat(&self.pat);
+        if let Some((_if_token, guard)) = &self.guard {
+            p.word(" if ");
+            p.expr(guard);
+        }
+        p.word(" =>");
+        let empty_block;
+        let mut body = &*self.body;
+        while let Expr::Block(x) = body {
+            if x.attrs.is_empty() && x.label.is_none() {
+                let mut stmts = x.block.stmts.iter();
+                if let (Some(Stmt::Expr(inner, None)), None) = (stmts.next(), stmts.next()) {
+                    body = inner;
+                    continue;
+                }
+            }
+            break;
+        }
+        if let Expr::Tuple(x) = body {
+            if x.elems.is_empty() && x.attrs.is_empty() {
+                empty_block = Expr::Block(Block {
+                    attrs: Vec::new(),
+                    label: None,
+                    block: stmt::Block {
+                        brace: tok::Brace::default(),
+                        stmts: Vec::new(),
+                    },
+                });
+                body = &empty_block;
+            }
+        }
+        if let Expr::Block(x) = body {
+            p.nbsp();
+            if let Some(x) = &x.label {
+                p.label(x);
+            }
+            p.word("{");
+            p.neverbreak();
+            p.cbox(pretty::INDENT);
+            p.hardbreak_if_nonempty();
+            p.inner_attrs(&x.attrs);
+            for x in &x.block.stmts {
+                p.stmt(x);
+            }
+            p.offset(-pretty::INDENT);
+            p.end();
+            p.word("}");
+            p.end();
+        } else {
+            p.nbsp();
+            p.neverbreak();
+            p.cbox(pretty::INDENT);
+            p.scan_break(BreakToken {
+                pre_break: Some('{'),
+                ..BreakToken::default()
+            });
+            p.expr_beginning_of_line(body, true);
+            p.scan_break(BreakToken {
+                offset: -pretty::INDENT,
+                pre_break: add_semi(body).then(|| ';'),
+                post_break: Some('}'),
+                no_break: requires_terminator(body).then(|| ','),
+                ..BreakToken::default()
+            });
+            p.end();
+            p.end();
+        }
     }
 }
 
@@ -1516,28 +2281,19 @@ enum Precedence {
 }
 impl Precedence {
     fn of(op: &BinOp) -> Self {
+        use BinOp::*;
         match op {
-            BinOp::Add(_) | BinOp::Sub(_) => Precedence::Arithmetic,
-            BinOp::Mul(_) | BinOp::Div(_) | BinOp::Rem(_) => Precedence::Term,
-            BinOp::And(_) => Precedence::And,
-            BinOp::Or(_) => Precedence::Or,
-            BinOp::BitXor(_) => Precedence::BitXor,
-            BinOp::BitAnd(_) => Precedence::BitAnd,
-            BinOp::BitOr(_) => Precedence::BitOr,
-            BinOp::Shl(_) | BinOp::Shr(_) => Precedence::Shift,
-            BinOp::Eq(_) | BinOp::Lt(_) | BinOp::Le(_) | BinOp::Ne(_) | BinOp::Ge(_) | BinOp::Gt(_) => {
-                Precedence::Compare
-            },
-            BinOp::AddAssign(_)
-            | BinOp::SubAssign(_)
-            | BinOp::MulAssign(_)
-            | BinOp::DivAssign(_)
-            | BinOp::RemAssign(_)
-            | BinOp::BitXorAssign(_)
-            | BinOp::BitAndAssign(_)
-            | BinOp::BitOrAssign(_)
-            | BinOp::ShlAssign(_)
-            | BinOp::ShrAssign(_) => Precedence::Assign,
+            Add(_) | Sub(_) => Precedence::Arithmetic,
+            Mul(_) | Div(_) | Rem(_) => Precedence::Term,
+            And(_) => Precedence::And,
+            Or(_) => Precedence::Or,
+            BitXor(_) => Precedence::BitXor,
+            BitAnd(_) => Precedence::BitAnd,
+            BitOr(_) => Precedence::BitOr,
+            Shl(_) | Shr(_) => Precedence::Shift,
+            Eq(_) | Lt(_) | Le(_) | Ne(_) | Ge(_) | Gt(_) => Precedence::Compare,
+            AddAssign(_) | SubAssign(_) | MulAssign(_) | DivAssign(_) | RemAssign(_) | BitXorAssign(_)
+            | BitAndAssign(_) | BitOrAssign(_) | ShlAssign(_) | ShrAssign(_) => Precedence::Assign,
         }
     }
 }
@@ -2198,24 +2954,25 @@ fn closure_arg(x: Stream) -> Res<pat::Pat> {
             typ: x.parse()?,
         }))
     } else {
+        use pat::Pat::*;
         match &mut y {
-            pat::Pat::Const(x) => x.attrs = attrs,
-            pat::Pat::Ident(x) => x.attrs = attrs,
-            pat::Pat::Lit(x) => x.attrs = attrs,
-            pat::Pat::Mac(x) => x.attrs = attrs,
-            pat::Pat::Or(x) => x.attrs = attrs,
-            pat::Pat::Paren(x) => x.attrs = attrs,
-            pat::Pat::Path(x) => x.attrs = attrs,
-            pat::Pat::Range(x) => x.attrs = attrs,
-            pat::Pat::Ref(x) => x.attrs = attrs,
-            pat::Pat::Rest(x) => x.attrs = attrs,
-            pat::Pat::Slice(x) => x.attrs = attrs,
-            pat::Pat::Struct(x) => x.attrs = attrs,
-            pat::Pat::Tuple(x) => x.attrs = attrs,
-            pat::Pat::TupleStruct(x) => x.attrs = attrs,
-            pat::Pat::Type(_) => unreachable!(),
-            pat::Pat::Stream(_) => {},
-            pat::Pat::Wild(x) => x.attrs = attrs,
+            Const(x) => x.attrs = attrs,
+            Ident(x) => x.attrs = attrs,
+            Lit(x) => x.attrs = attrs,
+            Mac(x) => x.attrs = attrs,
+            Or(x) => x.attrs = attrs,
+            Paren(x) => x.attrs = attrs,
+            Path(x) => x.attrs = attrs,
+            Range(x) => x.attrs = attrs,
+            Ref(x) => x.attrs = attrs,
+            Rest(x) => x.attrs = attrs,
+            Slice(x) => x.attrs = attrs,
+            Struct(x) => x.attrs = attrs,
+            Tuple(x) => x.attrs = attrs,
+            TupleStruct(x) => x.attrs = attrs,
+            Type(_) => unreachable!(),
+            Stream(_) => {},
+            Wild(x) => x.attrs = attrs,
         }
         Ok(y)
     }
@@ -2224,8 +2981,8 @@ fn expr_break(x: Stream, allow: AllowStruct) -> Res<Break> {
     Ok(Break {
         attrs: Vec::new(),
         break_: x.parse()?,
-        label: x.parse()?,
-        expr: {
+        life: x.parse()?,
+        val: {
             if x.is_empty() || x.peek(Token![,]) || x.peek(Token![;]) || !allow.0 && x.peek(tok::Brace) {
                 None
             } else {
@@ -2352,42 +3109,43 @@ fn check_cast(x: Stream) -> Res<()> {
 }
 
 fn parse_binop(x: Stream) -> Res<BinOp> {
+    use BinOp::*;
     if x.peek(Token![&&]) {
-        x.parse().map(BinOp::And)
+        x.parse().map(And)
     } else if x.peek(Token![||]) {
-        x.parse().map(BinOp::Or)
+        x.parse().map(Or)
     } else if x.peek(Token![<<]) {
-        x.parse().map(BinOp::Shl)
+        x.parse().map(Shl)
     } else if x.peek(Token![>>]) {
-        x.parse().map(BinOp::Shr)
+        x.parse().map(Shr)
     } else if x.peek(Token![==]) {
-        x.parse().map(BinOp::Eq)
+        x.parse().map(Eq)
     } else if x.peek(Token![<=]) {
-        x.parse().map(BinOp::Le)
+        x.parse().map(Le)
     } else if x.peek(Token![!=]) {
-        x.parse().map(BinOp::Ne)
+        x.parse().map(Ne)
     } else if x.peek(Token![>=]) {
-        x.parse().map(BinOp::Ge)
+        x.parse().map(Ge)
     } else if x.peek(Token![+]) {
-        x.parse().map(BinOp::Add)
+        x.parse().map(Add)
     } else if x.peek(Token![-]) {
-        x.parse().map(BinOp::Sub)
+        x.parse().map(Sub)
     } else if x.peek(Token![*]) {
-        x.parse().map(BinOp::Mul)
+        x.parse().map(Mul)
     } else if x.peek(Token![/]) {
-        x.parse().map(BinOp::Div)
+        x.parse().map(Div)
     } else if x.peek(Token![%]) {
-        x.parse().map(BinOp::Rem)
+        x.parse().map(Rem)
     } else if x.peek(Token![^]) {
-        x.parse().map(BinOp::BitXor)
+        x.parse().map(BitXor)
     } else if x.peek(Token![&]) {
-        x.parse().map(BinOp::BitAnd)
+        x.parse().map(BitAnd)
     } else if x.peek(Token![|]) {
-        x.parse().map(BinOp::BitOr)
+        x.parse().map(BitOr)
     } else if x.peek(Token![<]) {
-        x.parse().map(BinOp::Lt)
+        x.parse().map(Lt)
     } else if x.peek(Token![>]) {
-        x.parse().map(BinOp::Gt)
+        x.parse().map(Gt)
     } else {
         Err(x.error("expected binary operator"))
     }
