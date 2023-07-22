@@ -64,7 +64,7 @@ pub trait Fold {
     fn fold_data_union(&mut self, i: data::Union) -> data::Union {
         fold_data_union(self, i)
     }
-    fn fold_derive_input(&mut self, i: DeriveInput) -> DeriveInput {
+    fn fold_derive_input(&mut self, i: Input) -> Input {
         fold_derive_input(self, i)
     }
     fn fold_expr(&mut self, i: Expr) -> Expr {
@@ -772,11 +772,11 @@ where
         fields: f.fold_fields_named(node.fields),
     }
 }
-pub fn fold_derive_input<F>(f: &mut F, node: DeriveInput) -> DeriveInput
+pub fn fold_derive_input<F>(f: &mut F, node: Input) -> Input
 where
     F: Fold + ?Sized,
 {
-    DeriveInput {
+    Input {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         vis: f.fold_visibility(node.vis),
         ident: f.fold_ident(node.ident),

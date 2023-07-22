@@ -2,7 +2,7 @@
 #[macro_use]
 mod macros;
 use quote::quote;
-use syn::{gen::bound::Type, gen::Where, gen::Where::Pred, item::Fn, DeriveInput};
+use syn::{gen::bound::Type, gen::Where, gen::Where::Pred, item::Fn, Input};
 #[test]
 fn test_split_for_impl() {
     let input = quote! {

@@ -20,7 +20,7 @@ impl Debug for AngledArgs {
                 f.finish()
             }
         }
-        self.debug(formatter, "path::path::AngledArgs")
+        self.debug(f, "path::path::AngledArgs")
     }
 }
 impl Debug for Arm {
@@ -60,9 +60,9 @@ impl Debug for attr::Style {
         f.write_str("attr::Style::")?;
         match self {
             attr::Style::Outer => f.write_str("Outer"),
-            attr::Style::Inner(v0) => {
+            attr::Style::Inner(x) => {
                 let mut f = f.debug_tuple("Inner");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
         }
@@ -97,154 +97,155 @@ impl Debug for typ::Variadic {
         f.finish()
     }
 }
-impl Debug for BinOp {
+impl Debug for expr::BinOp {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("BinOp::")?;
+        use expr::BinOp::*;
         match self {
-            BinOp::Add(v0) => {
+            Add(x) => {
                 let mut f = f.debug_tuple("Add");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            BinOp::Sub(v0) => {
+            Sub(x) => {
                 let mut f = f.debug_tuple("Sub");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            BinOp::Mul(v0) => {
+            Mul(x) => {
                 let mut f = f.debug_tuple("Mul");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            BinOp::Div(v0) => {
+            Div(x) => {
                 let mut f = f.debug_tuple("Div");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            BinOp::Rem(v0) => {
+            Rem(x) => {
                 let mut f = f.debug_tuple("Rem");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            BinOp::And(v0) => {
+            And(x) => {
                 let mut f = f.debug_tuple("And");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            BinOp::Or(v0) => {
+            Or(x) => {
                 let mut f = f.debug_tuple("Or");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            BinOp::BitXor(v0) => {
+            BitXor(x) => {
                 let mut f = f.debug_tuple("BitXor");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            BinOp::BitAnd(v0) => {
+            BitAnd(x) => {
                 let mut f = f.debug_tuple("BitAnd");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            BinOp::BitOr(v0) => {
+            BitOr(x) => {
                 let mut f = f.debug_tuple("BitOr");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            BinOp::Shl(v0) => {
+            Shl(x) => {
                 let mut f = f.debug_tuple("Shl");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            BinOp::Shr(v0) => {
+            Shr(x) => {
                 let mut f = f.debug_tuple("Shr");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            BinOp::Eq(v0) => {
+            Eq(x) => {
                 let mut f = f.debug_tuple("Eq");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            BinOp::Lt(v0) => {
+            Lt(x) => {
                 let mut f = f.debug_tuple("Lt");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            BinOp::Le(v0) => {
+            Le(x) => {
                 let mut f = f.debug_tuple("Le");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            BinOp::Ne(v0) => {
+            Ne(x) => {
                 let mut f = f.debug_tuple("Ne");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            BinOp::Ge(v0) => {
+            Ge(x) => {
                 let mut f = f.debug_tuple("Ge");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            BinOp::Gt(v0) => {
+            Gt(x) => {
                 let mut f = f.debug_tuple("Gt");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            BinOp::AddAssign(v0) => {
+            AddAssign(x) => {
                 let mut f = f.debug_tuple("AddAssign");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            BinOp::SubAssign(v0) => {
+            SubAssign(x) => {
                 let mut f = f.debug_tuple("SubAssign");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            BinOp::MulAssign(v0) => {
+            MulAssign(x) => {
                 let mut f = f.debug_tuple("MulAssign");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            BinOp::DivAssign(v0) => {
+            DivAssign(x) => {
                 let mut f = f.debug_tuple("DivAssign");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            BinOp::RemAssign(v0) => {
+            RemAssign(x) => {
                 let mut f = f.debug_tuple("RemAssign");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            BinOp::BitXorAssign(v0) => {
+            BitXorAssign(x) => {
                 let mut f = f.debug_tuple("BitXorAssign");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            BinOp::BitAndAssign(v0) => {
+            BitAndAssign(x) => {
                 let mut f = f.debug_tuple("BitAndAssign");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            BinOp::BitOrAssign(v0) => {
+            BitOrAssign(x) => {
                 let mut f = f.debug_tuple("BitOrAssign");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            BinOp::ShlAssign(v0) => {
+            ShlAssign(x) => {
                 let mut f = f.debug_tuple("ShlAssign");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            BinOp::ShrAssign(v0) => {
+            ShrAssign(x) => {
                 let mut f = f.debug_tuple("ShrAssign");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
         }
     }
 }
-impl Debug for Block {
+impl Debug for stmt::Block {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut f = f.debug_struct("Block");
         f.field("brace", &self.brace);
@@ -252,7 +253,7 @@ impl Debug for Block {
         f.finish()
     }
 }
-impl Debug for Bgen::bound::Lifes {
+impl Debug for gen::bound::Lifes {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut f = f.debug_struct("Bgen::bound::Lifes");
         f.field("for_", &self.for_);
@@ -275,23 +276,24 @@ impl Debug for gen::param::Const {
         f.finish()
     }
 }
-impl Debug for Constraint {
+impl Debug for path::Constraint {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut f = f.debug_struct("Constraint");
         f.field("ident", &self.ident);
-        f.field("gens", &self.gnrs);
+        f.field("args", &self.args);
         f.field("colon", &self.colon);
         f.field("bounds", &self.bounds);
         f.finish()
     }
 }
-impl Debug for Data {
+impl Debug for data::Data {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("Data::")?;
+        use data::Data::*;
         match self {
-            Data::Struct(v0) => v0.debug(formatter, "Struct"),
-            Data::Enum(v0) => v0.debug(formatter, "Enum"),
-            Data::Union(v0) => v0.debug(formatter, "Union"),
+            Struct(x) => x.debug(f, "Struct"),
+            Enum(x) => x.debug(f, "Enum"),
+            Union(x) => x.debug(f, "Union"),
         }
     }
 }
@@ -306,7 +308,7 @@ impl Debug for data::Enum {
                 f.finish()
             }
         }
-        self.debug(formatter, "data::Enum")
+        self.debug(f, "data::Enum")
     }
 }
 impl Debug for data::Struct {
@@ -320,7 +322,7 @@ impl Debug for data::Struct {
                 f.finish()
             }
         }
-        self.debug(formatter, "data::Struct")
+        self.debug(f, "data::Struct")
     }
 }
 impl Debug for data::Union {
@@ -333,12 +335,12 @@ impl Debug for data::Union {
                 f.finish()
             }
         }
-        self.debug(formatter, "data::Union")
+        self.debug(f, "data::Union")
     }
 }
-impl Debug for DeriveInput {
+impl Debug for Input {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("DeriveInput");
+        let mut f = f.debug_struct("Input");
         f.field("attrs", &self.attrs);
         f.field("vis", &self.vis);
         f.field("ident", &self.ident);
@@ -347,53 +349,54 @@ impl Debug for DeriveInput {
         f.finish()
     }
 }
-impl Debug for Expr {
+impl Debug for expr::Expr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("Expr::")?;
+        use expr::Expr::*;
         match self {
-            Expr::Array(v0) => v0.debug(formatter, "Array"),
-            Expr::Assign(v0) => v0.debug(formatter, "Assign"),
-            Expr::Async(v0) => v0.debug(formatter, "Async"),
-            Expr::Await(v0) => v0.debug(formatter, "Await"),
-            Expr::Binary(v0) => v0.debug(formatter, "Binary"),
-            Expr::Block(v0) => v0.debug(formatter, "Block"),
-            Expr::Break(v0) => v0.debug(formatter, "Break"),
-            Expr::Call(v0) => v0.debug(formatter, "Call"),
-            Expr::Cast(v0) => v0.debug(formatter, "Cast"),
-            Expr::Closure(v0) => v0.debug(formatter, "Closure"),
-            Expr::Const(v0) => v0.debug(formatter, "Const"),
-            Expr::Continue(v0) => v0.debug(formatter, "Continue"),
-            Expr::Field(v0) => v0.debug(formatter, "Field"),
-            Expr::ForLoop(v0) => v0.debug(formatter, "ForLoop"),
-            Expr::Group(v0) => v0.debug(formatter, "Group"),
-            Expr::If(v0) => v0.debug(formatter, "If"),
-            Expr::Index(v0) => v0.debug(formatter, "Index"),
-            Expr::Infer(v0) => v0.debug(formatter, "Infer"),
-            Expr::Let(v0) => v0.debug(formatter, "Let"),
-            Expr::Lit(v0) => v0.debug(formatter, "Lit"),
-            Expr::Loop(v0) => v0.debug(formatter, "Loop"),
-            Expr::Macro(v0) => v0.debug(formatter, "Macro"),
-            Expr::Match(v0) => v0.debug(formatter, "Match"),
-            Expr::MethodCall(v0) => v0.debug(formatter, "MethodCall"),
-            Expr::Paren(v0) => v0.debug(formatter, "Paren"),
-            Expr::Path(v0) => v0.debug(formatter, "Path"),
-            Expr::Range(v0) => v0.debug(formatter, "Range"),
-            Expr::Reference(v0) => v0.debug(formatter, "Reference"),
-            Expr::Repeat(v0) => v0.debug(formatter, "Repeat"),
-            Expr::Return(v0) => v0.debug(formatter, "Return"),
-            Expr::Struct(v0) => v0.debug(formatter, "Struct"),
-            Expr::Try(v0) => v0.debug(formatter, "Try"),
-            Expr::TryBlock(v0) => v0.debug(formatter, "TryBlock"),
-            Expr::Tuple(v0) => v0.debug(formatter, "Tuple"),
-            Expr::Unary(v0) => v0.debug(formatter, "Unary"),
-            Expr::Unsafe(v0) => v0.debug(formatter, "Unsafe"),
-            Expr::Stream(v0) => {
+            Array(x) => x.debug(f, "Array"),
+            Assign(x) => x.debug(f, "Assign"),
+            Async(x) => x.debug(f, "Async"),
+            Await(x) => x.debug(f, "Await"),
+            Binary(x) => x.debug(f, "Binary"),
+            Block(x) => x.debug(f, "Block"),
+            Break(x) => x.debug(f, "Break"),
+            Call(x) => x.debug(f, "Call"),
+            Cast(x) => x.debug(f, "Cast"),
+            Closure(x) => x.debug(f, "Closure"),
+            Const(x) => x.debug(f, "Const"),
+            Continue(x) => x.debug(f, "Continue"),
+            Field(x) => x.debug(f, "Field"),
+            ForLoop(x) => x.debug(f, "ForLoop"),
+            Group(x) => x.debug(f, "Group"),
+            If(x) => x.debug(f, "If"),
+            Index(x) => x.debug(f, "Index"),
+            Infer(x) => x.debug(f, "Infer"),
+            Let(x) => x.debug(f, "Let"),
+            Lit(x) => x.debug(f, "Lit"),
+            Loop(x) => x.debug(f, "Loop"),
+            Mac(x) => x.debug(f, "Macro"),
+            Match(x) => x.debug(f, "Match"),
+            MethodCall(x) => x.debug(f, "MethodCall"),
+            Paren(x) => x.debug(f, "Paren"),
+            Path(x) => x.debug(f, "Path"),
+            Range(x) => x.debug(f, "Range"),
+            Ref(x) => x.debug(f, "Reference"),
+            Repeat(x) => x.debug(f, "Repeat"),
+            Return(x) => x.debug(f, "Return"),
+            Struct(x) => x.debug(f, "Struct"),
+            Try(x) => x.debug(f, "Try"),
+            TryBlock(x) => x.debug(f, "TryBlock"),
+            Tuple(x) => x.debug(f, "Tuple"),
+            Unary(x) => x.debug(f, "Unary"),
+            Unsafe(x) => x.debug(f, "Unsafe"),
+            Stream(x) => {
                 let mut f = f.debug_tuple("Stream");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            Expr::While(v0) => v0.debug(formatter, "While"),
-            Expr::Yield(v0) => v0.debug(formatter, "Yield"),
+            While(x) => x.debug(f, "While"),
+            Yield(x) => x.debug(f, "Yield"),
         }
     }
 }
@@ -408,7 +411,7 @@ impl Debug for expr::Array {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::Array")
+        self.debug(f, "expr::Array")
     }
 }
 impl Debug for expr::Assign {
@@ -423,7 +426,7 @@ impl Debug for expr::Assign {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::Assign")
+        self.debug(f, "expr::Assign")
     }
 }
 impl Debug for expr::Async {
@@ -438,7 +441,7 @@ impl Debug for expr::Async {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::Async")
+        self.debug(f, "expr::Async")
     }
 }
 impl Debug for expr::Await {
@@ -453,7 +456,7 @@ impl Debug for expr::Await {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::Await")
+        self.debug(f, "expr::Await")
     }
 }
 impl Debug for expr::Binary {
@@ -468,7 +471,7 @@ impl Debug for expr::Binary {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::Binary")
+        self.debug(f, "expr::Binary")
     }
 }
 impl Debug for expr::Block {
@@ -482,7 +485,7 @@ impl Debug for expr::Block {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::Block")
+        self.debug(f, "expr::Block")
     }
 }
 impl Debug for expr::Break {
@@ -497,7 +500,7 @@ impl Debug for expr::Break {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::Break")
+        self.debug(f, "expr::Break")
     }
 }
 impl Debug for expr::Call {
@@ -512,7 +515,7 @@ impl Debug for expr::Call {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::Call")
+        self.debug(f, "expr::Call")
     }
 }
 impl Debug for expr::Cast {
@@ -527,7 +530,7 @@ impl Debug for expr::Cast {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::Cast")
+        self.debug(f, "expr::Cast")
     }
 }
 impl Debug for expr::Closure {
@@ -549,7 +552,7 @@ impl Debug for expr::Closure {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::Closure")
+        self.debug(f, "expr::Closure")
     }
 }
 impl Debug for expr::Const {
@@ -563,7 +566,7 @@ impl Debug for expr::Const {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::Const")
+        self.debug(f, "expr::Const")
     }
 }
 impl Debug for expr::Continue {
@@ -577,7 +580,7 @@ impl Debug for expr::Continue {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::Continue")
+        self.debug(f, "expr::Continue")
     }
 }
 impl Debug for expr::Field {
@@ -592,7 +595,7 @@ impl Debug for expr::Field {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::Field")
+        self.debug(f, "expr::Field")
     }
 }
 impl Debug for expr::ForLoop {
@@ -610,7 +613,7 @@ impl Debug for expr::ForLoop {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::ForLoop")
+        self.debug(f, "expr::ForLoop")
     }
 }
 impl Debug for expr::Group {
@@ -624,7 +627,7 @@ impl Debug for expr::Group {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::Group")
+        self.debug(f, "expr::Group")
     }
 }
 impl Debug for expr::If {
@@ -640,7 +643,7 @@ impl Debug for expr::If {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::If")
+        self.debug(f, "expr::If")
     }
 }
 impl Debug for expr::Index {
@@ -655,7 +658,7 @@ impl Debug for expr::Index {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::Index")
+        self.debug(f, "expr::Index")
     }
 }
 impl Debug for expr::Infer {
@@ -668,7 +671,7 @@ impl Debug for expr::Infer {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::Infer")
+        self.debug(f, "expr::Infer")
     }
 }
 impl Debug for expr::Let {
@@ -684,7 +687,7 @@ impl Debug for expr::Let {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::Let")
+        self.debug(f, "expr::Let")
     }
 }
 impl Debug for expr::Lit {
@@ -697,7 +700,7 @@ impl Debug for expr::Lit {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::Lit")
+        self.debug(f, "expr::Lit")
     }
 }
 impl Debug for expr::Loop {
@@ -712,7 +715,7 @@ impl Debug for expr::Loop {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::Loop")
+        self.debug(f, "expr::Loop")
     }
 }
 impl Debug for expr::Mac {
@@ -725,7 +728,7 @@ impl Debug for expr::Mac {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::Mac")
+        self.debug(f, "expr::Mac")
     }
 }
 impl Debug for expr::Match {
@@ -741,7 +744,7 @@ impl Debug for expr::Match {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::Match")
+        self.debug(f, "expr::Match")
     }
 }
 impl Debug for expr::MethodCall {
@@ -759,7 +762,7 @@ impl Debug for expr::MethodCall {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::MethodCall")
+        self.debug(f, "expr::MethodCall")
     }
 }
 impl Debug for expr::Paren {
@@ -773,7 +776,7 @@ impl Debug for expr::Paren {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::Paren")
+        self.debug(f, "expr::Paren")
     }
 }
 impl Debug for expr::Pathth {
@@ -787,7 +790,7 @@ impl Debug for expr::Pathth {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::Pathth")
+        self.debug(f, "expr::Pathth")
     }
 }
 impl Debug for expr::Range {
@@ -802,7 +805,7 @@ impl Debug for expr::Range {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::Range")
+        self.debug(f, "expr::Range")
     }
 }
 impl Debug for expr::Ref {
@@ -817,7 +820,7 @@ impl Debug for expr::Ref {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::Ref")
+        self.debug(f, "expr::Ref")
     }
 }
 impl Debug for expr::Repeat {
@@ -833,7 +836,7 @@ impl Debug for expr::Repeat {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::Repeat")
+        self.debug(f, "expr::Repeat")
     }
 }
 impl Debug for expr::Return {
@@ -847,7 +850,7 @@ impl Debug for expr::Return {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::Return")
+        self.debug(f, "expr::Return")
     }
 }
 impl Debug for expr::Struct {
@@ -865,7 +868,7 @@ impl Debug for expr::Struct {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::ExprStruct")
+        self.debug(f, "expr::ExprStruct")
     }
 }
 impl Debug for expr::Try {
@@ -879,7 +882,7 @@ impl Debug for expr::Try {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::Try")
+        self.debug(f, "expr::Try")
     }
 }
 impl Debug for expr::TryBlock {
@@ -893,7 +896,7 @@ impl Debug for expr::TryBlock {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::TryBlock")
+        self.debug(f, "expr::TryBlock")
     }
 }
 impl Debug for expr::Tuple {
@@ -907,7 +910,7 @@ impl Debug for expr::Tuple {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::Tuple")
+        self.debug(f, "expr::Tuple")
     }
 }
 impl Debug for expr::Unary {
@@ -921,7 +924,7 @@ impl Debug for expr::Unary {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::Unary")
+        self.debug(f, "expr::Unary")
     }
 }
 impl Debug for expr::Unsafe {
@@ -935,7 +938,7 @@ impl Debug for expr::Unsafe {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::Unsafe")
+        self.debug(f, "expr::Unsafe")
     }
 }
 impl Debug for expr::While {
@@ -951,7 +954,7 @@ impl Debug for expr::While {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::While")
+        self.debug(f, "expr::While")
     }
 }
 impl Debug for expr::Yield {
@@ -965,7 +968,7 @@ impl Debug for expr::Yield {
                 f.finish()
             }
         }
-        self.debug(formatter, "expr::Yield")
+        self.debug(f, "expr::Yield")
     }
 }
 impl Debug for data::Field {
@@ -1012,8 +1015,8 @@ impl Debug for data::Fields {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("data::Fields::")?;
         match self {
-            data::Fields::Named(v0) => v0.debug(formatter, "Named"),
-            data::Fields::Unnamed(v0) => v0.debug(formatter, "Unnamed"),
+            data::Fields::Named(x) => x.debug(f, "Named"),
+            data::Fields::Unnamed(x) => x.debug(f, "Unnamed"),
             data::Fields::Unit => f.write_str("Unit"),
         }
     }
@@ -1028,7 +1031,7 @@ impl Debug for data::Named {
                 f.finish()
             }
         }
-        self.debug(formatter, "data::Named")
+        self.debug(f, "data::Named")
     }
 }
 impl Debug for data::Unnamed {
@@ -1041,7 +1044,7 @@ impl Debug for data::Unnamed {
                 f.finish()
             }
         }
-        self.debug(formatter, "data::Unnamed")
+        self.debug(f, "data::Unnamed")
     }
 }
 impl Debug for item::File {
@@ -1057,14 +1060,14 @@ impl Debug for item::FnArg {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("item::FnArg::")?;
         match self {
-            item::FnArg::Receiver(v0) => {
+            item::FnArg::Receiver(x) => {
                 let mut f = f.debug_tuple("item::Receiver");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            item::FnArg::Type(v0) => {
+            item::FnArg::Type(x) => {
                 let mut f = f.debug_tuple("Typed");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
         }
@@ -1074,13 +1077,13 @@ impl Debug for item::foreign::Item {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("item::foreign::Item::")?;
         match self {
-            item::foreign::Item::Fn(v0) => v0.debug(formatter, "Fn"),
-            item::foreign::Item::Static(v0) => v0.debug(formatter, "Static"),
-            item::foreign::Item::Type(v0) => v0.debug(formatter, "Type"),
-            item::foreign::Item::Macro(v0) => v0.debug(formatter, "Macro"),
-            item::foreign::Item::Stream(v0) => {
+            item::foreign::Item::Fn(x) => x.debug(f, "Fn"),
+            item::foreign::Item::Static(x) => x.debug(f, "Static"),
+            item::foreign::Item::Type(x) => x.debug(f, "Type"),
+            item::foreign::Item::Macro(x) => x.debug(f, "Macro"),
+            item::foreign::Item::Stream(x) => {
                 let mut f = f.debug_tuple("Stream");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
         }
@@ -1098,7 +1101,7 @@ impl Debug for item::foreign::Fn {
                 f.finish()
             }
         }
-        self.debug(formatter, "item::foreign::Fn")
+        self.debug(f, "item::foreign::Fn")
     }
 }
 impl Debug for item::foreign::Mac {
@@ -1112,7 +1115,7 @@ impl Debug for item::foreign::Mac {
                 f.finish()
             }
         }
-        self.debug(formatter, "item::foreign::Mac")
+        self.debug(f, "item::foreign::Mac")
     }
 }
 impl Debug for item::foreign::Static {
@@ -1131,7 +1134,7 @@ impl Debug for item::foreign::Static {
                 f.finish()
             }
         }
-        self.debug(formatter, "item::foreign::Static")
+        self.debug(f, "item::foreign::Static")
     }
 }
 impl Debug for item::foreign::Type {
@@ -1148,41 +1151,41 @@ impl Debug for item::foreign::Type {
                 f.finish()
             }
         }
-        self.debug(formatter, "item::foreign::Type")
+        self.debug(f, "item::foreign::Type")
     }
 }
 impl Debug for Arg {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("path::Arg::")?;
         match self {
-            Arg::Life(v0) => {
+            Arg::Life(x) => {
                 let mut f = f.debug_tuple("Life");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            Arg::Type(v0) => {
+            Arg::Type(x) => {
                 let mut f = f.debug_tuple("Type");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            Arg::Const(v0) => {
+            Arg::Const(x) => {
                 let mut f = f.debug_tuple("Const");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            Arg::AssocType(v0) => {
+            Arg::AssocType(x) => {
                 let mut f = f.debug_tuple("AssocType");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            Arg::AssocConst(v0) => {
+            Arg::AssocConst(x) => {
                 let mut f = f.debug_tuple("AssocConst");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            Arg::Constraint(v0) => {
+            Arg::Constraint(x) => {
                 let mut f = f.debug_tuple("Constraint");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
         }
@@ -1192,19 +1195,19 @@ impl Debug for gen::Param {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("gen::Param::")?;
         match self {
-            gen::Param::Life(v0) => {
+            gen::Param::Life(x) => {
                 let mut f = f.debug_tuple("Life");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            gen::Param::Type(v0) => {
+            gen::Param::Type(x) => {
                 let mut f = f.debug_tuple("Type");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            gen::Param::Const(v0) => {
+            gen::Param::Const(x) => {
                 let mut f = f.debug_tuple("Const");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
         }
@@ -1224,13 +1227,13 @@ impl Debug for item::impl_::Item {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("item::impl_::Item::")?;
         match self {
-            item::impl_::Item::Const(v0) => v0.debug(formatter, "Const"),
-            item::impl_::Item::Fn(v0) => v0.debug(formatter, "Fn"),
-            item::impl_::Item::Type(v0) => v0.debug(formatter, "Type"),
-            item::impl_::Item::Macro(v0) => v0.debug(formatter, "Macro"),
-            item::impl_::Item::Stream(v0) => {
+            item::impl_::Item::Const(x) => x.debug(f, "Const"),
+            item::impl_::Item::Fn(x) => x.debug(f, "Fn"),
+            item::impl_::Item::Type(x) => x.debug(f, "Type"),
+            item::impl_::Item::Macro(x) => x.debug(f, "Macro"),
+            item::impl_::Item::Stream(x) => {
                 let mut f = f.debug_tuple("Stream");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
         }
@@ -1255,7 +1258,7 @@ impl Debug for item::impl_::Const {
                 f.finish()
             }
         }
-        self.debug(formatter, "item::impl_::Const")
+        self.debug(f, "item::impl_::Const")
     }
 }
 impl Debug for item::impl_::Fn {
@@ -1271,7 +1274,7 @@ impl Debug for item::impl_::Fn {
                 f.finish()
             }
         }
-        self.debug(formatter, "item::impl_::Fn")
+        self.debug(f, "item::impl_::Fn")
     }
 }
 impl Debug for item::impl_::Mac {
@@ -1285,7 +1288,7 @@ impl Debug for item::impl_::Mac {
                 f.finish()
             }
         }
-        self.debug(formatter, "item::impl_::Mac")
+        self.debug(f, "item::impl_::Mac")
     }
 }
 impl Debug for item::impl_::Type {
@@ -1305,7 +1308,7 @@ impl Debug for item::impl_::Type {
                 f.finish()
             }
         }
-        self.debug(formatter, "item::impl_::Type")
+        self.debug(f, "item::impl_::Type")
     }
 }
 impl Debug for item::impl_::Restriction {
@@ -1325,24 +1328,24 @@ impl Debug for Item {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("Item::")?;
         match self {
-            Item::Const(v0) => v0.debug(formatter, "Const"),
-            Item::Enum(v0) => v0.debug(formatter, "Enum"),
-            Item::Extern(v0) => v0.debug(formatter, "Extern"),
-            Item::Fn(v0) => v0.debug(formatter, "Fn"),
-            Item::Foreign(v0) => v0.debug(formatter, "Foreign"),
-            Item::Impl(v0) => v0.debug(formatter, "Impl"),
-            Item::Macro(v0) => v0.debug(formatter, "Macro"),
-            Item::Mod(v0) => v0.debug(formatter, "Mod"),
-            Item::Static(v0) => v0.debug(formatter, "Static"),
-            Item::Struct(v0) => v0.debug(formatter, "Struct"),
-            Item::Trait(v0) => v0.debug(formatter, "Trait"),
-            Item::TraitAlias(v0) => v0.debug(formatter, "TraitAlias"),
-            Item::Type(v0) => v0.debug(formatter, "Type"),
-            Item::Union(v0) => v0.debug(formatter, "Union"),
-            Item::Use(v0) => v0.debug(formatter, "Use"),
-            Item::Stream(v0) => {
+            Item::Const(x) => x.debug(f, "Const"),
+            Item::Enum(x) => x.debug(f, "Enum"),
+            Item::Extern(x) => x.debug(f, "Extern"),
+            Item::Fn(x) => x.debug(f, "Fn"),
+            Item::Foreign(x) => x.debug(f, "Foreign"),
+            Item::Impl(x) => x.debug(f, "Impl"),
+            Item::Macro(x) => x.debug(f, "Macro"),
+            Item::Mod(x) => x.debug(f, "Mod"),
+            Item::Static(x) => x.debug(f, "Static"),
+            Item::Struct(x) => x.debug(f, "Struct"),
+            Item::Trait(x) => x.debug(f, "Trait"),
+            Item::TraitAlias(x) => x.debug(f, "TraitAlias"),
+            Item::Type(x) => x.debug(f, "Type"),
+            Item::Union(x) => x.debug(f, "Union"),
+            Item::Use(x) => x.debug(f, "Use"),
+            Item::Stream(x) => {
                 let mut f = f.debug_tuple("Stream");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
         }
@@ -1366,7 +1369,7 @@ impl Debug for item::Const {
                 f.finish()
             }
         }
-        self.debug(formatter, "item::Const")
+        self.debug(f, "item::Const")
     }
 }
 impl Debug for item::Enum {
@@ -1384,7 +1387,7 @@ impl Debug for item::Enum {
                 f.finish()
             }
         }
-        self.debug(formatter, "item::Enum")
+        self.debug(f, "item::Enum")
     }
 }
 impl Debug for item::Extern {
@@ -1402,7 +1405,7 @@ impl Debug for item::Extern {
                 f.finish()
             }
         }
-        self.debug(formatter, "item::Extern")
+        self.debug(f, "item::Extern")
     }
 }
 impl Debug for item::Fn {
@@ -1417,7 +1420,7 @@ impl Debug for item::Fn {
                 f.finish()
             }
         }
-        self.debug(formatter, "item::Fn")
+        self.debug(f, "item::Fn")
     }
 }
 impl Debug for item::Foreign {
@@ -1433,7 +1436,7 @@ impl Debug for item::Foreign {
                 f.finish()
             }
         }
-        self.debug(formatter, "item::Foreign")
+        self.debug(f, "item::Foreign")
     }
 }
 impl Debug for item::Impl {
@@ -1453,7 +1456,7 @@ impl Debug for item::Impl {
                 f.finish()
             }
         }
-        self.debug(formatter, "item::Impl")
+        self.debug(f, "item::Impl")
     }
 }
 impl Debug for item::Mac {
@@ -1468,7 +1471,7 @@ impl Debug for item::Mac {
                 f.finish()
             }
         }
-        self.debug(formatter, "item::Mac")
+        self.debug(f, "item::Mac")
     }
 }
 impl Debug for item::Mod {
@@ -1486,7 +1489,7 @@ impl Debug for item::Mod {
                 f.finish()
             }
         }
-        self.debug(formatter, "item::Mod")
+        self.debug(f, "item::Mod")
     }
 }
 impl Debug for item::Static {
@@ -1507,7 +1510,7 @@ impl Debug for item::Static {
                 f.finish()
             }
         }
-        self.debug(formatter, "item::Static")
+        self.debug(f, "item::Static")
     }
 }
 impl Debug for item::Struct {
@@ -1525,7 +1528,7 @@ impl Debug for item::Struct {
                 f.finish()
             }
         }
-        self.debug(formatter, "item::Struct")
+        self.debug(f, "item::Struct")
     }
 }
 impl Debug for item::Trait {
@@ -1548,7 +1551,7 @@ impl Debug for item::Trait {
                 f.finish()
             }
         }
-        self.debug(formatter, "item::Trait")
+        self.debug(f, "item::Trait")
     }
 }
 impl Debug for item::TraitAlias {
@@ -1567,7 +1570,7 @@ impl Debug for item::TraitAlias {
                 f.finish()
             }
         }
-        self.debug(formatter, "item::TraitAlias")
+        self.debug(f, "item::TraitAlias")
     }
 }
 impl Debug for item::Type {
@@ -1586,7 +1589,7 @@ impl Debug for item::Type {
                 f.finish()
             }
         }
-        self.debug(formatter, "item::Type")
+        self.debug(f, "item::Type")
     }
 }
 impl Debug for item::Union {
@@ -1603,7 +1606,7 @@ impl Debug for item::Union {
                 f.finish()
             }
         }
-        self.debug(formatter, "item::Union")
+        self.debug(f, "item::Union")
     }
 }
 impl Debug for item::Use {
@@ -1620,7 +1623,7 @@ impl Debug for item::Use {
                 f.finish()
             }
         }
-        self.debug(formatter, "item::Use")
+        self.debug(f, "item::Use")
     }
 }
 impl Debug for Label {
@@ -1641,7 +1644,7 @@ impl Debug for Life {
                 f.finish()
             }
         }
-        self.debug(formatter, "Life")
+        self.debug(f, "Life")
     }
 }
 impl Debug for gen::param::Life {
@@ -1658,16 +1661,16 @@ impl Debug for Lit {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("Lit::")?;
         match self {
-            Lit::Str(v0) => v0.debug(formatter, "Str"),
-            Lit::ByteStr(v0) => v0.debug(formatter, "ByteStr"),
-            Lit::Byte(v0) => v0.debug(formatter, "Byte"),
-            Lit::Char(v0) => v0.debug(formatter, "Char"),
-            Lit::Int(v0) => v0.debug(formatter, "Int"),
-            Lit::Float(v0) => v0.debug(formatter, "Float"),
-            Lit::Bool(v0) => v0.debug(formatter, "Bool"),
-            Lit::Stream(v0) => {
+            Lit::Str(x) => x.debug(f, "Str"),
+            Lit::ByteStr(x) => x.debug(f, "ByteStr"),
+            Lit::Byte(x) => x.debug(f, "Byte"),
+            Lit::Char(x) => x.debug(f, "Char"),
+            Lit::Int(x) => x.debug(f, "Int"),
+            Lit::Float(x) => x.debug(f, "Float"),
+            Lit::Bool(x) => x.debug(f, "Bool"),
+            Lit::Stream(x) => {
                 let mut f = f.debug_tuple("Stream");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
         }
@@ -1686,7 +1689,7 @@ impl Debug for stmt::Local {
                 f.finish()
             }
         }
-        self.debug(formatter, "stmt::Local")
+        self.debug(f, "stmt::Local")
     }
 }
 impl Debug for stmt::Init {
@@ -1712,19 +1715,19 @@ impl Debug for tok::Delim {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("MacroDelimiter::")?;
         match self {
-            tok::Delim::Paren(v0) => {
+            tok::Delim::Paren(x) => {
                 let mut f = f.debug_tuple("Paren");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            tok::Delim::Brace(v0) => {
+            tok::Delim::Brace(x) => {
                 let mut f = f.debug_tuple("Brace");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            tok::Delim::Bracket(v0) => {
+            tok::Delim::Bracket(x) => {
                 let mut f = f.debug_tuple("Bracket");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
         }
@@ -1734,14 +1737,14 @@ impl Debug for Member {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("Member::")?;
         match self {
-            Member::Named(v0) => {
+            Member::Named(x) => {
                 let mut f = f.debug_tuple("Named");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            Member::Unnamed(v0) => {
+            Member::Unnamed(x) => {
                 let mut f = f.debug_tuple("Unnamed");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
         }
@@ -1751,9 +1754,9 @@ impl Debug for attr::Meta {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("attr::Meta::")?;
         match self {
-            attr::Meta::Path(v0) => v0.debug(formatter, "Path"),
-            attr::Meta::List(v0) => v0.debug(formatter, "List"),
-            attr::Meta::NameValue(v0) => v0.debug(formatter, "NameValue"),
+            attr::Meta::Path(x) => x.debug(f, "Path"),
+            attr::Meta::List(x) => x.debug(f, "List"),
+            attr::Meta::NameValue(x) => x.debug(f, "NameValue"),
         }
     }
 }
@@ -1768,7 +1771,7 @@ impl Debug for attr::List {
                 f.finish()
             }
         }
-        self.debug(formatter, "attr::List")
+        self.debug(f, "attr::List")
     }
 }
 impl Debug for attr::NameValue {
@@ -1782,7 +1785,7 @@ impl Debug for attr::NameValue {
                 f.finish()
             }
         }
-        self.debug(formatter, "attr::NameValue")
+        self.debug(f, "attr::NameValue")
     }
 }
 impl Debug for ParenthesizedArgs {
@@ -1796,34 +1799,34 @@ impl Debug for ParenthesizedArgs {
                 f.finish()
             }
         }
-        self.debug(formatter, "path::ParenthesizedArgs")
+        self.debug(f, "path::ParenthesizedArgs")
     }
 }
 impl Debug for pat::Pat {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("pat::Pat::")?;
         match self {
-            pat::Pat::Const(v0) => v0.debug(formatter, "Const"),
-            pat::Pat::Ident(v0) => v0.debug(formatter, "Ident"),
-            pat::Pat::Lit(v0) => v0.debug(formatter, "Lit"),
-            pat::Pat::Mac(v0) => v0.debug(formatter, "Macro"),
-            pat::Pat::Or(v0) => v0.debug(formatter, "Or"),
-            pat::Pat::Paren(v0) => v0.debug(formatter, "Paren"),
-            pat::Pat::Path(v0) => v0.debug(formatter, "Path"),
-            pat::Pat::Range(v0) => v0.debug(formatter, "Range"),
-            pat::Pat::Ref(v0) => v0.debug(formatter, "Reference"),
-            pat::Pat::Rest(v0) => v0.debug(formatter, "Rest"),
-            pat::Pat::Slice(v0) => v0.debug(formatter, "Slice"),
-            pat::Pat::Struct(v0) => v0.debug(formatter, "Struct"),
-            pat::Pat::Tuple(v0) => v0.debug(formatter, "Tuple"),
-            pat::Pat::TupleStruct(v0) => v0.debug(formatter, "TupleStruct"),
-            pat::Pat::Type(v0) => v0.debug(formatter, "Type"),
-            pat::Pat::Stream(v0) => {
+            pat::Pat::Const(x) => x.debug(f, "Const"),
+            pat::Pat::Ident(x) => x.debug(f, "Ident"),
+            pat::Pat::Lit(x) => x.debug(f, "Lit"),
+            pat::Pat::Mac(x) => x.debug(f, "Macro"),
+            pat::Pat::Or(x) => x.debug(f, "Or"),
+            pat::Pat::Paren(x) => x.debug(f, "Paren"),
+            pat::Pat::Path(x) => x.debug(f, "Path"),
+            pat::Pat::Range(x) => x.debug(f, "Range"),
+            pat::Pat::Ref(x) => x.debug(f, "Reference"),
+            pat::Pat::Rest(x) => x.debug(f, "Rest"),
+            pat::Pat::Slice(x) => x.debug(f, "Slice"),
+            pat::Pat::Struct(x) => x.debug(f, "Struct"),
+            pat::Pat::Tuple(x) => x.debug(f, "Tuple"),
+            pat::Pat::TupleStruct(x) => x.debug(f, "TupleStruct"),
+            pat::Pat::Type(x) => x.debug(f, "Type"),
+            pat::Pat::Stream(x) => {
                 let mut f = f.debug_tuple("Stream");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            pat::Pat::Wild(v0) => v0.debug(formatter, "Wild"),
+            pat::Pat::Wild(x) => x.debug(f, "Wild"),
         }
     }
 }
@@ -1840,7 +1843,7 @@ impl Debug for pat::Ident {
                 f.finish()
             }
         }
-        self.debug(formatter, "pat::Ident")
+        self.debug(f, "pat::Ident")
     }
 }
 impl Debug for pat::Or {
@@ -1854,7 +1857,7 @@ impl Debug for pat::Or {
                 f.finish()
             }
         }
-        self.debug(formatter, "pat::Or")
+        self.debug(f, "pat::Or")
     }
 }
 impl Debug for pat::Paren {
@@ -1868,7 +1871,7 @@ impl Debug for pat::Paren {
                 f.finish()
             }
         }
-        self.debug(formatter, "pat::Paren")
+        self.debug(f, "pat::Paren")
     }
 }
 impl Debug for pat::Ref {
@@ -1883,7 +1886,7 @@ impl Debug for pat::Ref {
                 f.finish()
             }
         }
-        self.debug(formatter, "pat::Ref")
+        self.debug(f, "pat::Ref")
     }
 }
 impl Debug for pat::Rest {
@@ -1896,7 +1899,7 @@ impl Debug for pat::Rest {
                 f.finish()
             }
         }
-        self.debug(formatter, "pat::Rest")
+        self.debug(f, "pat::Rest")
     }
 }
 impl Debug for pat::Slice {
@@ -1910,7 +1913,7 @@ impl Debug for pat::Slice {
                 f.finish()
             }
         }
-        self.debug(formatter, "pat::Slice")
+        self.debug(f, "pat::Slice")
     }
 }
 impl Debug for pat::Struct {
@@ -1927,7 +1930,7 @@ impl Debug for pat::Struct {
                 f.finish()
             }
         }
-        self.debug(formatter, "pat::Struct")
+        self.debug(f, "pat::Struct")
     }
 }
 impl Debug for pat::Tuple {
@@ -1941,7 +1944,7 @@ impl Debug for pat::Tuple {
                 f.finish()
             }
         }
-        self.debug(formatter, "pat::Tuple")
+        self.debug(f, "pat::Tuple")
     }
 }
 impl Debug for pat::TupleStructuct {
@@ -1957,7 +1960,7 @@ impl Debug for pat::TupleStructuct {
                 f.finish()
             }
         }
-        self.debug(formatter, "pat::TupleStructuct")
+        self.debug(f, "pat::TupleStructuct")
     }
 }
 impl Debug for pat::Type {
@@ -1972,7 +1975,7 @@ impl Debug for pat::Type {
                 f.finish()
             }
         }
-        self.debug(formatter, "pat::Type")
+        self.debug(f, "pat::Type")
     }
 }
 impl Debug for pat::Wild {
@@ -1985,7 +1988,7 @@ impl Debug for pat::Wild {
                 f.finish()
             }
         }
-        self.debug(formatter, "pat::Wild")
+        self.debug(f, "pat::Wild")
     }
 }
 impl Debug for Path {
@@ -1998,7 +2001,7 @@ impl Debug for Path {
                 f.finish()
             }
         }
-        self.debug(formatter, "Path")
+        self.debug(f, "Path")
     }
 }
 impl Debug for Args {
@@ -2006,8 +2009,8 @@ impl Debug for Args {
         f.write_str("path::Args::")?;
         match self {
             Args::None => f.write_str("None"),
-            Args::Angled(v0) => v0.debug(formatter, "AngleBracketed"),
-            Args::Parenthesized(v0) => v0.debug(formatter, "Parenthesized"),
+            Args::Angled(x) => x.debug(f, "AngleBracketed"),
+            Args::Parenthesized(x) => x.debug(f, "Parenthesized"),
         }
     }
 }
@@ -2053,14 +2056,14 @@ impl Debug for expr::Limits {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("expr::Limits::")?;
         match self {
-            expr::Limits::HalfOpen(v0) => {
+            expr::Limits::HalfOpen(x) => {
                 let mut f = f.debug_tuple("HalfOpen");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            expr::Limits::Closed(v0) => {
+            expr::Limits::Closed(x) => {
                 let mut f = f.debug_tuple("Closed");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
         }
@@ -2083,9 +2086,9 @@ impl Debug for typ::Ret {
         f.write_str("typ::Ret::")?;
         match self {
             typ::Ret::Default => f.write_str("Default"),
-            typ::Ret::Type(v0, v1) => {
+            typ::Ret::Type(x, v1) => {
                 let mut f = f.debug_tuple("Type");
-                f.field(v0);
+                f.field(x);
                 f.field(v1);
                 f.finish()
             },
@@ -2113,9 +2116,9 @@ impl Debug for StaticMut {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("StaticMutability::")?;
         match self {
-            StaticMut::Mut(v0) => {
+            StaticMut::Mut(x) => {
                 let mut f = f.debug_tuple("Mut");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
             StaticMut::None => f.write_str("None"),
@@ -2126,19 +2129,19 @@ impl Debug for stmt::Stmt {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("stmt::Stmt::")?;
         match self {
-            stmt::Stmt::stmt::Local(v0) => v0.debug(formatter, "stmt::Local"),
-            stmt::Stmt::Item(v0) => {
+            stmt::Stmt::stmt::Local(x) => x.debug(f, "stmt::Local"),
+            stmt::Stmt::Item(x) => {
                 let mut f = f.debug_tuple("Item");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            stmt::Stmt::Expr(v0, v1) => {
+            stmt::Stmt::Expr(x, v1) => {
                 let mut f = f.debug_tuple("Expr");
-                f.field(v0);
+                f.field(x);
                 f.field(v1);
                 f.finish()
             },
-            stmt::Stmt::Mac(v0) => v0.debug(formatter, "Macro"),
+            stmt::Stmt::Mac(x) => x.debug(f, "Macro"),
         }
     }
 }
@@ -2153,7 +2156,7 @@ impl Debug for stmt::Mac {
                 f.finish()
             }
         }
-        self.debug(formatter, "stmt::Mac")
+        self.debug(f, "stmt::Mac")
     }
 }
 impl Debug for gen::bound::Trait {
@@ -2171,9 +2174,9 @@ impl Debug for gen::bound::Modifier {
         f.write_str("gen::bound::Modifier::")?;
         match self {
             gen::bound::Modifier::None => f.write_str("None"),
-            gen::bound::Modifier::Maybe(v0) => {
+            gen::bound::Modifier::Maybe(x) => {
                 let mut f = f.debug_tuple("Maybe");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
         }
@@ -2183,13 +2186,13 @@ impl Debug for item::trait_::Item {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("item::trait_::Item::")?;
         match self {
-            item::trait_::Item::Const(v0) => v0.debug(formatter, "Const"),
-            item::trait_::Item::Fn(v0) => v0.debug(formatter, "Fn"),
-            item::trait_::Item::Type(v0) => v0.debug(formatter, "Type"),
-            item::trait_::Item::Macro(v0) => v0.debug(formatter, "Macro"),
-            item::trait_::Item::Stream(v0) => {
+            item::trait_::Item::Const(x) => x.debug(f, "Const"),
+            item::trait_::Item::Fn(x) => x.debug(f, "Fn"),
+            item::trait_::Item::Type(x) => x.debug(f, "Type"),
+            item::trait_::Item::Macro(x) => x.debug(f, "Macro"),
+            item::trait_::Item::Stream(x) => {
                 let mut f = f.debug_tuple("Stream");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
         }
@@ -2211,7 +2214,7 @@ impl Debug for item::trait_::Const {
                 f.finish()
             }
         }
-        self.debug(formatter, "item::trait_::Const")
+        self.debug(f, "item::trait_::Const")
     }
 }
 impl Debug for item::trait_::Fn {
@@ -2226,7 +2229,7 @@ impl Debug for item::trait_::Fn {
                 f.finish()
             }
         }
-        self.debug(formatter, "item::trait_::Fn")
+        self.debug(f, "item::trait_::Fn")
     }
 }
 impl Debug for item::trait_::Mac {
@@ -2240,7 +2243,7 @@ impl Debug for item::trait_::Mac {
                 f.finish()
             }
         }
-        self.debug(formatter, "item::trait_::Mac")
+        self.debug(f, "item::trait_::Mac")
     }
 }
 impl Debug for item::trait_::Type {
@@ -2266,23 +2269,23 @@ impl Debug for typ::Type {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("Type::")?;
         match self {
-            typ::Type::Array(v0) => v0.debug(f, "Array"),
-            typ::Type::Fn(v0) => v0.debug(f, "Fn"),
-            typ::Type::Group(v0) => v0.debug(f, "Group"),
-            typ::Type::Impl(v0) => v0.debug(f, "ImplTrait"),
-            typ::Type::Infer(v0) => v0.debug(f, "Infer"),
-            typ::Type::Mac(v0) => v0.debug(f, "Macro"),
-            typ::Type::Never(v0) => v0.debug(f, "Never"),
-            typ::Type::Paren(v0) => v0.debug(f, "Paren"),
-            typ::Type::Path(v0) => v0.debug(f, "Path"),
-            typ::Type::Ptr(v0) => v0.debug(f, "Ptr"),
-            typ::Type::Ref(v0) => v0.debug(f, "Reference"),
-            typ::Type::Slice(v0) => v0.debug(f, "Slice"),
-            typ::Type::Trait(v0) => v0.debug(f, "TraitObject"),
-            typ::Type::Tuple(v0) => v0.debug(f, "Tuple"),
-            typ::Type::Stream(v0) => {
+            typ::Type::Array(x) => x.debug(f, "Array"),
+            typ::Type::Fn(x) => x.debug(f, "Fn"),
+            typ::Type::Group(x) => x.debug(f, "Group"),
+            typ::Type::Impl(x) => x.debug(f, "ImplTrait"),
+            typ::Type::Infer(x) => x.debug(f, "Infer"),
+            typ::Type::Mac(x) => x.debug(f, "Macro"),
+            typ::Type::Never(x) => x.debug(f, "Never"),
+            typ::Type::Paren(x) => x.debug(f, "Paren"),
+            typ::Type::Path(x) => x.debug(f, "Path"),
+            typ::Type::Ptr(x) => x.debug(f, "Ptr"),
+            typ::Type::Ref(x) => x.debug(f, "Reference"),
+            typ::Type::Slice(x) => x.debug(f, "Slice"),
+            typ::Type::Trait(x) => x.debug(f, "TraitObject"),
+            typ::Type::Tuple(x) => x.debug(f, "Tuple"),
+            typ::Type::Stream(x) => {
                 let mut y = f.debug_tuple("Stream");
-                y.field(v0);
+                y.field(x);
                 y.finish()
             },
         }
@@ -2357,7 +2360,7 @@ impl Debug for typ::Infer {
                 f.finish()
             }
         }
-        self.debug(formatter, "typ::Infer")
+        self.debug(f, "typ::Infer")
     }
 }
 impl Debug for typ::Mac {
@@ -2369,7 +2372,7 @@ impl Debug for typ::Mac {
                 f.finish()
             }
         }
-        self.debug(formatter, "typ::Mac")
+        self.debug(f, "typ::Mac")
     }
 }
 impl Debug for typ::Never {
@@ -2381,7 +2384,7 @@ impl Debug for typ::Never {
                 f.finish()
             }
         }
-        self.debug(formatter, "typ::Never")
+        self.debug(f, "typ::Never")
     }
 }
 impl Debug for gen::param::Type {
@@ -2400,15 +2403,15 @@ impl Debug for gen::bound::Type {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("gen::bound::Type::")?;
         match self {
-            gen::bound::Type::Trait(v0) => {
+            gen::bound::Type::Trait(x) => {
                 let mut f = f.debug_tuple("Trait");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            gen::bound::Type::Life(v0) => v0.debug(formatter, "Life"),
-            gen::bound::Type::Stream(v0) => {
+            gen::bound::Type::Life(x) => x.debug(f, "Life"),
+            gen::bound::Type::Stream(x) => {
                 let mut f = f.debug_tuple("Stream");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
         }
@@ -2424,7 +2427,7 @@ impl Debug for typ::Paren {
                 f.finish()
             }
         }
-        self.debug(formatter, "typ::Paren")
+        self.debug(f, "typ::Paren")
     }
 }
 impl Debug for typ::Path {
@@ -2437,7 +2440,7 @@ impl Debug for typ::Path {
                 f.finish()
             }
         }
-        self.debug(formatter, "typ::Path")
+        self.debug(f, "typ::Path")
     }
 }
 impl Debug for typ::Ptr {
@@ -2452,7 +2455,7 @@ impl Debug for typ::Ptr {
                 f.finish()
             }
         }
-        self.debug(formatter, "typ::Ptr")
+        self.debug(f, "typ::Ptr")
     }
 }
 impl Debug for typ::Ref {
@@ -2467,7 +2470,7 @@ impl Debug for typ::Ref {
                 f.finish()
             }
         }
-        self.debug(formatter, "typ::Ref")
+        self.debug(f, "typ::Ref")
     }
 }
 impl Debug for typ::Slice {
@@ -2480,7 +2483,7 @@ impl Debug for typ::Slice {
                 f.finish()
             }
         }
-        self.debug(formatter, "typ::Slice")
+        self.debug(f, "typ::Slice")
     }
 }
 impl Debug for typ::Trait {
@@ -2493,7 +2496,7 @@ impl Debug for typ::Trait {
                 f.finish()
             }
         }
-        self.debug(formatter, "typ::Trait")
+        self.debug(f, "typ::Trait")
     }
 }
 impl Debug for typ::Tuple {
@@ -2506,26 +2509,26 @@ impl Debug for typ::Tuple {
                 f.finish()
             }
         }
-        self.debug(formatter, "typ::Tuple")
+        self.debug(f, "typ::Tuple")
     }
 }
 impl Debug for UnOp {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("UnOp::")?;
         match self {
-            UnOp::Deref(v0) => {
+            UnOp::Deref(x) => {
                 let mut f = f.debug_tuple("Deref");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            UnOp::Not(v0) => {
+            UnOp::Not(x) => {
                 let mut f = f.debug_tuple("Not");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            UnOp::Neg(v0) => {
+            UnOp::Neg(x) => {
                 let mut f = f.debug_tuple("Neg");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
         }
@@ -2575,29 +2578,29 @@ impl Debug for item::use_::Tree {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("item::use_::Tree::")?;
         match self {
-            item::use_::Tree::Path(v0) => {
+            item::use_::Tree::Path(x) => {
                 let mut f = f.debug_tuple("Path");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            item::use_::Tree::Name(v0) => {
+            item::use_::Tree::Name(x) => {
                 let mut f = f.debug_tuple("Name");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            item::use_::Tree::Rename(v0) => {
+            item::use_::Tree::Rename(x) => {
                 let mut f = f.debug_tuple("Rename");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            item::use_::Tree::Glob(v0) => {
+            item::use_::Tree::Glob(x) => {
                 let mut f = f.debug_tuple("Glob");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            item::use_::Tree::Group(v0) => {
+            item::use_::Tree::Group(x) => {
                 let mut f = f.debug_tuple("Group");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
         }
@@ -2635,19 +2638,19 @@ impl Debug for data::Restricted {
                 f.finish()
             }
         }
-        self.debug(formatter, "data::Restricted")
+        self.debug(f, "data::Restricted")
     }
 }
 impl Debug for data::Visibility {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("data::Visibility::")?;
         match self {
-            data::Visibility::Public(v0) => {
+            data::Visibility::Public(x) => {
                 let mut f = f.debug_tuple("Public");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            data::Visibility::Restricted(v0) => v0.debug(formatter, "Restricted"),
+            data::Visibility::Restricted(x) => x.debug(f, "Restricted"),
             data::Visibility::Inherited => f.write_str("Inherited"),
         }
     }
@@ -2664,14 +2667,14 @@ impl Debug for gen::Where::Pred {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("WherePredicate::")?;
         match self {
-            gen::Where::Pred::Life(v0) => {
+            gen::Where::Pred::Life(x) => {
                 let mut f = f.debug_tuple("Life");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
-            gen::Where::Pred::Type(v0) => {
+            gen::Where::Pred::Type(x) => {
                 let mut f = f.debug_tuple("Type");
-                f.field(v0);
+                f.field(x);
                 f.finish()
             },
         }

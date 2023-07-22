@@ -1,13 +1,13 @@
 use super::*;
 
-pub struct DeriveInput {
+pub struct Input {
     pub attrs: Vec<attr::Attr>,
     pub vis: Visibility,
     pub ident: Ident,
     pub gens: gen::Gens,
     pub data: Data,
 }
-impl Parse for DeriveInput {
+impl Parse for Input {
     fn parse(s: Stream) -> Res<Self> {
         let attrs = s.call(attr::Attr::parse_outers)?;
         let vis = s.parse::<Visibility>()?;
@@ -17,7 +17,7 @@ impl Parse for DeriveInput {
             let ident = s.parse::<Ident>()?;
             let gens = s.parse::<gen::Gens>()?;
             let (where_, fields, semi) = parse_struct(s)?;
-            Ok(DeriveInput {
+            Ok(Input {
                 attrs,
                 vis,
                 ident,
@@ -29,7 +29,7 @@ impl Parse for DeriveInput {
             let ident = s.parse::<Ident>()?;
             let gens = s.parse::<gen::Gens>()?;
             let (where_, brace, variants) = parse_enum(s)?;
-            Ok(DeriveInput {
+            Ok(Input {
                 attrs,
                 vis,
                 ident,
@@ -41,7 +41,7 @@ impl Parse for DeriveInput {
             let ident = s.parse::<Ident>()?;
             let gens = s.parse::<gen::Gens>()?;
             let (where_, fields) = parse_union(s)?;
-            Ok(DeriveInput {
+            Ok(Input {
                 attrs,
                 vis,
                 ident,
@@ -53,7 +53,7 @@ impl Parse for DeriveInput {
         }
     }
 }
-impl Lower for DeriveInput {
+impl Lower for Input {
     fn lower(&self, s: &mut Stream) {
         for x in self.attrs.outers() {
             x.lower(s);
@@ -172,6 +172,16 @@ impl Lower for Visibility {
         }
     }
 }
+impl Pretty for Visibility {
+    fn pretty(&self, p: &mut Print) {
+        use Visibility::*;
+        match self {
+            Public(_) => p.word("pub "),
+            Restricted(x) => x.pretty(p),
+            Inherited => {},
+        }
+    }
+}
 
 pub struct Restricted {
     pub pub_: Token![pub],
@@ -186,6 +196,20 @@ impl Lower for Restricted {
             self.in_.lower(s);
             self.path.lower(s);
         });
+    }
+}
+impl Pretty for Restricted {
+    fn pretty(&self, p: &mut Print) {
+        p.word("pub(");
+        let omit_in = self
+            .path
+            .get_ident()
+            .map_or(false, |x| matches!(x.to_string().as_str(), "self" | "super" | "crate"));
+        if !omit_in {
+            p.word("in ");
+        }
+        p.path(&self.path, pretty::PathKind::Simple);
+        p.word(") ");
     }
 }
 
@@ -251,6 +275,38 @@ impl Lower for Variant {
         if let Some((eq, disc)) = &self.discrim {
             eq.lower(s);
             disc.lower(s);
+        }
+    }
+}
+impl Pretty for Variant {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.ident(&self.ident);
+        use Fields::*;
+        match &self.fields {
+            Named(xs) => {
+                p.nbsp();
+                p.word("{");
+                p.cbox(INDENT);
+                p.space();
+                for x in xs.named.iter().delimited() {
+                    p.field(&x);
+                    p.trailing_comma_or_space(x.is_last);
+                }
+                p.offset(-INDENT);
+                p.end();
+                p.word("}");
+            },
+            Unnamed(xs) => {
+                p.cbox(INDENT);
+                p.fields_unnamed(xs);
+                p.end();
+            },
+            Unit => {},
+        }
+        if let Some((_, x)) = &self.discrim {
+            p.word(" = ");
+            p.expr(x);
         }
     }
 }
@@ -364,6 +420,18 @@ impl Lower for Unnamed {
         });
     }
 }
+impl Pretty for Unnamed {
+    fn pretty(&self, p: &mut Print) {
+        p.word("(");
+        p.zerobreak();
+        for x in self.fields.iter().delimited() {
+            p.field(&x);
+            p.trailing_comma(x.is_last);
+        }
+        p.offset(-INDENT);
+        p.word(")");
+    }
+}
 
 pub struct Field {
     pub attrs: Vec<attr::Attr>,
@@ -408,6 +476,17 @@ impl Lower for Field {
             ToksOrDefault(&self.colon).lower(s);
         }
         self.typ.lower(s);
+    }
+}
+impl Pretty for Field {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.visibility(&self.vis);
+        if let Some(x) = &self.ident {
+            p.ident(x);
+            p.word(": ");
+        }
+        p.ty(&self.typ);
     }
 }
 

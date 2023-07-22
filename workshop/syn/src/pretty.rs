@@ -341,132 +341,6 @@ impl Print {
         self.out.extend(iter::repeat(' ').take(self.pending_indentation));
         self.pending_indentation = 0;
     }
-}
-
-#[derive(Clone)]
-struct BufEntry {
-    token: Token,
-    size: isize,
-}
-
-impl Print {
-    //attr
-    pub fn outer_attrs(&mut self, xs: &[attr::Attr]) {
-        for x in xs {
-            if let attr::Style::Outer = x.style {
-                x.pretty(self);
-            }
-        }
-    }
-    pub fn inner_attrs(&mut self, xs: &[attr::Attr]) {
-        for x in xs {
-            if let attr::Style::Inner(_) = x.style {
-                x.pretty(self);
-            }
-        }
-    }
-    fn attr_tokens(&mut self, tokens: Stream) {
-        let mut stack = Vec::new();
-        stack.push((tokens.into_iter().peekable(), Delim::None));
-        let mut space = Self::nbsp as fn(&mut Self);
-        #[derive(PartialEq)]
-        enum State {
-            Word,
-            Punct,
-            TrailingComma,
-        }
-        use State::*;
-        let mut state = Word;
-        while let Some((tokens, delim)) = stack.last_mut() {
-            match tokens.next() {
-                Some(Tree::Ident(ident)) => {
-                    if let Word = state {
-                        space(self);
-                    }
-                    self.ident(&ident);
-                    state = Word;
-                },
-                Some(Tree::Punct(punct)) => {
-                    let ch = punct.as_char();
-                    if let (Word, '=') = (state, ch) {
-                        self.nbsp();
-                    }
-                    if ch == ',' && tokens.peek().is_none() {
-                        self.trailing_comma(true);
-                        state = TrailingComma;
-                    } else {
-                        self.token_punct(ch);
-                        if ch == '=' {
-                            self.nbsp();
-                        } else if ch == ',' {
-                            space(self);
-                        }
-                        state = Punct;
-                    }
-                },
-                Some(Tree::Literal(literal)) => {
-                    if let Word = state {
-                        space(self);
-                    }
-                    self.token_literal(&literal);
-                    state = Word;
-                },
-                Some(Tree::Group(group)) => {
-                    let delim = group.delim();
-                    let stream = group.stream();
-                    match delim {
-                        Delim::Parenthesis => {
-                            self.word("(");
-                            self.cbox(INDENT);
-                            self.zerobreak();
-                            state = Punct;
-                        },
-                        Delim::Brace => {
-                            self.word("{");
-                            state = Punct;
-                        },
-                        Delim::Bracket => {
-                            self.word("[");
-                            state = Punct;
-                        },
-                        Delim::None => {},
-                    }
-                    stack.push((stream.into_iter().peekable(), delim));
-                    space = Self::space;
-                },
-                None => {
-                    match delim {
-                        Delim::Parenthesis => {
-                            if state != TrailingComma {
-                                self.zerobreak();
-                            }
-                            self.offset(-INDENT);
-                            self.end();
-                            self.word(")");
-                            state = Punct;
-                        },
-                        Delim::Brace => {
-                            self.word("}");
-                            state = Punct;
-                        },
-                        Delim::Bracket => {
-                            self.word("]");
-                            state = Punct;
-                        },
-                        Delim::None => {},
-                    }
-                    stack.pop();
-                    if stack.is_empty() {
-                        space = Self::nbsp;
-                    }
-                },
-            }
-        }
-    }
-}
-
-impl Print {
-    //convenience
     pub fn ibox(&mut self, indent: isize) {
         self.scan_begin(BeginToken {
             offset: indent,
@@ -549,101 +423,140 @@ impl Print {
     }
 }
 
+#[derive(Clone)]
+struct BufEntry {
+    token: Token,
+    size: isize,
+}
+
 impl Print {
-    //data
-    pub fn variant(&mut self, variant: &Variant) {
-        self.outer_attrs(&variant.attrs);
-        self.ident(&variant.ident);
-        match &variant.fields {
-            Fields::Named(fields) => {
-                self.nbsp();
-                self.word("{");
-                self.cbox(INDENT);
-                self.space();
-                for field in fields.named.iter().delimited() {
-                    self.field(&field);
-                    self.trailing_comma_or_space(field.is_last);
-                }
-                self.offset(-INDENT);
-                self.end();
-                self.word("}");
-            },
-            Fields::Unnamed(fields) => {
-                self.cbox(INDENT);
-                self.fields_unnamed(fields);
-                self.end();
-            },
-            Fields::Unit => {},
-        }
-        if let Some((_eq_token, discriminant)) = &variant.discriminant {
-            self.word(" = ");
-            self.expr(discriminant);
+    //attr
+    pub fn outer_attrs(&mut self, xs: &[attr::Attr]) {
+        for x in xs {
+            if let attr::Style::Outer = x.style {
+                x.pretty(self);
+            }
         }
     }
-    pub fn fields_unnamed(&mut self, fields: &FieldsUnnamed) {
-        self.word("(");
-        self.zerobreak();
-        for field in fields.unnamed.iter().delimited() {
-            self.field(&field);
-            self.trailing_comma(field.is_last);
-        }
-        self.offset(-INDENT);
-        self.word(")");
-    }
-    pub fn field(&mut self, field: &Field) {
-        self.outer_attrs(&field.attrs);
-        self.visibility(&field.vis);
-        if let Some(ident) = &field.ident {
-            self.ident(ident);
-            self.word(": ");
-        }
-        self.ty(&field.ty);
-    }
-    pub fn visibility(&mut self, vis: &Visibility) {
-        match vis {
-            Visibility::Public(_) => self.word("pub "),
-            Visibility::Restricted(vis) => self.vis_restricted(vis),
-            Visibility::Inherited => {},
+    pub fn inner_attrs(&mut self, xs: &[attr::Attr]) {
+        for x in xs {
+            if let attr::Style::Inner(_) = x.style {
+                x.pretty(self);
+            }
         }
     }
-    fn vis_restricted(&mut self, vis: &VisRestricted) {
-        self.word("pub(");
-        let omit_in = vis.path.get_ident().map_or(false, |ident| {
-            matches!(ident.to_string().as_str(), "self" | "super" | "crate")
-        });
-        if !omit_in {
-            self.word("in ");
+    fn attr_tokens(&mut self, tokens: Stream) {
+        let mut stack = Vec::new();
+        stack.push((tokens.into_iter().peekable(), Delim::None));
+        let mut space = Self::nbsp as fn(&mut Self);
+        #[derive(PartialEq)]
+        enum State {
+            Word,
+            Punct,
+            TrailingComma,
         }
-        self.path(&vis.path, PathKind::Simple);
-        self.word(") ");
+        use State::*;
+        let mut state = Word;
+        while let Some((tokens, delim)) = stack.last_mut() {
+            match tokens.next() {
+                Some(Tree::Ident(x)) => {
+                    if let Word = state {
+                        space(self);
+                    }
+                    self.ident(&x);
+                    state = Word;
+                },
+                Some(Tree::Punct(x)) => {
+                    let x = x.as_char();
+                    if let (Word, '=') = (state, x) {
+                        self.nbsp();
+                    }
+                    if x == ',' && tokens.peek().is_none() {
+                        self.trailing_comma(true);
+                        state = TrailingComma;
+                    } else {
+                        self.token_punct(x);
+                        if x == '=' {
+                            self.nbsp();
+                        } else if x == ',' {
+                            space(self);
+                        }
+                        state = Punct;
+                    }
+                },
+                Some(Tree::Literal(x)) => {
+                    if let Word = state {
+                        space(self);
+                    }
+                    self.token_literal(&x);
+                    state = Word;
+                },
+                Some(Tree::Group(x)) => {
+                    let delim = x.delim();
+                    let stream = x.stream();
+                    use Delim::*;
+                    match delim {
+                        Paren => {
+                            self.word("(");
+                            self.cbox(INDENT);
+                            self.zerobreak();
+                            state = Punct;
+                        },
+                        Brace => {
+                            self.word("{");
+                            state = Punct;
+                        },
+                        Bracket => {
+                            self.word("[");
+                            state = Punct;
+                        },
+                        None => {},
+                    }
+                    stack.push((stream.into_iter().peekable(), delim));
+                    space = Self::space;
+                },
+                None => {
+                    use Delim::*;
+                    match delim {
+                        Paren => {
+                            if state != TrailingComma {
+                                self.zerobreak();
+                            }
+                            self.offset(-INDENT);
+                            self.end();
+                            self.word(")");
+                            state = Punct;
+                        },
+                        Brace => {
+                            self.word("}");
+                            state = Punct;
+                        },
+                        Bracket => {
+                            self.word("]");
+                            state = Punct;
+                        },
+                        None => {},
+                    }
+                    stack.pop();
+                    if stack.is_empty() {
+                        space = Self::nbsp;
+                    }
+                },
+            }
+        }
     }
 }
 
 impl Print {
     //expr
-    pub fn expr_beginning_of_line(&mut self, expr: &Expr, beginning_of_line: bool) {
-        match expr {
-            Expr::Await(expr) => self.expr_await(expr, beginning_of_line),
-            Expr::Field(expr) => self.expr_field(expr, beginning_of_line),
-            Expr::Index(expr) => self.expr_index(expr, beginning_of_line),
-            Expr::MethodCall(expr) => self.expr_method_call(expr, beginning_of_line),
-            Expr::Try(expr) => self.expr_try(expr, beginning_of_line),
-            _ => self.expr(expr),
-        }
-    }
-    pub fn subexpr(&mut self, expr: &Expr, beginning_of_line: bool) {
-        match expr {
-            Expr::Await(expr) => self.subexpr_await(expr, beginning_of_line),
-            Expr::Call(expr) => self.subexpr_call(expr),
-            Expr::Field(expr) => self.subexpr_field(expr, beginning_of_line),
-            Expr::Index(expr) => self.subexpr_index(expr, beginning_of_line),
-            Expr::MethodCall(expr) => self.subexpr_method_call(expr, beginning_of_line, false),
-            Expr::Try(expr) => self.subexpr_try(expr, beginning_of_line),
-            _ => {
-                self.cbox(-INDENT);
-                self.expr(expr);
-                self.end();
-            },
+    pub fn expr_beginning_of_line(&mut self, x: &expr::Expr, beg_of_line: bool) {
+        match x {
+            Expr::Await(x) => self.expr_await(x, beg_of_line),
+            Expr::Field(x) => self.expr_field(x, beg_of_line),
+            Expr::Index(x) => self.expr_index(x, beg_of_line),
+            Expr::MethodCall(x) => self.expr_method_call(x, beg_of_line),
+            Expr::Try(x) => self.expr_try(x, beg_of_line),
+            _ => self.expr(x),
         }
     }
     pub fn wrap_exterior_struct(&mut self, expr: &Expr) {
@@ -662,42 +575,6 @@ impl Print {
             self.nbsp();
         }
         self.end();
-    }
-    pub fn subexpr_call(&mut self, expr: &expr::Call) {
-        self.subexpr(&expr.func, false);
-        self.word("(");
-        self.call_args(&expr.args);
-        self.word(")");
-    }
-    pub fn subexpr_field(&mut self, expr: &expr::Field, beginning_of_line: bool) {
-        self.subexpr(&expr.expr, beginning_of_line);
-        self.zerobreak_unless_short_ident(beginning_of_line, &expr.expr);
-        self.word(".");
-        self.member(&expr.member);
-    }
-    pub fn subexpr_index(&mut self, expr: &expr::Index, beginning_of_line: bool) {
-        self.subexpr(&expr.expr, beginning_of_line);
-        self.word("[");
-        self.expr(&expr.index);
-        self.word("]");
-    }
-    pub fn subexpr_method_call(&mut self, expr: &expr::MethodCall, beginning_of_line: bool, unindent_call_args: bool) {
-        self.subexpr(&expr.receiver, beginning_of_line);
-        self.zerobreak_unless_short_ident(beginning_of_line, &expr.receiver);
-        self.word(".");
-        self.ident(&expr.method);
-        if let Some(turbofish) = &expr.turbofish {
-            self.angle_bracketed_generic_arguments(turbofish, PathKind::Expr);
-        }
-        self.cbox(if unindent_call_args { -INDENT } else { 0 });
-        self.word("(");
-        self.call_args(&expr.args);
-        self.word(")");
-        self.end();
-    }
-    pub fn subexpr_try(&mut self, expr: &expr::Try, beginning_of_line: bool) {
-        self.subexpr(&expr.expr, beginning_of_line);
-        self.word("?");
     }
     #[cfg(not(feature = "verbatim"))]
     fn expr_verbatim(&mut self, expr: &Stream) {
@@ -795,18 +672,18 @@ impl Print {
             },
         }
     }
-    fn call_args(&mut self, args: &punct::Puncted<Expr, Token![,]>) {
-        let mut iter = args.iter();
+    pub fn call_args(&mut self, xs: &punct::Puncted<Expr, Token![,]>) {
+        let mut iter = xs.iter();
         match (iter.next(), iter.next()) {
-            (Some(expr), None) if expr.is_blocklike() => {
-                self.expr(expr);
+            (Some(x), None) if x.is_blocklike() => {
+                x.pretty(self);
             },
             _ => {
                 self.cbox(INDENT);
                 self.zerobreak();
-                for arg in args.iter().delimited() {
-                    self.expr(&arg);
-                    self.trailing_comma(arg.is_last);
+                for x in xs.iter().delimited() {
+                    &x.pretty(self);
+                    self.trailing_comma(x.is_last);
                 }
                 self.offset(-INDENT);
                 self.end();
@@ -835,8 +712,8 @@ impl Print {
         }
         self.word("}");
     }
-    fn zerobreak_unless_short_ident(&mut self, beginning_of_line: bool, expr: &Expr) {
-        if beginning_of_line && expr.is_short_ident() {
+    pub fn zerobreak_unless_short_ident(&mut self, beg_of_line: bool, expr: &Expr) {
+        if beg_of_line && expr.is_short_ident() {
             return;
         }
         self.zerobreak();

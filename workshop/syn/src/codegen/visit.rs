@@ -66,7 +66,7 @@ pub trait Visit<'ast> {
     fn visit_data_union(&mut self, i: &'ast data::Union) {
         visit_data_union(self, i);
     }
-    fn visit_derive_input(&mut self, i: &'ast DeriveInput) {
+    fn visit_derive_input(&mut self, i: &'ast Input) {
         visit_derive_input(self, i);
     }
     fn visit_expr(&mut self, i: &'ast Expr) {
@@ -849,7 +849,7 @@ where
     skip!(node.union_);
     v.visit_fields_named(&node.fields);
 }
-pub fn visit_derive_input<'ast, V>(v: &mut V, node: &'ast DeriveInput)
+pub fn visit_derive_input<'ast, V>(v: &mut V, node: &'ast Input)
 where
     V: Visit<'ast> + ?Sized,
 {

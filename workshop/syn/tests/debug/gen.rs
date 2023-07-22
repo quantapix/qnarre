@@ -416,7 +416,7 @@ impl Debug for Lite<syn::DataUnion> {
         f.finish()
     }
 }
-impl Debug for Lite<syn::DeriveInput> {
+impl Debug for Lite<syn::Input> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut f = f.debug_struct("DeriveInput");
         if !self.value.attrs.is_empty() {

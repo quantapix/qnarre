@@ -156,8 +156,8 @@ impl PartialEq for data::Union {
         self.fields == other.fields
     }
 }
-impl Eq for DeriveInput {}
-impl PartialEq for DeriveInput {
+impl Eq for Input {}
+impl PartialEq for Input {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
             && self.vis == other.vis

@@ -7,7 +7,7 @@
 #[macro_use]
 mod macros;
 use quote::quote;
-use syn::{Data, DeriveInput};
+use syn::{Data, Input};
 #[test]
 fn test_unit() {
     let input = quote! {

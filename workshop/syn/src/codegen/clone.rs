@@ -168,9 +168,9 @@ impl Clone for data::Union {
         }
     }
 }
-impl Clone for DeriveInput {
+impl Clone for Input {
     fn clone(&self) -> Self {
-        DeriveInput {
+        Input {
             attrs: self.attrs.clone(),
             vis: self.vis.clone(),
             ident: self.ident.clone(),

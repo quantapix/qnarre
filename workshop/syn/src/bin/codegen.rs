@@ -158,8 +158,8 @@ mod parse {
     use std::collections::BTreeMap;
     use syn::parse::{Error, Parser};
     use syn::{
-        parse_quote, Attribute, Data, DataEnum, DataStruct, DeriveInput, Fields, GenericArgument, Ident, Item,
-        PathArguments, TypeMacro, TypePath, TypeTuple, UseTree, Visibility,
+        parse_quote, Attribute, Data, DataEnum, DataStruct, Fields, GenericArgument, Ident, Input, Item, PathArguments,
+        TypeMacro, TypePath, TypeTuple, UseTree, Visibility,
     };
     use syn_codegen as types;
     use thiserror::Error;
@@ -190,7 +190,7 @@ mod parse {
         Ok(types::Definitions { version, types, tokens })
     }
     pub struct AstItem {
-        ast: DeriveInput,
+        ast: Input,
         features: Vec<Attribute>,
     }
     fn introspect_item(item: &AstItem, lookup: &Lookup) -> types::Node {
@@ -653,7 +653,7 @@ mod parse {
                         lookup.items.insert(
                             ident.clone(),
                             AstItem {
-                                ast: DeriveInput {
+                                ast: Input {
                                     ident,
                                     vis: item.vis,
                                     attrs: item.attrs,

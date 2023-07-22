@@ -71,8 +71,8 @@ impl Item {
         }
     }
 }
-impl From<DeriveInput> for Item {
-    fn from(x: DeriveInput) -> Item {
+impl From<Input> for Item {
+    fn from(x: Input) -> Item {
         match x.data {
             data::Data::Struct(y) => Item::Struct(Struct {
                 attrs: x.attrs,
@@ -169,9 +169,9 @@ pub struct Enum {
     pub brace: tok::Brace,
     pub variants: Puncted<data::Variant, Token![,]>,
 }
-impl From<Enum> for DeriveInput {
-    fn from(x: Enum) -> DeriveInput {
-        DeriveInput {
+impl From<Enum> for Input {
+    fn from(x: Enum) -> Input {
+        Input {
             attrs: x.attrs,
             vis: x.vis,
             ident: x.ident,
@@ -551,9 +551,9 @@ pub struct Struct {
     pub fields: data::Fields,
     pub semi: Option<Token![;]>,
 }
-impl From<Struct> for DeriveInput {
-    fn from(x: Struct) -> DeriveInput {
-        DeriveInput {
+impl From<Struct> for Input {
+    fn from(x: Struct) -> Input {
+        Input {
             attrs: x.attrs,
             vis: x.vis,
             ident: x.ident,
@@ -737,9 +737,9 @@ pub struct Union {
     pub gens: gen::Gens,
     pub fields: data::Named,
 }
-impl From<Union> for DeriveInput {
-    fn from(x: Union) -> DeriveInput {
-        DeriveInput {
+impl From<Union> for Input {
+    fn from(x: Union) -> Input {
+        Input {
             attrs: x.attrs,
             vis: x.vis,
             ident: x.ident,

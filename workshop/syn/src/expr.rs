@@ -223,6 +223,22 @@ impl Expr {
             | Yield(Yield { expr: Some(x), .. }) => x.needs_newline(),
         }
     }
+    pub fn pretty_sub(&self, p: &mut Print, beg_of_line: bool) {
+        use Expr::*;
+        match self {
+            Await(x) => x.pretty_sub(p, beg_of_line),
+            Call(x) => x.pretty_sub(p),
+            Field(x) => x.pretty_sub(p, beg_of_line),
+            Index(x) => x.pretty_sub(p, beg_of_line),
+            MethodCall(x) => x.pretty_sub(p, beg_of_line, false),
+            Try(x) => x.pretty_sub(p, beg_of_line),
+            _ => {
+                p.cbox(-INDENT);
+                self.pretty(p);
+                p.end();
+            },
+        }
+    }
 }
 impl Parse for Expr {
     fn parse(x: Stream) -> Res<Self> {
@@ -353,7 +369,7 @@ impl Pretty for Array {
         p.cbox(pretty::INDENT);
         p.zerobreak();
         for x in self.elems.iter().delimited() {
-            p.expr(&x);
+            &x.pretty(p);
             p.trailing_comma(x.is_last);
         }
         p.offset(-pretty::INDENT);
@@ -380,9 +396,9 @@ impl Pretty for Assign {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
         p.ibox(0);
-        p.expr(&self.left);
+        &self.left.pretty(p);
         p.word(" = ");
-        p.expr(&self.right);
+        &self.right.pretty(p);
         p.end();
     }
 }
@@ -430,6 +446,13 @@ pub struct Await {
     pub dot: Token![.],
     pub await_: Token![await],
 }
+impl Await {
+    fn pretty_sub(&self, p: &mut Print, beg_of_line: bool) {
+        &self.expr.pretty_sub(p, beg_of_line);
+        p.zerobreak_unless_short_ident(beg_of_line, &self.expr);
+        p.word(".await");
+    }
+}
 impl Lower for Await {
     fn lower(&self, s: &mut Stream) {
         attr::lower_outers(&self.attrs, s);
@@ -442,13 +465,8 @@ impl Pretty for Await {
     fn pretty(&self, p: &mut Print, beg_of_line: bool) {
         p.outer_attrs(&self.attrs);
         p.cbox(pretty::INDENT);
-        p.subexpr_await(self, beg_of_line);
+        self.pretty_sub(p, beg_of_line);
         p.end();
-    }
-    fn subexpr_await(&self, p: &mut Print, beg_of_line: bool) {
-        p.subexpr(&self.expr, beg_of_line);
-        p.zerobreak_unless_short_ident(beg_of_line, &self.expr);
-        p.word(".await");
     }
 }
 
@@ -471,12 +489,12 @@ impl Pretty for Binary {
         p.outer_attrs(&self.attrs);
         p.ibox(pretty::INDENT);
         p.ibox(-pretty::INDENT);
-        p.expr(&self.left);
+        &self.left.pretty(p);
         p.end();
         p.space();
-        p.binary_operator(&self.op);
+        &self.op.pretty(p);
         p.nbsp();
-        p.expr(&self.right);
+        &self.right.pretty(p);
         p.end();
     }
 }
@@ -564,6 +582,14 @@ pub struct Call {
     pub paren: tok::Paren,
     pub args: Puncted<Expr, Token![,]>,
 }
+impl Call {
+    fn pretty_sub(&self, p: &mut Print) {
+        &self.func.pretty_sub(p, false);
+        p.word("(");
+        p.call_args(&self.args);
+        p.word(")");
+    }
+}
 impl Lower for Call {
     fn lower(&self, s: &mut Stream) {
         attr::lower_outers(&self.attrs, s);
@@ -602,7 +628,7 @@ impl Pretty for Cast {
         p.outer_attrs(&self.attrs);
         p.ibox(pretty::INDENT);
         p.ibox(-pretty::INDENT);
-        p.expr(&self.expr);
+        &self.expr.pretty(p);
         p.end();
         p.space();
         p.word("as ");
@@ -689,12 +715,12 @@ impl Pretty for Closure {
                 };
                 if wrap_in_brace {
                     p.cbox(pretty::INDENT);
-                    let okay_to_brace = parseable_as_stmt(&self.body);
+                    let okay_to_brace = &self.body.parseable_as_stmt();
                     p.scan_break(BreakToken {
                         pre_break: Some(if okay_to_brace { '{' } else { '(' }),
                         ..BreakToken::default()
                     });
-                    p.expr(&self.body);
+                    &self.body.pretty(p);
                     p.scan_break(BreakToken {
                         offset: -pretty::INDENT,
                         pre_break: (okay_to_brace && add_semi(&self.body)).then(|| ';'),
@@ -703,7 +729,7 @@ impl Pretty for Closure {
                     });
                     p.end();
                 } else {
-                    p.expr(&self.body);
+                    &self.body.pretty(p);
                 }
             },
             typ::Ret::Type(_, x) => {
@@ -717,7 +743,7 @@ impl Pretty for Closure {
                 p.ty(x);
                 p.nbsp();
                 p.neverbreak();
-                p.expr(&self.body);
+                &self.body.pretty(p);
             },
         }
         p.end();
@@ -801,6 +827,14 @@ pub struct Field {
     pub dot: Token![.],
     pub memb: Member,
 }
+impl Field {
+    fn pretty_sub(&self, p: &mut Print, beg_of_line: bool) {
+        &self.expr.pretty_sub(p, beg_of_line);
+        p.zerobreak_unless_short_ident(beg_of_line, &self.expr);
+        p.word(".");
+        &self.memb.pretty(p);
+    }
+}
 impl Lower for Field {
     fn lower(&self, s: &mut Stream) {
         attr::lower_outers(&self.attrs, s);
@@ -813,7 +847,7 @@ impl Pretty for Field {
     fn pretty(&self, p: &mut Print, beg_of_line: bool) {
         p.outer_attrs(&self.attrs);
         p.cbox(pretty::INDENT);
-        p.subexpr_field(self, beg_of_line);
+        self.pretty_sub(p, beg_of_line);
         p.end();
     }
 }
@@ -907,7 +941,7 @@ impl Lower for Group {
 impl Pretty for Group {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
-        p.expr(&self.expr);
+        &self.expr.pretty(p);
     }
 }
 
@@ -983,7 +1017,7 @@ impl Pretty for If {
                         p.word("{");
                         p.space();
                         p.ibox(pretty::INDENT);
-                        p.expr(x);
+                        x.pretty(p);
                         p.end();
                         p.space();
                         p.offset(-pretty::INDENT);
@@ -1013,6 +1047,14 @@ pub struct Index {
     pub bracket: tok::Bracket,
     pub idx: Box<Expr>,
 }
+impl Index {
+    fn pretty_sub(&self, p: &mut Print, beg_of_line: bool) {
+        &self.expr.pretty_sub(p, beg_of_line);
+        p.word("[");
+        &self.idx.pretty(p);
+        p.word("]");
+    }
+}
 impl Parse for Index {
     fn parse(x: Stream) -> Res<Self> {
         let lit: lit::Int = x.parse()?;
@@ -1040,7 +1082,7 @@ impl Pretty for Index {
         p.outer_attrs(&self.attrs);
         p.expr_beginning_of_line(&self.expr, beg_of_line);
         p.word("[");
-        p.expr(&self.idx);
+        &self.idx.pretty(p);
         p.word("]");
     }
 }
@@ -1107,7 +1149,7 @@ impl Pretty for Let {
         p.ibox(pretty::INDENT);
         p.word("let ");
         p.ibox(-pretty::INDENT);
-        p.pat(&self.pat);
+        &self.pat.pretty(p);
         p.end();
         p.space();
         p.word("= ");
@@ -1115,7 +1157,7 @@ impl Pretty for Let {
         if paren {
             p.word("(");
         }
-        p.expr(&self.expr);
+        &self.expr.pretty(p);
         if paren {
             p.word(")");
         }
@@ -1303,6 +1345,22 @@ pub struct MethodCall {
     pub paren: tok::Paren,
     pub args: Puncted<Expr, Token![,]>,
 }
+impl MethodCall {
+    fn pretty_sub(&self, p: &mut Print, beg_of_line: bool, unindent: bool) {
+        &self.expr.pretty_sub(p, beg_of_line);
+        p.zerobreak_unless_short_ident(beg_of_line, &self.expr);
+        p.word(".");
+        &self.method.pretty(p);
+        if let Some(x) = &self.turbofish {
+            p.angle_bracketed_generic_arguments(x, PathKind::Expr);
+        }
+        p.cbox(if unindent { -INDENT } else { 0 });
+        p.word("(");
+        p.call_args(&self.args);
+        p.word(")");
+        p.end();
+    }
+}
 impl Lower for MethodCall {
     fn lower(&self, s: &mut Stream) {
         attr::lower_outers(&self.attrs, s);
@@ -1320,7 +1378,7 @@ impl Pretty for MethodCall {
         p.outer_attrs(&self.attrs);
         p.cbox(pretty::INDENT);
         let unindent = beg_of_line && &self.expr.is_short_ident();
-        p.subexpr_method_call(self, beg_of_line, unindent);
+        self.pretty_sub(p, beg_of_line, unindent);
         p.end();
     }
 }
@@ -1347,7 +1405,7 @@ impl Pretty for Paren {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
         p.word("(");
-        p.expr(&self.expr);
+        &self.expr.pretty(p);
         p.word(")");
     }
 }
@@ -1395,14 +1453,14 @@ impl Pretty for Range {
     fn pretty(&self, p: &mut Range) {
         p.outer_attrs(&self.attrs);
         if let Some(x) = &self.beg {
-            p.expr(x);
+            x.pretty(p);
         }
         p.word(match self.limits {
-            RangeLimits::HalfOpen(_) => "..",
-            RangeLimits::Closed(_) => "..=",
+            Limits::HalfOpen(_) => "..",
+            Limits::Closed(_) => "..=",
         });
         if let Some(x) = &self.end {
-            p.expr(x);
+            x.pretty(p);
         }
     }
 }
@@ -1439,7 +1497,7 @@ impl Pretty for Ref {
         if self.mut_.is_some() {
             p.word("mut ");
         }
-        p.expr(&self.expr);
+        &self.expr.pretty(p);
     }
 }
 
@@ -1476,9 +1534,9 @@ impl Pretty for Repeat {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
         p.word("[");
-        p.expr(&self.expr);
+        &self.expr.pretty(p);
         p.word("; ");
-        p.expr(&self.len);
+        &self.len.pretty(p);
         p.word("]");
     }
 }
@@ -1502,12 +1560,12 @@ impl Lower for Return {
     }
 }
 impl Pretty for Return {
-    fn pretty(expr: &expr::Ret, p: &mut Print) {
-        p.outer_attrs(&expr.attrs);
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
         p.word("return");
-        if let Some(x) = &expr.expr {
+        if let Some(x) = &self.expr {
             p.nbsp();
-            p.expr(x);
+            x.pretty(p);
         }
     }
 }
@@ -1557,7 +1615,7 @@ impl Pretty for Struct {
         }
         if let Some(x) = &self.rest {
             p.word("..");
-            p.expr(x);
+            x.pretty(p);
             p.space();
         }
         p.offset(-pretty::INDENT);
@@ -1570,6 +1628,12 @@ pub struct Try {
     pub attrs: Vec<attr::Attr>,
     pub expr: Box<Expr>,
     pub question: Token![?],
+}
+impl Try {
+    fn pretty_sub(&self, p: &mut Print, beg_of_line: bool) {
+        &self.expr.pretty_sub(p, beg_of_line);
+        p.word("?");
+    }
 }
 impl Lower for Try {
     fn lower(&self, s: &mut Stream) {
@@ -1640,7 +1704,7 @@ impl Pretty for Tuple {
         p.cbox(pretty::INDENT);
         p.zerobreak();
         for x in self.elems.iter().delimited() {
-            p.expr(&x);
+            &x.pretty(p);
             if self.elems.len() == 1 {
                 p.word(",");
                 p.zerobreak();
@@ -1677,7 +1741,7 @@ impl Pretty for Unary {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
         p.unary_operator(&self.op);
-        p.expr(&self.expr);
+        &self.expr.pretty(p);
     }
 }
 
@@ -1813,7 +1877,7 @@ impl Pretty for Yield {
         p.word("yield");
         if let Some(x) = &self.expr {
             p.nbsp();
-            p.expr(x);
+            x.pretty(p);
         }
     }
 }
@@ -2175,7 +2239,7 @@ impl Pretty for FieldValue {
         if self.colon.is_some() {
             p.word(": ");
             p.ibox(0);
-            p.expr(&self.expr);
+            &self.expr.pretty(p);
             p.end();
         }
     }
@@ -2272,9 +2336,9 @@ impl Pretty for Arm {
         p.outer_attrs(&self.attrs);
         p.ibox(0);
         p.pat(&self.pat);
-        if let Some((_if_token, guard)) = &self.guard {
+        if let Some((_, x)) = &self.guard {
             p.word(" if ");
-            p.expr(guard);
+            x.pretty(p);
         }
         p.word(" =>");
         let empty_block;
@@ -2282,7 +2346,7 @@ impl Pretty for Arm {
         while let Expr::Block(x) = body {
             if x.attrs.is_empty() && x.label.is_none() {
                 let mut stmts = x.block.stmts.iter();
-                if let (Some(Stmt::Expr(inner, None)), None) = (stmts.next(), stmts.next()) {
+                if let (Some(stmt::Stmt::Expr(inner, None)), None) = (stmts.next(), stmts.next()) {
                     body = inner;
                     continue;
                 }

@@ -274,7 +274,7 @@ impl Hash for data::Union {
         self.fields.hash(h);
     }
 }
-impl Hash for DeriveInput {
+impl Hash for Input {
     fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,

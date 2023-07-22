@@ -36,7 +36,7 @@ mod tok;
 mod typ;
 
 use cur::Cursor;
-use data::DeriveInput;
+use data::Input;
 use err::{Err, Res};
 use ident::Life;
 use parse::{Parse, Parser, Stream};
