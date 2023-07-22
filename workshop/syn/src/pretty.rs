@@ -351,98 +351,19 @@ struct BufEntry {
 
 impl Print {
     //attr
-    pub fn outer_attrs(&mut self, attrs: &[attr::Attr]) {
-        for attr in attrs {
-            if let attr::Style::Outer = attr.style {
-                self.attr(attr);
+    pub fn outer_attrs(&mut self, xs: &[attr::Attr]) {
+        for x in xs {
+            if let attr::Style::Outer = x.style {
+                x.pretty(self);
             }
         }
     }
-    pub fn inner_attrs(&mut self, attrs: &[attr::Attr]) {
-        for attr in attrs {
-            if let attr::Style::Inner(_) = attr.style {
-                self.attr(attr);
+    pub fn inner_attrs(&mut self, xs: &[attr::Attr]) {
+        for x in xs {
+            if let attr::Style::Inner(_) = x.style {
+                x.pretty(self);
             }
         }
-    }
-    fn attr(&mut self, attr: &attr::Attr) {
-        if let Some(mut doc) = value_of_attr("doc", attr) {
-            if !doc.contains('\n')
-                && match attr.style {
-                    attr::Style::Outer => !doc.starts_with('/'),
-                    attr::Style::Inner(_) => true,
-                }
-            {
-                trim_trailing_spaces(&mut doc);
-                self.word(match attr.style {
-                    attr::Style::Outer => "///",
-                    attr::Style::Inner(_) => "//!",
-                });
-                self.word(doc);
-                self.hardbreak();
-                return;
-            } else if can_be_block_comment(&doc)
-                && match attr.style {
-                    attr::Style::Outer => !doc.starts_with(&['*', '/'][..]),
-                    attr::Style::Inner(_) => true,
-                }
-            {
-                trim_interior_trailing_spaces(&mut doc);
-                self.word(match attr.style {
-                    attr::Style::Outer => "/**",
-                    attr::Style::Inner(_) => "/*!",
-                });
-                self.word(doc);
-                self.word("*/");
-                self.hardbreak();
-                return;
-            }
-        } else if let Some(mut comment) = value_of_attr("comment", attr) {
-            if !comment.contains('\n') {
-                trim_trailing_spaces(&mut comment);
-                self.word("//");
-                self.word(comment);
-                self.hardbreak();
-                return;
-            } else if can_be_block_comment(&comment) && !comment.starts_with(&['*', '!'][..]) {
-                trim_interior_trailing_spaces(&mut comment);
-                self.word("/*");
-                self.word(comment);
-                self.word("*/");
-                self.hardbreak();
-                return;
-            }
-        }
-        self.word(match attr.style {
-            attr::Style::Outer => "#",
-            attr::Style::Inner(_) => "#!",
-        });
-        self.word("[");
-        self.meta(&attr.meta);
-        self.word("]");
-        self.space();
-    }
-    fn meta(&mut self, meta: &Meta) {
-        match meta {
-            Meta::Path(path) => self.path(path, PathKind::Simple),
-            Meta::List(meta) => self.meta_list(meta),
-            Meta::NameValue(meta) => self.meta_name_value(meta),
-        }
-    }
-    fn meta_list(&mut self, meta: &MetaList) {
-        self.path(&meta.path, PathKind::Simple);
-        let delim = match meta.delim {
-            MacroDelim::Paren(_) => Delim::Parenthesis,
-            MacroDelim::Brace(_) => Delim::Brace,
-            MacroDelim::Bracket(_) => Delim::Bracket,
-        };
-        let group = Group::new(delim, meta.tokens.clone());
-        self.attr_tokens(Stream::from(Tree::Group(group)));
-    }
-    fn meta_name_value(&mut self, meta: &MetaNameValue) {
-        self.path(&meta.path, PathKind::Simple);
-        self.word(" = ");
-        self.expr(&meta.value);
     }
     fn attr_tokens(&mut self, tokens: Stream) {
         let mut stack = Vec::new();
@@ -542,76 +463,6 @@ impl Print {
             }
         }
     }
-}
-fn value_of_attr(requested: &str, attr: &attr::Attr) -> Option<String> {
-    let value = match &attr.meta {
-        Meta::NameValue(meta) if meta.path.is_ident(requested) => &meta.value,
-        _ => return None,
-    };
-    let lit = match value {
-        Expr::Lit(expr) if expr.attrs.is_empty() => &expr.lit,
-        _ => return None,
-    };
-    match lit {
-        Lit::Str(string) => Some(string.value()),
-        _ => None,
-    }
-}
-fn has_outer(attrs: &[attr::Attr]) -> bool {
-    for attr in attrs {
-        if let attr::Style::Outer = attr.style {
-            return true;
-        }
-    }
-    false
-}
-fn has_inner(attrs: &[attr::Attr]) -> bool {
-    for attr in attrs {
-        if let attr::Style::Inner(_) = attr.style {
-            return true;
-        }
-    }
-    false
-}
-fn trim_trailing_spaces(doc: &mut String) {
-    doc.truncate(doc.trim_end_matches(' ').len());
-}
-fn trim_interior_trailing_spaces(doc: &mut String) {
-    if !doc.contains(" \n") {
-        return;
-    }
-    let mut trimmed = String::with_capacity(doc.len());
-    let mut lines = doc.split('\n').peekable();
-    while let Some(line) = lines.next() {
-        if lines.peek().is_some() {
-            trimmed.push_str(line.trim_end_matches(' '));
-            trimmed.push('\n');
-        } else {
-            trimmed.push_str(line);
-        }
-    }
-    *doc = trimmed;
-}
-fn can_be_block_comment(value: &str) -> bool {
-    let mut depth = 0usize;
-    let bytes = value.as_bytes();
-    let mut i = 0usize;
-    let upper = bytes.len() - 1;
-    while i < upper {
-        if bytes[i] == b'/' && bytes[i + 1] == b'*' {
-            depth += 1;
-            i += 2;
-        } else if bytes[i] == b'*' && bytes[i + 1] == b'/' {
-            if depth == 0 {
-                return false;
-            }
-            depth -= 1;
-            i += 2;
-        } else {
-            i += 1;
-        }
-    }
-    depth == 0
 }
 
 impl Print {
@@ -796,7 +647,7 @@ impl Print {
         }
     }
     pub fn wrap_exterior_struct(&mut self, expr: &Expr) {
-        let needs_paren = contains_exterior_struct_lit(expr);
+        let needs_paren = expr.has_struct_lit();
         if needs_paren {
             self.word("(");
         }
@@ -805,7 +656,7 @@ impl Print {
         if needs_paren {
             self.word(")");
         }
-        if needs_newline_if_wrap(expr) {
+        if expr.needs_newline() {
             self.space();
         } else {
             self.nbsp();
@@ -819,8 +670,8 @@ impl Print {
         self.word(")");
     }
     pub fn subexpr_field(&mut self, expr: &expr::Field, beginning_of_line: bool) {
-        self.subexpr(&expr.base, beginning_of_line);
-        self.zerobreak_unless_short_ident(beginning_of_line, &expr.base);
+        self.subexpr(&expr.expr, beginning_of_line);
+        self.zerobreak_unless_short_ident(beginning_of_line, &expr.expr);
         self.word(".");
         self.member(&expr.member);
     }
@@ -947,7 +798,7 @@ impl Print {
     fn call_args(&mut self, args: &punct::Puncted<Expr, Token![,]>) {
         let mut iter = args.iter();
         match (iter.next(), iter.next()) {
-            (Some(expr), None) if is_blocklike(expr) => {
+            (Some(expr), None) if expr.is_blocklike() => {
                 self.expr(expr);
             },
             _ => {
@@ -964,7 +815,7 @@ impl Print {
     }
     pub fn small_block(&mut self, block: &Block, attrs: &[attr::Attr]) {
         self.word("{");
-        if has_inner(attrs) || !block.stmts.is_empty() {
+        if attr::has_inner(attrs) || !block.stmts.is_empty() {
             self.space();
             self.inner_attrs(attrs);
             match (block.stmts.get(0), block.stmts.get(1)) {
@@ -985,254 +836,10 @@ impl Print {
         self.word("}");
     }
     fn zerobreak_unless_short_ident(&mut self, beginning_of_line: bool, expr: &Expr) {
-        if beginning_of_line && is_short_ident(expr) {
+        if beginning_of_line && expr.is_short_ident() {
             return;
         }
         self.zerobreak();
-    }
-}
-fn requires_terminator(expr: &Expr) -> bool {
-    match expr {
-        Expr::If(_)
-        | Expr::Match(_)
-        | Expr::Block(_)
-        | Expr::Unsafe(_)
-        | Expr::While(_)
-        | Expr::Loop(_)
-        | Expr::ForLoop(_)
-        | Expr::TryBlock(_)
-        | Expr::Const(_) => false,
-        Expr::Array(_)
-        | Expr::Assign(_)
-        | Expr::Async(_)
-        | Expr::Await(_)
-        | Expr::Binary(_)
-        | Expr::Break(_)
-        | Expr::Call(_)
-        | Expr::Cast(_)
-        | Expr::Closure(_)
-        | Expr::Continue(_)
-        | Expr::Field(_)
-        | Expr::Group(_)
-        | Expr::Index(_)
-        | Expr::Infer(_)
-        | Expr::Let(_)
-        | Expr::Lit(_)
-        | Expr::Macro(_)
-        | Expr::MethodCall(_)
-        | Expr::Paren(_)
-        | Expr::Path(_)
-        | Expr::Range(_)
-        | Expr::Reference(_)
-        | Expr::Repeat(_)
-        | Expr::Return(_)
-        | Expr::Struct(_)
-        | Expr::Try(_)
-        | Expr::Tuple(_)
-        | Expr::Unary(_)
-        | Expr::Verbatim(_)
-        | Expr::Yield(_) => true,
-        #[cfg_attr(all(test, exhaustive), deny(non_exhaustive_omitted_patterns))]
-        _ => true,
-    }
-}
-fn contains_exterior_struct_lit(expr: &Expr) -> bool {
-    match expr {
-        Expr::Struct(_) => true,
-        Expr::Assign(expr::Assign { left, right, .. }) | Expr::Binary(expr::Binary { left, right, .. }) => {
-            contains_exterior_struct_lit(left) || contains_exterior_struct_lit(right)
-        },
-        Expr::Await(expr::Await { base: e, .. })
-        | Expr::Cast(expr::Cast { expr: e, .. })
-        | Expr::Field(expr::Field { base: e, .. })
-        | Expr::Index(expr::Index { expr: e, .. })
-        | Expr::MethodCall(expr::MethodCall { receiver: e, .. })
-        | Expr::Reference(expr::Ref { expr: e, .. })
-        | Expr::Unary(expr::Unary { expr: e, .. }) => contains_exterior_struct_lit(e),
-        Expr::Array(_)
-        | Expr::Async(_)
-        | Expr::Block(_)
-        | Expr::Break(_)
-        | Expr::Call(_)
-        | Expr::Closure(_)
-        | Expr::Const(_)
-        | Expr::Continue(_)
-        | Expr::ForLoop(_)
-        | Expr::Group(_)
-        | Expr::If(_)
-        | Expr::Infer(_)
-        | Expr::Let(_)
-        | Expr::Lit(_)
-        | Expr::Loop(_)
-        | Expr::Macro(_)
-        | Expr::Match(_)
-        | Expr::Paren(_)
-        | Expr::Path(_)
-        | Expr::Range(_)
-        | Expr::Repeat(_)
-        | Expr::Return(_)
-        | Expr::Try(_)
-        | Expr::TryBlock(_)
-        | Expr::Tuple(_)
-        | Expr::Unsafe(_)
-        | Expr::Verbatim(_)
-        | Expr::While(_)
-        | Expr::Yield(_) => false,
-        #[cfg_attr(all(test, exhaustive), deny(non_exhaustive_omitted_patterns))]
-        _ => false,
-    }
-}
-fn needs_newline_if_wrap(expr: &Expr) -> bool {
-    match expr {
-        Expr::Array(_)
-        | Expr::Async(_)
-        | Expr::Block(_)
-        | Expr::Break(expr::Break { val: None, .. })
-        | Expr::Closure(_)
-        | Expr::Const(_)
-        | Expr::Continue(_)
-        | Expr::ForLoop(_)
-        | Expr::If(_)
-        | Expr::Infer(_)
-        | Expr::Lit(_)
-        | Expr::Loop(_)
-        | Expr::Macro(_)
-        | Expr::Match(_)
-        | Expr::Path(_)
-        | Expr::Range(expr::Range { end: None, .. })
-        | Expr::Repeat(_)
-        | Expr::Return(expr::Ret { expr: None, .. })
-        | Expr::Struct(_)
-        | Expr::TryBlock(_)
-        | Expr::Tuple(_)
-        | Expr::Unsafe(_)
-        | Expr::Verbatim(_)
-        | Expr::While(_)
-        | Expr::Yield(expr::Yield { expr: None, .. }) => false,
-        Expr::Assign(_)
-        | Expr::Await(_)
-        | Expr::Binary(_)
-        | Expr::Cast(_)
-        | Expr::Field(_)
-        | Expr::Index(_)
-        | Expr::MethodCall(_) => true,
-        Expr::Break(expr::Break { val: Some(e), .. })
-        | Expr::Call(expr::Call { func: e, .. })
-        | Expr::Group(expr::Group { expr: e, .. })
-        | Expr::Let(expr::Let { expr: e, .. })
-        | Expr::Paren(expr::Paren { expr: e, .. })
-        | Expr::Range(expr::Range { end: Some(e), .. })
-        | Expr::Reference(expr::Ref { expr: e, .. })
-        | Expr::Return(expr::Ret { expr: Some(e), .. })
-        | Expr::Try(expr::Try { expr: e, .. })
-        | Expr::Unary(expr::Unary { expr: e, .. })
-        | Expr::Yield(expr::Yield { expr: Some(e), .. }) => needs_newline_if_wrap(e),
-        #[cfg_attr(all(test, exhaustive), deny(non_exhaustive_omitted_patterns))]
-        _ => false,
-    }
-}
-fn is_short_ident(expr: &Expr) -> bool {
-    if let Expr::Path(expr) = expr {
-        return expr.attrs.is_empty()
-            && expr.qself.is_none()
-            && expr
-                .path
-                .get_ident()
-                .map_or(false, |ident| ident.to_string().len() as isize <= INDENT);
-    }
-    false
-}
-fn is_blocklike(expr: &Expr) -> bool {
-    match expr {
-        Expr::Array(expr::Array { attrs, .. })
-        | Expr::Async(expr::Async { attrs, .. })
-        | Expr::Block(expr::Block { attrs, .. })
-        | Expr::Closure(expr::Closure { attrs, .. })
-        | Expr::Const(expr::Const { attrs, .. })
-        | Expr::Struct(expr::Struct { attrs, .. })
-        | Expr::TryBlock(expr::TryBlock { attrs, .. })
-        | Expr::Tuple(expr::Tuple { attrs, .. })
-        | Expr::Unsafe(expr::Unsafe { attrs, .. }) => !has_outer(attrs),
-        Expr::Assign(_)
-        | Expr::Await(_)
-        | Expr::Binary(_)
-        | Expr::Break(_)
-        | Expr::Call(_)
-        | Expr::Cast(_)
-        | Expr::Continue(_)
-        | Expr::Field(_)
-        | Expr::ForLoop(_)
-        | Expr::Group(_)
-        | Expr::If(_)
-        | Expr::Index(_)
-        | Expr::Infer(_)
-        | Expr::Let(_)
-        | Expr::Lit(_)
-        | Expr::Loop(_)
-        | Expr::Macro(_)
-        | Expr::Match(_)
-        | Expr::MethodCall(_)
-        | Expr::Paren(_)
-        | Expr::Path(_)
-        | Expr::Range(_)
-        | Expr::Reference(_)
-        | Expr::Repeat(_)
-        | Expr::Return(_)
-        | Expr::Try(_)
-        | Expr::Unary(_)
-        | Expr::Verbatim(_)
-        | Expr::While(_)
-        | Expr::Yield(_) => false,
-        #[cfg_attr(all(test, exhaustive), deny(non_exhaustive_omitted_patterns))]
-        _ => false,
-    }
-}
-fn parseable_as_stmt(expr: &Expr) -> bool {
-    match expr {
-        Expr::Array(_)
-        | Expr::Async(_)
-        | Expr::Block(_)
-        | Expr::Break(_)
-        | Expr::Closure(_)
-        | Expr::Const(_)
-        | Expr::Continue(_)
-        | Expr::ForLoop(_)
-        | Expr::If(_)
-        | Expr::Infer(_)
-        | Expr::Let(_)
-        | Expr::Lit(_)
-        | Expr::Loop(_)
-        | Expr::Macro(_)
-        | Expr::Match(_)
-        | Expr::Paren(_)
-        | Expr::Path(_)
-        | Expr::Reference(_)
-        | Expr::Repeat(_)
-        | Expr::Return(_)
-        | Expr::Struct(_)
-        | Expr::TryBlock(_)
-        | Expr::Tuple(_)
-        | Expr::Unary(_)
-        | Expr::Unsafe(_)
-        | Expr::Verbatim(_)
-        | Expr::While(_)
-        | Expr::Yield(_) => true,
-        Expr::Assign(expr) => parseable_as_stmt(&expr.left),
-        Expr::Await(expr) => parseable_as_stmt(&expr.base),
-        Expr::Binary(expr) => requires_terminator(&expr.left) && parseable_as_stmt(&expr.left),
-        Expr::Call(expr) => requires_terminator(&expr.func) && parseable_as_stmt(&expr.func),
-        Expr::Cast(expr) => requires_terminator(&expr.expr) && parseable_as_stmt(&expr.expr),
-        Expr::Field(expr) => parseable_as_stmt(&expr.base),
-        Expr::Group(expr) => parseable_as_stmt(&expr.expr),
-        Expr::Index(expr) => requires_terminator(&expr.expr) && parseable_as_stmt(&expr.expr),
-        Expr::MethodCall(expr) => parseable_as_stmt(&expr.receiver),
-        Expr::Range(expr) => match &expr.start {
-            None => true,
-            Some(start) => requires_terminator(start) && parseable_as_stmt(start),
-        },
-        Expr::Try(expr) => parseable_as_stmt(&expr.expr),
-        #[cfg_attr(all(test, exhaustive), deny(non_exhaustive_omitted_patterns))]
-        _ => false,
     }
 }
 

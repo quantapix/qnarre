@@ -357,13 +357,13 @@ pub trait Visit<'ast> {
     fn visit_member(&mut self, i: &'ast Member) {
         visit_member(self, i);
     }
-    fn visit_meta(&mut self, i: &'ast meta::Meta) {
+    fn visit_meta(&mut self, i: &'ast attr::Meta) {
         visit_meta(self, i);
     }
-    fn visit_meta_list(&mut self, i: &'ast meta::List) {
+    fn visit_meta_list(&mut self, i: &'ast attr::List) {
         visit_meta_list(self, i);
     }
-    fn visit_meta_name_value(&mut self, i: &'ast meta::NameValue) {
+    fn visit_meta_name_value(&mut self, i: &'ast attr::NameValue) {
         visit_meta_name_value(self, i);
     }
     fn visit_parenthesized_generic_arguments(&mut self, i: &'ast ParenthesizedArgs) {
@@ -1146,7 +1146,7 @@ where
     for it in &node.attrs {
         v.visit_attribute(it);
     }
-    v.visit_expr(&*node.base);
+    v.visit_expr(&*node.expr);
     skip!(node.dot);
     v.visit_member(&node.memb);
 }
@@ -2246,23 +2246,23 @@ where
         },
     }
 }
-pub fn visit_meta<'ast, V>(v: &mut V, node: &'ast meta::Meta)
+pub fn visit_meta<'ast, V>(v: &mut V, node: &'ast attr::Meta)
 where
     V: Visit<'ast> + ?Sized,
 {
     match node {
-        meta::Meta::Path(_binding_0) => {
+        attr::Meta::Path(_binding_0) => {
             v.visit_path(_binding_0);
         },
-        meta::Meta::List(_binding_0) => {
+        attr::Meta::List(_binding_0) => {
             v.visit_meta_list(_binding_0);
         },
-        meta::Meta::NameValue(_binding_0) => {
+        attr::Meta::NameValue(_binding_0) => {
             v.visit_meta_name_value(_binding_0);
         },
     }
 }
-pub fn visit_meta_list<'ast, V>(v: &mut V, node: &'ast meta::List)
+pub fn visit_meta_list<'ast, V>(v: &mut V, node: &'ast attr::List)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -2270,13 +2270,13 @@ where
     v.visit_macro_delimiter(&node.delim);
     skip!(node.tokens);
 }
-pub fn visit_meta_name_value<'ast, V>(v: &mut V, node: &'ast meta::NameValue)
+pub fn visit_meta_name_value<'ast, V>(v: &mut V, node: &'ast attr::NameValue)
 where
     V: Visit<'ast> + ?Sized,
 {
-    v.visit_path(&node.path);
+    v.visit_path(&node.name);
     skip!(node.eq);
-    v.visit_expr(&node.expr);
+    v.visit_expr(&node.val);
 }
 pub fn visit_parenthesized_generic_arguments<'ast, V>(v: &mut V, node: &'ast ParenthesizedArgs)
 where

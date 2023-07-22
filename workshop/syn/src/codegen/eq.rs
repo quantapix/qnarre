@@ -296,7 +296,7 @@ impl PartialEq for expr::Continue {
 impl Eq for expr::Field {}
 impl PartialEq for expr::Field {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs && self.base == other.base && self.memb == other.memb
+        self.attrs == other.attrs && self.expr == other.expr && self.memb == other.memb
     }
 }
 impl Eq for expr::ForLoop {}
@@ -903,27 +903,27 @@ impl PartialEq for tok::Delim {
         }
     }
 }
-impl Eq for meta::Meta {}
-impl PartialEq for meta::Meta {
+impl Eq for attr::Meta {}
+impl PartialEq for attr::Meta {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (meta::Meta::Path(self0), meta::Meta::Path(other0)) => self0 == other0,
-            (meta::Meta::List(self0), meta::Meta::List(other0)) => self0 == other0,
-            (meta::Meta::NameValue(self0), meta::Meta::NameValue(other0)) => self0 == other0,
+            (attr::Meta::Path(self0), attr::Meta::Path(other0)) => self0 == other0,
+            (attr::Meta::List(self0), attr::Meta::List(other0)) => self0 == other0,
+            (attr::Meta::NameValue(self0), attr::Meta::NameValue(other0)) => self0 == other0,
             _ => false,
         }
     }
 }
-impl Eq for meta::List {}
-impl PartialEq for meta::List {
+impl Eq for attr::List {}
+impl PartialEq for attr::List {
     fn eq(&self, other: &Self) -> bool {
         self.path == other.path && self.delim == other.delim && StreamHelper(&self.toks) == StreamHelper(&other.toks)
     }
 }
-impl Eq for meta::NameValue {}
-impl PartialEq for meta::NameValue {
+impl Eq for attr::NameValue {}
+impl PartialEq for attr::NameValue {
     fn eq(&self, other: &Self) -> bool {
-        self.path == other.path && self.expr == other.expr
+        self.name == other.name && self.val == other.val
     }
 }
 impl Eq for ParenthesizedArgs {}

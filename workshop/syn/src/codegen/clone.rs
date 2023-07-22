@@ -351,7 +351,7 @@ impl Clone for expr::Field {
     fn clone(&self) -> Self {
         expr::Field {
             attrs: self.attrs.clone(),
-            base: self.base.clone(),
+            expr: self.expr.clone(),
             dot: self.dot.clone(),
             memb: self.memb.clone(),
         }
@@ -1158,30 +1158,30 @@ impl Clone for Member {
         }
     }
 }
-impl Clone for meta::Meta {
+impl Clone for attr::Meta {
     fn clone(&self) -> Self {
         match self {
-            meta::Meta::Path(v0) => meta::Meta::Path(v0.clone()),
-            meta::Meta::List(v0) => meta::Meta::List(v0.clone()),
-            meta::Meta::NameValue(v0) => meta::Meta::NameValue(v0.clone()),
+            attr::Meta::Path(v0) => attr::Meta::Path(v0.clone()),
+            attr::Meta::List(v0) => attr::Meta::List(v0.clone()),
+            attr::Meta::NameValue(v0) => attr::Meta::NameValue(v0.clone()),
         }
     }
 }
-impl Clone for meta::List {
+impl Clone for attr::List {
     fn clone(&self) -> Self {
-        meta::List {
+        attr::List {
             path: self.path.clone(),
             delim: self.delim.clone(),
             toks: self.toks.clone(),
         }
     }
 }
-impl Clone for meta::NameValue {
+impl Clone for attr::NameValue {
     fn clone(&self) -> Self {
-        meta::NameValue {
-            path: self.path.clone(),
+        attr::NameValue {
+            name: self.name.clone(),
             eq: self.eq.clone(),
-            expr: self.expr.clone(),
+            val: self.val.clone(),
         }
     }
 }

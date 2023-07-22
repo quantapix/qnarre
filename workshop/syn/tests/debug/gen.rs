@@ -1257,7 +1257,7 @@ impl Debug for Lite<syn::expr::Field> {
         if !self.value.attrs.is_empty() {
             f.field("attrs", Lite(&self.value.attrs));
         }
-        f.field("base", Lite(&self.value.base));
+        f.field("base", Lite(&self.value.expr));
         f.field("member", Lite(&self.value.memb));
         f.finish()
     }

@@ -25,7 +25,6 @@ mod gen;
 mod ident;
 mod item;
 mod lit;
-mod meta;
 mod parse;
 mod pat;
 mod path;

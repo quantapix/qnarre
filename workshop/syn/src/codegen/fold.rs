@@ -355,13 +355,13 @@ pub trait Fold {
     fn fold_member(&mut self, i: Member) -> Member {
         fold_member(self, i)
     }
-    fn fold_meta(&mut self, i: meta::Meta) -> meta::Meta {
+    fn fold_meta(&mut self, i: attr::Meta) -> attr::Meta {
         fold_meta(self, i)
     }
-    fn fold_meta_list(&mut self, i: meta::List) -> meta::List {
+    fn fold_meta_list(&mut self, i: attr::List) -> attr::List {
         fold_meta_list(self, i)
     }
-    fn fold_meta_name_value(&mut self, i: meta::NameValue) -> meta::NameValue {
+    fn fold_meta_name_value(&mut self, i: attr::NameValue) -> attr::NameValue {
         fold_meta_name_value(self, i)
     }
     fn fold_parenthesized_generic_arguments(&mut self, i: ParenthesizedArgs) -> ParenthesizedArgs {
@@ -971,7 +971,7 @@ where
 {
     expr::Field {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        base: Box::new(f.fold_expr(*node.base)),
+        expr: Box::new(f.fold_expr(*node.expr)),
         dot: node.dot,
         memb: f.fold_member(node.memb),
     }
@@ -1923,34 +1923,34 @@ where
         Member::Unnamed(_binding_0) => Member::Unnamed(f.fold_index(_binding_0)),
     }
 }
-pub fn fold_meta<F>(f: &mut F, node: meta::Meta) -> meta::Meta
+pub fn fold_meta<F>(f: &mut F, node: attr::Meta) -> attr::Meta
 where
     F: Fold + ?Sized,
 {
     match node {
-        meta::Meta::Path(_binding_0) => meta::Meta::Path(f.fold_path(_binding_0)),
-        meta::Meta::List(_binding_0) => meta::Meta::List(f.fold_meta_list(_binding_0)),
-        meta::Meta::NameValue(_binding_0) => meta::Meta::NameValue(f.fold_meta_name_value(_binding_0)),
+        attr::Meta::Path(_binding_0) => attr::Meta::Path(f.fold_path(_binding_0)),
+        attr::Meta::List(_binding_0) => attr::Meta::List(f.fold_meta_list(_binding_0)),
+        attr::Meta::NameValue(_binding_0) => attr::Meta::NameValue(f.fold_meta_name_value(_binding_0)),
     }
 }
-pub fn fold_meta_list<F>(f: &mut F, node: meta::List) -> meta::List
+pub fn fold_meta_list<F>(f: &mut F, node: attr::List) -> attr::List
 where
     F: Fold + ?Sized,
 {
-    meta::List {
+    attr::List {
         path: f.fold_path(node.path),
         delim: f.fold_macro_delimiter(node.delim),
         toks: node.toks,
     }
 }
-pub fn fold_meta_name_value<F>(f: &mut F, node: meta::NameValue) -> meta::NameValue
+pub fn fold_meta_name_value<F>(f: &mut F, node: attr::NameValue) -> attr::NameValue
 where
     F: Fold + ?Sized,
 {
-    meta::NameValue {
-        path: f.fold_path(node.path),
+    attr::NameValue {
+        name: f.fold_path(node.name),
         eq: node.eq,
-        expr: f.fold_expr(node.expr),
+        val: f.fold_expr(node.val),
     }
 }
 pub fn fold_parenthesized_generic_arguments<F>(f: &mut F, node: ParenthesizedArgs) -> ParenthesizedArgs

@@ -581,7 +581,7 @@ impl Hash for expr::Field {
         H: Hasher,
     {
         self.attrs.hash(state);
-        self.base.hash(state);
+        self.expr.hash(state);
         self.memb.hash(state);
     }
 }
@@ -1540,28 +1540,28 @@ impl Hash for tok::Delim {
         }
     }
 }
-impl Hash for meta::Meta {
+impl Hash for attr::Meta {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         match self {
-            meta::Meta::Path(x) => {
+            attr::Meta::Path(x) => {
                 state.write_u8(0u8);
                 x.hash(state);
             },
-            meta::Meta::List(x) => {
+            attr::Meta::List(x) => {
                 state.write_u8(1u8);
                 x.hash(state);
             },
-            meta::Meta::NameValue(x) => {
+            attr::Meta::NameValue(x) => {
                 state.write_u8(2u8);
                 x.hash(state);
             },
         }
     }
 }
-impl Hash for meta::List {
+impl Hash for attr::List {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -1571,13 +1571,13 @@ impl Hash for meta::List {
         StreamHelper(&self.toks).hash(state);
     }
 }
-impl Hash for meta::NameValue {
+impl Hash for attr::NameValue {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
-        self.path.hash(state);
-        self.expr.hash(state);
+        self.name.hash(state);
+        self.val.hash(state);
     }
 }
 impl Hash for ParenthesizedArgs {

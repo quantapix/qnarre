@@ -586,7 +586,7 @@ impl Debug for expr::Field {
             fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut f = f.debug_struct(name);
                 f.field("attrs", &self.attrs);
-                f.field("base", &self.base);
+                f.field("base", &self.expr);
                 f.field("dot", &self.dot);
                 f.field("member", &self.memb);
                 f.finish()
@@ -1747,19 +1747,19 @@ impl Debug for Member {
         }
     }
 }
-impl Debug for meta::Meta {
+impl Debug for attr::Meta {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("meta::Meta::")?;
+        f.write_str("attr::Meta::")?;
         match self {
-            meta::Meta::Path(v0) => v0.debug(formatter, "Path"),
-            meta::Meta::List(v0) => v0.debug(formatter, "List"),
-            meta::Meta::NameValue(v0) => v0.debug(formatter, "NameValue"),
+            attr::Meta::Path(v0) => v0.debug(formatter, "Path"),
+            attr::Meta::List(v0) => v0.debug(formatter, "List"),
+            attr::Meta::NameValue(v0) => v0.debug(formatter, "NameValue"),
         }
     }
 }
-impl Debug for meta::List {
+impl Debug for attr::List {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl meta::List {
+        impl attr::List {
             fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut f = f.debug_struct(name);
                 f.field("path", &self.path);
@@ -1768,21 +1768,21 @@ impl Debug for meta::List {
                 f.finish()
             }
         }
-        self.debug(formatter, "meta::List")
+        self.debug(formatter, "attr::List")
     }
 }
-impl Debug for meta::NameValue {
+impl Debug for attr::NameValue {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl meta::NameValue {
+        impl attr::NameValue {
             fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut f = f.debug_struct(name);
-                f.field("path", &self.path);
+                f.field("path", &self.name);
                 f.field("eq", &self.eq);
-                f.field("value", &self.expr);
+                f.field("value", &self.val);
                 f.finish()
             }
         }
-        self.debug(formatter, "meta::NameValue")
+        self.debug(formatter, "attr::NameValue")
     }
 }
 impl Debug for ParenthesizedArgs {

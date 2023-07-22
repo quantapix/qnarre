@@ -18,7 +18,7 @@ impl Block {
             }
             let y = parse_stmt(s, NoSemi(true))?;
             let semi = match &y {
-                Stmt::Expr(x, None) => expr::requires_terminator(x),
+                Stmt::Expr(x, None) => x.needs_terminator(),
                 Stmt::Mac(x) => x.semi.is_none() && !x.mac.delim.is_brace(),
                 Stmt::Local(_) | Stmt::Item(_) | Stmt::Expr(_, Some(_)) => false,
             };
@@ -87,7 +87,7 @@ pub struct Local {
 }
 impl Lower for Local {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.let_.lower(s);
         self.pat.lower(s);
         if let Some(x) = &self.init {
@@ -115,7 +115,7 @@ pub struct Mac {
 }
 impl Lower for Mac {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.mac.lower(s);
         self.semi.lower(s);
     }
@@ -289,7 +289,7 @@ fn parse_expr(s: Stream, mut attrs: Vec<attr::Attr>, nosemi: NoSemi) -> Res<Stmt
     }
     if semi.is_some() {
         Ok(Stmt::Expr(y, semi))
-    } else if nosemi.0 || !expr::requires_terminator(&y) {
+    } else if nosemi.0 || !&y.needs_terminator() {
         Ok(Stmt::Expr(y, None))
     } else {
         Err(s.error("expected semicolon"))

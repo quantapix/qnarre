@@ -100,6 +100,129 @@ impl Expr {
     pub fn parse_without_eager_brace(x: Stream) -> Res<Expr> {
         ambiguous_expr(x, AllowStruct(false))
     }
+    pub fn is_blocklike(&self) -> bool {
+        use Expr::*;
+        match self {
+            Array(Array { attrs, .. })
+            | Async(Async { attrs, .. })
+            | Block(Block { attrs, .. })
+            | Closure(Closure { attrs, .. })
+            | Const(Const { attrs, .. })
+            | Struct(Struct { attrs, .. })
+            | TryBlock(TryBlock { attrs, .. })
+            | Tuple(Tuple { attrs, .. })
+            | Unsafe(Unsafe { attrs, .. }) => !attr::has_outer(attrs),
+            Assign(_) | Await(_) | Binary(_) | Break(_) | Call(_) | Cast(_) | Continue(_) | Field(_) | ForLoop(_)
+            | Group(_) | If(_) | Index(_) | Infer(_) | Let(_) | Lit(_) | Loop(_) | Mac(_) | Match(_)
+            | MethodCall(_) | Paren(_) | Path(_) | Range(_) | Ref(_) | Repeat(_) | Return(_) | Try(_) | Unary(_)
+            | Stream(_) | While(_) | Yield(_) => false,
+        }
+    }
+    pub fn needs_terminator(&self) -> bool {
+        use Expr::*;
+        match self {
+            If(_) | Match(_) | Block(_) | Unsafe(_) | While(_) | Loop(_) | ForLoop(_) | TryBlock(_) | Const(_) => false,
+            Array(_) | Assign(_) | Async(_) | Await(_) | Binary(_) | Break(_) | Call(_) | Cast(_) | Closure(_)
+            | Continue(_) | Field(_) | Group(_) | Index(_) | Infer(_) | Let(_) | Lit(_) | Mac(_) | MethodCall(_)
+            | Paren(_) | Path(_) | Range(_) | Ref(_) | Repeat(_) | Return(_) | Struct(_) | Try(_) | Tuple(_)
+            | Unary(_) | Yield(_) | Stream(_) => true,
+        }
+    }
+    pub fn parseable_as_stmt(&self) -> bool {
+        use Expr::*;
+        match self {
+            Array(_) | Async(_) | Block(_) | Break(_) | Closure(_) | Const(_) | Continue(_) | ForLoop(_) | If(_)
+            | Infer(_) | Let(_) | Lit(_) | Loop(_) | Mac(_) | Match(_) | Paren(_) | Path(_) | Ref(_) | Repeat(_)
+            | Return(_) | Struct(_) | TryBlock(_) | Tuple(_) | Unary(_) | Unsafe(_) | Stream(_) | While(_)
+            | Yield(_) => true,
+            Assign(x) => &x.left.parseable_as_stmt(),
+            Await(x) => &x.expr.parseable_as_stmt(),
+            Binary(x) => &x.left.needs_terminator() && &x.left.parseable_as_stmt(),
+            Call(x) => &x.func.needs_terminator() && &x.func.parseable_as_stmt(),
+            Cast(x) => &x.expr.needs_terminator() && &x.expr.parseable_as_stmt(),
+            Field(x) => &x.expr.parseable_as_stmt(),
+            Group(x) => &x.expr.parseable_as_stmt(),
+            Index(x) => &x.expr.needs_terminator() && &x.expr.parseable_as_stmt(),
+            MethodCall(x) => &x.expr.parseable_as_stmt(),
+            Range(x) => match &x.beg {
+                Some(x) => x.needs_terminator() && x.parseable_as_stmt(),
+                None => true,
+            },
+            Try(x) => &x.expr.parseable_as_stmt(),
+        }
+    }
+    fn has_struct_lit(&self) -> bool {
+        use Expr::*;
+        match self {
+            Struct(_) => true,
+            Assign(Assign { left, right, .. }) | Binary(Binary { left, right, .. }) => {
+                left.has_struct_lit() || right.has_struct_lit()
+            },
+            Await(Await { expr, .. })
+            | Cast(Cast { expr, .. })
+            | Field(Field { expr, .. })
+            | Index(Index { expr, .. })
+            | MethodCall(MethodCall { expr, .. })
+            | Ref(Ref { expr, .. })
+            | Unary(Unary { expr, .. }) => expr.has_struct_lit(),
+            Array(_) | Async(_) | Block(_) | Break(_) | Call(_) | Closure(_) | Const(_) | Continue(_) | ForLoop(_)
+            | Group(_) | If(_) | Infer(_) | Let(_) | Lit(_) | Loop(_) | Mac(_) | Match(_) | Paren(_) | Path(_)
+            | Range(_) | Repeat(_) | Return(_) | Try(_) | TryBlock(_) | Tuple(_) | Unsafe(_) | &Stream(_)
+            | While(_) | Yield(_) => false,
+        }
+    }
+    fn is_short_ident(&self) -> bool {
+        if let Expr::Path(x) = self {
+            return x.attrs.is_empty()
+                && x.qself.is_none()
+                && x.path
+                    .get_ident()
+                    .map_or(false, |x| x.to_string().len() as isize <= pretty::INDENT);
+        }
+        false
+    }
+    fn needs_newline(&self) -> bool {
+        use Expr::*;
+        match self {
+            Array(_)
+            | Async(_)
+            | Block(_)
+            | Break(Break { val: None, .. })
+            | Closure(_)
+            | Const(_)
+            | Continue(_)
+            | ForLoop(_)
+            | If(_)
+            | Infer(_)
+            | Lit(_)
+            | Loop(_)
+            | Mac(_)
+            | Match(_)
+            | Path(_)
+            | Range(Range { end: None, .. })
+            | Repeat(_)
+            | Return(Return { expr: None, .. })
+            | Struct(_)
+            | TryBlock(_)
+            | Tuple(_)
+            | Unsafe(_)
+            | Stream(_)
+            | While(_)
+            | Yield(Yield { expr: None, .. }) => false,
+            Assign(_) | Await(_) | Binary(_) | Cast(_) | Field(_) | Index(_) | MethodCall(_) => true,
+            Break(Break { val: Some(x), .. })
+            | Call(Call { func: x, .. })
+            | Group(Group { expr: x, .. })
+            | Let(Let { expr: x, .. })
+            | Paren(Paren { expr: x, .. })
+            | Range(Range { end: Some(x), .. })
+            | Ref(Ref { expr: x, .. })
+            | Return(Return { expr: Some(x), .. })
+            | Try(Try { expr: x, .. })
+            | Unary(Unary { expr: x, .. })
+            | Yield(Yield { expr: Some(x), .. }) => x.needs_newline(),
+        }
+    }
 }
 impl Parse for Expr {
     fn parse(x: Stream) -> Res<Self> {
@@ -217,7 +340,7 @@ impl Parse for Array {
 }
 impl Lower for Array {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.bracket.surround(s, |s| {
             self.elems.lower(s);
         });
@@ -247,7 +370,7 @@ pub struct Assign {
 }
 impl Lower for Assign {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.left.lower(s);
         self.eq.lower(s);
         self.right.lower(s);
@@ -282,7 +405,7 @@ impl Parse for Async {
 }
 impl Lower for Async {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.async_.lower(s);
         self.move_.lower(s);
         self.block.lower(s);
@@ -309,7 +432,7 @@ pub struct Await {
 }
 impl Lower for Await {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.expr.lower(s);
         self.dot.lower(s);
         self.await_.lower(s);
@@ -324,7 +447,7 @@ impl Pretty for Await {
     }
     fn subexpr_await(&self, p: &mut Print, beg_of_line: bool) {
         p.subexpr(&self.expr, beg_of_line);
-        p.zerobreak_unless_short_ident(beg_of_line, &self.base);
+        p.zerobreak_unless_short_ident(beg_of_line, &self.expr);
         p.word(".await");
     }
 }
@@ -337,7 +460,7 @@ pub struct Binary {
 }
 impl Lower for Binary {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.left.lower(s);
         self.op.lower(s);
         self.right.lower(s);
@@ -380,10 +503,10 @@ impl Parse for Block {
 }
 impl Lower for Block {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.label.lower(s);
         self.block.brace.surround(s, |s| {
-            attr::inners_to_tokens(&self.attrs, s);
+            attr::lower_inners(&self.attrs, s);
             s.append_all(&self.block.stmts);
         });
     }
@@ -414,7 +537,7 @@ impl Parse for Break {
 }
 impl Lower for Break {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.break_.lower(s);
         self.life.lower(s);
         self.val.lower(s);
@@ -443,7 +566,7 @@ pub struct Call {
 }
 impl Lower for Call {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.func.lower(s);
         self.paren.surround(s, |s| {
             self.args.lower(s);
@@ -468,7 +591,7 @@ pub struct Cast {
 }
 impl Lower for Cast {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.expr.lower(s);
         self.as_.lower(s);
         self.typ.lower(s);
@@ -509,7 +632,7 @@ impl Parse for Closure {
 }
 impl Lower for Closure {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.lifes.lower(s);
         self.const_.lower(s);
         self.static_.lower(s);
@@ -561,8 +684,8 @@ impl Pretty for Closure {
                 p.end();
                 p.neverbreak();
                 let wrap_in_brace = match &*self.body {
-                    Expr::Match(Match { attrs, .. }) | Expr::Call(Call { attrs, .. }) => has_outer(attrs),
-                    x => !is_blocklike(x),
+                    Expr::Match(Match { attrs, .. }) | Expr::Call(Call { attrs, .. }) => attr::has_outer(attrs),
+                    x => !x.is_blocklike(),
                 };
                 if wrap_in_brace {
                     p.cbox(pretty::INDENT);
@@ -622,10 +745,10 @@ impl Parse for Const {
 }
 impl Lower for Const {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.const_.lower(s);
         self.block.brace.surround(s, |s| {
-            attr::inners_to_tokens(&self.attrs, s);
+            attr::lower_inners(&self.attrs, s);
             s.append_all(&self.block.stmts);
         });
     }
@@ -656,7 +779,7 @@ impl Parse for Continue {
 }
 impl Lower for Continue {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.continue_.lower(s);
         self.life.lower(s);
     }
@@ -674,14 +797,14 @@ impl Pretty for Continue {
 
 pub struct Field {
     pub attrs: Vec<attr::Attr>,
-    pub base: Box<Expr>,
+    pub expr: Box<Expr>,
     pub dot: Token![.],
     pub memb: Member,
 }
 impl Lower for Field {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
-        self.base.lower(s);
+        attr::lower_outers(&self.attrs, s);
+        self.expr.lower(s);
         self.dot.lower(s);
         self.memb.lower(s);
     }
@@ -729,14 +852,14 @@ impl Parse for ForLoop {
 }
 impl Lower for ForLoop {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.label.lower(s);
         self.for_.lower(s);
         self.pat.lower(s);
         self.in_.lower(s);
         wrap_bare_struct(s, &self.expr);
         self.body.brace.surround(s, |s| {
-            attr::inners_to_tokens(&self.attrs, s);
+            attr::lower_inners(&self.attrs, s);
             s.append_all(&self.body.stmts);
         });
     }
@@ -775,7 +898,7 @@ pub struct Group {
 }
 impl Lower for Group {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.group.surround(s, |s| {
             self.expr.lower(s);
         });
@@ -815,7 +938,7 @@ impl Parse for If {
 }
 impl Lower for If {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.if_.lower(s);
         wrap_bare_struct(s, &self.cond);
         self.then_.lower(s);
@@ -905,7 +1028,7 @@ impl Parse for Index {
 }
 impl Lower for Index {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.expr.lower(s);
         self.bracket.surround(s, |s| {
             self.idx.lower(s);
@@ -936,7 +1059,7 @@ impl Parse for Infer {
 }
 impl Lower for Infer {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.underscore.lower(s);
     }
 }
@@ -971,7 +1094,7 @@ impl Parse for Let {
 }
 impl Lower for Let {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.let_.lower(s);
         self.pat.lower(s);
         self.eq.lower(s);
@@ -988,7 +1111,7 @@ impl Pretty for Let {
         p.end();
         p.space();
         p.word("= ");
-        let paren = contains_exterior_struct_lit(&self.expr);
+        let paren = &self.expr.has_struct_lit();
         if paren {
             p.word("(");
         }
@@ -1014,7 +1137,7 @@ impl Parse for Lit {
 }
 impl Lower for Lit {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.lit.lower(s);
     }
 }
@@ -1050,11 +1173,11 @@ impl Parse for Loop {
 }
 impl Lower for Loop {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.label.lower(s);
         self.loop_.lower(s);
         self.body.brace.surround(s, |s| {
-            attr::inners_to_tokens(&self.attrs, s);
+            attr::lower_inners(&self.attrs, s);
             s.append_all(&self.body.stmts);
         });
     }
@@ -1092,7 +1215,7 @@ impl Parse for Mac {
 }
 impl Lower for Mac {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.mac.lower(s);
     }
 }
@@ -1134,15 +1257,15 @@ impl Parse for Match {
 }
 impl Lower for Match {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.match_.lower(s);
         wrap_bare_struct(s, &self.expr);
         self.brace.surround(s, |s| {
-            attr::inners_to_tokens(&self.attrs, s);
+            attr::lower_inners(&self.attrs, s);
             for (i, arm) in self.arms.iter().enumerate() {
                 arm.lower(s);
                 let is_last = i == self.arms.len() - 1;
-                if !is_last && requires_terminator(&arm.body) && arm.comma.is_none() {
+                if !is_last && &arm.body.needs_terminator() && arm.comma.is_none() {
                     <Token![,]>::default().lower(s);
                 }
             }
@@ -1182,7 +1305,7 @@ pub struct MethodCall {
 }
 impl Lower for MethodCall {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.expr.lower(s);
         self.dot.lower(s);
         self.method.lower(s);
@@ -1196,8 +1319,8 @@ impl Pretty for MethodCall {
     fn pretty(&self, p: &mut Print, beg_of_line: bool) {
         p.outer_attrs(&self.attrs);
         p.cbox(pretty::INDENT);
-        let unindent_call_args = beg_of_line && is_short_ident(&self.receiver);
-        p.subexpr_method_call(self, beg_of_line, unindent_call_args);
+        let unindent = beg_of_line && &self.expr.is_short_ident();
+        p.subexpr_method_call(self, beg_of_line, unindent);
         p.end();
     }
 }
@@ -1214,7 +1337,7 @@ impl Parse for Paren {
 }
 impl Lower for Paren {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.paren.surround(s, |s| {
             self.expr.lower(s);
         });
@@ -1243,7 +1366,7 @@ impl Parse for Path {
 }
 impl Lower for Path {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         path::path_to_tokens(s, &self.qself, &self.path);
     }
 }
@@ -1262,7 +1385,7 @@ pub struct Range {
 }
 impl Lower for Range {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.beg.lower(s);
         self.limits.lower(s);
         self.end.lower(s);
@@ -1303,7 +1426,7 @@ impl Parse for Ref {
 }
 impl Lower for Ref {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.and.lower(s);
         self.mut_.lower(s);
         self.expr.lower(s);
@@ -1341,7 +1464,7 @@ impl Parse for Repeat {
 }
 impl Lower for Repeat {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.bracket.surround(s, |s| {
             self.expr.lower(s);
             self.semi.lower(s);
@@ -1373,7 +1496,7 @@ impl Parse for Return {
 }
 impl Lower for Return {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.return_.lower(s);
         self.expr.lower(s);
     }
@@ -1406,7 +1529,7 @@ impl Parse for Struct {
 }
 impl Lower for Struct {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         path::path_to_tokens(s, &self.qself, &self.path);
         self.brace.surround(s, |s| {
             self.fields.lower(s);
@@ -1450,7 +1573,7 @@ pub struct Try {
 }
 impl Lower for Try {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.expr.lower(s);
         self.question.lower(s);
     }
@@ -1479,7 +1602,7 @@ impl Parse for TryBlock {
 }
 impl Lower for TryBlock {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.try_.lower(s);
         self.block.lower(s);
     }
@@ -1501,7 +1624,7 @@ pub struct Tuple {
 }
 impl Lower for Tuple {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.paren.surround(s, |s| {
             self.elems.lower(s);
             if self.elems.len() == 1 && !self.elems.trailing_punct() {
@@ -1545,7 +1668,7 @@ impl Parse for Unary {
 }
 impl Lower for Unary {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.op.lower(s);
         self.expr.lower(s);
     }
@@ -1579,10 +1702,10 @@ impl Parse for Unsafe {
 }
 impl Lower for Unsafe {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.unsafe_.lower(s);
         self.block.brace.surround(s, |s| {
-            attr::inners_to_tokens(&self.attrs, s);
+            attr::lower_inners(&self.attrs, s);
             s.append_all(&self.block.stmts);
         });
     }
@@ -1625,12 +1748,12 @@ impl Parse for While {
 }
 impl Lower for While {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.label.lower(s);
         self.while_.lower(s);
         wrap_bare_struct(s, &self.cond);
         self.block.brace.surround(s, |s| {
-            attr::inners_to_tokens(&self.attrs, s);
+            attr::lower_inners(&self.attrs, s);
             s.append_all(&self.block.stmts);
         });
     }
@@ -1679,7 +1802,7 @@ impl Parse for Yield {
 }
 impl Lower for Yield {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.yield_.lower(s);
         self.expr.lower(s);
     }
@@ -2037,7 +2160,7 @@ impl Parse for FieldValue {
 }
 impl Lower for FieldValue {
     fn lower(&self, s: &mut Stream) {
-        attr::outers_to_tokens(&self.attrs, s);
+        attr::lower_outers(&self.attrs, s);
         self.memb.lower(s);
         if let Some(colon) = &self.colon {
             colon.lower(s);
@@ -2118,7 +2241,7 @@ impl Parse for Arm {
             fat_arrow: x.parse()?,
             body: {
                 let body = x.call(expr_early)?;
-                comma = requires_terminator(&body);
+                comma = &body.needs_terminator();
                 Box::new(body)
             },
             comma: {
@@ -2209,7 +2332,7 @@ impl Pretty for Arm {
                 offset: -pretty::INDENT,
                 pre_break: add_semi(body).then(|| ';'),
                 post_break: Some('}'),
-                no_break: requires_terminator(body).then(|| ','),
+                no_break: body.needs_terminator().then(|| ','),
                 ..BreakToken::default()
             });
             p.end();
@@ -2329,49 +2452,6 @@ mod kw {
     crate::custom_kw!(raw);
 }
 
-pub fn requires_terminator(x: &Expr) -> bool {
-    match x {
-        Expr::If(_)
-        | Expr::Match(_)
-        | Expr::Block(_)
-        | Expr::Unsafe(_)
-        | Expr::While(_)
-        | Expr::Loop(_)
-        | Expr::ForLoop(_)
-        | Expr::TryBlock(_)
-        | Expr::Const(_) => false,
-        Expr::Array(_)
-        | Expr::Assign(_)
-        | Expr::Async(_)
-        | Expr::Await(_)
-        | Expr::Binary(_)
-        | Expr::Break(_)
-        | Expr::Call(_)
-        | Expr::Cast(_)
-        | Expr::Closure(_)
-        | Expr::Continue(_)
-        | Expr::Field(_)
-        | Expr::Group(_)
-        | Expr::Index(_)
-        | Expr::Infer(_)
-        | Expr::Let(_)
-        | Expr::Lit(_)
-        | Expr::Mac(_)
-        | Expr::MethodCall(_)
-        | Expr::Paren(_)
-        | Expr::Path(_)
-        | Expr::Range(_)
-        | Expr::Ref(_)
-        | Expr::Repeat(_)
-        | Expr::Return(_)
-        | Expr::Struct(_)
-        | Expr::Try(_)
-        | Expr::Tuple(_)
-        | Expr::Unary(_)
-        | Expr::Yield(_)
-        | Expr::Stream(_) => true,
-    }
-}
 fn parse_expr(x: Stream, mut lhs: Expr, allow: AllowStruct, base: Precedence) -> Res<Expr> {
     loop {
         let ahead = x.fork();
@@ -2593,7 +2673,7 @@ fn trailer_helper(x: Stream, mut y: Expr) -> Res<Expr> {
             }
             y = Expr::Field(Field {
                 attrs: Vec::new(),
-                base: Box::new(y),
+                expr: Box::new(y),
                 dot,
                 memb,
             });
@@ -3076,7 +3156,7 @@ fn multi_index(e: &mut Expr, dot: &mut Token![.], float: lit::Float) -> Res<bool
         let base = mem::replace(e, Expr::DUMMY);
         *e = Expr::Field(Field {
             attrs: Vec::new(),
-            base: Box::new(base),
+            expr: Box::new(base),
             dot: Token![.](dot.span),
             memb: Member::Unnamed(index),
         });
