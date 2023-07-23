@@ -576,13 +576,6 @@ impl Print {
         }
         self.end();
     }
-    #[cfg(not(feature = "verbatim"))]
-    fn expr_verbatim(&mut self, expr: &Stream) {
-        if !expr.is_empty() {
-            unimplemented!("Expr::Verbatim `{}`", expr);
-        }
-    }
-    #[cfg(feature = "verbatim")]
     fn expr_verbatim(&mut self, tokens: &Stream) {
         enum ExprVerbatim {
             Empty,
@@ -841,11 +834,6 @@ impl Print {
             TraitBoundModifier::Maybe(_question_mark) => self.word("?"),
         }
     }
-    #[cfg(not(feature = "verbatim"))]
-    fn type_param_bound_verbatim(&mut self, bound: &Stream) {
-        unimplemented!("TypeParamBound::Verbatim `{}`", bound);
-    }
-    #[cfg(feature = "verbatim")]
     fn type_param_bound_verbatim(&mut self, tokens: &Stream) {
         enum TypeParamBoundVerbatim {
             Ellipsis,
@@ -1338,14 +1326,6 @@ impl Print {
         self.word(";");
         self.hardbreak();
     }
-    #[cfg(not(feature = "verbatim"))]
-    fn item_verbatim(&mut self, item: &Stream) {
-        if !item.is_empty() {
-            unimplemented!("Item::Verbatim `{}`", item);
-        }
-        self.hardbreak();
-    }
-    #[cfg(feature = "verbatim")]
     fn item_verbatim(&mut self, tokens: &Stream) {
         use verbatim::{FlexibleItemConst, FlexibleItemFn, FlexibleItemStatic, FlexibleItemType, WhereClauseLocation};
         enum ItemVerbatim {
@@ -1772,14 +1752,6 @@ impl Print {
         self.mac(&foreign_item.mac, None, semicolon);
         self.hardbreak();
     }
-    #[cfg(not(feature = "verbatim"))]
-    fn foreign_item_verbatim(&mut self, foreign_item: &Stream) {
-        if !foreign_item.is_empty() {
-            unimplemented!("ForeignItem::Verbatim `{}`", foreign_item);
-        }
-        self.hardbreak();
-    }
-    #[cfg(feature = "verbatim")]
     fn foreign_item_verbatim(&mut self, tokens: &Stream) {
         use verbatim::{FlexibleItemFn, FlexibleItemStatic, FlexibleItemType, WhereClauseLocation};
         enum ForeignItemVerbatim {
@@ -1925,14 +1897,6 @@ impl Print {
         self.mac(&trait_item.mac, None, semicolon);
         self.hardbreak();
     }
-    #[cfg(not(feature = "verbatim"))]
-    fn trait_item_verbatim(&mut self, trait_item: &Stream) {
-        if !trait_item.is_empty() {
-            unimplemented!("TraitItem::Verbatim `{}`", trait_item);
-        }
-        self.hardbreak();
-    }
-    #[cfg(feature = "verbatim")]
     fn trait_item_verbatim(&mut self, tokens: &Stream) {
         use verbatim::{FlexibleItemType, WhereClauseLocation};
         enum TraitItemVerbatim {
@@ -2081,14 +2045,6 @@ impl Print {
         self.mac(&impl_item.mac, None, semicolon);
         self.hardbreak();
     }
-    #[cfg(not(feature = "verbatim"))]
-    fn impl_item_verbatim(&mut self, impl_item: &Stream) {
-        if !impl_item.is_empty() {
-            unimplemented!("ImplItem::Verbatim `{}`", impl_item);
-        }
-        self.hardbreak();
-    }
-    #[cfg(feature = "verbatim")]
     fn impl_item_verbatim(&mut self, tokens: &Stream) {
         use verbatim::{FlexibleItemConst, FlexibleItemFn, FlexibleItemType, WhereClauseLocation};
         enum ImplItemVerbatim {
@@ -2246,7 +2202,7 @@ impl Print {
         }
     }
 }
-#[cfg(feature = "verbatim")]
+
 mod verbatim {
     pub struct FlexibleItemConst {
         pub attrs: Vec<attr::Attr>,
@@ -2560,7 +2516,6 @@ impl Print {
                 return;
             }
         }
-        #[cfg(feature = "verbatim")]
         if ident.is_none() && self.standard_library_macro(mac, semicolon) {
             return;
         }
@@ -2754,7 +2709,6 @@ fn is_keyword(ident: &Ident) -> bool {
         _ => false,
     }
 }
-#[cfg(feature = "verbatim")]
 mod standard_library {
     enum KnownMacro {
         Expr(Expr),
@@ -3301,11 +3255,6 @@ impl Print {
         self.word(": ");
         self.ty(&pat.ty);
     }
-    #[cfg(not(feature = "verbatim"))]
-    fn pat_verbatim(&mut self, pat: &Stream) {
-        unimplemented!("Pat::Stream `{}`", pat);
-    }
-    #[cfg(feature = "verbatim")]
     fn pat_verbatim(&mut self, tokens: &Stream) {
         enum PatVerbatim {
             Ellipsis,
