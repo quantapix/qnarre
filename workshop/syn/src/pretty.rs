@@ -549,33 +549,6 @@ impl Print {
 
 impl Print {
     //expr
-    pub fn expr_beginning_of_line(&mut self, x: &expr::Expr, beg_of_line: bool) {
-        match x {
-            Expr::Await(x) => self.expr_await(x, beg_of_line),
-            Expr::Field(x) => self.expr_field(x, beg_of_line),
-            Expr::Index(x) => self.expr_index(x, beg_of_line),
-            Expr::MethodCall(x) => self.expr_method_call(x, beg_of_line),
-            Expr::Try(x) => self.expr_try(x, beg_of_line),
-            _ => self.expr(x),
-        }
-    }
-    pub fn wrap_exterior_struct(&mut self, expr: &Expr) {
-        let needs_paren = expr.has_struct_lit();
-        if needs_paren {
-            self.word("(");
-        }
-        self.cbox(0);
-        self.expr(expr);
-        if needs_paren {
-            self.word(")");
-        }
-        if expr.needs_newline() {
-            self.space();
-        } else {
-            self.nbsp();
-        }
-        self.end();
-    }
     pub fn call_args(&mut self, xs: &punct::Puncted<Expr, Token![,]>) {
         let mut iter = xs.iter();
         match (iter.next(), iter.next()) {
@@ -602,7 +575,7 @@ impl Print {
             match (block.stmts.get(0), block.stmts.get(1)) {
                 (Some(Stmt::Expr(expr, None)), None) if expr.break_after() => {
                     self.ibox(0);
-                    self.expr_beginning_of_line(expr, true);
+                    expr.pretty_beg_of_line(self, true);
                     self.end();
                     self.space();
                 },
@@ -616,138 +589,29 @@ impl Print {
         }
         self.word("}");
     }
-    pub fn zerobreak_unless_short_ident(&mut self, beg_of_line: bool, expr: &Expr) {
-        if beg_of_line && expr.is_short_ident() {
-            return;
-        }
-        self.zerobreak();
-    }
 }
 
 impl Print {
     //generics
-    fn const_param(&mut self, const_param: &ConstParam) {
-        self.outer_attrs(&const_param.attrs);
-        self.word("const ");
-        self.ident(&const_param.ident);
-        self.word(": ");
-        self.ty(&const_param.ty);
-        if let Some(default) = &const_param.default {
-            self.word(" = ");
-            self.expr(default);
-        }
-    }
-    pub fn where_clause_for_body(&mut self, where_clause: &Option<WhereClause>) {
-        let hardbreaks = true;
+    pub fn where_for_body(&mut self, x: &Option<WhereClause>) {
+        let breaks = true;
         let semi = false;
-        self.where_clause_impl(where_clause, hardbreaks, semi);
+        x.pretty(self, breaks, semi);
     }
-    pub fn where_clause_semi(&mut self, where_clause: &Option<WhereClause>) {
-        let hardbreaks = true;
+    pub fn where_with_semi(&mut self, x: &Option<WhereClause>) {
+        let breaks = true;
         let semi = true;
-        self.where_clause_impl(where_clause, hardbreaks, semi);
+        x.pretty(self, breaks, semi);
     }
-    pub fn where_clause_oneline(&mut self, where_clause: &Option<WhereClause>) {
-        let hardbreaks = false;
+    pub fn where_oneline(&mut self, x: &Option<WhereClause>) {
+        let breaks = false;
         let semi = false;
-        self.where_clause_impl(where_clause, hardbreaks, semi);
+        x.pretty(self, breaks, semi);
     }
-    pub fn where_clause_oneline_semi(&mut self, where_clause: &Option<WhereClause>) {
-        let hardbreaks = false;
+    pub fn where_oneline_with_semi(&mut self, x: &Option<WhereClause>) {
+        let breaks = false;
         let semi = true;
-        self.where_clause_impl(where_clause, hardbreaks, semi);
-    }
-    fn where_clause_impl(&mut self, where_clause: &Option<WhereClause>, hardbreaks: bool, semi: bool) {
-        let where_clause = match where_clause {
-            Some(where_clause) if !where_clause.predicates.is_empty() => where_clause,
-            _ => {
-                if semi {
-                    self.word(";");
-                } else {
-                    self.nbsp();
-                }
-                return;
-            },
-        };
-        if hardbreaks {
-            self.hardbreak();
-            self.offset(-INDENT);
-            self.word("where");
-            self.hardbreak();
-            for predicate in where_clause.predicates.iter().delimited() {
-                self.where_predicate(&predicate);
-                if predicate.is_last && semi {
-                    self.word(";");
-                } else {
-                    self.word(",");
-                    self.hardbreak();
-                }
-            }
-            if !semi {
-                self.offset(-INDENT);
-            }
-        } else {
-            self.space();
-            self.offset(-INDENT);
-            self.word("where");
-            self.space();
-            for predicate in where_clause.predicates.iter().delimited() {
-                self.where_predicate(&predicate);
-                if predicate.is_last && semi {
-                    self.word(";");
-                } else {
-                    self.trailing_comma_or_space(predicate.is_last);
-                }
-            }
-            if !semi {
-                self.offset(-INDENT);
-            }
-        }
-    }
-    fn where_predicate(&mut self, predicate: &WherePredicate) {
-        match predicate {
-            WherePredicate::Type(predicate) => self.predicate_type(predicate),
-            WherePredicate::Lifetime(predicate) => self.predicate_lifetime(predicate),
-            #[cfg_attr(all(test, exhaustive), deny(non_exhaustive_omitted_patterns))]
-            _ => unimplemented!("unknown WherePredicate"),
-        }
-    }
-    fn predicate_type(&mut self, predicate: &PredicateType) {
-        if let Some(bound_lifetimes) = &predicate.lifetimes {
-            self.bound_lifetimes(bound_lifetimes);
-        }
-        self.ty(&predicate.bounded_ty);
-        self.word(":");
-        if predicate.bounds.len() == 1 {
-            self.ibox(0);
-        } else {
-            self.ibox(INDENT);
-        }
-        for type_param_bound in predicate.bounds.iter().delimited() {
-            if type_param_bound.is_first {
-                self.nbsp();
-            } else {
-                self.space();
-                self.word("+ ");
-            }
-            self.type_param_bound(&type_param_bound);
-        }
-        self.end();
-    }
-    fn predicate_lifetime(&mut self, predicate: &PredicateLifetime) {
-        self.lifetime(&predicate.lifetime);
-        self.word(":");
-        self.ibox(INDENT);
-        for lifetime in predicate.bounds.iter().delimited() {
-            if lifetime.is_first {
-                self.nbsp();
-            } else {
-                self.space();
-                self.word("+ ");
-            }
-            self.lifetime(&lifetime);
-        }
-        self.end();
+        x.pretty(self, breaks, semi);
     }
 }
 
@@ -798,7 +662,7 @@ impl Print {
         self.word("enum ");
         self.ident(&item.ident);
         self.generics(&item.generics);
-        self.where_clause_for_body(&item.generics.where_clause);
+        self.where_for_body(&item.generics.where_clause);
         self.word("{");
         self.hardbreak_if_nonempty();
         for variant in &item.variants {
@@ -828,7 +692,7 @@ impl Print {
         self.cbox(INDENT);
         self.visibility(&item.vis);
         self.signature(&item.sig);
-        self.where_clause_for_body(&item.sig.generics.where_clause);
+        self.where_for_body(&item.sig.generics.where_clause);
         self.word("{");
         self.hardbreak_if_nonempty();
         self.inner_attrs(&item.attrs);
@@ -883,7 +747,7 @@ impl Print {
         }
         self.ty(&item.self_ty);
         self.end();
-        self.where_clause_for_body(&item.generics.where_clause);
+        self.where_for_body(&item.generics.where_clause);
         self.word("{");
         self.hardbreak_if_nonempty();
         self.inner_attrs(&item.attrs);
@@ -951,7 +815,7 @@ impl Print {
         self.generics(&item.generics);
         match &item.fields {
             Fields::Named(fields) => {
-                self.where_clause_for_body(&item.generics.where_clause);
+                self.where_for_body(&item.generics.where_clause);
                 self.word("{");
                 self.hardbreak_if_nonempty();
                 for field in &fields.named {
@@ -965,11 +829,11 @@ impl Print {
             },
             Fields::Unnamed(fields) => {
                 self.fields_unnamed(fields);
-                self.where_clause_semi(&item.generics.where_clause);
+                self.where_with_semi(&item.generics.where_clause);
                 self.end();
             },
             Fields::Unit => {
-                self.where_clause_semi(&item.generics.where_clause);
+                self.where_with_semi(&item.generics.where_clause);
                 self.end();
             },
         }
@@ -996,7 +860,7 @@ impl Print {
             }
             self.type_param_bound(&supertrait);
         }
-        self.where_clause_for_body(&item.generics.where_clause);
+        self.where_for_body(&item.generics.where_clause);
         self.word("{");
         self.hardbreak_if_nonempty();
         self.inner_attrs(&item.attrs);
@@ -1024,7 +888,7 @@ impl Print {
             }
             self.type_param_bound(&bound);
         }
-        self.where_clause_semi(&item.generics.where_clause);
+        self.where_with_semi(&item.generics.where_clause);
         self.end();
         self.hardbreak();
     }
@@ -1035,7 +899,7 @@ impl Print {
         self.word("type ");
         self.ident(&item.ident);
         self.generics(&item.generics);
-        self.where_clause_oneline(&item.generics.where_clause);
+        self.where_oneline(&item.generics.where_clause);
         self.word("= ");
         self.neverbreak();
         self.ibox(-INDENT);
@@ -1052,7 +916,7 @@ impl Print {
         self.word("union ");
         self.ident(&item.ident);
         self.generics(&item.generics);
-        self.where_clause_for_body(&item.generics.where_clause);
+        self.where_for_body(&item.generics.where_clause);
         self.word("{");
         self.hardbreak_if_nonempty();
         for field in &item.fields.named {
@@ -1303,7 +1167,7 @@ impl Print {
                 }
                 self.ty(&item.self_ty);
                 self.end();
-                self.where_clause_for_body(&item.generics.where_clause);
+                self.where_for_body(&item.generics.where_clause);
                 self.word("{");
                 self.hardbreak_if_nonempty();
                 self.inner_attrs(&item.attrs);
@@ -1468,7 +1332,7 @@ impl Print {
         self.cbox(INDENT);
         self.visibility(&foreign_item.vis);
         self.signature(&foreign_item.sig);
-        self.where_clause_semi(&foreign_item.sig.generics.where_clause);
+        self.where_with_semi(&foreign_item.sig.generics.where_clause);
         self.end();
         self.hardbreak();
     }
@@ -1599,7 +1463,7 @@ impl Print {
         self.cbox(INDENT);
         self.signature(&trait_item.sig);
         if let Some(block) = &trait_item.default {
-            self.where_clause_for_body(&trait_item.sig.generics.where_clause);
+            self.where_for_body(&trait_item.sig.generics.where_clause);
             self.word("{");
             self.hardbreak_if_nonempty();
             self.inner_attrs(&trait_item.attrs);
@@ -1610,7 +1474,7 @@ impl Print {
             self.end();
             self.word("}");
         } else {
-            self.where_clause_semi(&trait_item.sig.generics.where_clause);
+            self.where_with_semi(&trait_item.sig.generics.where_clause);
             self.end();
         }
         self.hardbreak();
@@ -1637,7 +1501,7 @@ impl Print {
             self.ty(default);
             self.end();
         }
-        self.where_clause_oneline_semi(&trait_item.generics.where_clause);
+        self.where_oneline_with_semi(&trait_item.generics.where_clause);
         self.end();
         self.hardbreak();
     }
@@ -1758,7 +1622,7 @@ impl Print {
             self.word("default ");
         }
         self.signature(&impl_item.sig);
-        self.where_clause_for_body(&impl_item.sig.generics.where_clause);
+        self.where_for_body(&impl_item.sig.generics.where_clause);
         self.word("{");
         self.hardbreak_if_nonempty();
         self.inner_attrs(&impl_item.attrs);
@@ -1785,7 +1649,7 @@ impl Print {
         self.ibox(-INDENT);
         self.ty(&impl_item.ty);
         self.end();
-        self.where_clause_oneline_semi(&impl_item.generics.where_clause);
+        self.where_oneline_with_semi(&impl_item.generics.where_clause);
         self.end();
         self.hardbreak();
     }

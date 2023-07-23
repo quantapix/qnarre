@@ -118,7 +118,7 @@ impl Expr {
             | Verbatim(_) | While(_) | Yield(_) => false,
         }
     }
-    pub fn needs_terminator(&self) -> bool {
+    pub fn needs_term(&self) -> bool {
         use Expr::*;
         match self {
             If(_) | Match(_) | Block(_) | Unsafe(_) | While(_) | Loop(_) | ForLoop(_) | TryBlock(_) | Const(_) => false,
@@ -137,15 +137,15 @@ impl Expr {
             | Yield(_) => true,
             Assign(x) => &x.left.parseable_as_stmt(),
             Await(x) => &x.expr.parseable_as_stmt(),
-            Binary(x) => &x.left.needs_terminator() && &x.left.parseable_as_stmt(),
-            Call(x) => &x.func.needs_terminator() && &x.func.parseable_as_stmt(),
-            Cast(x) => &x.expr.needs_terminator() && &x.expr.parseable_as_stmt(),
+            Binary(x) => &x.left.needs_term() && &x.left.parseable_as_stmt(),
+            Call(x) => &x.func.needs_term() && &x.func.parseable_as_stmt(),
+            Cast(x) => &x.expr.needs_term() && &x.expr.parseable_as_stmt(),
             Field(x) => &x.expr.parseable_as_stmt(),
             Group(x) => &x.expr.parseable_as_stmt(),
-            Index(x) => &x.expr.needs_terminator() && &x.expr.parseable_as_stmt(),
+            Index(x) => &x.expr.needs_term() && &x.expr.parseable_as_stmt(),
             MethodCall(x) => &x.expr.parseable_as_stmt(),
             Range(x) => match &x.beg {
-                Some(x) => x.needs_terminator() && x.parseable_as_stmt(),
+                Some(x) => x.needs_term() && x.parseable_as_stmt(),
                 None => true,
             },
             Try(x) => &x.expr.parseable_as_stmt(),
@@ -223,22 +223,6 @@ impl Expr {
             | Yield(Yield { expr: Some(x), .. }) => x.needs_newline(),
         }
     }
-    pub fn pretty_sub(&self, p: &mut Print, beg_of_line: bool) {
-        use Expr::*;
-        match self {
-            Await(x) => x.pretty_sub(p, beg_of_line),
-            Call(x) => x.pretty_sub(p),
-            Field(x) => x.pretty_sub(p, beg_of_line),
-            Index(x) => x.pretty_sub(p, beg_of_line),
-            MethodCall(x) => x.pretty_sub(p, beg_of_line, false),
-            Try(x) => x.pretty_sub(p, beg_of_line),
-            _ => {
-                p.cbox(-INDENT);
-                self.pretty(p);
-                p.end();
-            },
-        }
-    }
     pub fn add_semi(&self) -> bool {
         use BinOp::*;
         use Expr::*;
@@ -279,6 +263,65 @@ impl Expr {
             }
         }
         true
+    }
+    fn lower_struct(&self, s: &mut Stream) {
+        if let Expr::Struct(_) = *self {
+            tok::Paren::default().surround(s, |s| {
+                self.lower(s);
+            });
+        } else {
+            self.lower(s);
+        }
+    }
+    fn pretty_struct(&self, p: &mut Print) {
+        let paren = self.has_struct_lit();
+        if paren {
+            p.word("(");
+        }
+        p.cbox(0);
+        self.pretty(p);
+        if paren {
+            p.word(")");
+        }
+        if self.needs_newline() {
+            p.space();
+        } else {
+            p.nbsp();
+        }
+        p.end();
+    }
+    fn pretty_sub(&self, p: &mut Print, beg_of_line: bool) {
+        use Expr::*;
+        match self {
+            Await(x) => x.pretty_sub(p, beg_of_line),
+            Call(x) => x.pretty_sub(p),
+            Field(x) => x.pretty_sub(p, beg_of_line),
+            Index(x) => x.pretty_sub(p, beg_of_line),
+            MethodCall(x) => x.pretty_sub(p, beg_of_line, false),
+            Try(x) => x.pretty_sub(p, beg_of_line),
+            _ => {
+                p.cbox(-INDENT);
+                self.pretty(p);
+                p.end();
+            },
+        }
+    }
+    pub fn pretty_beg_of_line(&self, p: &mut Print, beg_of_line: bool) {
+        use Expr::*;
+        match self {
+            Await(x) => p.expr_await(x, beg_of_line),
+            Field(x) => p.expr_field(x, beg_of_line),
+            Index(x) => p.expr_index(x, beg_of_line),
+            MethodCall(x) => p.expr_method_call(x, beg_of_line),
+            Try(x) => p.expr_try(x, beg_of_line),
+            _ => p.expr(self),
+        }
+    }
+    fn pretty_zerobreak(&self, p: &mut Print, beg_of_line: bool) {
+        if beg_of_line && self.is_short_ident() {
+            return;
+        }
+        p.zerobreak();
     }
 }
 impl Parse for Expr {
@@ -490,7 +533,7 @@ pub struct Await {
 impl Await {
     fn pretty_sub(&self, p: &mut Print, beg_of_line: bool) {
         &self.expr.pretty_sub(p, beg_of_line);
-        p.zerobreak_unless_short_ident(beg_of_line, &self.expr);
+        &self.expr.pretty_zerobreak(p, beg_of_line);
         p.word(".await");
     }
 }
@@ -643,7 +686,7 @@ impl Lower for Call {
 impl Pretty for Call {
     fn pretty(&self, p: &mut Call, beg_of_line: bool) {
         p.outer_attrs(&self.attrs);
-        p.expr_beginning_of_line(&self.func, beg_of_line);
+        &self.func.pretty_beg_of_line(p, beg_of_line);
         p.word("(");
         p.call_args(&self.args);
         p.word(")");
@@ -871,7 +914,7 @@ pub struct Field {
 impl Field {
     fn pretty_sub(&self, p: &mut Print, beg_of_line: bool) {
         &self.expr.pretty_sub(p, beg_of_line);
-        p.zerobreak_unless_short_ident(beg_of_line, &self.expr);
+        &self.expr.pretty_zerobreak(p, beg_of_line);
         p.word(".");
         &self.memb.pretty(p);
     }
@@ -932,7 +975,7 @@ impl Lower for ForLoop {
         self.for_.lower(s);
         self.pat.lower(s);
         self.in_.lower(s);
-        wrap_bare_struct(s, &self.expr);
+        &self.expr.lower_struct(s);
         self.body.brace.surround(s, |s| {
             attr::lower_inners(&self.attrs, s);
             s.append_all(&self.body.stmts);
@@ -950,7 +993,7 @@ impl Pretty for ForLoop {
         p.pat(&self.pat);
         p.word(" in ");
         p.neverbreak();
-        p.wrap_exterior_struct(&self.expr);
+        &self.expr.pretty_struct(p);
         p.word("{");
         p.neverbreak();
         p.cbox(INDENT);
@@ -1015,7 +1058,7 @@ impl Lower for If {
     fn lower(&self, s: &mut Stream) {
         attr::lower_outers(&self.attrs, s);
         self.if_.lower(s);
-        wrap_bare_struct(s, &self.cond);
+        &self.cond.lower_struct(s);
         self.then_.lower(s);
         if let Some((else_, x)) = &self.else_ {
             else_.lower(s);
@@ -1032,7 +1075,7 @@ impl Pretty for If {
         p.cbox(INDENT);
         p.word("if ");
         p.cbox(-INDENT);
-        p.wrap_exterior_struct(&self.cond);
+        &self.cond.pretty_struct(p);
         p.end();
         if let Some((_, else_)) = &self.else_ {
             let mut else_ = &**else_;
@@ -1043,7 +1086,7 @@ impl Pretty for If {
                     Expr::If(x) => {
                         p.word("if ");
                         p.cbox(-INDENT);
-                        p.wrap_exterior_struct(&x.cond);
+                        &x.cond.pretty_struct(p);
                         p.end();
                         p.small_block(&x.then_, &[]);
                         if let Some((_, x)) = &x.else_ {
@@ -1121,7 +1164,7 @@ impl Lower for Index {
 impl Pretty for Index {
     fn pretty(&self, p: &mut Print, beg_of_line: bool) {
         p.outer_attrs(&self.attrs);
-        p.expr_beginning_of_line(&self.expr, beg_of_line);
+        &self.expr.pretty_beg_of_line(p, beg_of_line);
         p.word("[");
         &self.idx.pretty(p);
         p.word("]");
@@ -1181,7 +1224,7 @@ impl Lower for Let {
         self.let_.lower(s);
         self.pat.lower(s);
         self.eq.lower(s);
-        wrap_bare_struct(s, &self.expr);
+        &self.expr.lower_struct(s);
     }
 }
 impl Pretty for Let {
@@ -1342,13 +1385,13 @@ impl Lower for Match {
     fn lower(&self, s: &mut Stream) {
         attr::lower_outers(&self.attrs, s);
         self.match_.lower(s);
-        wrap_bare_struct(s, &self.expr);
+        &self.expr.lower_struct(s);
         self.brace.surround(s, |s| {
             attr::lower_inners(&self.attrs, s);
             for (i, arm) in self.arms.iter().enumerate() {
                 arm.lower(s);
                 let is_last = i == self.arms.len() - 1;
-                if !is_last && &arm.body.needs_terminator() && arm.comma.is_none() {
+                if !is_last && &arm.body.needs_term() && arm.comma.is_none() {
                     <Token![,]>::default().lower(s);
                 }
             }
@@ -1360,7 +1403,7 @@ impl Pretty for Match {
         p.outer_attrs(&self.attrs);
         p.ibox(0);
         p.word("match ");
-        p.wrap_exterior_struct(&self.expr);
+        &self.expr.pretty_struct(p);
         p.word("{");
         p.neverbreak();
         p.cbox(INDENT);
@@ -1389,11 +1432,11 @@ pub struct MethodCall {
 impl MethodCall {
     fn pretty_sub(&self, p: &mut Print, beg_of_line: bool, unindent: bool) {
         &self.expr.pretty_sub(p, beg_of_line);
-        p.zerobreak_unless_short_ident(beg_of_line, &self.expr);
+        &self.expr.pretty_zerobreak(p, beg_of_line);
         p.word(".");
         &self.method.pretty(p);
         if let Some(x) = &self.turbofish {
-            p.angle_bracketed_generic_arguments(x, path::Kind::Expr);
+            x.pretty(p, path::Kind::Expr);
         }
         p.cbox(if unindent { -INDENT } else { 0 });
         p.word("(");
@@ -1686,7 +1729,7 @@ impl Lower for Try {
 impl Pretty for Try {
     fn pretty(&self, p: &mut Print, beg_of_line: bool) {
         p.outer_attrs(&self.attrs);
-        p.expr_beginning_of_line(&self.expr, beg_of_line);
+        &self.expr.pretty_beg_of_line(p, beg_of_line);
         p.word("?");
     }
 }
@@ -1856,7 +1899,7 @@ impl Lower for While {
         attr::lower_outers(&self.attrs, s);
         self.label.lower(s);
         self.while_.lower(s);
-        wrap_bare_struct(s, &self.cond);
+        &self.cond.lower_struct(s);
         self.block.brace.surround(s, |s| {
             attr::lower_inners(&self.attrs, s);
             s.append_all(&self.block.stmts);
@@ -1870,7 +1913,7 @@ impl Pretty for While {
             p.label(x);
         }
         p.word("while ");
-        p.wrap_exterior_struct(&self.cond);
+        &self.cond.pretty_struct(p);
         p.word("{");
         p.neverbreak();
         p.cbox(INDENT);
@@ -2440,7 +2483,7 @@ impl Parse for Arm {
             fat_arrow: x.parse()?,
             body: {
                 let body = x.call(expr_early)?;
-                comma = &body.needs_terminator();
+                comma = &body.needs_term();
                 Box::new(body)
             },
             comma: {
@@ -2526,12 +2569,12 @@ impl Pretty for Arm {
                 pre_break: Some('{'),
                 ..BreakToken::default()
             });
-            p.expr_beginning_of_line(body, true);
+            body.pretty_beg_of_line(p, true);
             p.scan_break(BreakToken {
                 offset: -INDENT,
                 pre_break: body.add_semi().then(|| ';'),
                 post_break: Some('}'),
-                no_break: body.needs_terminator().then(|| ','),
+                no_break: body.needs_term().then(|| ','),
                 ..BreakToken::default()
             });
             p.end();
@@ -3427,14 +3470,5 @@ fn parse_binop(x: Stream) -> Res<BinOp> {
         x.parse().map(Gt)
     } else {
         Err(x.error("expected binary operator"))
-    }
-}
-fn wrap_bare_struct(s: &mut Stream, e: &Expr) {
-    if let Expr::Struct(_) = *e {
-        tok::Paren::default().surround(s, |s| {
-            e.lower(s);
-        });
-    } else {
-        e.lower(s);
     }
 }

@@ -555,6 +555,7 @@ pub mod param {
             }
         }
     }
+
     pub struct Const {
         pub attrs: Vec<attr::Attr>,
         pub const_: Token![const],
@@ -596,6 +597,19 @@ pub mod param {
             if let Some(y) = &self.default {
                 ToksOrDefault(&self.eq).lower(s);
                 y.lower(s);
+            }
+        }
+    }
+    impl Pretty for Const {
+        fn pretty(&self, p: &mut Print) {
+            p.outer_attrs(&self.attrs);
+            p.word("const ");
+            &self.ident.pretty(p);
+            p.word(": ");
+            &self.typ.pretty(p);
+            if let Some(x) = &self.default {
+                p.word(" = ");
+                x.pretty(p);
             }
         }
     }
@@ -683,6 +697,60 @@ impl Lower for Where {
         }
     }
 }
+impl Pretty for Where {
+    fn pretty(&self, p: &mut Print, breaks: bool, semi: bool) {
+        if breaks {
+            p.hardbreak();
+            p.offset(-INDENT);
+            p.word("where");
+            p.hardbreak();
+            for x in self.preds.iter().delimited() {
+                &x.pretty(p);
+                if x.is_last && semi {
+                    p.word(";");
+                } else {
+                    p.word(",");
+                    p.hardbreak();
+                }
+            }
+            if !semi {
+                p.offset(-INDENT);
+            }
+        } else {
+            p.space();
+            p.offset(-INDENT);
+            p.word("where");
+            p.space();
+            for x in self.preds.iter().delimited() {
+                &x.pretty(p);
+                if x.is_last && semi {
+                    p.word(";");
+                } else {
+                    p.trailing_comma_or_space(x.is_last);
+                }
+            }
+            if !semi {
+                p.offset(-INDENT);
+            }
+        }
+    }
+}
+impl Pretty for Option<Where> {
+    fn pretty(&self, p: &mut Print, breaks: bool, semi: bool) {
+        let y = match self {
+            Some(x) if !x.preds.is_empty() => x,
+            _ => {
+                if semi {
+                    p.word(";");
+                } else {
+                    p.nbsp();
+                }
+                return;
+            },
+        };
+        y.pretty(p, breaks, semi);
+    }
+}
 
 pub mod where_ {
     use super::*;
@@ -724,7 +792,7 @@ pub mod where_ {
             } else {
                 Ok(Pred::Type(Type {
                     lifes: s.parse()?,
-                    bounded: s.parse()?,
+                    typ: s.parse()?,
                     colon: s.parse()?,
                     bounds: {
                         let mut ys = Puncted::new();
@@ -752,6 +820,15 @@ pub mod where_ {
             }
         }
     }
+    impl Pretty for Pred {
+        fn pretty(&self, p: &mut Print) {
+            use Pred::*;
+            match self {
+                Life(x) => x.pretty(p),
+                Type(x) => x.pretty(p),
+            }
+        }
+    }
 
     pub struct Life {
         pub life: Life,
@@ -765,19 +842,60 @@ pub mod where_ {
             self.bounds.lower(s);
         }
     }
+    impl Pretty for Life {
+        fn pretty(&self, p: &mut Print) {
+            &self.life.pretty(p);
+            p.word(":");
+            p.ibox(INDENT);
+            for x in self.bounds.iter().delimited() {
+                if x.is_first {
+                    p.nbsp();
+                } else {
+                    p.space();
+                    p.word("+ ");
+                }
+                &x.pretty(p);
+            }
+            p.end();
+        }
+    }
 
     pub struct Type {
         pub lifes: Option<bound::Lifes>,
-        pub bounded: typ::Type,
+        pub typ: typ::Type,
         pub colon: Token![:],
         pub bounds: Puncted<bound::Type, Token![+]>,
     }
     impl Lower for Type {
         fn lower(&self, s: &mut Stream) {
             self.lifes.lower(s);
-            self.bounded.lower(s);
+            self.typ.lower(s);
             self.colon.lower(s);
             self.bounds.lower(s);
+        }
+    }
+    impl Pretty for Type {
+        fn pretty(&self, p: &mut Print) {
+            if let Some(x) = &self.lifes {
+                x.pretty(p);
+            }
+            &self.typ.pretty(p);
+            p.word(":");
+            if self.bounds.len() == 1 {
+                p.ibox(0);
+            } else {
+                p.ibox(INDENT);
+            }
+            for x in self.bounds.iter().delimited() {
+                if x.is_first {
+                    p.nbsp();
+                } else {
+                    p.space();
+                    p.word("+ ");
+                }
+                &x.pretty(p);
+            }
+            p.end();
         }
     }
 }

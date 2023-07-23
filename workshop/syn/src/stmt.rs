@@ -10,17 +10,18 @@ impl Block {
     pub fn parse_within(s: Stream) -> Res<Vec<Stmt>> {
         let mut ys = Vec::new();
         loop {
+            use Stmt::*;
             while let semi @ Some(_) = s.parse()? {
-                ys.push(Stmt::Expr(Expr::Verbatim(pm2::Stream::new()), semi));
+                ys.push(Expr(Expr::Verbatim(pm2::Stream::new()), semi));
             }
             if s.is_empty() {
                 break;
             }
             let y = parse_stmt(s, NoSemi(true))?;
             let semi = match &y {
-                Stmt::Expr(x, None) => x.needs_terminator(),
-                Stmt::Mac(x) => x.semi.is_none() && !x.mac.delim.is_brace(),
-                Stmt::Local(_) | Stmt::Item(_) | Stmt::Expr(_, Some(_)) => false,
+                Expr(x, None) => x.needs_term(),
+                Mac(x) => x.semi.is_none() && !x.mac.delim.is_brace(),
+                Local(_) | Item(_) | Expr(_, Some(_)) => false,
             };
             ys.push(y);
             if s.is_empty() {
@@ -50,9 +51,9 @@ impl Lower for Block {
 }
 
 pub enum Stmt {
-    Local(Local),
-    Item(Item),
     Expr(Expr, Option<Token![;]>),
+    Item(Item),
+    Local(Local),
     Mac(Mac),
 }
 impl Parse for Stmt {
@@ -63,14 +64,15 @@ impl Parse for Stmt {
 }
 impl Lower for Stmt {
     fn lower(&self, s: &mut Stream) {
+        use Stmt::*;
         match self {
-            Stmt::Local(x) => x.lower(s),
-            Stmt::Item(x) => x.lower(s),
-            Stmt::Expr(x, semi) => {
+            Expr(x, semi) => {
                 x.lower(s);
                 semi.lower(s);
             },
-            Stmt::Mac(x) => x.lower(s),
+            Item(x) => x.lower(s),
+            Local(x) => x.lower(s),
+            Mac(x) => x.lower(s),
         }
     }
 }
@@ -78,6 +80,34 @@ impl Pretty for Stmt {
     fn pretty(&self, p: &mut Print) {
         use Stmt::*;
         match self {
+            Expr(x, None) => {
+                if x.break_after() {
+                    p.ibox(0);
+                    x.pretty_beg_of_line(p, true);
+                    if x.add_semi() {
+                        p.word(";");
+                    }
+                    p.end();
+                    p.hardbreak();
+                } else {
+                    x.pretty_beg_of_line(p, true);
+                }
+            },
+            Expr(x, Some(_)) => {
+                if let expr::Expr::Verbatim(x) = x {
+                    if x.is_empty() {
+                        return;
+                    }
+                }
+                p.ibox(0);
+                x.pretty_beg_of_line(p, true);
+                if !x.remove_semi() {
+                    p.word(";");
+                }
+                p.end();
+                p.hardbreak();
+            },
+            Item(x) => x.pretty(p),
             Local(x) => {
                 p.outer_attrs(&x.attrs);
                 p.ibox(0);
@@ -104,34 +134,6 @@ impl Pretty for Stmt {
                     }
                 }
                 p.word(";");
-                p.end();
-                p.hardbreak();
-            },
-            Item(x) => x.pretty(p),
-            Expr(x, None) => {
-                if x.break_after() {
-                    p.ibox(0);
-                    p.expr_beginning_of_line(x, true);
-                    if x.add_semi() {
-                        p.word(";");
-                    }
-                    p.end();
-                    p.hardbreak();
-                } else {
-                    p.expr_beginning_of_line(x, true);
-                }
-            },
-            Expr(x, Some(_)) => {
-                if let expr::Expr::Verbatim(x) = x {
-                    if x.is_empty() {
-                        return;
-                    }
-                }
-                p.ibox(0);
-                p.expr_beginning_of_line(x, true);
-                if !x.remove_semi() {
-                    p.word(";");
-                }
                 p.end();
                 p.hardbreak();
             },
@@ -305,61 +307,31 @@ fn parse_local(s: Stream, attrs: Vec<attr::Attr>) -> Res<Local> {
 fn parse_expr(s: Stream, mut attrs: Vec<attr::Attr>, nosemi: NoSemi) -> Res<Stmt> {
     let mut y = expr::expr_early(s)?;
     let mut tgt = &mut y;
+    use Expr::*;
     loop {
         tgt = match tgt {
-            Expr::Assign(x) => &mut x.left,
-            Expr::Binary(x) => &mut x.left,
-            Expr::Cast(x) => &mut x.expr,
-            Expr::Array(_)
-            | Expr::Async(_)
-            | Expr::Await(_)
-            | Expr::Block(_)
-            | Expr::Break(_)
-            | Expr::Call(_)
-            | Expr::Closure(_)
-            | Expr::Const(_)
-            | Expr::Continue(_)
-            | Expr::Field(_)
-            | Expr::ForLoop(_)
-            | Expr::Group(_)
-            | Expr::If(_)
-            | Expr::Index(_)
-            | Expr::Infer(_)
-            | Expr::Let(_)
-            | Expr::Lit(_)
-            | Expr::Loop(_)
-            | Expr::Mac(_)
-            | Expr::Match(_)
-            | Expr::MethodCall(_)
-            | Expr::Paren(_)
-            | Expr::Path(_)
-            | Expr::Range(_)
-            | Expr::Reference(_)
-            | Expr::Repeat(_)
-            | Expr::Return(_)
-            | Expr::Struct(_)
-            | Expr::Try(_)
-            | Expr::TryBlock(_)
-            | Expr::Tuple(_)
-            | Expr::Unary(_)
-            | Expr::Unsafe(_)
-            | Expr::While(_)
-            | Expr::Yield(_)
-            | Expr::Verbatim(_) => break,
+            Assign(x) => &mut x.left,
+            Binary(x) => &mut x.left,
+            Cast(x) => &mut x.expr,
+            Array(_) | Async(_) | Await(_) | Block(_) | Break(_) | Call(_) | Closure(_) | Const(_) | Continue(_)
+            | Field(_) | ForLoop(_) | Group(_) | If(_) | Index(_) | Infer(_) | Let(_) | Lit(_) | Loop(_) | Mac(_)
+            | Match(_) | MethodCall(_) | Paren(_) | Path(_) | Range(_) | Reference(_) | Repeat(_) | Return(_)
+            | Struct(_) | Try(_) | TryBlock(_) | Tuple(_) | Unary(_) | Unsafe(_) | While(_) | Yield(_)
+            | Verbatim(_) => break,
         };
     }
     attrs.extend(tgt.replace_attrs(Vec::new()));
     tgt.replace_attrs(attrs);
     let semi: Option<Token![;]> = s.parse()?;
     match y {
-        Expr::Mac(expr::Mac { attrs, mac }) if semi.is_some() || mac.delim.is_brace() => {
-            return Ok(Stmt::Mac(Mac { attrs, mac, semi }));
+        Mac(expr::Mac { attrs, mac }) if semi.is_some() || mac.delim.is_brace() => {
+            return Ok(Stmt::Mac(stmt::Mac { attrs, mac, semi }));
         },
         _ => {},
     }
     if semi.is_some() {
         Ok(Stmt::Expr(y, semi))
-    } else if nosemi.0 || !&y.needs_terminator() {
+    } else if nosemi.0 || !&y.needs_term() {
         Ok(Stmt::Expr(y, None))
     } else {
         Err(s.error("expected semicolon"))
