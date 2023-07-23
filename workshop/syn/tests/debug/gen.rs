@@ -4334,7 +4334,7 @@ impl Debug for Lite<syn::gen::bound::Type> {
                 f.field("ident", Lite(&_val.ident));
                 f.finish()
             },
-            syn::gen::bound::Type::Stream(_val) => {
+            syn::gen::bound::Type::Verbatim(_val) => {
                 f.write_str("gen::bound::Type::Stream")?;
                 f.write_str("(`")?;
                 Display::fmt(_val, formatter)?;

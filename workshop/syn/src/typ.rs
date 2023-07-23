@@ -229,7 +229,7 @@ impl Impl {
         let mut one = false;
         for x in &bounds {
             match x {
-                gen::bound::Type::Trait(_) | gen::bound::Type::Stream(_) => {
+                gen::bound::Type::Trait(_) | gen::bound::Type::Verbatim(_) => {
                     one = true;
                     break;
                 },
@@ -527,7 +527,7 @@ impl Trait {
         let mut one = false;
         for y in &ys {
             match y {
-                gen::bound::Type::Trait(_) | gen::bound::Type::Stream(_) => {
+                gen::bound::Type::Trait(_) | gen::bound::Type::Verbatim(_) => {
                     one = true;
                     break;
                 },
@@ -981,7 +981,7 @@ pub fn parse_ambig_typ(s: Stream, plus: bool, gen: bool) -> Res<Type> {
                                 paren: Some(paren),
                                 ..trait_bound
                             }),
-                            other @ (gen::bound::Type::Life(_) | gen::bound::Type::Stream(_)) => other,
+                            other @ (gen::bound::Type::Life(_) | gen::bound::Type::Verbatim(_)) => other,
                         }
                     },
                     _ => break,

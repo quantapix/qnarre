@@ -7,9 +7,9 @@ pub mod bound {
     use super::*;
     ast_enum_of_structs! {
         pub enum Type {
-            Trait(Trait),
             Life(Life),
-            Stream(pm2::Stream),
+            Trait(Trait),
+            Verbatim(Verbatim),
         }
     }
     impl Type {
@@ -54,9 +54,21 @@ pub mod bound {
             let mut y: Trait = y.parse()?;
             y.paren = paren;
             if is_tilde_const {
-                Ok(Type::Stream(parse::parse_verbatim(&beg, s)))
+                Ok(Type::Verbatim(parse::parse_verbatim(&beg, s)))
             } else {
                 Ok(Type::Trait(y))
+            }
+        }
+    }
+    impl Pretty for Type {
+        fn pretty(&self, p: &mut Print) {
+            match self {
+                Type::Trait(x) => {
+                    let tilde = false;
+                    x.pretty(p, tilde);
+                },
+                Type::Life(x) => x.pretty(p),
+                Type::Verbatim(x) => x.pretty(p),
             }
         }
     }
@@ -101,10 +113,33 @@ pub mod bound {
             }
         }
     }
+    impl Pretty for Trait {
+        fn pretty(&self, p: &mut Print, tilde: bool) {
+            if self.paren.is_some() {
+                p.word("(");
+            }
+            if tilde {
+                p.word("~const ");
+            }
+            &self.modif.pretty(p);
+            if let Some(x) = &self.lifes {
+                x.pretty(p);
+            }
+            for x in self.path.segs.iter().delimited() {
+                if !x.is_first || self.path.colon.is_some() {
+                    p.word("::");
+                }
+                &x.pretty(p, path::Kind::Type);
+            }
+            if self.paren.is_some() {
+                p.word(")");
+            }
+        }
+    }
 
     pub enum Modifier {
-        None,
         Maybe(Token![?]),
+        None,
     }
     impl Parse for Modifier {
         fn parse(s: Stream) -> Res<Self> {
@@ -119,8 +154,17 @@ pub mod bound {
         fn lower(&self, s: &mut Stream) {
             use Modifier::*;
             match self {
-                None => {},
                 Maybe(x) => x.lower(s),
+                None => {},
+            }
+        }
+    }
+    impl Pretty for Modifier {
+        fn pretty(&self, p: &mut Print) {
+            use Modifier::*;
+            match self {
+                Maybe(_) => p.word("?"),
+                None => {},
             }
         }
     }
@@ -185,14 +229,73 @@ pub mod bound {
             self.gt.lower(s);
         }
     }
+    impl Pretty for Lifes {
+        fn pretty(&self, p: &mut Print) {
+            p.word("for<");
+            for x in self.lifes.iter().delimited() {
+                &x.pretty(p);
+                if !x.is_last {
+                    p.word(", ");
+                }
+            }
+            p.word("> ");
+        }
+    }
+
+    pub struct Verbatim(pub pm2::Stream);
+    impl Pretty for Verbatim {
+        fn pretty(&self, p: &mut Print) {
+            enum Type {
+                Ellipsis,
+                TildeConst(Trait),
+            }
+            use Type::*;
+            impl parse::Parse for Type {
+                fn parse(s: parse::Stream) -> Res<Self> {
+                    let y;
+                    let (paren, y) = if s.peek(tok::Paren) {
+                        (Some(parenthesized!(y in s)), &y)
+                    } else {
+                        (None, s)
+                    };
+                    let look = y.lookahead1();
+                    if look.peek(Token![~]) {
+                        y.parse::<Token![~]>()?;
+                        y.parse::<Token![const]>()?;
+                        let mut y: Trait = y.parse()?;
+                        y.paren = paren;
+                        Ok(Type::TildeConst(y))
+                    } else if look.peek(Token![...]) {
+                        y.parse::<Token![...]>()?;
+                        Ok(Type::Ellipsis)
+                    } else {
+                        Err(look.error())
+                    }
+                }
+            }
+            let y: Type = match parse2(self.clone()) {
+                Ok(x) => x,
+                Err(_) => unimplemented!("TypeParamBound::Verbatim `{}`", self),
+            };
+            match y {
+                Ellipsis => {
+                    p.word("...");
+                },
+                TildeConst(x) => {
+                    let tilde = true;
+                    &x.pretty(p, tilde);
+                },
+            }
+        }
+    }
 }
 pub mod param {
     use super::*;
     ast_enum_of_structs! {
         pub enum Param {
+            Const(Const),
             Life(Life),
             Type(Type),
-            Const(Const),
         }
     }
     impl Parse for Param {
@@ -207,6 +310,16 @@ pub mod param {
                 Ok(Param::Const(Const { attrs, ..s.parse()? }))
             } else {
                 Err(look.error())
+            }
+        }
+    }
+    impl Pretty for Param {
+        fn pretty(&self, p: &mut Print) {
+            use Param::*;
+            match self {
+                Const(x) => x.pretty(p),
+                Life(x) => x.pretty(p),
+                Type(x) => x.pretty(p),
             }
         }
     }
@@ -270,6 +383,20 @@ pub mod param {
             if !self.bounds.is_empty() {
                 ToksOrDefault(&self.colon).lower(s);
                 self.bounds.lower(s);
+            }
+        }
+    }
+    impl Pretty for Life {
+        fn pretty(&self, p: &mut Print) {
+            p.outer_attrs(&self.attrs);
+            &self.life.pretty(p);
+            for x in self.bounds.iter().delimited() {
+                if x.is_first {
+                    p.word(": ");
+                } else {
+                    p.word(" + ");
+                }
+                &x.pretty(p);
             }
         }
     }
@@ -373,6 +500,28 @@ pub mod param {
                 ToksOrDefault(&self.eq).lower(s);
                 y.lower(s);
             }
+        }
+    }
+    impl Pretty for Type {
+        fn pretty(&self, p: &mut Print) {
+            p.outer_attrs(&self.attrs);
+            &self.ident.pretty(p);
+            p.ibox(INDENT);
+            for x in self.bounds.iter().delimited() {
+                if x.is_first {
+                    p.word(": ");
+                } else {
+                    p.space();
+                    p.word("+ ");
+                }
+                &x.pretty(p);
+            }
+            if let Some(x) = &self.default {
+                p.space();
+                p.word("= ");
+                x.pretty(p);
+            }
+            p.end();
         }
     }
 
@@ -635,28 +784,28 @@ pub mod where_ {
 
 pub struct Gens {
     pub lt: Option<Token![<]>,
-    pub ps: Puncted<Param, Token![,]>,
+    pub params: Puncted<Param, Token![,]>,
     pub gt: Option<Token![>]>,
     pub where_: Option<Where>,
 }
 impl Gens {
     pub fn lifes(&self) -> param::Lifes {
-        param::Lifes(self.ps.iter())
+        param::Lifes(self.params.iter())
     }
     pub fn lifes_mut(&mut self) -> param::LifesMut {
-        param::LifesMut(self.ps.iter_mut())
+        param::LifesMut(self.params.iter_mut())
     }
     pub fn types(&self) -> param::Types {
-        param::Types(self.ps.iter())
+        param::Types(self.params.iter())
     }
     pub fn types_mut(&mut self) -> param::TypesMut {
-        param::TypesMut(self.ps.iter_mut())
+        param::TypesMut(self.params.iter_mut())
     }
     pub fn consts(&self) -> param::Consts {
-        param::Consts(self.ps.iter())
+        param::Consts(self.params.iter())
     }
     pub fn consts_mut(&mut self) -> param::ConstsMut {
-        param::ConstsMut(self.ps.iter_mut())
+        param::ConstsMut(self.params.iter_mut())
     }
     pub fn make_where(&mut self) -> &mut Where {
         self.where_.get_or_insert_with(|| Where {
@@ -672,7 +821,7 @@ impl Default for Gens {
     fn default() -> Self {
         Gens {
             lt: None,
-            ps: Puncted::new(),
+            params: Puncted::new(),
             gt: None,
             where_: None,
         }
@@ -718,7 +867,7 @@ impl Parse for Gens {
         let gt: Token![>] = s.parse()?;
         Ok(Gens {
             lt: Some(lt),
-            ps: ys,
+            params: ys,
             gt: Some(gt),
             where_: None,
         })
@@ -726,18 +875,18 @@ impl Parse for Gens {
 }
 impl Lower for Gens {
     fn lower(&self, s: &mut Stream) {
-        if self.ps.is_empty() {
+        if self.params.is_empty() {
             return;
         }
         ToksOrDefault(&self.lt).lower(s);
         let mut trail_or_empty = true;
-        for x in self.ps.pairs() {
+        for x in self.params.pairs() {
             if let Param::Life(_) = **x.value() {
                 x.lower(s);
                 trail_or_empty = x.punct().is_some();
             }
         }
-        for x in self.ps.pairs() {
+        for x in self.params.pairs() {
             match x.value() {
                 Param::Type(_) | Param::Const(_) => {
                     if !trail_or_empty {
@@ -750,6 +899,40 @@ impl Lower for Gens {
             }
         }
         ToksOrDefault(&self.gt).lower(s);
+    }
+}
+impl Pretty for Gens {
+    fn pretty(&self, p: &mut Print) {
+        if self.params.is_empty() {
+            return;
+        }
+        p.word("<");
+        p.cbox(0);
+        p.zerobreak();
+        #[derive(Ord, PartialOrd, Eq, PartialEq)]
+        enum Group {
+            First,
+            Second,
+        }
+        fn group(x: &Param) -> Group {
+            use Param::*;
+            match x {
+                Life(_) => Group::First,
+                Type(_) | Const(_) => Group::Second,
+            }
+        }
+        let last = self.params.iter().max_by_key(|x| group(x));
+        for g in [Group::First, Group::Second] {
+            for x in &self.params {
+                if group(x) == g {
+                    x.pretty(p);
+                    p.trailing_comma(ptr::eq(x, last.unwrap()));
+                }
+            }
+        }
+        p.offset(-INDENT);
+        p.end();
+        p.word(">");
     }
 }
 
@@ -782,18 +965,18 @@ macro_rules! gens_impls {
 gens_impls!(Impl);
 impl<'a> Lower for Impl<'a> {
     fn lower(&self, s: &mut Stream) {
-        if self.0.ps.is_empty() {
+        if self.0.params.is_empty() {
             return;
         }
         ToksOrDefault(&self.0.lt).lower(s);
         let mut trail_or_empty = true;
-        for x in self.0.ps.pairs() {
+        for x in self.0.params.pairs() {
             if let Param::Life(_) = **x.value() {
                 x.lower(s);
                 trail_or_empty = x.punct().is_some();
             }
         }
-        for x in self.0.ps.pairs() {
+        for x in self.0.params.pairs() {
             if let Param::Life(_) = **x.value() {
                 continue;
             }
@@ -829,19 +1012,19 @@ pub struct Type<'a>(pub &'a Gens);
 gens_impls!(Type);
 impl<'a> Lower for Type<'a> {
     fn lower(&self, s: &mut Stream) {
-        if self.0.ps.is_empty() {
+        if self.0.params.is_empty() {
             return;
         }
         ToksOrDefault(&self.0.lt).lower(s);
         let mut trail_or_empty = true;
-        for x in self.0.ps.pairs() {
+        for x in self.0.params.pairs() {
             if let Param::Life(y) = *x.value() {
                 y.life.lower(s);
                 x.punct().lower(s);
                 trail_or_empty = x.punct().is_some();
             }
         }
-        for x in self.0.ps.pairs() {
+        for x in self.0.params.pairs() {
             if let Param::Life(_) = **x.value() {
                 continue;
             }
@@ -873,7 +1056,7 @@ pub struct Turbofish<'a>(pub &'a Gens);
 gens_impls!(Turbofish);
 impl<'a> Lower for Turbofish<'a> {
     fn lower(&self, s: &mut Stream) {
-        if !self.0.ps.is_empty() {
+        if !self.0.params.is_empty() {
             <Token![::]>::default().lower(s);
             Type(self.0).lower(s);
         }

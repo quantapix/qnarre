@@ -1295,7 +1295,7 @@ impl PartialEq for gen::bound::Type {
         match (self, other) {
             (gen::bound::Type::Trait(self0), gen::bound::Type::Trait(other0)) => self0 == other0,
             (gen::bound::Type::Life(self0), gen::bound::Type::Life(other0)) => self0 == other0,
-            (gen::bound::Type::Stream(self0), gen::bound::Type::Stream(other0)) => {
+            (gen::bound::Type::Verbatim(self0), gen::bound::Type::Verbatim(other0)) => {
                 StreamHelper(self0) == StreamHelper(other0)
             },
             _ => false,

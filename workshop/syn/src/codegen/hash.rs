@@ -2211,7 +2211,7 @@ impl Hash for gen::bound::Type {
                 h.write_u8(1u8);
                 x.hash(h);
             },
-            gen::bound::Type::Stream(x) => {
+            gen::bound::Type::Verbatim(x) => {
                 h.write_u8(2u8);
                 StreamHelper(x).hash(h);
             },

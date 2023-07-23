@@ -767,7 +767,7 @@ impl Clone for gen::Gens {
     fn clone(&self) -> Self {
         gen::Gens {
             lt: self.lt.clone(),
-            ps: self.ps.clone(),
+            params: self.params.clone(),
             gt: self.gt.clone(),
             where_: self.where_.clone(),
         }
@@ -1619,7 +1619,7 @@ impl Clone for gen::bound::Type {
         match self {
             gen::bound::Type::Trait(v0) => gen::bound::Type::Trait(v0.clone()),
             gen::bound::Type::Life(v0) => gen::bound::Type::Life(v0.clone()),
-            gen::bound::Type::Stream(v0) => gen::bound::Type::Stream(v0.clone()),
+            gen::bound::Type::Verbatim(v0) => gen::bound::Type::Verbatim(v0.clone()),
         }
     }
 }

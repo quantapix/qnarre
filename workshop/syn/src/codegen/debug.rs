@@ -2409,7 +2409,7 @@ impl Debug for gen::bound::Type {
                 f.finish()
             },
             gen::bound::Type::Life(x) => x.debug(f, "Life"),
-            gen::bound::Type::Stream(x) => {
+            gen::bound::Type::Verbatim(x) => {
                 let mut f = f.debug_tuple("Stream");
                 f.field(x);
                 f.finish()

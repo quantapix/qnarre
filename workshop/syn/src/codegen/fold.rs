@@ -1429,7 +1429,7 @@ where
 {
     gen::Gens {
         lt: node.lt,
-        ps: FoldHelper::lift(node.ps, |it| f.fold_generic_param(it)),
+        params: FoldHelper::lift(node.params, |it| f.fold_generic_param(it)),
         gt: node.gt,
         where_: (node.where_).map(|it| f.fold_where_clause(it)),
     }
@@ -2441,7 +2441,7 @@ where
     match node {
         gen::bound::Type::Trait(_binding_0) => gen::bound::Type::Trait(f.fold_trait_bound(_binding_0)),
         gen::bound::Type::Life(_binding_0) => gen::bound::Type::Life(f.fold_lifetime(_binding_0)),
-        gen::bound::Type::Stream(_binding_0) => gen::bound::Type::Stream(_binding_0),
+        gen::bound::Type::Verbatim(_binding_0) => gen::bound::Type::Verbatim(_binding_0),
     }
 }
 pub fn fold_type_paren<F>(f: &mut F, node: typ::Paren) -> typ::Paren

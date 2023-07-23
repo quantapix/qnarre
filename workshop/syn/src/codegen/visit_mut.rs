@@ -2921,7 +2921,7 @@ where
         gen::bound::Type::Life(_binding_0) => {
             v.visit_lifetime_mut(_binding_0);
         },
-        gen::bound::Type::Stream(_binding_0) => {
+        gen::bound::Type::Verbatim(_binding_0) => {
             skip!(_binding_0);
         },
     }
