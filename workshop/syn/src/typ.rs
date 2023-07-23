@@ -16,7 +16,7 @@ ast_enum_of_structs! {
         Slice(Slice),
         Trait(Trait),
         Tuple(Tuple),
-        Stream(pm2::Stream),
+        Verbatim(Verbatim),
     }
 }
 impl Type {
@@ -51,7 +51,7 @@ impl Pretty for Type {
             Slice(x) => x.pretty(p),
             Trait(x) => x.pretty(p),
             Tuple(x) => x.pretty(p),
-            Stream(x) => x.pretty_typ(p),
+            Verbatim(x) => x.pretty(p),
         }
     }
 }
@@ -777,15 +777,16 @@ impl Pretty for Ret {
     }
 }
 
-impl pm2::Stream {
-    fn pretty_typ(&self, p: &mut Print) {
-        enum Verbatim {
+pub struct Verbatim(pub pm2::Stream);
+impl Pretty for Verbatim {
+    fn pretty(&self, p: &mut Print) {
+        enum Type {
             Ellipsis,
             DynStar(DynStar),
             MutSelf(MutSelf),
             NotType(NotType),
         }
-        use Verbatim::*;
+        use Type::*;
         struct DynStar {
             bounds: punct::Puncted<gen::bound::Type, Token![+]>,
         }
@@ -795,7 +796,7 @@ impl pm2::Stream {
         struct NotType {
             inner: Type,
         }
-        impl parse::Parse for Verbatim {
+        impl parse::Parse for Type {
             fn parse(s: parse::Stream) -> Res<Self> {
                 let look = s.lookahead1();
                 if look.peek(Token![dyn]) {
@@ -826,7 +827,7 @@ impl pm2::Stream {
                 }
             }
         }
-        let y: Verbatim = match parse2(self.clone()) {
+        let y: Type = match parse2(self.clone()) {
             Ok(x) => x,
             Err(_) => unimplemented!("Type::Stream`{}`", self),
         };

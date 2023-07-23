@@ -11,7 +11,7 @@ impl Block {
         let mut ys = Vec::new();
         loop {
             while let semi @ Some(_) = s.parse()? {
-                ys.push(Stmt::Expr(Expr::Stream(pm2::Stream::new()), semi));
+                ys.push(Stmt::Expr(Expr::Verbatim(pm2::Stream::new()), semi));
             }
             if s.is_empty() {
                 break;
@@ -122,7 +122,7 @@ impl Pretty for Stmt {
                 }
             },
             Expr(x, Some(_)) => {
-                if let expr::Expr::Stream(x) = x {
+                if let expr::Expr::Verbatim(x) = x {
                     if x.is_empty() {
                         return;
                     }
@@ -345,7 +345,7 @@ fn parse_expr(s: Stream, mut attrs: Vec<attr::Attr>, nosemi: NoSemi) -> Res<Stmt
             | Expr::Unsafe(_)
             | Expr::While(_)
             | Expr::Yield(_)
-            | Expr::Stream(_) => break,
+            | Expr::Verbatim(_) => break,
         };
     }
     attrs.extend(tgt.replace_attrs(Vec::new()));

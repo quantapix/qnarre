@@ -437,7 +437,7 @@ impl Hash for expr::Expr {
                 h.write_u8(35u8);
                 x.hash(h);
             },
-            Stream(x) => {
+            Verbatim(x) => {
                 h.write_u8(36u8);
                 StreamHelper(x).hash(h);
             },

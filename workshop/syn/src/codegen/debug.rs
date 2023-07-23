@@ -390,7 +390,7 @@ impl Debug for expr::Expr {
             Tuple(x) => x.debug(f, "Tuple"),
             Unary(x) => x.debug(f, "Unary"),
             Unsafe(x) => x.debug(f, "Unsafe"),
-            Stream(x) => {
+            Verbatim(x) => {
                 let mut f = f.debug_tuple("Stream");
                 f.field(x);
                 f.finish()

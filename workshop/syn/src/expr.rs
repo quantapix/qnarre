@@ -41,7 +41,7 @@ ast_enum_of_structs! {
         Unsafe(Unsafe),
         While(While),
         Yield(Yield),
-        Stream(pm2::Stream),
+        Verbatim(pm2::Stream),
     }
 }
 impl Expr {
@@ -94,7 +94,7 @@ impl Expr {
             | Unsafe(Unsafe { attrs, .. })
             | While(While { attrs, .. })
             | Yield(Yield { attrs, .. }) => mem::replace(attrs, y),
-            Stream(_) => Vec::new(),
+            Verbatim(_) => Vec::new(),
         }
     }
     pub fn parse_without_eager_brace(x: Stream) -> Res<Expr> {
@@ -115,7 +115,7 @@ impl Expr {
             Assign(_) | Await(_) | Binary(_) | Break(_) | Call(_) | Cast(_) | Continue(_) | Field(_) | ForLoop(_)
             | Group(_) | If(_) | Index(_) | Infer(_) | Let(_) | Lit(_) | Loop(_) | Mac(_) | Match(_)
             | MethodCall(_) | Paren(_) | Path(_) | Range(_) | Ref(_) | Repeat(_) | Return(_) | Try(_) | Unary(_)
-            | Stream(_) | While(_) | Yield(_) => false,
+            | Verbatim(_) | While(_) | Yield(_) => false,
         }
     }
     pub fn needs_terminator(&self) -> bool {
@@ -125,7 +125,7 @@ impl Expr {
             Array(_) | Assign(_) | Async(_) | Await(_) | Binary(_) | Break(_) | Call(_) | Cast(_) | Closure(_)
             | Continue(_) | Field(_) | Group(_) | Index(_) | Infer(_) | Let(_) | Lit(_) | Mac(_) | MethodCall(_)
             | Paren(_) | Path(_) | Range(_) | Ref(_) | Repeat(_) | Return(_) | Struct(_) | Try(_) | Tuple(_)
-            | Unary(_) | Yield(_) | Stream(_) => true,
+            | Unary(_) | Yield(_) | Verbatim(_) => true,
         }
     }
     pub fn parseable_as_stmt(&self) -> bool {
@@ -133,7 +133,7 @@ impl Expr {
         match self {
             Array(_) | Async(_) | Block(_) | Break(_) | Closure(_) | Const(_) | Continue(_) | ForLoop(_) | If(_)
             | Infer(_) | Let(_) | Lit(_) | Loop(_) | Mac(_) | Match(_) | Paren(_) | Path(_) | Ref(_) | Repeat(_)
-            | Return(_) | Struct(_) | TryBlock(_) | Tuple(_) | Unary(_) | Unsafe(_) | Stream(_) | While(_)
+            | Return(_) | Struct(_) | TryBlock(_) | Tuple(_) | Unary(_) | Unsafe(_) | Verbatim(_) | While(_)
             | Yield(_) => true,
             Assign(x) => &x.left.parseable_as_stmt(),
             Await(x) => &x.expr.parseable_as_stmt(),
@@ -167,7 +167,7 @@ impl Expr {
             | Unary(Unary { expr, .. }) => expr.has_struct_lit(),
             Array(_) | Async(_) | Block(_) | Break(_) | Call(_) | Closure(_) | Const(_) | Continue(_) | ForLoop(_)
             | Group(_) | If(_) | Infer(_) | Let(_) | Lit(_) | Loop(_) | Mac(_) | Match(_) | Paren(_) | Path(_)
-            | Range(_) | Repeat(_) | Return(_) | Try(_) | TryBlock(_) | Tuple(_) | Unsafe(_) | &Stream(_)
+            | Range(_) | Repeat(_) | Return(_) | Try(_) | TryBlock(_) | Tuple(_) | Unsafe(_) | &Verbatim(_)
             | While(_) | Yield(_) => false,
         }
     }
@@ -206,7 +206,7 @@ impl Expr {
             | TryBlock(_)
             | Tuple(_)
             | Unsafe(_)
-            | Stream(_)
+            | Verbatim(_)
             | While(_)
             | Yield(Yield { expr: None, .. }) => false,
             Assign(_) | Await(_) | Binary(_) | Cast(_) | Field(_) | Index(_) | MethodCall(_) => true,
@@ -254,7 +254,7 @@ impl Expr {
             Array(_) | Async(_) | Await(_) | Block(_) | Call(_) | Cast(_) | Closure(_) | Const(_) | Field(_)
             | ForLoop(_) | If(_) | Index(_) | Infer(_) | Let(_) | Lit(_) | Loop(_) | Mac(_) | Match(_)
             | MethodCall(_) | Paren(_) | Path(_) | Range(_) | Ref(_) | Repeat(_) | Struct(_) | Try(_) | TryBlock(_)
-            | Tuple(_) | Unary(_) | Unsafe(_) | Stream(_) | While(_) => false,
+            | Tuple(_) | Unary(_) | Unsafe(_) | Verbatim(_) | While(_) => false,
         }
     }
     pub fn remove_semi(&self) -> bool {
@@ -269,12 +269,12 @@ impl Expr {
             Array(_) | Assign(_) | Async(_) | Await(_) | Binary(_) | Block(_) | Break(_) | Call(_) | Cast(_)
             | Closure(_) | Continue(_) | Const(_) | Field(_) | Index(_) | Infer(_) | Let(_) | Lit(_) | Loop(_)
             | Mac(_) | Match(_) | MethodCall(_) | Paren(_) | Path(_) | Range(_) | Ref(_) | Repeat(_) | Return(_)
-            | Struct(_) | Try(_) | TryBlock(_) | Tuple(_) | Unary(_) | Unsafe(_) | Stream(_) | Yield(_) => false,
+            | Struct(_) | Try(_) | TryBlock(_) | Tuple(_) | Unary(_) | Unsafe(_) | Verbatim(_) | Yield(_) => false,
         }
     }
     pub fn break_after(&self) -> bool {
         if let Expr::Group(x) = self {
-            if let Expr::Stream(x) = x.expr.as_ref() {
+            if let Expr::Verbatim(x) = x.expr.as_ref() {
                 return !x.is_empty();
             }
         }
@@ -326,7 +326,7 @@ impl Pretty for Expr {
             Tuple(x) => x.pretty(p),
             Unary(x) => x.pretty(p),
             Unsafe(x) => x.pretty(p),
-            Stream(x) => x.pretty(p),
+            Verbatim(x) => x.pretty(p),
             While(x) => x.pretty(p),
             Yield(x) => x.pretty(p),
         }
@@ -1923,6 +1923,100 @@ impl Pretty for Yield {
     }
 }
 
+pub struct Verbatim(pub pm2::Stream);
+impl Pretty for Verbatim {
+    fn pretty(&self, p: &mut Print) {
+        enum Type {
+            Empty,
+            Ellipsis,
+            Builtin(Builtin),
+            RawRef(RawRef),
+        }
+        use Type::*;
+        struct Builtin {
+            attrs: Vec<attr::Attr>,
+            name: Ident,
+            args: pm2::Stream,
+        }
+        struct RawRef {
+            attrs: Vec<attr::Attr>,
+            mutable: bool,
+            expr: Expr,
+        }
+        mod kw {
+            crate::custom_kw!(builtin);
+            crate::custom_kw!(raw);
+        }
+        impl parse::Parse for Type {
+            fn parse(s: parse::Stream) -> Res<Self> {
+                let ahead = s.fork();
+                let attrs = ahead.call(attr::Attr::parse_outer)?;
+                let lookahead = ahead.lookahead1();
+                if s.is_empty() {
+                    Ok(Empty)
+                } else if lookahead.peek(kw::builtin) {
+                    s.advance_to(&ahead);
+                    s.parse::<kw::builtin>()?;
+                    s.parse::<Token![#]>()?;
+                    let name: Ident = s.parse()?;
+                    let args;
+                    parenthesized!(args in s);
+                    let args: pm2::Stream = args.parse()?;
+                    Ok(Builtin(Builtin { attrs, name, args }))
+                } else if lookahead.peek(Token![&]) {
+                    s.advance_to(&ahead);
+                    s.parse::<Token![&]>()?;
+                    s.parse::<kw::raw>()?;
+                    let mutable = s.parse::<Option<Token![mut]>>()?.is_some();
+                    if !mutable {
+                        s.parse::<Token![const]>()?;
+                    }
+                    let expr: Expr = s.parse()?;
+                    Ok(RawRef(RawRef { attrs, mutable, expr }))
+                } else if lookahead.peek(Token![...]) {
+                    s.parse::<Token![...]>()?;
+                    Ok(Ellipsis)
+                } else {
+                    Err(lookahead.error())
+                }
+            }
+        }
+        let y: Type = match parse2(self.clone()) {
+            Ok(x) => x,
+            Err(_) => unimplemented!("Expr::Verbatim `{}`", self),
+        };
+        match y {
+            Empty => {},
+            Ellipsis => {
+                p.word("...");
+            },
+            Builtin(x) => {
+                p.outer_attrs(&x.attrs);
+                p.word("builtin # ");
+                &x.name.pretty(p);
+                p.word("(");
+                if !x.args.is_empty() {
+                    p.cbox(INDENT);
+                    p.zerobreak();
+                    p.ibox(0);
+                    p.macro_rules_tokens(x.args, false);
+                    p.end();
+                    p.zerobreak();
+                    p.offset(-INDENT);
+                    p.end();
+                }
+                p.word(")");
+            },
+            RawRef(x) => {
+                p.outer_attrs(&x.attrs);
+                p.word("&raw ");
+                p.word(if x.mutable { "mut " } else { "const " });
+                &x.expr.pretty(p);
+            },
+        }
+    }
+}
+
 pub enum Member {
     Named(Ident),
     Unnamed(Idx),
@@ -2699,7 +2793,7 @@ fn unary_expr(x: Stream, allow: AllowStruct) -> Res<Expr> {
         }
         let expr = Box::new(unary_expr(x, allow)?);
         if raw.is_some() {
-            Ok(Expr::Stream(parse::parse_verbatim(&beg, x)))
+            Ok(Expr::Verbatim(parse::parse_verbatim(&beg, x)))
         } else {
             Ok(Expr::Reference(Ref { attrs, and, mut_, expr }))
         }
@@ -2712,7 +2806,7 @@ fn unary_expr(x: Stream, allow: AllowStruct) -> Res<Expr> {
 fn trailer_expr(beg: parse::Buffer, mut attrs: Vec<attr::Attr>, x: Stream, allow: AllowStruct) -> Res<Expr> {
     let atom = atom_expr(x, allow)?;
     let mut y = trailer_helper(x, atom)?;
-    if let Expr::Stream(tokens) = &mut y {
+    if let Expr::Verbatim(tokens) = &mut y {
         *tokens = parse::parse_verbatim(&beg, x);
     } else {
         let inner_attrs = y.replace_attrs(Vec::new());
@@ -2898,7 +2992,7 @@ fn expr_builtin(x: Stream) -> Res<Expr> {
     let args;
     parenthesized!(args in x);
     args.parse::<pm2::Stream>()?;
-    Ok(Expr::Stream(parse::parse_verbatim(&begin, x)))
+    Ok(Expr::Verbatim(parse::parse_verbatim(&begin, x)))
 }
 fn path_or_macro_or_struct(x: Stream, allow: AllowStruct) -> Res<Expr> {
     let (qself, path) = path::qpath(x, true)?;
