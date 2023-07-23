@@ -125,6 +125,12 @@ impl Lower for Life {
         self.ident.lower(s);
     }
 }
+impl Pretty for Life {
+    fn pretty(&self, p: &mut Print) {
+        p.word("'");
+        p.ident(&self.ident);
+    }
+}
 
 #[allow(non_snake_case)]
 pub fn Ident(x: look::Marker) -> Ident {

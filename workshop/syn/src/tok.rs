@@ -265,6 +265,20 @@ macro_rules! def_punct_structs {
 def_punct_structs! {
     "_" pub struct Underscore/1
 }
+impl Tok for Underscore {
+    fn peek(x: Cursor) -> bool {
+        if let Some((x, _)) = x.ident() {
+            return x == "_";
+        }
+        if let Some((x, _)) = x.punct() {
+            return x.as_char() == '_';
+        }
+        false
+    }
+    fn display() -> &'static str {
+        "`_`"
+    }
+}
 impl Lower for Underscore {
     fn lower(&self, ts: &mut pm2::Stream) {
         ts.append(Ident::new("_", self.span));
@@ -285,20 +299,6 @@ impl Parse for Underscore {
             }
             Err(x.error("expected `_`"))
         })
-    }
-}
-impl Tok for Underscore {
-    fn peek(x: Cursor) -> bool {
-        if let Some((x, _)) = x.ident() {
-            return x == "_";
-        }
-        if let Some((x, _)) = x.punct() {
-            return x.as_char() == '_';
-        }
-        false
-    }
-    fn display() -> &'static str {
-        "`_`"
     }
 }
 
@@ -496,19 +496,39 @@ impl Delim {
             Bracket(x) => &x.span,
         }
     }
-    pub fn surround(&self, ys: &mut Stream, inner: pm2::Stream) {
+    pub fn surround(&self, s: &mut Stream, inner: pm2::Stream) {
+        use Delim::*;
         let (delim, span) = match self {
-            tok::Delim::Paren(x) => (pm2::Delim::Paren, x.span),
-            tok::Delim::Brace(x) => (pm2::Delim::Brace, x.span),
-            tok::Delim::Bracket(x) => (pm2::Delim::Bracket, x.span),
+            Paren(x) => (pm2::Delim::Paren, x.span),
+            Brace(x) => (pm2::Delim::Brace, x.span),
+            Bracket(x) => (pm2::Delim::Bracket, x.span),
         };
-        delim_to_tokens(delim, span.join(), ys, inner);
+        delim_to_tokens(delim, span.join(), s, inner);
     }
     pub fn is_brace(&self) -> bool {
+        use Delim::*;
         match self {
-            tok::Delim::Brace(_) => true,
-            tok::Delim::Paren(_) | tok::Delim::Bracket(_) => false,
+            Brace(_) => true,
+            Paren(_) | Bracket(_) => false,
         }
+    }
+    pub fn pretty_open(self, p: &mut Print) {
+        use Delim::*;
+        p.word(match self {
+            Paren => "(",
+            Brace => "{",
+            Bracket => "[",
+            None => return,
+        });
+    }
+    pub fn pretty_close(self, p: &mut Print) {
+        use Delim::*;
+        p.word(match self {
+            Paren => ")",
+            Brace => "}",
+            Bracket => "]",
+            None => return,
+        });
     }
 }
 
@@ -560,7 +580,6 @@ impl Tok for Group {
         "invisible group"
     }
 }
-
 #[allow(non_snake_case)]
 pub fn Group<S: IntoSpans<pm2::Span>>(s: S) -> Group {
     Group { span: s.into_spans() }

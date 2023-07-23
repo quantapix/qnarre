@@ -33,6 +33,28 @@ impl Parse for Type {
         parse_ambig_typ(x, plus, group_gen)
     }
 }
+impl Pretty for Type {
+    fn pretty(&self, p: &mut Print) {
+        use typ::Type::*;
+        match self {
+            Array(x) => x.pretty(p),
+            Fn(x) => x.pretty(p),
+            Group(x) => x.pretty(p),
+            Impl(x) => x.pretty(p),
+            Infer(x) => x.pretty(p),
+            Mac(x) => x.pretty(p),
+            Never(x) => x.pretty(p),
+            Paren(x) => x.pretty(p),
+            Path(x) => x.pretty(p),
+            Ptr(x) => x.pretty(p),
+            Ref(x) => x.pretty(p),
+            Slice(x) => x.pretty(p),
+            Trait(x) => x.pretty(p),
+            Tuple(x) => x.pretty(p),
+            Stream(x) => x.pretty_typ(p),
+        }
+    }
+}
 
 pub struct Array {
     pub bracket: tok::Bracket,
@@ -58,6 +80,15 @@ impl Lower for Array {
             self.semi.lower(s);
             self.len.lower(s);
         });
+    }
+}
+impl Pretty for Array {
+    fn pretty(&self, p: &mut Print) {
+        p.word("[");
+        &self.elem.pretty(p);
+        p.word("; ");
+        &self.len.pretty(p);
+        p.word("]");
     }
 }
 
@@ -127,6 +158,34 @@ impl Lower for Fn {
         self.ret.lower(s);
     }
 }
+impl Pretty for Fn {
+    fn pretty(&self, p: &mut Print) {
+        if let Some(x) = &self.lifes {
+            x.pretty(p);
+        }
+        if self.unsafe_.is_some() {
+            p.word("unsafe ");
+        }
+        if let Some(x) = &self.abi {
+            x.pretty(p);
+        }
+        p.word("fn(");
+        p.cbox(INDENT);
+        p.zerobreak();
+        for x in self.args.iter().delimited() {
+            &x.pretty(p);
+            p.trailing_comma(x.is_last && self.vari.is_none());
+        }
+        if let Some(x) = &self.vari {
+            x.pretty(p);
+            p.zerobreak();
+        }
+        p.offset(-INDENT);
+        p.end();
+        p.word(")");
+        &self.ret.pretty(p)
+    }
+}
 
 pub struct Group {
     pub group: tok::Group,
@@ -146,6 +205,11 @@ impl Lower for Group {
         self.group.surround(s, |s| {
             self.elem.lower(s);
         });
+    }
+}
+impl Pretty for Group {
+    fn pretty(&self, p: &mut Print) {
+        &self.elem.pretty(p);
     }
 }
 
@@ -193,6 +257,17 @@ impl Lower for Impl {
         self.bounds.lower(s);
     }
 }
+impl Pretty for Impl {
+    fn pretty(&self, p: &mut Print) {
+        p.word("impl ");
+        for x in self.bounds.iter().delimited() {
+            if !x.is_first {
+                p.word(" + ");
+            }
+            &x.pretty(p);
+        }
+    }
+}
 
 pub struct Infer {
     pub underscore: Token![_],
@@ -205,6 +280,12 @@ impl Parse for Infer {
 impl Lower for Infer {
     fn lower(&self, s: &mut Stream) {
         self.underscore.lower(s);
+    }
+}
+impl Pretty for Infer {
+    fn pretty(&self, p: &mut Print) {
+        let _ = self;
+        p.word("_");
     }
 }
 
@@ -221,6 +302,12 @@ impl Lower for Mac {
         self.mac.lower(s);
     }
 }
+impl Pretty for Mac {
+    fn pretty(&self, p: &mut Print) {
+        let semicolon = false;
+        &self.mac.pretty(p, None, semicolon);
+    }
+}
 
 pub struct Never {
     pub bang: Token![!],
@@ -233,6 +320,12 @@ impl Parse for Never {
 impl Lower for Never {
     fn lower(&self, s: &mut Stream) {
         self.bang.lower(s);
+    }
+}
+impl Pretty for Never {
+    fn pretty(&self, p: &mut Print) {
+        let _ = self;
+        p.word("!");
     }
 }
 
@@ -265,6 +358,13 @@ impl Lower for Paren {
         });
     }
 }
+impl Pretty for Paren {
+    fn pretty(&self, p: &mut Print) {
+        p.word("(");
+        &self.elem.pretty(p);
+        p.word(")");
+    }
+}
 
 pub struct Path {
     pub qself: Option<path::QSelf>,
@@ -280,6 +380,11 @@ impl Parse for Path {
 impl Lower for Path {
     fn lower(&self, s: &mut Stream) {
         path::path_to_tokens(s, &self.qself, &self.path);
+    }
+}
+impl Pretty for Path {
+    fn pretty(&self, p: &mut Print) {
+        &self.path.pretty_qpath(p, &self.qself, path::Kind::Type);
     }
 }
 
@@ -320,6 +425,17 @@ impl Lower for Ptr {
         self.elem.lower(s);
     }
 }
+impl Pretty for Ptr {
+    fn pretty(&self, p: &mut Print) {
+        p.word("*");
+        if self.mut_.is_some() {
+            p.word("mut ");
+        } else {
+            p.word("const ");
+        }
+        &self.elem.pretty(p);
+    }
+}
 
 pub struct Ref {
     pub and: Token![&],
@@ -345,6 +461,19 @@ impl Lower for Ref {
         self.elem.lower(s);
     }
 }
+impl Pretty for Ref {
+    fn pretty(&self, p: &mut Print) {
+        p.word("&");
+        if let Some(x) = &self.life {
+            x.pretty(p);
+            p.nbsp();
+        }
+        if self.mut_.is_some() {
+            p.word("mut ");
+        }
+        &self.elem.pretty(p);
+    }
+}
 
 pub struct Slice {
     pub bracket: tok::Bracket,
@@ -364,6 +493,13 @@ impl Lower for Slice {
         self.bracket.surround(s, |s| {
             self.elem.lower(s);
         });
+    }
+}
+impl Pretty for Slice {
+    fn pretty(&self, p: &mut Print) {
+        p.word("[");
+        &self.elem.pretty(p);
+        p.word("]");
     }
 }
 
@@ -419,6 +555,17 @@ impl Lower for Trait {
         self.bounds.lower(s);
     }
 }
+impl Pretty for Trait {
+    fn pretty(&self, p: &mut Print) {
+        p.word("dyn ");
+        for x in self.bounds.iter().delimited() {
+            if !x.is_first {
+                p.word(" + ");
+            }
+            &x.pretty(p);
+        }
+    }
+}
 
 pub struct Tuple {
     pub paren: tok::Paren,
@@ -463,6 +610,25 @@ impl Lower for Tuple {
         });
     }
 }
+impl Pretty for Tuple {
+    fn pretty(&self, p: &mut Print) {
+        p.word("(");
+        p.cbox(INDENT);
+        p.zerobreak();
+        for x in self.elems.iter().delimited() {
+            &x.pretty(p);
+            if self.elems.len() == 1 {
+                p.word(",");
+                p.zerobreak();
+            } else {
+                p.trailing_comma(x.is_last);
+            }
+        }
+        p.offset(-INDENT);
+        p.end();
+        p.word(")");
+    }
+}
 
 pub struct Abi {
     pub extern_: Token![extern],
@@ -491,6 +657,15 @@ impl Lower for Abi {
         self.name.lower(s);
     }
 }
+impl Pretty for Abi {
+    fn pretty(&self, p: &mut Print) {
+        p.word("extern ");
+        if let Some(x) = &self.name {
+            x.pretty(p);
+            p.nbsp();
+        }
+    }
+}
 
 pub struct FnArg {
     pub attrs: Vec<attr::Attr>,
@@ -513,6 +688,16 @@ impl Lower for FnArg {
         self.typ.lower(s);
     }
 }
+impl Pretty for FnArg {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        if let Some((x, _)) = &self.name {
+            x.pretty(p);
+            p.word(": ");
+        }
+        &self.typ.pretty(p);
+    }
+}
 
 pub struct Variadic {
     pub attrs: Vec<attr::Attr>,
@@ -529,6 +714,16 @@ impl Lower for Variadic {
         }
         self.dots.lower(s);
         self.comma.lower(s);
+    }
+}
+impl Pretty for Variadic {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        if let Some((x, _)) = &self.name {
+            x.pretty(p);
+            p.word(": ");
+        }
+        p.word("...");
     }
 }
 
@@ -566,6 +761,99 @@ impl Lower for Ret {
                 x.lower(s);
             },
             Ret::Default => {},
+        }
+    }
+}
+impl Pretty for Ret {
+    fn pretty(&self, p: &mut Print) {
+        use Ret::*;
+        match self {
+            Default => {},
+            Type(_, x) => {
+                p.word(" -> ");
+                x.pretty(p);
+            },
+        }
+    }
+}
+
+impl pm2::Stream {
+    fn pretty_typ(&self, p: &mut Print) {
+        enum Verbatim {
+            Ellipsis,
+            DynStar(DynStar),
+            MutSelf(MutSelf),
+            NotType(NotType),
+        }
+        use Verbatim::*;
+        struct DynStar {
+            bounds: punct::Puncted<gen::bound::Type, Token![+]>,
+        }
+        struct MutSelf {
+            typ: Option<Type>,
+        }
+        struct NotType {
+            inner: Type,
+        }
+        impl parse::Parse for Verbatim {
+            fn parse(s: parse::Stream) -> Res<Self> {
+                let look = s.lookahead1();
+                if look.peek(Token![dyn]) {
+                    s.parse::<Token![dyn]>()?;
+                    s.parse::<Token![*]>()?;
+                    let bounds = s.parse_terminated(gen::bound::Type::parse, Token![+])?;
+                    Ok(DynStar(DynStar { bounds }))
+                } else if look.peek(Token![mut]) {
+                    s.parse::<Token![mut]>()?;
+                    s.parse::<Token![self]>()?;
+                    let typ = if s.is_empty() {
+                        None
+                    } else {
+                        s.parse::<Token![:]>()?;
+                        let y: Type = s.parse()?;
+                        Some(y)
+                    };
+                    Ok(MutSelf(MutSelf { typ }))
+                } else if look.peek(Token![!]) {
+                    s.parse::<Token![!]>()?;
+                    let inner: Type = s.parse()?;
+                    Ok(NotType(NotType { inner }))
+                } else if look.peek(Token![...]) {
+                    s.parse::<Token![...]>()?;
+                    Ok(Ellipsis)
+                } else {
+                    Err(look.error())
+                }
+            }
+        }
+        let y: Verbatim = match parse2(self.clone()) {
+            Ok(x) => x,
+            Err(_) => unimplemented!("Type::Stream`{}`", self),
+        };
+        match y {
+            Ellipsis => {
+                p.word("...");
+            },
+            DynStar(x) => {
+                p.word("dyn* ");
+                for x in x.bounds.iter().delimited() {
+                    if !x.is_first {
+                        p.word(" + ");
+                    }
+                    &x.pretty(p);
+                }
+            },
+            MutSelf(x) => {
+                p.word("mut self");
+                if let Some(x) = &x.typ {
+                    p.word(": ");
+                    x.pretty(p);
+                }
+            },
+            NotType(x) => {
+                p.word("!");
+                &x.inner.pretty(p);
+            },
         }
     }
 }

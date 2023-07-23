@@ -112,6 +112,45 @@ impl Lit {
         }
     }
 }
+impl Parse for Lit {
+    fn parse(s: Stream) -> Res<Self> {
+        s.step(|c| {
+            if let Some((x, xs)) = c.literal() {
+                return Ok((Lit::new(x), xs));
+            }
+            if let Some((x, xs)) = c.ident() {
+                let val = x == "true";
+                if val || x == "false" {
+                    let y = Bool { val, span: x.span() };
+                    return Ok((Lit::Bool(y), xs));
+                }
+            }
+            if let Some((x, xs)) = c.punct() {
+                if x.as_char() == '-' {
+                    if let Some((x, xs)) = parse_negative(x, xs) {
+                        return Ok((x, xs));
+                    }
+                }
+            }
+            Err(c.err("expected literal"))
+        })
+    }
+}
+impl Pretty for Lit {
+    fn pretty(&self, p: &mut Print) {
+        use Lit::*;
+        match self {
+            Str(x) => x.pretty(p),
+            ByteStr(x) => x.pretty(p),
+            Byte(x) => x.pretty(p),
+            Char(x) => x.pretty(p),
+            Int(x) => x.pretty(p),
+            Float(x) => x.pretty(p),
+            Bool(x) => x.pretty(p),
+            Stream(x) => x.pretty(p),
+        }
+    }
+}
 #[allow(non_snake_case)]
 pub fn Lit(x: look::Marker) -> Lit {
     match x {}
@@ -226,6 +265,25 @@ macro_rules! extra_traits {
     };
 }
 extra_traits!(Str);
+impl Parse for Str {
+    fn parse(s: Stream) -> Res<Self> {
+        let x = s.fork();
+        match s.parse() {
+            Ok(Lit::Str(x)) => Ok(x),
+            _ => Err(x.error("expected string literal")),
+        }
+    }
+}
+impl Lower for Str {
+    fn lower(&self, s: &mut Stream) {
+        self.repr.tok.lower(s);
+    }
+}
+impl Pretty for Str {
+    fn pretty(&self, p: &mut Print) {
+        p.word(self.token().to_string());
+    }
+}
 
 pub struct ByteStr {
     pub repr: Box<Repr>,
@@ -272,6 +330,25 @@ impl Debug for ByteStr {
     }
 }
 extra_traits!(ByteStr);
+impl Parse for ByteStr {
+    fn parse(s: Stream) -> Res<Self> {
+        let x = s.fork();
+        match s.parse() {
+            Ok(Lit::ByteStr(x)) => Ok(x),
+            _ => Err(x.error("expected byte string literal")),
+        }
+    }
+}
+impl Lower for ByteStr {
+    fn lower(&self, s: &mut Stream) {
+        self.repr.tok.lower(s);
+    }
+}
+impl Pretty for ByteStr {
+    fn pretty(&self, p: &mut Print) {
+        p.word(self.token().to_string());
+    }
+}
 
 pub struct Byte {
     pub repr: Box<Repr>,
@@ -318,6 +395,25 @@ impl Debug for Byte {
     }
 }
 extra_traits!(Byte);
+impl Parse for Byte {
+    fn parse(s: Stream) -> Res<Self> {
+        let x = s.fork();
+        match s.parse() {
+            Ok(Lit::Byte(x)) => Ok(x),
+            _ => Err(x.error("expected byte literal")),
+        }
+    }
+}
+impl Lower for Byte {
+    fn lower(&self, s: &mut Stream) {
+        self.repr.tok.lower(s);
+    }
+}
+impl Pretty for Byte {
+    fn pretty(&self, p: &mut Print) {
+        p.word(self.token().to_string());
+    }
+}
 
 pub struct Char {
     pub repr: Box<Repr>,
@@ -364,6 +460,25 @@ impl Debug for Char {
     }
 }
 extra_traits!(Char);
+impl Parse for Char {
+    fn parse(s: Stream) -> Res<Self> {
+        let x = s.fork();
+        match s.parse() {
+            Ok(Lit::Char(x)) => Ok(x),
+            _ => Err(x.error("expected character literal")),
+        }
+    }
+}
+impl Lower for Char {
+    fn lower(&self, s: &mut Stream) {
+        self.repr.tok.lower(s);
+    }
+}
+impl Pretty for Char {
+    fn pretty(&self, p: &mut Print) {
+        p.word(self.token().to_string());
+    }
+}
 
 struct IntRepr {
     pub tok: pm2::Lit,
@@ -448,6 +563,25 @@ impl Debug for Int {
     }
 }
 extra_traits!(Int);
+impl Parse for Int {
+    fn parse(s: Stream) -> Res<Self> {
+        let x = s.fork();
+        match s.parse() {
+            Ok(Lit::Int(x)) => Ok(x),
+            _ => Err(x.error("expected integer literal")),
+        }
+    }
+}
+impl Lower for Int {
+    fn lower(&self, s: &mut Stream) {
+        self.repr.tok.lower(s);
+    }
+}
+impl Pretty for Int {
+    fn pretty(&self, p: &mut Print) {
+        p.word(self.token().to_string());
+    }
+}
 
 struct FloatRepr {
     pub tok: pm2::Lit,
@@ -532,6 +666,25 @@ impl Debug for Float {
     }
 }
 extra_traits!(Float);
+impl Parse for Float {
+    fn parse(s: Stream) -> Res<Self> {
+        let x = s.fork();
+        match s.parse() {
+            Ok(Lit::Float(x)) => Ok(x),
+            _ => Err(x.error("expected floating point literal")),
+        }
+    }
+}
+impl Lower for Float {
+    fn lower(&self, s: &mut Stream) {
+        self.repr.tok.lower(s);
+    }
+}
+impl Pretty for Float {
+    fn pretty(&self, p: &mut Print) {
+        p.word(self.token().to_string());
+    }
+}
 
 pub struct Bool {
     pub val: bool,
@@ -565,9 +718,80 @@ impl Debug for Bool {
         self.debug(f, "lit::Bool")
     }
 }
+impl Parse for Bool {
+    fn parse(s: Stream) -> Res<Self> {
+        let x = s.fork();
+        match s.parse() {
+            Ok(Lit::Bool(x)) => Ok(x),
+            _ => Err(x.error("expected boolean literal")),
+        }
+    }
+}
+impl Lower for Bool {
+    fn lower(&self, s: &mut Stream) {
+        s.append(self.token());
+    }
+}
+impl Pretty for Bool {
+    fn pretty(&self, p: &mut Print) {
+        p.word(if self.val { "true" } else { "false" });
+    }
+}
+
 #[allow(non_snake_case)]
 pub fn Bool(x: look::Marker) -> Bool {
     match x {}
+}
+
+pub struct BigInt {
+    digits: Vec<u8>,
+}
+impl BigInt {
+    pub fn new() -> Self {
+        BigInt { digits: Vec::new() }
+    }
+    pub fn to_string(&self) -> String {
+        let mut y = String::with_capacity(self.digits.len());
+        let mut nonzero = false;
+        for x in self.digits.iter().rev() {
+            nonzero |= *x != 0;
+            if nonzero {
+                y.push((*x + b'0') as char);
+            }
+        }
+        if y.is_empty() {
+            y.push('0');
+        }
+        y
+    }
+    fn reserve_two(&mut self) {
+        let len = self.digits.len();
+        let y = len + !self.digits.ends_with(&[0, 0]) as usize + !self.digits.ends_with(&[0]) as usize;
+        self.digits.resize(y, 0);
+    }
+}
+impl ops::AddAssign<u8> for BigInt {
+    fn add_assign(&mut self, mut inc: u8) {
+        self.reserve_two();
+        let mut i = 0;
+        while inc > 0 {
+            let y = self.digits[i] + inc;
+            self.digits[i] = y % 10;
+            inc = y / 10;
+            i += 1;
+        }
+    }
+}
+impl ops::MulAssign<u8> for BigInt {
+    fn mul_assign(&mut self, base: u8) {
+        self.reserve_two();
+        let mut carry = 0;
+        for x in &mut self.digits {
+            let y = *x * base + carry;
+            *x = y % 10;
+            carry = y / 10;
+        }
+    }
 }
 
 pub fn parse_str(x: &str) -> (Box<str>, Box<str>) {
@@ -792,57 +1016,6 @@ pub fn parse_char(mut x: &str) -> (char, Box<str>) {
     (ch, suffix)
 }
 
-pub struct BigInt {
-    digits: Vec<u8>,
-}
-impl BigInt {
-    pub fn new() -> Self {
-        BigInt { digits: Vec::new() }
-    }
-    pub fn to_string(&self) -> String {
-        let mut y = String::with_capacity(self.digits.len());
-        let mut nonzero = false;
-        for x in self.digits.iter().rev() {
-            nonzero |= *x != 0;
-            if nonzero {
-                y.push((*x + b'0') as char);
-            }
-        }
-        if y.is_empty() {
-            y.push('0');
-        }
-        y
-    }
-    fn reserve_two(&mut self) {
-        let len = self.digits.len();
-        let y = len + !self.digits.ends_with(&[0, 0]) as usize + !self.digits.ends_with(&[0]) as usize;
-        self.digits.resize(y, 0);
-    }
-}
-impl ops::AddAssign<u8> for BigInt {
-    fn add_assign(&mut self, mut inc: u8) {
-        self.reserve_two();
-        let mut i = 0;
-        while inc > 0 {
-            let y = self.digits[i] + inc;
-            self.digits[i] = y % 10;
-            inc = y / 10;
-            i += 1;
-        }
-    }
-}
-impl ops::MulAssign<u8> for BigInt {
-    fn mul_assign(&mut self, base: u8) {
-        self.reserve_two();
-        let mut carry = 0;
-        for x in &mut self.digits {
-            let y = *x * base + carry;
-            *x = y % 10;
-            carry = y / 10;
-        }
-    }
-}
-
 pub fn parse_int(mut x: &str) -> Option<(Box<str>, Box<str>)> {
     let negative = byte(x, 0) == b'-';
     if negative {
@@ -1000,6 +1173,32 @@ pub fn parse_float(x: &str) -> Option<(Box<str>, Box<str>)> {
         None
     }
 }
+fn parse_negative(neg: Punct, cursor: Cursor) -> Option<(Lit, Cursor)> {
+    let (lit, rest) = cursor.literal()?;
+    let mut span = neg.span();
+    span = span.join(lit.span()).unwrap_or(span);
+    let mut repr = lit.to_string();
+    repr.insert(0, '-');
+    if let Some((digits, suff)) = parse_int(&repr) {
+        let mut tok: pm2::Lit = repr.parse().unwrap();
+        tok.set_span(span);
+        return Some((
+            Lit::Int(Int {
+                repr: Box::new(IntRepr { tok, digits, suff }),
+            }),
+            rest,
+        ));
+    }
+    let (digits, suff) = parse_float(&repr)?;
+    let mut tok: pm2::Lit = repr.parse().unwrap();
+    tok.set_span(span);
+    Some((
+        Lit::Float(Float {
+            repr: Box::new(FloatRepr { tok, digits, suff }),
+        }),
+        rest,
+    ))
+}
 
 fn byte<S: AsRef<[u8]> + ?Sized>(s: &S, idx: usize) -> u8 {
     let s = s.as_ref();
@@ -1070,158 +1269,5 @@ fn backslash_u(mut s: &str) -> (char, &str) {
         (ch, s)
     } else {
         panic!("character code {:x} is not a valid unicode character", ch);
-    }
-}
-
-impl Parse for Lit {
-    fn parse(x: Stream) -> Res<Self> {
-        x.step(|c| {
-            if let Some((lit, rest)) = c.literal() {
-                return Ok((Lit::new(lit), rest));
-            }
-            if let Some((ident, rest)) = c.ident() {
-                let val = ident == "true";
-                if val || ident == "false" {
-                    let y = Bool {
-                        val,
-                        span: ident.span(),
-                    };
-                    return Ok((Lit::Bool(y), rest));
-                }
-            }
-            if let Some((punct, rest)) = c.punct() {
-                if punct.as_char() == '-' {
-                    if let Some((lit, rest)) = parse_negative(punct, rest) {
-                        return Ok((lit, rest));
-                    }
-                }
-            }
-            Err(c.err("expected literal"))
-        })
-    }
-}
-fn parse_negative(neg: Punct, cursor: Cursor) -> Option<(Lit, Cursor)> {
-    let (lit, rest) = cursor.literal()?;
-    let mut span = neg.span();
-    span = span.join(lit.span()).unwrap_or(span);
-    let mut repr = lit.to_string();
-    repr.insert(0, '-');
-    if let Some((digits, suff)) = parse_int(&repr) {
-        let mut tok: pm2::Lit = repr.parse().unwrap();
-        tok.set_span(span);
-        return Some((
-            Lit::Int(Int {
-                repr: Box::new(IntRepr { tok, digits, suff }),
-            }),
-            rest,
-        ));
-    }
-    let (digits, suff) = parse_float(&repr)?;
-    let mut tok: pm2::Lit = repr.parse().unwrap();
-    tok.set_span(span);
-    Some((
-        Lit::Float(Float {
-            repr: Box::new(FloatRepr { tok, digits, suff }),
-        }),
-        rest,
-    ))
-}
-impl Parse for Str {
-    fn parse(x: Stream) -> Res<Self> {
-        let head = x.fork();
-        match x.parse() {
-            Ok(Lit::Str(x)) => Ok(x),
-            _ => Err(head.error("expected string literal")),
-        }
-    }
-}
-impl Parse for ByteStr {
-    fn parse(x: Stream) -> Res<Self> {
-        let head = x.fork();
-        match x.parse() {
-            Ok(Lit::ByteStr(x)) => Ok(x),
-            _ => Err(head.error("expected byte string literal")),
-        }
-    }
-}
-impl Parse for Byte {
-    fn parse(x: Stream) -> Res<Self> {
-        let head = x.fork();
-        match x.parse() {
-            Ok(Lit::Byte(x)) => Ok(x),
-            _ => Err(head.error("expected byte literal")),
-        }
-    }
-}
-impl Parse for Char {
-    fn parse(x: Stream) -> Res<Self> {
-        let head = x.fork();
-        match x.parse() {
-            Ok(Lit::Char(x)) => Ok(x),
-            _ => Err(head.error("expected character literal")),
-        }
-    }
-}
-impl Parse for Int {
-    fn parse(x: Stream) -> Res<Self> {
-        let head = x.fork();
-        match x.parse() {
-            Ok(Lit::Int(x)) => Ok(x),
-            _ => Err(head.error("expected integer literal")),
-        }
-    }
-}
-impl Parse for Float {
-    fn parse(x: Stream) -> Res<Self> {
-        let head = x.fork();
-        match x.parse() {
-            Ok(Lit::Float(x)) => Ok(x),
-            _ => Err(head.error("expected floating point literal")),
-        }
-    }
-}
-impl Parse for Bool {
-    fn parse(x: Stream) -> Res<Self> {
-        let head = x.fork();
-        match x.parse() {
-            Ok(Lit::Bool(x)) => Ok(x),
-            _ => Err(head.error("expected boolean literal")),
-        }
-    }
-}
-
-impl Lower for Str {
-    fn lower(&self, s: &mut Stream) {
-        self.repr.tok.lower(s);
-    }
-}
-impl Lower for ByteStr {
-    fn lower(&self, s: &mut Stream) {
-        self.repr.tok.lower(s);
-    }
-}
-impl Lower for Byte {
-    fn lower(&self, s: &mut Stream) {
-        self.repr.tok.lower(s);
-    }
-}
-impl Lower for Char {
-    fn lower(&self, s: &mut Stream) {
-        self.repr.tok.lower(s);
-    }
-}
-impl Lower for Int {
-    fn lower(&self, s: &mut Stream) {
-        self.repr.tok.lower(s);
-    }
-}
-impl Lower for Float {
-    fn lower(&self, s: &mut Stream) {
-        self.repr.tok.lower(s);
-    }
-}
-impl Lower for Bool {
-    fn lower(&self, s: &mut Stream) {
-        s.append(self.token());
     }
 }

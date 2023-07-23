@@ -292,3 +292,7 @@ pub fn parse<T: parse::Parse>(s: Stream) -> Res<T> {
 pub fn parse2<T: parse::Parse>(s: Stream) -> Res<T> {
     Parser::parse2(T::parse, s)
 }
+
+pub const MARGIN: isize = 89;
+pub const INDENT: isize = 4;
+pub const MIN_SPACE: isize = 60;

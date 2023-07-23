@@ -499,6 +499,11 @@ impl Debug for Lit {
         }
     }
 }
+impl Pretty for Lit {
+    fn pretty(&self, p: &mut Print) {
+        p.word(self.to_string());
+    }
+}
 fn compiler_lit_from_str(x: &str) -> Result<pm::Literal, LexErr> {
     pm::Literal::from_str(x).map_err(LexErr::Compiler)
 }

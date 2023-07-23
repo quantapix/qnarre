@@ -28,6 +28,20 @@ impl Lower for File {
         s.append_all(&self.items);
     }
 }
+impl Pretty for File {
+    fn pretty(&self, p: &mut Print) {
+        p.cbox(0);
+        if let Some(x) = &self.shebang {
+            p.word(x.clone());
+            p.hardbreak();
+        }
+        p.inner_attrs(&self.attrs);
+        for x in &self.items {
+            x.pretty(p);
+        }
+        p.end();
+    }
+}
 
 ast_enum_of_structs! {
     pub enum Item {

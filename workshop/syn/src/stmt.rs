@@ -74,6 +74,76 @@ impl Lower for Stmt {
         }
     }
 }
+impl Pretty for Stmt {
+    fn pretty(&self, p: &mut Print) {
+        use Stmt::*;
+        match self {
+            Local(x) => {
+                p.outer_attrs(&x.attrs);
+                p.ibox(0);
+                p.word("let ");
+                &x.pat.pretty(p);
+                if let Some(x) = &x.init {
+                    p.word(" = ");
+                    p.neverbreak();
+                    &x.expr.pretty(p);
+                    if let Some((_, x)) = &x.diverge {
+                        p.word(" else ");
+                        if let expr::Expr::Block(x) = x.as_ref() {
+                            p.small_block(&x.block, &[]);
+                        } else {
+                            p.word("{");
+                            p.space();
+                            p.ibox(INDENT);
+                            x.pretty(p);
+                            p.end();
+                            p.space();
+                            p.offset(-INDENT);
+                            p.word("}");
+                        }
+                    }
+                }
+                p.word(";");
+                p.end();
+                p.hardbreak();
+            },
+            Item(x) => x.pretty(p),
+            Expr(x, None) => {
+                if x.break_after() {
+                    p.ibox(0);
+                    p.expr_beginning_of_line(x, true);
+                    if x.add_semi() {
+                        p.word(";");
+                    }
+                    p.end();
+                    p.hardbreak();
+                } else {
+                    p.expr_beginning_of_line(x, true);
+                }
+            },
+            Expr(x, Some(_)) => {
+                if let expr::Expr::Stream(x) = x {
+                    if x.is_empty() {
+                        return;
+                    }
+                }
+                p.ibox(0);
+                p.expr_beginning_of_line(x, true);
+                if !x.remove_semi() {
+                    p.word(";");
+                }
+                p.end();
+                p.hardbreak();
+            },
+            Mac(x) => {
+                p.outer_attrs(&x.attrs);
+                let semicolon = true;
+                &x.mac.pretty(p, None, semicolon);
+                p.hardbreak();
+            },
+        }
+    }
+}
 
 pub use expr::Expr;
 pub use item::Item;

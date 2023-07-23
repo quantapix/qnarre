@@ -177,7 +177,7 @@ impl Expr {
                 && x.qself.is_none()
                 && x.path
                     .get_ident()
-                    .map_or(false, |x| x.to_string().len() as isize <= pretty::INDENT);
+                    .map_or(false, |x| x.to_string().len() as isize <= INDENT);
         }
         false
     }
@@ -272,7 +272,7 @@ impl Expr {
             | Struct(_) | Try(_) | TryBlock(_) | Tuple(_) | Unary(_) | Unsafe(_) | Stream(_) | Yield(_) => false,
         }
     }
-    fn break_after(&self) -> bool {
+    pub fn break_after(&self) -> bool {
         if let Expr::Group(x) = self {
             if let Expr::Stream(x) = x.expr.as_ref() {
                 return !x.is_empty();
@@ -407,13 +407,13 @@ impl Pretty for Array {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
         p.word("[");
-        p.cbox(pretty::INDENT);
+        p.cbox(INDENT);
         p.zerobreak();
         for x in self.elems.iter().delimited() {
             &x.pretty(p);
             p.trailing_comma(x.is_last);
         }
-        p.offset(-pretty::INDENT);
+        p.offset(-INDENT);
         p.end();
         p.word("]");
     }
@@ -475,7 +475,7 @@ impl Pretty for Async {
         if self.move_.is_some() {
             p.word("move ");
         }
-        p.cbox(pretty::INDENT);
+        p.cbox(INDENT);
         p.small_block(&self.block, &self.attrs);
         p.end();
     }
@@ -505,7 +505,7 @@ impl Lower for Await {
 impl Pretty for Await {
     fn pretty(&self, p: &mut Print, beg_of_line: bool) {
         p.outer_attrs(&self.attrs);
-        p.cbox(pretty::INDENT);
+        p.cbox(INDENT);
         self.pretty_sub(p, beg_of_line);
         p.end();
     }
@@ -528,8 +528,8 @@ impl Lower for Binary {
 impl Pretty for Binary {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
-        p.ibox(pretty::INDENT);
-        p.ibox(-pretty::INDENT);
+        p.ibox(INDENT);
+        p.ibox(-INDENT);
         &self.left.pretty(p);
         p.end();
         p.space();
@@ -576,7 +576,7 @@ impl Pretty for Block {
         if let Some(x) = &self.label {
             p.label(x);
         }
-        p.cbox(pretty::INDENT);
+        p.cbox(INDENT);
         p.small_block(&self.block, &self.attrs);
         p.end();
     }
@@ -667,8 +667,8 @@ impl Lower for Cast {
 impl Pretty for Cast {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
-        p.ibox(pretty::INDENT);
-        p.ibox(-pretty::INDENT);
+        p.ibox(INDENT);
+        p.ibox(-INDENT);
         &self.expr.pretty(p);
         p.end();
         p.space();
@@ -731,7 +731,7 @@ impl Pretty for Closure {
         if self.move_.is_some() {
             p.word("move ");
         }
-        p.cbox(pretty::INDENT);
+        p.cbox(INDENT);
         p.word("|");
         for x in self.ins.iter().delimited() {
             if x.is_first {
@@ -747,7 +747,7 @@ impl Pretty for Closure {
             typ::Ret::Default => {
                 p.word("|");
                 p.space();
-                p.offset(-pretty::INDENT);
+                p.offset(-INDENT);
                 p.end();
                 p.neverbreak();
                 let wrap_in_brace = match &*self.body {
@@ -755,7 +755,7 @@ impl Pretty for Closure {
                     x => !x.is_blocklike(),
                 };
                 if wrap_in_brace {
-                    p.cbox(pretty::INDENT);
+                    p.cbox(INDENT);
                     let okay_to_brace = &self.body.parseable_as_stmt();
                     p.scan_break(BreakToken {
                         pre_break: Some(if okay_to_brace { '{' } else { '(' }),
@@ -763,7 +763,7 @@ impl Pretty for Closure {
                     });
                     &self.body.pretty(p);
                     p.scan_break(BreakToken {
-                        offset: -pretty::INDENT,
+                        offset: -INDENT,
                         pre_break: (okay_to_brace && &self.body.add_semi()).then(|| ';'),
                         post_break: Some(if okay_to_brace { '}' } else { ')' }),
                         ..BreakToken::default()
@@ -776,7 +776,7 @@ impl Pretty for Closure {
             typ::Ret::Type(_, x) => {
                 if !self.ins.is_empty() {
                     p.trailing_comma(true);
-                    p.offset(-pretty::INDENT);
+                    p.offset(-INDENT);
                 }
                 p.word("|");
                 p.end();
@@ -824,7 +824,7 @@ impl Pretty for Const {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
         p.word("const ");
-        p.cbox(pretty::INDENT);
+        p.cbox(INDENT);
         p.small_block(&self.block, &self.attrs);
         p.end();
     }
@@ -887,7 +887,7 @@ impl Lower for Field {
 impl Pretty for Field {
     fn pretty(&self, p: &mut Print, beg_of_line: bool) {
         p.outer_attrs(&self.attrs);
-        p.cbox(pretty::INDENT);
+        p.cbox(INDENT);
         self.pretty_sub(p, beg_of_line);
         p.end();
     }
@@ -953,13 +953,13 @@ impl Pretty for ForLoop {
         p.wrap_exterior_struct(&self.expr);
         p.word("{");
         p.neverbreak();
-        p.cbox(pretty::INDENT);
+        p.cbox(INDENT);
         p.hardbreak_if_nonempty();
         p.inner_attrs(&self.attrs);
         for x in &self.body.stmts {
             p.stmt(x);
         }
-        p.offset(-pretty::INDENT);
+        p.offset(-INDENT);
         p.end();
         p.word("}");
         p.end();
@@ -1029,9 +1029,9 @@ impl Lower for If {
 impl Pretty for If {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
-        p.cbox(pretty::INDENT);
+        p.cbox(INDENT);
         p.word("if ");
-        p.cbox(-pretty::INDENT);
+        p.cbox(-INDENT);
         p.wrap_exterior_struct(&self.cond);
         p.end();
         if let Some((_, else_)) = &self.else_ {
@@ -1042,7 +1042,7 @@ impl Pretty for If {
                 match else_ {
                     Expr::If(x) => {
                         p.word("if ");
-                        p.cbox(-pretty::INDENT);
+                        p.cbox(-INDENT);
                         p.wrap_exterior_struct(&x.cond);
                         p.end();
                         p.small_block(&x.then_, &[]);
@@ -1057,11 +1057,11 @@ impl Pretty for If {
                     x => {
                         p.word("{");
                         p.space();
-                        p.ibox(pretty::INDENT);
+                        p.ibox(INDENT);
                         x.pretty(p);
                         p.end();
                         p.space();
-                        p.offset(-pretty::INDENT);
+                        p.offset(-INDENT);
                         p.word("}");
                     },
                 }
@@ -1075,7 +1075,7 @@ impl Pretty for If {
             for x in &self.then_.stmts {
                 p.stmt(x);
             }
-            p.offset(-pretty::INDENT);
+            p.offset(-INDENT);
             p.word("}");
         }
         p.end();
@@ -1187,9 +1187,9 @@ impl Lower for Let {
 impl Pretty for Let {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
-        p.ibox(pretty::INDENT);
+        p.ibox(INDENT);
         p.word("let ");
-        p.ibox(-pretty::INDENT);
+        p.ibox(-INDENT);
         &self.pat.pretty(p);
         p.end();
         p.space();
@@ -1272,13 +1272,13 @@ impl Pretty for Loop {
             p.label(x);
         }
         p.word("loop {");
-        p.cbox(pretty::INDENT);
+        p.cbox(INDENT);
         p.hardbreak_if_nonempty();
         p.inner_attrs(&self.attrs);
         for x in &self.body.stmts {
             p.stmt(x);
         }
-        p.offset(-pretty::INDENT);
+        p.offset(-INDENT);
         p.end();
         p.word("}");
     }
@@ -1363,14 +1363,14 @@ impl Pretty for Match {
         p.wrap_exterior_struct(&self.expr);
         p.word("{");
         p.neverbreak();
-        p.cbox(pretty::INDENT);
+        p.cbox(INDENT);
         p.hardbreak_if_nonempty();
         p.inner_attrs(&self.attrs);
         for x in &self.arms {
             p.arm(x);
             p.hardbreak();
         }
-        p.offset(-pretty::INDENT);
+        p.offset(-INDENT);
         p.end();
         p.word("}");
         p.end();
@@ -1417,7 +1417,7 @@ impl Lower for MethodCall {
 impl Pretty for MethodCall {
     fn pretty(&self, p: &mut Print, beg_of_line: bool) {
         p.outer_attrs(&self.attrs);
-        p.cbox(pretty::INDENT);
+        p.cbox(INDENT);
         let unindent = beg_of_line && &self.expr.is_short_ident();
         self.pretty_sub(p, beg_of_line, unindent);
         p.end();
@@ -1644,8 +1644,8 @@ impl Lower for Struct {
 impl Pretty for Struct {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
-        p.cbox(pretty::INDENT);
-        p.ibox(-pretty::INDENT);
+        p.cbox(INDENT);
+        p.ibox(-INDENT);
         &self.path.pretty_qpath(p, &self.qself, path::Kind::Expr);
         p.end();
         p.word(" {");
@@ -1659,7 +1659,7 @@ impl Pretty for Struct {
             x.pretty(p);
             p.space();
         }
-        p.offset(-pretty::INDENT);
+        p.offset(-INDENT);
         p.end_with_max_width(34);
         p.word("}");
     }
@@ -1716,7 +1716,7 @@ impl Pretty for TryBlock {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
         p.word("try ");
-        p.cbox(pretty::INDENT);
+        p.cbox(INDENT);
         p.small_block(&self.block, &self.attrs);
         p.end();
     }
@@ -1742,7 +1742,7 @@ impl Pretty for Tuple {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
         p.word("(");
-        p.cbox(pretty::INDENT);
+        p.cbox(INDENT);
         p.zerobreak();
         for x in self.elems.iter().delimited() {
             &x.pretty(p);
@@ -1753,7 +1753,7 @@ impl Pretty for Tuple {
                 p.trailing_comma(x.is_last);
             }
         }
-        p.offset(-pretty::INDENT);
+        p.offset(-INDENT);
         p.end();
         p.word(")");
     }
@@ -1819,7 +1819,7 @@ impl Pretty for Unsafe {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
         p.word("unsafe ");
-        p.cbox(pretty::INDENT);
+        p.cbox(INDENT);
         p.small_block(&self.block, &self.attrs);
         p.end();
     }
@@ -1873,13 +1873,13 @@ impl Pretty for While {
         p.wrap_exterior_struct(&self.cond);
         p.word("{");
         p.neverbreak();
-        p.cbox(pretty::INDENT);
+        p.cbox(INDENT);
         p.hardbreak_if_nonempty();
         p.inner_attrs(&self.attrs);
         for x in &self.block.stmts {
             p.stmt(x);
         }
-        p.offset(-pretty::INDENT);
+        p.offset(-INDENT);
         p.end();
         p.word("}");
     }
@@ -2414,27 +2414,27 @@ impl Pretty for Arm {
             }
             p.word("{");
             p.neverbreak();
-            p.cbox(pretty::INDENT);
+            p.cbox(INDENT);
             p.hardbreak_if_nonempty();
             p.inner_attrs(&x.attrs);
             for x in &x.block.stmts {
                 p.stmt(x);
             }
-            p.offset(-pretty::INDENT);
+            p.offset(-INDENT);
             p.end();
             p.word("}");
             p.end();
         } else {
             p.nbsp();
             p.neverbreak();
-            p.cbox(pretty::INDENT);
+            p.cbox(INDENT);
             p.scan_break(BreakToken {
                 pre_break: Some('{'),
                 ..BreakToken::default()
             });
             p.expr_beginning_of_line(body, true);
             p.scan_break(BreakToken {
-                offset: -pretty::INDENT,
+                offset: -INDENT,
                 pre_break: body.add_semi().then(|| ';'),
                 post_break: Some('}'),
                 no_break: body.needs_terminator().then(|| ','),
