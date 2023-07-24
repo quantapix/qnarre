@@ -1591,6 +1591,42 @@ impl Lower for Receiver {
         }
     }
 }
+impl Pretty for Receiver {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        if let Some((_, x)) = &self.ref_ {
+            p.word("&");
+            if let Some(x) = x {
+                x.pretty(p);
+                p.nbsp();
+            }
+        }
+        if self.mut_.is_some() {
+            p.word("mut ");
+        }
+        p.word("self");
+        if self.colon.is_some() {
+            p.word(": ");
+            &self.typ.pretty(p);
+        } else {
+            let consistent = match (&self.ref_, &self.mut_, &*self.typ) {
+                (Some(_), mut_, typ::Ref(x)) => {
+                    mut_.is_some() == x.mut_.is_some()
+                        && match &*x.elem {
+                            typ::Type::Path(x) => x.qself.is_none() && x.path.is_ident("Self"),
+                            _ => false,
+                        }
+                },
+                (None, _, typ::Type::Path(x)) => x.qself.is_none() && x.path.is_ident("Self"),
+                _ => false,
+            };
+            if !consistent {
+                p.word(": ");
+                &self.typ.pretty(p);
+            }
+        }
+    }
+}
 
 ast_enum_of_structs! {
     pub enum FnArg {
@@ -1602,15 +1638,24 @@ impl Parse for FnArg {
     fn parse(s: Stream) -> Res<Self> {
         let variadic = false;
         let attrs = s.call(attr::Attr::parse_outers)?;
-        use FnArgOrVariadic::*;
+        use FnArgOrVari::*;
         match parse_fn_arg_or_variadic(s, attrs, variadic)? {
             FnArg(x) => Ok(x),
             Variadic(_) => unreachable!(),
         }
     }
 }
+impl Pretty for FnArg {
+    fn pretty(&self, p: &mut Print) {
+        use FnArg::*;
+        match self {
+            Receiver(x) => x.pretty(p),
+            Type(x) => x.pretty(p),
+        }
+    }
+}
 
-enum FnArgOrVariadic {
+enum FnArgOrVari {
     FnArg(FnArg),
     Variadic(Variadic),
 }
@@ -1688,7 +1733,44 @@ impl Lower for Sig {
         self.gens.where_.lower(s);
     }
 }
-
+impl Pretty for Sig {
+    fn pretty(&self, p: &mut Print) {
+        if self.const_.is_some() {
+            p.word("const ");
+        }
+        if self.async_.is_some() {
+            p.word("async ");
+        }
+        if self.unsafe_.is_some() {
+            p.word("unsafe ");
+        }
+        if let Some(x) = &self.abi {
+            p.abi(x);
+        }
+        p.word("fn ");
+        &self.ident.pretty(p);
+        &self.gens.pretty(p);
+        p.word("(");
+        p.neverbreak();
+        p.cbox(0);
+        p.zerobreak();
+        for x in self.args.iter().delimited() {
+            &x.pretty(p);
+            let last = x.is_last && self.vari.is_none();
+            p.trailing_comma(last);
+        }
+        if let Some(x) = &self.vari {
+            x.pretty(p);
+            p.zerobreak();
+        }
+        p.offset(-INDENT);
+        p.end();
+        p.word(")");
+        p.cbox(-INDENT);
+        &self.ret.pretty(p);
+        p.end();
+    }
+}
 pub struct Variadic {
     pub attrs: Vec<attr::Attr>,
     pub pat: Option<(Box<pat::Pat>, Token![:])>,
@@ -1704,6 +1786,16 @@ impl Lower for Variadic {
         }
         self.dots.lower(s);
         self.comma.lower(s);
+    }
+}
+impl Pretty for Variadic {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        if let Some((x, _)) = &self.pat {
+            x.pretty(p);
+            p.word(": ");
+        }
+        p.word("...");
     }
 }
 
@@ -1722,6 +1814,15 @@ impl Lower for StaticMut {
         match self {
             StaticMut::None => {},
             StaticMut::Mut(x) => x.lower(s),
+        }
+    }
+}
+impl Pretty for StaticMut {
+    fn pretty(&self, p: &mut Print) {
+        use StaticMut::*;
+        match self {
+            Mut(_) => p.word("mut "),
+            None => {},
         }
     }
 }
@@ -2062,7 +2163,7 @@ pub mod impl_ {
             Fn(Fn),
             Mac(Mac),
             Type(Type),
-            Stream(pm2::Stream),
+            Verbatim(Verbatim),
         }
     }
     impl Parse for Item {
@@ -2084,7 +2185,7 @@ pub mod impl_ {
                 if let Some(x) = parse_impl_item_fn(s, omitted)? {
                     Ok(Item::Fn(x))
                 } else {
-                    Ok(Item::Stream(parse::parse_verbatim(&beg, s)))
+                    Ok(Item::Verbatim(parse::parse_verbatim(&beg, s)))
                 }
             } else if look.peek(Token![const]) {
                 s.advance_to(&ahead);
@@ -2113,7 +2214,7 @@ pub mod impl_ {
                     }));
                 } else {
                     s.parse::<Token![;]>()?;
-                    return Ok(Item::Stream(parse::parse_verbatim(&beg, s)));
+                    return Ok(Item::Verbatim(parse::parse_verbatim(&beg, s)));
                 }
             } else if look.peek(Token![type]) {
                 parse_impl_item_type(beg, s)
@@ -2134,11 +2235,23 @@ pub mod impl_ {
                 Item::Fn(x) => &mut x.attrs,
                 Item::Type(x) => &mut x.attrs,
                 Item::Mac(x) => &mut x.attrs,
-                Item::Stream(_) => return Ok(y),
+                Item::Verbatim(_) => return Ok(y),
             };
             attrs.append(ys);
             *ys = attrs;
             Ok(y)
+        }
+    }
+    impl Pretty for Item {
+        fn pretty(&self, p: &mut Print) {
+            use self::Item::*;
+            match self {
+                Const(x) => x.pretty(p),
+                Fn(x) => x.pretty(p),
+                Mac(x) => x.pretty(p),
+                Type(x) => x.pretty(p),
+                Verbatim(x) => x.pretty(p),
+            }
         }
     }
 
@@ -2193,6 +2306,27 @@ pub mod impl_ {
             self.semi.lower(s);
         }
     }
+    impl Pretty for Const {
+        fn pretty(&self, p: &mut Print) {
+            p.outer_attrs(&self.attrs);
+            p.cbox(0);
+            &self.vis.pretty(p);
+            if self.default.is_some() {
+                p.word("default ");
+            }
+            p.word("const ");
+            &self.ident.pretty(p);
+            &self.gens.pretty(p);
+            p.word(": ");
+            &self.typ.pretty(p);
+            p.word(" = ");
+            p.neverbreak();
+            &self.expr.pretty(p);
+            p.word(";");
+            p.end();
+            p.hardbreak();
+        }
+    }
 
     pub struct Fn {
         pub attrs: Vec<attr::Attr>,
@@ -2217,6 +2351,57 @@ pub mod impl_ {
                 s.append_all(self.attrs.inners());
                 s.append_all(&self.block.stmts);
             });
+        }
+    }
+    impl Pretty for Fn {
+        fn pretty(&self, p: &mut Print) {
+            p.outer_attrs(&self.attrs);
+            p.cbox(INDENT);
+            &self.vis.pretty(p);
+            if self.default.is_some() {
+                p.word("default ");
+            }
+            &self.sig.pretty(p);
+            p.where_for_body(&self.sig.gens.where_);
+            p.word("{");
+            p.hardbreak_if_nonempty();
+            p.inner_attrs(&self.attrs);
+            for x in &self.block.stmts {
+                x.pretty(p);
+            }
+            p.offset(-INDENT);
+            p.end();
+            p.word("}");
+            p.hardbreak();
+        }
+    }
+
+    pub struct Mac {
+        pub attrs: Vec<attr::Attr>,
+        pub mac: mac::Mac,
+        pub semi: Option<Token![;]>,
+    }
+    impl Parse for Mac {
+        fn parse(s: Stream) -> Res<Self> {
+            let attrs = s.call(attr::Attr::parse_outers)?;
+            let mac: mac::Mac = s.parse()?;
+            let semi: Option<Token![;]> = if mac.delim.is_brace() { None } else { Some(s.parse()?) };
+            Ok(Mac { attrs, mac, semi })
+        }
+    }
+    impl Lower for Mac {
+        fn lower(&self, s: &mut Stream) {
+            s.append_all(self.attrs.outers());
+            self.mac.lower(s);
+            self.semi.lower(s);
+        }
+    }
+    impl Pretty for Mac {
+        fn pretty(&self, p: &mut Print) {
+            p.outer_attrs(&self.attrs);
+            let semi = true;
+            &self.mac.pretty(p, None, semi);
+            p.hardbreak();
         }
     }
 
@@ -2270,25 +2455,92 @@ pub mod impl_ {
             self.semi.lower(s);
         }
     }
-
-    pub struct Mac {
-        pub attrs: Vec<attr::Attr>,
-        pub mac: mac::Mac,
-        pub semi: Option<Token![;]>,
-    }
-    impl Parse for Mac {
-        fn parse(s: Stream) -> Res<Self> {
-            let attrs = s.call(attr::Attr::parse_outers)?;
-            let mac: mac::Mac = s.parse()?;
-            let semi: Option<Token![;]> = if mac.delim.is_brace() { None } else { Some(s.parse()?) };
-            Ok(Mac { attrs, mac, semi })
+    impl Pretty for Type {
+        fn pretty(&self, p: &mut Print) {
+            p.outer_attrs(&self.attrs);
+            p.cbox(INDENT);
+            &self.vis.pretty(p);
+            if self.default.is_some() {
+                p.word("default ");
+            }
+            p.word("type ");
+            &self.ident.pretty(p);
+            &self.gens.pretty(p);
+            p.word(" = ");
+            p.neverbreak();
+            p.ibox(-INDENT);
+            &self.typ.pretty(p);
+            p.end();
+            p.where_oneline_with_semi(&self.gens.where_);
+            p.end();
+            p.hardbreak();
         }
     }
-    impl Lower for Mac {
-        fn lower(&self, s: &mut Stream) {
-            s.append_all(self.attrs.outers());
-            self.mac.lower(s);
-            self.semi.lower(s);
+
+    pub struct Verbatim(pub pm2::Stream);
+    impl Pretty for Verbatim {
+        fn pretty(&self, p: &mut Print) {
+            enum Type {
+                Ellipsis,
+                Empty,
+                FlexConst(flex::Const),
+                FlexFn(flex::Fn),
+                FlexType(flex::Type),
+            }
+            use Type::*;
+            impl parse::Parse for Type {
+                fn parse(s: parse::Stream) -> Res<Self> {
+                    if s.is_empty() {
+                        return Ok(Empty);
+                    } else if s.peek(Token![...]) {
+                        s.parse::<Token![...]>()?;
+                        return Ok(Ellipsis);
+                    }
+                    let attrs = s.call(attr::Attr::parse_outer)?;
+                    let vis: data::Visibility = s.parse()?;
+                    let default = s.parse::<Option<Token![default]>>()?.is_some();
+                    let look = s.lookahead1();
+                    if look.peek(Token![const]) && (s.peek2(Ident) || s.peek2(Token![_])) {
+                        let y = flex::Const::parse(attrs, vis, default, s)?;
+                        Ok(FlexConst(y))
+                    } else if s.peek(Token![const])
+                        || look.peek(Token![async])
+                        || look.peek(Token![unsafe])
+                        || look.peek(Token![extern])
+                        || look.peek(Token![fn])
+                    {
+                        let y = flex::Fn::parse(attrs, vis, default, s)?;
+                        Ok(FlexFn(y))
+                    } else if look.peek(Token![type]) {
+                        let y = flex::Type::parse(attrs, vis, default, s, WhereLoc::AfterEq)?;
+                        Ok(FlexType(y))
+                    } else {
+                        Err(look.error())
+                    }
+                }
+            }
+            let y: Type = match parse2(self.clone()) {
+                Ok(x) => x,
+                Err(_) => unimplemented!("imp_::Item::Verbatim `{}`", self),
+            };
+            match y {
+                Empty => {
+                    p.hardbreak();
+                },
+                Ellipsis => {
+                    p.word("...");
+                    p.hardbreak();
+                },
+                FlexConst(x) => {
+                    &x.pretty(p);
+                },
+                FlexFn(x) => {
+                    &x.pretty(p);
+                },
+                FlexType(x) => {
+                    &x.pretty(p);
+                },
+            }
         }
     }
 
@@ -3457,16 +3709,16 @@ fn parse_rest_of_fn(s: Stream, mut attrs: Vec<attr::Attr>, vis: data::Visibility
         block: Box::new(stmt::Block { brace, stmts }),
     })
 }
-fn parse_fn_arg_or_variadic(s: Stream, attrs: Vec<attr::Attr>, variadic: bool) -> Res<FnArgOrVariadic> {
+fn parse_fn_arg_or_variadic(s: Stream, attrs: Vec<attr::Attr>, variadic: bool) -> Res<FnArgOrVari> {
     let ahead = s.fork();
     if let Ok(mut receiver) = ahead.parse::<Receiver>() {
         s.advance_to(&ahead);
         receiver.attrs = attrs;
-        return Ok(FnArgOrVariadic::FnArg(FnArg::Receiver(receiver)));
+        return Ok(FnArgOrVari::FnArg(FnArg::Receiver(receiver)));
     }
     if s.peek(ident::Ident) && s.peek2(Token![<]) {
         let span = s.fork().parse::<Ident>()?.span();
-        return Ok(FnArgOrVariadic::FnArg(FnArg::Typed(pat::Type {
+        return Ok(FnArgOrVari::FnArg(FnArg::Typed(pat::Type {
             attrs,
             pat: Box::new(pat::Pat::Wild(pat::Wild {
                 attrs: Vec::new(),
@@ -3480,7 +3732,7 @@ fn parse_fn_arg_or_variadic(s: Stream, attrs: Vec<attr::Attr>, variadic: bool) -
     let colon: Token![:] = s.parse()?;
     if variadic {
         if let Some(dots) = s.parse::<Option<Token![...]>>()? {
-            return Ok(FnArgOrVariadic::Variadic(Variadic {
+            return Ok(FnArgOrVari::Variadic(Variadic {
                 attrs,
                 pat: Some((pat, colon)),
                 dots,
@@ -3488,7 +3740,7 @@ fn parse_fn_arg_or_variadic(s: Stream, attrs: Vec<attr::Attr>, variadic: bool) -
             }));
         }
     }
-    Ok(FnArgOrVariadic::FnArg(FnArg::Typed(pat::Type {
+    Ok(FnArgOrVari::FnArg(FnArg::Typed(pat::Type {
         attrs,
         pat,
         colon,
@@ -3512,8 +3764,8 @@ fn parse_fn_args(s: Stream) -> Res<(Puncted<FnArg, Token![,]>, Option<Variadic>)
         }
         let variadic = true;
         let y = match parse_fn_arg_or_variadic(s, attrs, variadic)? {
-            FnArgOrVariadic::FnArg(x) => x,
-            FnArgOrVariadic::Variadic(x) => {
+            FnArgOrVari::FnArg(x) => x,
+            FnArgOrVari::Variadic(x) => {
                 vari = Some(Variadic {
                     comma: if x.is_empty() { None } else { Some(x.parse()?) },
                     ..x
@@ -3838,7 +4090,7 @@ fn parse_impl_item_type(beg: parse::Buffer, s: Stream) -> Res<impl_::Item> {
     } = Flexible::parse(s, TypeDefault::Optional, WhereLoc::AfterEq)?;
     let (eq, typ) = match typ {
         Some(x) if colon.is_none() => x,
-        _ => return Ok(impl_::Item::Stream(parse::parse_verbatim(&beg, s))),
+        _ => return Ok(impl_::Item::Verbatim(parse::parse_verbatim(&beg, s))),
     };
     Ok(impl_::Item::Type(impl_::Type {
         attrs: Vec::new(),

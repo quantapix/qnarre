@@ -18,8 +18,8 @@ ast_enum_of_structs! {
         Tuple(Tuple),
         TupleStruct(TupleStruct),
         Type(Type),
+        Verbatim(Verbatim),
         Wild(Wild),
-        Stream(pm2::Stream),
     }
 }
 impl Pat {
@@ -57,7 +57,7 @@ impl Pat {
         } else if look.peek(Token![..]) && !s.peek(Token![...]) {
             parse_range_half_open(s)
         } else if look.peek(Token![const]) {
-            s.call(parse_const).map(Pat::Stream)
+            s.call(parse_const).map(Pat::Verbatim)
         } else {
             Err(look.error())
         }
@@ -68,6 +68,30 @@ impl Pat {
     pub fn parse_with_vert(s: Stream) -> Res<Self> {
         let vert: Option<Token![|]> = s.parse()?;
         parse_many(s, vert)
+    }
+}
+impl Pretty for Pat {
+    fn pretty(&self, p: &mut Print) {
+        use pat::Pat::*;
+        match self {
+            Const(x) => x.pretty(p),
+            Ident(x) => x.pretty(p),
+            Lit(x) => x.pretty(p),
+            Mac(x) => x.pretty(p),
+            Or(x) => x.pretty(p),
+            Paren(x) => x.pretty(p),
+            Path(x) => x.pretty(p),
+            Range(x) => p.expr_range(x),
+            Ref(x) => x.pretty(p),
+            Rest(x) => x.pretty(p),
+            Slice(x) => x.pretty(p),
+            Struct(x) => x.pretty(p),
+            Tuple(x) => x.pretty(p),
+            TupleStruct(x) => x.pretty(p),
+            Type(x) => x.pretty(p),
+            Verbatim(x) => x.pretty(p),
+            Wild(x) => x.pretty(p),
+        }
     }
 }
 
@@ -90,6 +114,22 @@ impl Lower for Ident {
         }
     }
 }
+impl Pretty for Ident {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        if self.ref_.is_some() {
+            p.word("ref ");
+        }
+        if self.mut_.is_some() {
+            p.word("mut ");
+        }
+        &self.ident.pretty(p);
+        if let Some((_, x)) = &self.sub {
+            p.word(" @ ");
+            x.pretty(p);
+        }
+    }
+}
 
 pub struct Or {
     pub attrs: Vec<attr::Attr>,
@@ -101,6 +141,34 @@ impl Lower for Or {
         s.append_all(self.attrs.outers());
         self.vert.lower(s);
         self.cases.lower(s);
+    }
+}
+impl Pretty for Or {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        let mut break_ = false;
+        for x in &self.cases {
+            match x {
+                Pat::Lit(_) | Pat::Wild(_) => {},
+                _ => {
+                    break_ = true;
+                    break;
+                },
+            }
+        }
+        if break_ {
+            p.cbox(0);
+        } else {
+            p.ibox(0);
+        }
+        for x in self.cases.iter().delimited() {
+            if !x.is_first {
+                p.space();
+                p.word("| ");
+            }
+            &x.pretty(p);
+        }
+        p.end();
     }
 }
 
@@ -115,6 +183,14 @@ impl Lower for Paren {
         self.paren.surround(s, |s| {
             self.pat.lower(s);
         });
+    }
+}
+impl Pretty for Paren {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.word("(");
+        &self.pat.pretty(p);
+        p.word(")");
     }
 }
 
@@ -132,6 +208,16 @@ impl Lower for Ref {
         self.pat.lower(s);
     }
 }
+impl Pretty for Ref {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.word("&");
+        if self.mut_.is_some() {
+            p.word("mut ");
+        }
+        &self.pat.pretty(p);
+    }
+}
 
 pub struct Rest {
     pub attrs: Vec<attr::Attr>,
@@ -143,18 +229,35 @@ impl Lower for Rest {
         self.dot2.lower(s);
     }
 }
+impl Pretty for Rest {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.word("..");
+    }
+}
 
 pub struct Slice {
     pub attrs: Vec<attr::Attr>,
     pub bracket: tok::Bracket,
-    pub elems: Puncted<Pat, Token![,]>,
+    pub pats: Puncted<Pat, Token![,]>,
 }
 impl Lower for Slice {
     fn lower(&self, s: &mut Stream) {
         s.append_all(self.attrs.outers());
         self.bracket.surround(s, |s| {
-            self.elems.lower(s);
+            self.pats.lower(s);
         });
+    }
+}
+impl Pretty for Slice {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.word("[");
+        for x in self.pats.iter().delimited() {
+            &x.pretty(p);
+            p.trailing_comma(x.is_last);
+        }
+        p.word("]");
     }
 }
 
@@ -179,6 +282,26 @@ impl Lower for Struct {
         });
     }
 }
+impl Pretty for Struct {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.cbox(INDENT);
+        &self.path.pretty(p, path::Kind::Expr);
+        p.word(" {");
+        p.space_if_nonempty();
+        for x in self.fields.iter().delimited() {
+            &x.pretty(p);
+            p.trailing_comma_or_space(x.is_last && self.rest.is_none());
+        }
+        if let Some(x) = &self.rest {
+            x.pretty(p);
+            p.space();
+        }
+        p.offset(-INDENT);
+        p.end();
+        p.word("}");
+    }
+}
 
 pub struct Field {
     pub attrs: Vec<attr::Attr>,
@@ -196,6 +319,16 @@ impl Lower for Field {
         self.pat.lower(s);
     }
 }
+impl Pretty for Field {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        if self.colon.is_some() {
+            &self.memb.pretty(p);
+            p.word(": ");
+        }
+        &self.pat.pretty(p);
+    }
+}
 
 impl Member {
     fn is_unnamed(&self) -> bool {
@@ -209,14 +342,36 @@ impl Member {
 pub struct Tuple {
     pub attrs: Vec<attr::Attr>,
     pub paren: tok::Paren,
-    pub elems: Puncted<Pat, Token![,]>,
+    pub pats: Puncted<Pat, Token![,]>,
 }
 impl Lower for Tuple {
     fn lower(&self, s: &mut Stream) {
         s.append_all(self.attrs.outers());
         self.paren.surround(s, |s| {
-            self.elems.lower(s);
+            self.pats.lower(s);
         });
+    }
+}
+impl Pretty for Tuple {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.word("(");
+        p.cbox(INDENT);
+        p.zerobreak();
+        for x in self.pats.iter().delimited() {
+            &x.pretty(p);
+            if self.pats.len() == 1 {
+                if self.pats.trailing_punct() {
+                    p.word(",");
+                }
+                p.zerobreak();
+            } else {
+                p.trailing_comma(x.is_last);
+            }
+        }
+        p.offset(-INDENT);
+        p.end();
+        p.word(")");
     }
 }
 
@@ -225,15 +380,31 @@ pub struct TupleStruct {
     pub qself: Option<path::QSelf>,
     pub path: Path,
     pub paren: tok::Paren,
-    pub elems: Puncted<Pat, Token![,]>,
+    pub pats: Puncted<Pat, Token![,]>,
 }
 impl Lower for TupleStruct {
     fn lower(&self, s: &mut Stream) {
         s.append_all(self.attrs.outers());
         path::path_to_tokens(s, &self.qself, &self.path);
         self.paren.surround(s, |s| {
-            self.elems.lower(s);
+            self.pats.lower(s);
         });
+    }
+}
+impl Pretty for TupleStruct {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        &self.path.pretty(p, path::Kind::Expr);
+        p.word("(");
+        p.cbox(INDENT);
+        p.zerobreak();
+        for x in self.pats.iter().delimited() {
+            &x.pretty(p);
+            p.trailing_comma(x.is_last);
+        }
+        p.offset(-INDENT);
+        p.end();
+        p.word(")");
     }
 }
 
@@ -251,6 +422,14 @@ impl Lower for Type {
         self.typ.lower(s);
     }
 }
+impl Pretty for Type {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        &self.pat.pretty(p);
+        p.word(": ");
+        &self.typ.pretty(p);
+    }
+}
 
 pub struct Wild {
     pub attrs: Vec<attr::Attr>,
@@ -262,7 +441,72 @@ impl Lower for Wild {
         self.underscore.lower(s);
     }
 }
+impl Pretty for Wild {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.word("_");
+    }
+}
 
+pub struct Verbatim(pub pm2::Stream);
+impl Pretty for Verbatim {
+    fn pretty(&self, p: &mut Print) {
+        enum Type {
+            Box(Pat),
+            Const(Const),
+            Ellipsis,
+        }
+        use Type::*;
+        struct Const {
+            attrs: Vec<attr::Attr>,
+            block: stmt::Block,
+        }
+        impl parse::Parse for Type {
+            fn parse(s: parse::Stream) -> Res<Self> {
+                let look = s.lookahead1();
+                if look.peek(Token![box]) {
+                    s.parse::<Token![box]>()?;
+                    let y = pat::Pat::parse_single(s)?;
+                    Ok(Box(y))
+                } else if look.peek(Token![const]) {
+                    s.parse::<Token![const]>()?;
+                    let y;
+                    let brace = braced!(y in s);
+                    let attrs = y.call(attr::Attr::parse_inner)?;
+                    let stmts = y.call(stmt::Block::parse_within)?;
+                    Ok(Const(Const {
+                        attrs,
+                        block: stmt::Block { brace, stmts },
+                    }))
+                } else if look.peek(Token![...]) {
+                    s.parse::<Token![...]>()?;
+                    Ok(Ellipsis)
+                } else {
+                    Err(look.error())
+                }
+            }
+        }
+        let y: Type = match parse2(self.clone()) {
+            Ok(x) => x,
+            Err(_) => unimplemented!("Pat::Stream `{}`", self),
+        };
+        match y {
+            Ellipsis => {
+                p.word("...");
+            },
+            Box(x) => {
+                p.word("box ");
+                &x.pretty(p);
+            },
+            Const(x) => {
+                p.word("const ");
+                p.cbox(INDENT);
+                p.small_block(&x.block, &x.attrs);
+                p.end();
+            },
+        }
+    }
+}
 enum RangeBound {
     Const(Const),
     Lit(Lit),
@@ -317,7 +561,7 @@ fn parse_field(s: Stream) -> Res<Field> {
         Member::Unnamed(_) => unreachable!(),
     };
     let pat = if box_.is_some() {
-        Pat::Stream(parse::parse_verbatim(&beg, s))
+        Pat::Verbatim(parse::parse_verbatim(&beg, s))
     } else {
         Pat::Ident(Ident {
             attrs: Vec::new(),
@@ -441,7 +685,7 @@ fn parse_paren_or_tuple(s: Stream) -> Res<Pat> {
     Ok(Pat::Tuple(Tuple {
         attrs: Vec::new(),
         paren,
-        elems,
+        pats: elems,
     }))
 }
 fn parse_range(s: Stream, qself: Option<path::QSelf>, path: Path) -> Res<Pat> {
@@ -546,7 +790,7 @@ fn parse_slice(s: Stream) -> Res<Slice> {
     Ok(Slice {
         attrs: Vec::new(),
         bracket,
-        elems,
+        pats: elems,
     })
 }
 fn parse_struct(s: Stream, qself: Option<path::QSelf>, path: Path) -> Res<Struct> {
@@ -599,13 +843,13 @@ fn parse_tuple_struct(s: Stream, qself: Option<path::QSelf>, path: Path) -> Res<
         qself,
         path,
         paren,
-        elems,
+        pats: elems,
     })
 }
 fn parse_verbatim(beg: parse::Buffer, s: Stream) -> Res<Pat> {
     s.parse::<Token![box]>()?;
     Pat::parse_one(s)?;
-    Ok(Pat::Stream(parse::parse_verbatim(&beg, s)))
+    Ok(Pat::Verbatim(parse::parse_verbatim(&beg, s)))
 }
 fn parse_wild(s: Stream) -> Res<Wild> {
     Ok(Wild {

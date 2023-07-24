@@ -1102,7 +1102,7 @@ impl Hash for item::impl_::Item {
                 state.write_u8(3u8);
                 x.hash(state);
             },
-            item::impl_::Item::Stream(x) => {
+            item::impl_::Item::Verbatim(x) => {
                 state.write_u8(4u8);
                 StreamHelper(x).hash(state);
             },
@@ -1655,7 +1655,7 @@ impl Hash for pat::Pat {
                 state.write_u8(14u8);
                 x.hash(state);
             },
-            pat::Pat::Stream(x) => {
+            pat::Pat::Verbatim(x) => {
                 state.write_u8(15u8);
                 StreamHelper(x).hash(state);
             },
@@ -1721,7 +1721,7 @@ impl Hash for pat::Slice {
         H: Hasher,
     {
         self.attrs.hash(state);
-        self.elems.hash(state);
+        self.pats.hash(state);
     }
 }
 impl Hash for pat::Struct {
@@ -1742,7 +1742,7 @@ impl Hash for pat::Tuple {
         H: Hasher,
     {
         self.attrs.hash(state);
-        self.elems.hash(state);
+        self.pats.hash(state);
     }
 }
 impl Hash for pat::TupleStruct {
@@ -1753,7 +1753,7 @@ impl Hash for pat::TupleStruct {
         self.attrs.hash(state);
         self.qself.hash(state);
         self.path.hash(state);
-        self.elems.hash(state);
+        self.pats.hash(state);
     }
 }
 impl Hash for pat::Type {

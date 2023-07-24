@@ -617,7 +617,7 @@ impl PartialEq for item::impl_::Item {
             (item::impl_::Item::Fn(self0), item::impl_::Item::Fn(other0)) => self0 == other0,
             (item::impl_::Item::Type(self0), item::impl_::Item::Type(other0)) => self0 == other0,
             (item::impl_::Item::Macro(self0), item::impl_::Item::Macro(other0)) => self0 == other0,
-            (item::impl_::Item::Stream(self0), item::impl_::Item::Stream(other0)) => {
+            (item::impl_::Item::Verbatim(self0), item::impl_::Item::Verbatim(other0)) => {
                 StreamHelper(self0) == StreamHelper(other0)
             },
             _ => false,
@@ -951,7 +951,7 @@ impl PartialEq for pat::Pat {
             (pat::Pat::Tuple(self0), pat::Pat::Tuple(other0)) => self0 == other0,
             (pat::Pat::TupleStruct(self0), pat::Pat::TupleStruct(other0)) => self0 == other0,
             (pat::Pat::Type(self0), pat::Pat::Type(other0)) => self0 == other0,
-            (pat::Pat::Stream(self0), pat::Pat::Stream(other0)) => StreamHelper(self0) == StreamHelper(other0),
+            (pat::Pat::Verbatim(self0), pat::Pat::Verbatim(other0)) => StreamHelper(self0) == StreamHelper(other0),
             (pat::Pat::Wild(self0), pat::Pat::Wild(other0)) => self0 == other0,
             _ => false,
         }
@@ -994,7 +994,7 @@ impl PartialEq for pat::Rest {
 impl Eq for pat::Slice {}
 impl PartialEq for pat::Slice {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs && self.elems == other.elems
+        self.attrs == other.attrs && self.pats == other.pats
     }
 }
 impl Eq for pat::Struct {}
@@ -1010,13 +1010,13 @@ impl PartialEq for pat::Struct {
 impl Eq for pat::Tuple {}
 impl PartialEq for pat::Tuple {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs && self.elems == other.elems
+        self.attrs == other.attrs && self.pats == other.pats
     }
 }
 impl Eq for pat::TupleStruct {}
 impl PartialEq for pat::TupleStruct {
     fn eq(&self, other: &Self) -> bool {
-        self.attrs == other.attrs && self.qself == other.qself && self.path == other.path && self.elems == other.elems
+        self.attrs == other.attrs && self.qself == other.qself && self.path == other.path && self.pats == other.pats
     }
 }
 impl Eq for pat::Type {}

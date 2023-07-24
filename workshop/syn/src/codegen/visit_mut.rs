@@ -1714,7 +1714,7 @@ where
         item::impl_::Item::Macro(_binding_0) => {
             v.visit_impl_item_macro_mut(_binding_0);
         },
-        item::impl_::Item::Stream(_binding_0) => {
+        item::impl_::Item::Verbatim(_binding_0) => {
             skip!(_binding_0);
         },
     }
@@ -2341,7 +2341,7 @@ where
         pat::Pat::Type(_binding_0) => {
             v.visit_pat_type_mut(_binding_0);
         },
-        pat::Pat::Stream(_binding_0) => {
+        pat::Pat::Verbatim(_binding_0) => {
             skip!(_binding_0);
         },
         pat::Pat::Wild(_binding_0) => {
@@ -2415,7 +2415,7 @@ where
         v.visit_attribute_mut(it);
     }
     skip!(node.bracket);
-    for mut el in Puncted::pairs_mut(&mut node.elems) {
+    for mut el in Puncted::pairs_mut(&mut node.pats) {
         let it = el.value_mut();
         v.visit_pat_mut(it);
     }
@@ -2448,7 +2448,7 @@ where
         v.visit_attribute_mut(it);
     }
     skip!(node.paren);
-    for mut el in Puncted::pairs_mut(&mut node.elems) {
+    for mut el in Puncted::pairs_mut(&mut node.pats) {
         let it = el.value_mut();
         v.visit_pat_mut(it);
     }
@@ -2465,7 +2465,7 @@ where
     }
     v.visit_path_mut(&mut node.path);
     skip!(node.paren);
-    for mut el in Puncted::pairs_mut(&mut node.elems) {
+    for mut el in Puncted::pairs_mut(&mut node.pats) {
         let it = el.value_mut();
         v.visit_pat_mut(it);
     }

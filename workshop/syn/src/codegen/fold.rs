@@ -1452,7 +1452,7 @@ where
         item::impl_::Item::Fn(_binding_0) => item::impl_::Item::Fn(f.fold_impl_item_fn(_binding_0)),
         item::impl_::Item::Type(_binding_0) => item::impl_::Item::Type(f.fold_impl_item_type(_binding_0)),
         item::impl_::Item::Macro(_binding_0) => item::impl_::Item::Macro(f.fold_impl_item_macro(_binding_0)),
-        item::impl_::Item::Stream(_binding_0) => item::impl_::Item::Stream(_binding_0),
+        item::impl_::Item::Verbatim(_binding_0) => item::impl_::Item::Verbatim(_binding_0),
     }
 }
 pub fn fold_impl_item_const<F>(f: &mut F, node: item::impl_::Const) -> item::impl_::Const
@@ -1983,7 +1983,7 @@ where
         pat::Pat::Tuple(_binding_0) => pat::Pat::Tuple(f.fold_pat_tuple(_binding_0)),
         pat::Pat::TupleStruct(_binding_0) => pat::Pat::TupleStruct(f.fold_pat_tuple_struct(_binding_0)),
         pat::Pat::Type(_binding_0) => pat::Pat::Type(f.fold_pat_type(_binding_0)),
-        pat::Pat::Stream(_binding_0) => pat::Pat::Stream(_binding_0),
+        pat::Pat::Verbatim(_binding_0) => pat::Pat::Verbatim(_binding_0),
         pat::Pat::Wild(_binding_0) => pat::Pat::Wild(f.fold_pat_wild(_binding_0)),
     }
 }
@@ -2046,7 +2046,7 @@ where
     pat::Slice {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         bracket: node.bracket,
-        elems: FoldHelper::lift(node.elems, |it| f.fold_pat(it)),
+        pats: FoldHelper::lift(node.pats, |it| f.fold_pat(it)),
     }
 }
 pub fn fold_pat_struct<F>(f: &mut F, node: pat::Struct) -> pat::Struct
@@ -2069,7 +2069,7 @@ where
     pat::Tuple {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         paren: node.paren,
-        elems: FoldHelper::lift(node.elems, |it| f.fold_pat(it)),
+        pats: FoldHelper::lift(node.pats, |it| f.fold_pat(it)),
     }
 }
 pub fn fold_pat_tuple_struct<F>(f: &mut F, node: pat::TupleStruct) -> pat::TupleStruct
@@ -2081,7 +2081,7 @@ where
         qself: (node.qself).map(|it| f.fold_qself(it)),
         path: f.fold_path(node.path),
         paren: node.paren,
-        elems: FoldHelper::lift(node.elems, |it| f.fold_pat(it)),
+        elems: FoldHelper::lift(node.pats, |it| f.fold_pat(it)),
     }
 }
 pub fn fold_pat_type<F>(f: &mut F, node: pat::Type) -> pat::Type

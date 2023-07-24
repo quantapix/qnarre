@@ -3177,8 +3177,8 @@ impl Debug for Lite<syn::pat::Pat> {
                 if !_val.attrs.is_empty() {
                     f.field("attrs", Lite(&_val.attrs));
                 }
-                if !_val.elems.is_empty() {
-                    f.field("elems", Lite(&_val.elems));
+                if !_val.pats.is_empty() {
+                    f.field("elems", Lite(&_val.pats));
                 }
                 f.finish()
             },
@@ -3226,8 +3226,8 @@ impl Debug for Lite<syn::pat::Pat> {
                 if !_val.attrs.is_empty() {
                     f.field("attrs", Lite(&_val.attrs));
                 }
-                if !_val.elems.is_empty() {
-                    f.field("elems", Lite(&_val.elems));
+                if !_val.pats.is_empty() {
+                    f.field("elems", Lite(&_val.pats));
                 }
                 f.finish()
             },
@@ -3251,8 +3251,8 @@ impl Debug for Lite<syn::pat::Pat> {
                     f.field("qself", Print::ref_cast(val));
                 }
                 f.field("path", Lite(&_val.path));
-                if !_val.elems.is_empty() {
-                    f.field("elems", Lite(&_val.elems));
+                if !_val.pats.is_empty() {
+                    f.field("elems", Lite(&_val.pats));
                 }
                 f.finish()
             },
@@ -3265,7 +3265,7 @@ impl Debug for Lite<syn::pat::Pat> {
                 f.field("ty", Lite(&_val.typ));
                 f.finish()
             },
-            syn::pat::Pat::Stream(_val) => {
+            syn::pat::Pat::Verbatim(_val) => {
                 f.write_str("pat::Pat::Stream")?;
                 f.write_str("(`")?;
                 Display::fmt(_val, formatter)?;

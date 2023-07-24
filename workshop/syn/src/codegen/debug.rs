@@ -1231,7 +1231,7 @@ impl Debug for item::impl_::Item {
             item::impl_::Item::Fn(x) => x.debug(f, "Fn"),
             item::impl_::Item::Type(x) => x.debug(f, "Type"),
             item::impl_::Item::Macro(x) => x.debug(f, "Macro"),
-            item::impl_::Item::Stream(x) => {
+            item::impl_::Item::Verbatim(x) => {
                 let mut f = f.debug_tuple("Stream");
                 f.field(x);
                 f.finish()
@@ -1821,7 +1821,7 @@ impl Debug for pat::Pat {
             pat::Pat::Tuple(x) => x.debug(f, "Tuple"),
             pat::Pat::TupleStruct(x) => x.debug(f, "TupleStruct"),
             pat::Pat::Type(x) => x.debug(f, "Type"),
-            pat::Pat::Stream(x) => {
+            pat::Pat::Verbatim(x) => {
                 let mut f = f.debug_tuple("Stream");
                 f.field(x);
                 f.finish()
@@ -1909,7 +1909,7 @@ impl Debug for pat::Slice {
                 let mut f = f.debug_struct(name);
                 f.field("attrs", &self.attrs);
                 f.field("bracket", &self.bracket);
-                f.field("elems", &self.elems);
+                f.field("elems", &self.pats);
                 f.finish()
             }
         }
@@ -1940,7 +1940,7 @@ impl Debug for pat::Tuple {
                 let mut f = f.debug_struct(name);
                 f.field("attrs", &self.attrs);
                 f.field("paren", &self.paren);
-                f.field("elems", &self.elems);
+                f.field("elems", &self.pats);
                 f.finish()
             }
         }

@@ -780,7 +780,7 @@ impl Clone for item::impl_::Item {
             item::impl_::Item::Fn(v0) => item::impl_::Item::Fn(v0.clone()),
             item::impl_::Item::Type(v0) => item::impl_::Item::Type(v0.clone()),
             item::impl_::Item::Macro(v0) => item::impl_::Item::Macro(v0.clone()),
-            item::impl_::Item::Stream(v0) => item::impl_::Item::Stream(v0.clone()),
+            item::impl_::Item::Verbatim(v0) => item::impl_::Item::Verbatim(v0.clone()),
         }
     }
 }
@@ -1212,7 +1212,7 @@ impl Clone for pat::Pat {
             pat::Pat::Tuple(v0) => pat::Pat::Tuple(v0.clone()),
             pat::Pat::TupleStruct(v0) => pat::Pat::TupleStruct(v0.clone()),
             pat::Pat::Type(v0) => pat::Pat::Type(v0.clone()),
-            pat::Pat::Stream(v0) => pat::Pat::Stream(v0.clone()),
+            pat::Pat::Verbatim(v0) => pat::Pat::Verbatim(v0.clone()),
             pat::Pat::Wild(v0) => pat::Pat::Wild(v0.clone()),
         }
     }
@@ -1269,7 +1269,7 @@ impl Clone for pat::Slice {
         pat::Slice {
             attrs: self.attrs.clone(),
             bracket: self.bracket.clone(),
-            elems: self.elems.clone(),
+            pats: self.pats.clone(),
         }
     }
 }
@@ -1290,7 +1290,7 @@ impl Clone for pat::Tuple {
         pat::Tuple {
             attrs: self.attrs.clone(),
             paren: self.paren.clone(),
-            elems: self.elems.clone(),
+            pats: self.pats.clone(),
         }
     }
 }
@@ -1301,7 +1301,7 @@ impl Clone for pat::TupleStruct {
             qself: self.qself.clone(),
             path: self.path.clone(),
             paren: self.paren.clone(),
-            elems: self.elems.clone(),
+            pats: self.pats.clone(),
         }
     }
 }

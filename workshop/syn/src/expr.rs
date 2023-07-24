@@ -3293,7 +3293,7 @@ fn closure_arg(x: Stream) -> Res<pat::Pat> {
             Tuple(x) => x.attrs = attrs,
             TupleStruct(x) => x.attrs = attrs,
             Type(_) => unreachable!(),
-            Stream(_) => {},
+            Verbatim(_) => {},
             Wild(x) => x.attrs = attrs,
         }
         Ok(y)
