@@ -938,7 +938,7 @@ impl Clone for item::Impl {
     fn clone(&self) -> Self {
         item::Impl {
             attrs: self.attrs.clone(),
-            default_: self.default_.clone(),
+            default: self.default.clone(),
             unsafe_: self.unsafe_.clone(),
             impl_: self.impl_.clone(),
             gens: self.gens.clone(),
@@ -1007,7 +1007,7 @@ impl Clone for item::Trait {
             attrs: self.attrs.clone(),
             vis: self.vis.clone(),
             unsafe_: self.unsafe_.clone(),
-            auto_: self.auto_.clone(),
+            auto: self.auto.clone(),
             restriction: self.restriction.clone(),
             trait_: self.trait_.clone(),
             ident: self.ident.clone(),
@@ -1700,7 +1700,7 @@ impl Clone for item::use_::Group {
     fn clone(&self) -> Self {
         item::use_::Group {
             brace: self.brace.clone(),
-            elems: self.elems.clone(),
+            trees: self.trees.clone(),
         }
     }
 }

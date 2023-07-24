@@ -1445,7 +1445,7 @@ impl Debug for item::Impl {
             fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut f = f.debug_struct(name);
                 f.field("attrs", &self.attrs);
-                f.field("defaultness", &self.default_);
+                f.field("defaultness", &self.default);
                 f.field("unsafe_", &self.unsafe_);
                 f.field("impl_", &self.impl_);
                 f.field("gens", &self.gens);
@@ -1539,7 +1539,7 @@ impl Debug for item::Trait {
                 f.field("attrs", &self.attrs);
                 f.field("vis", &self.vis);
                 f.field("unsafe_", &self.unsafe_);
-                f.field("auto_", &self.auto_);
+                f.field("auto_", &self.auto);
                 f.field("restriction", &self.restriction);
                 f.field("trait_", &self.trait_);
                 f.field("ident", &self.ident);
@@ -2545,7 +2545,7 @@ impl Debug for item::use_::Group {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut f = f.debug_struct("item::use_::Group");
         f.field("brace", &self.brace);
-        f.field("items", &self.elems);
+        f.field("items", &self.trees);
         f.finish()
     }
 }

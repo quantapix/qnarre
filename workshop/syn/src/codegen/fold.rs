@@ -1623,7 +1623,7 @@ where
 {
     item::Impl {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        default_: node.default_,
+        default: node.default,
         unsafe_: node.unsafe_,
         impl_: node.impl_,
         gens: f.fold_generics(node.gens),
@@ -1697,7 +1697,7 @@ where
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         vis: f.fold_visibility(node.vis),
         unsafe_: node.unsafe_,
-        auto_: node.auto_,
+        auto: node.auto,
         restriction: (node.restriction).map(|it| f.fold_impl_restriction(it)),
         trait_: node.trait_,
         ident: f.fold_ident(node.ident),
@@ -2533,7 +2533,7 @@ where
 {
     item::use_::Group {
         brace: node.brace,
-        elems: FoldHelper::lift(node.elems, |it| f.fold_use_tree(it)),
+        trees: FoldHelper::lift(node.trees, |it| f.fold_use_tree(it)),
     }
 }
 pub fn fold_use_name<F>(f: &mut F, node: item::use_::Name) -> item::use_::Name

@@ -3016,7 +3016,7 @@ where
     V: VisitMut + ?Sized,
 {
     skip!(node.brace);
-    for mut el in Puncted::pairs_mut(&mut node.elems) {
+    for mut el in Puncted::pairs_mut(&mut node.trees) {
         let it = el.value_mut();
         v.visit_use_tree_mut(it);
     }

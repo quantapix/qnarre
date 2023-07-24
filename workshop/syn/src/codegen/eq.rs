@@ -736,7 +736,7 @@ impl Eq for item::Impl {}
 impl PartialEq for item::Impl {
     fn eq(&self, other: &Self) -> bool {
         self.attrs == other.attrs
-            && self.default_ == other.default_
+            && self.default == other.default
             && self.unsafe_ == other.unsafe_
             && self.gens == other.gens
             && self.trait_ == other.trait_
@@ -789,7 +789,7 @@ impl PartialEq for item::Trait {
         self.attrs == other.attrs
             && self.vis == other.vis
             && self.unsafe_ == other.unsafe_
-            && self.auto_ == other.auto_
+            && self.auto == other.auto
             && self.restriction == other.restriction
             && self.ident == other.ident
             && self.gens == other.gens
@@ -1364,7 +1364,7 @@ impl PartialEq for item::use_::Glob {
 impl Eq for item::use_::Group {}
 impl PartialEq for item::use_::Group {
     fn eq(&self, other: &Self) -> bool {
-        self.elems == other.elems
+        self.trees == other.trees
     }
 }
 impl Eq for item::use_::Name {}

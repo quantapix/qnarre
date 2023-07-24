@@ -3014,7 +3014,7 @@ where
     V: Visit<'ast> + ?Sized,
 {
     skip!(node.brace);
-    for el in Puncted::pairs(&node.elems) {
+    for el in Puncted::pairs(&node.trees) {
         let it = el.value();
         v.visit_use_tree(it);
     }

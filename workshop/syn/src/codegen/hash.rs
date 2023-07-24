@@ -1303,7 +1303,7 @@ impl Hash for item::Impl {
         H: Hasher,
     {
         self.attrs.hash(state);
-        self.default_.hash(state);
+        self.default.hash(state);
         self.unsafe_.hash(state);
         self.gens.hash(state);
         self.trait_.hash(state);
@@ -1369,7 +1369,7 @@ impl Hash for item::Trait {
         self.attrs.hash(state);
         self.vis.hash(state);
         self.unsafe_.hash(state);
-        self.auto_.hash(state);
+        self.auto.hash(state);
         self.restriction.hash(state);
         self.ident.hash(state);
         self.gens.hash(state);
@@ -2311,7 +2311,7 @@ impl Hash for item::use_::Group {
     where
         H: Hasher,
     {
-        self.elems.hash(h);
+        self.trees.hash(h);
     }
 }
 impl Hash for item::use_::Name {

@@ -2602,7 +2602,7 @@ impl Debug for Lite<syn::item::Impl> {
         if !self.value.attrs.is_empty() {
             f.field("attrs", Lite(&self.value.attrs));
         }
-        if self.value.default_.is_some() {
+        if self.value.default.is_some() {
             f.field("defaultness", &Present);
         }
         if self.value.unsafe_.is_some() {
@@ -2741,7 +2741,7 @@ impl Debug for Lite<syn::item::Trait> {
         if self.value.unsafe_.is_some() {
             f.field("unsafe_", &Present);
         }
-        if self.value.auto_.is_some() {
+        if self.value.auto.is_some() {
             f.field("auto_", &Present);
         }
         if let Some(val) = &self.value.restriction {

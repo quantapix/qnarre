@@ -60,7 +60,7 @@ ast_enum_of_structs! {
         Type(Type),
         Union(Union),
         Use(Use),
-        Stream(pm2::Stream),
+        Verbatim(Verbatim),
     }
 }
 impl Item {
@@ -81,7 +81,7 @@ impl Item {
             | Item::Type(Type { attrs, .. })
             | Item::Union(Union { attrs, .. })
             | Item::Use(Use { attrs, .. }) => mem::replace(attrs, ys),
-            Item::Stream(_) => Vec::new(),
+            Item::Verbatim(_) => Vec::new(),
         }
     }
 }
@@ -122,6 +122,29 @@ impl Parse for Item {
         let beg = s.fork();
         let attrs = s.call(attr::Attr::parse_outers)?;
         parse_rest_of_item(beg, attrs, s)
+    }
+}
+impl Pretty for Item {
+    fn pretty(&self, p: &mut Print) {
+        use Item::*;
+        match self {
+            Const(x) => x.pretty(p),
+            Enum(x) => x.pretty(p),
+            Extern(x) => x.pretty(p),
+            Fn(x) => x.pretty(p),
+            Foreign(x) => x.pretty(p),
+            Impl(x) => x.pretty(p),
+            Mac(x) => x.pretty(p),
+            Mod(x) => x.pretty(p),
+            Static(x) => x.pretty(p),
+            Struct(x) => x.pretty(p),
+            Trait(x) => x.pretty(p),
+            TraitAlias(x) => x.pretty(p),
+            Type(x) => x.pretty(p),
+            Union(x) => x.pretty(p),
+            Use(x) => x.pretty(p),
+            Verbatim(x) => x.pretty(p),
+        }
     }
 }
 
@@ -173,7 +196,24 @@ impl Lower for Const {
         self.semi.lower(s);
     }
 }
-
+impl Pretty for Const {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.cbox(0);
+        &self.vis.pretty(p);
+        p.word("const ");
+        &self.ident.pretty(p);
+        &self.gens.pretty(p);
+        p.word(": ");
+        &self.typ.pretty(p);
+        p.word(" = ");
+        p.neverbreak();
+        &self.expr.pretty(p);
+        p.word(";");
+        p.end();
+        p.hardbreak();
+    }
+}
 pub struct Enum {
     pub attrs: Vec<attr::Attr>,
     pub vis: data::Visibility,
@@ -230,7 +270,28 @@ impl Lower for Enum {
         });
     }
 }
-
+impl Pretty for Enum {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.cbox(INDENT);
+        &self.vis.pretty(p);
+        p.word("enum ");
+        &self.ident.pretty(p);
+        &self.gens.pretty(p);
+        p.where_for_body(&self.gens.where_);
+        p.word("{");
+        p.hardbreak_if_nonempty();
+        for x in &self.variants {
+            x.pretty(p);
+            p.word(",");
+            p.hardbreak();
+        }
+        p.offset(-INDENT);
+        p.end();
+        p.word("}");
+        p.hardbreak();
+    }
+}
 pub struct Extern {
     pub attrs: Vec<attr::Attr>,
     pub vis: data::Visibility,
@@ -285,6 +346,20 @@ impl Lower for Extern {
         self.semi.lower(s);
     }
 }
+impl Pretty for Extern {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        &self.vis.pretty(p);
+        p.word("extern crate ");
+        &self.ident.pretty(p);
+        if let Some((_, x)) = &self.rename {
+            p.word(" as ");
+            x.pretty(p);
+        }
+        p.word(";");
+        p.hardbreak();
+    }
+}
 
 pub struct Fn {
     pub attrs: Vec<attr::Attr>,
@@ -309,6 +384,25 @@ impl Lower for Fn {
             s.append_all(self.attrs.inners());
             s.append_all(&self.block.stmts);
         });
+    }
+}
+impl Pretty for Fn {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.cbox(INDENT);
+        &self.vis.pretty(p);
+        &self.sig.pretty(p);
+        p.where_for_body(&self.sig.gens.where_);
+        p.word("{");
+        p.hardbreak_if_nonempty();
+        p.inner_attrs(&self.attrs);
+        for x in &self.block.stmts {
+            x.pretty(p);
+        }
+        p.offset(-INDENT);
+        p.end();
+        p.word("}");
+        p.hardbreak();
     }
 }
 
@@ -351,10 +445,30 @@ impl Lower for Foreign {
         });
     }
 }
+impl Pretty for Foreign {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.cbox(INDENT);
+        if self.unsafe_.is_some() {
+            p.word("unsafe ");
+        }
+        &self.abi.pretty(p);
+        p.word("{");
+        p.hardbreak_if_nonempty();
+        p.inner_attrs(&self.attrs);
+        for x in &self.items {
+            x.pretty(p);
+        }
+        p.offset(-INDENT);
+        p.end();
+        p.word("}");
+        p.hardbreak();
+    }
+}
 
 pub struct Impl {
     pub attrs: Vec<attr::Attr>,
-    pub default_: Option<Token![default]>,
+    pub default: Option<Token![default]>,
     pub unsafe_: Option<Token![unsafe]>,
     pub impl_: Token![impl],
     pub gens: gen::Gens,
@@ -372,7 +486,7 @@ impl Parse for Impl {
 impl Lower for Impl {
     fn lower(&self, s: &mut Stream) {
         s.append_all(self.attrs.outers());
-        self.default_.lower(s);
+        self.default.lower(s);
         self.unsafe_.lower(s);
         self.impl_.lower(s);
         self.gens.lower(s);
@@ -387,6 +501,45 @@ impl Lower for Impl {
             s.append_all(self.attrs.inners());
             s.append_all(&self.items);
         });
+    }
+}
+impl Pretty for Impl {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.cbox(INDENT);
+        p.ibox(-INDENT);
+        p.cbox(INDENT);
+        if self.default.is_some() {
+            p.word("default ");
+        }
+        if self.unsafe_.is_some() {
+            p.word("unsafe ");
+        }
+        p.word("impl");
+        &self.gens.pretty(p);
+        p.end();
+        p.nbsp();
+        if let Some((neg, x, _)) = &self.trait_ {
+            if neg.is_some() {
+                p.word("!");
+            }
+            x.pretty(p, path::Kind::Type);
+            p.space();
+            p.word("for ");
+        }
+        &self.typ.pretty(p);
+        p.end();
+        p.where_for_body(&self.gens.where_);
+        p.word("{");
+        p.hardbreak_if_nonempty();
+        p.inner_attrs(&self.attrs);
+        for x in &self.items {
+            x.pretty(p);
+        }
+        p.offset(-INDENT);
+        p.end();
+        p.word("}");
+        p.hardbreak();
     }
 }
 
@@ -441,7 +594,14 @@ impl Lower for Mac {
         self.semi.lower(s);
     }
 }
-
+impl Pretty for Mac {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        let semi = true;
+        &self.mac.pretty(p, self.ident.as_ref(), semi);
+        p.hardbreak();
+    }
+}
 pub struct Mod {
     pub attrs: Vec<attr::Attr>,
     pub vis: data::Visibility,
@@ -512,7 +672,33 @@ impl Lower for Mod {
         }
     }
 }
-
+impl Pretty for Mod {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.cbox(INDENT);
+        &self.vis.pretty(p);
+        if self.unsafe_.is_some() {
+            p.word("unsafe ");
+        }
+        p.word("mod ");
+        &self.ident.pretty(p);
+        if let Some((_, xs)) = &self.items {
+            p.word(" {");
+            p.hardbreak_if_nonempty();
+            p.inner_attrs(&self.attrs);
+            for x in xs {
+                x.pretty(p);
+            }
+            p.offset(-INDENT);
+            p.end();
+            p.word("}");
+        } else {
+            p.word(";");
+            p.end();
+        }
+        p.hardbreak();
+    }
+}
 pub struct Static {
     pub attrs: Vec<attr::Attr>,
     pub vis: data::Visibility,
@@ -553,6 +739,24 @@ impl Lower for Static {
         self.eq.lower(s);
         self.expr.lower(s);
         self.semi.lower(s);
+    }
+}
+impl Pretty for Static {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.cbox(0);
+        &self.vis.pretty(p);
+        p.word("static ");
+        &self.mut_.pretty(p);
+        &self.ident.pretty(p);
+        p.word(": ");
+        &self.typ.pretty(p);
+        p.word(" = ");
+        p.neverbreak();
+        &self.expr.pretty(p);
+        p.word(";");
+        p.end();
+        p.hardbreak();
     }
 }
 
@@ -623,12 +827,48 @@ impl Lower for Struct {
         }
     }
 }
+impl Pretty for Struct {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.cbox(INDENT);
+        &self.vis.pretty(p);
+        p.word("struct ");
+        &self.ident.pretty(p);
+        &self.gens.pretty(p);
+        use data::Fields::*;
+        match &self.fields {
+            Named(xs) => {
+                p.where_for_body(&self.gens.where_);
+                p.word("{");
+                p.hardbreak_if_nonempty();
+                for x in &xs.fields {
+                    x.pretty(p);
+                    p.word(",");
+                    p.hardbreak();
+                }
+                p.offset(-INDENT);
+                p.end();
+                p.word("}");
+            },
+            Unnamed(x) => {
+                x.pretty(p);
+                p.where_with_semi(&self.gens.where_);
+                p.end();
+            },
+            Unit => {
+                p.where_with_semi(&self.gens.where_);
+                p.end();
+            },
+        }
+        p.hardbreak();
+    }
+}
 
 pub struct Trait {
     pub attrs: Vec<attr::Attr>,
     pub vis: data::Visibility,
     pub unsafe_: Option<Token![unsafe]>,
-    pub auto_: Option<Token![auto]>,
+    pub auto: Option<Token![auto]>,
     pub restriction: Option<impl_::Restriction>,
     pub trait_: Token![trait],
     pub ident: Ident,
@@ -655,7 +895,7 @@ impl Lower for Trait {
         s.append_all(self.attrs.outers());
         self.vis.lower(s);
         self.unsafe_.lower(s);
-        self.auto_.lower(s);
+        self.auto.lower(s);
         self.trait_.lower(s);
         self.ident.lower(s);
         self.gens.lower(s);
@@ -668,6 +908,41 @@ impl Lower for Trait {
             s.append_all(self.attrs.inners());
             s.append_all(&self.items);
         });
+    }
+}
+impl Pretty for Trait {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.cbox(INDENT);
+        &self.vis.pretty(p);
+        if self.unsafe_.is_some() {
+            p.word("unsafe ");
+        }
+        if self.auto.is_some() {
+            p.word("auto ");
+        }
+        p.word("trait ");
+        &self.ident.pretty(p);
+        &self.gens.pretty(p);
+        for x in self.supers.iter().delimited() {
+            if x.is_first {
+                p.word(": ");
+            } else {
+                p.word(" + ");
+            }
+            &x.pretty(p);
+        }
+        p.where_for_body(&self.gens.where_);
+        p.word("{");
+        p.hardbreak_if_nonempty();
+        p.inner_attrs(&self.attrs);
+        for x in &self.items {
+            x.pretty(p);
+        }
+        p.offset(-INDENT);
+        p.end();
+        p.word("}");
+        p.hardbreak();
     }
 }
 
@@ -698,6 +973,28 @@ impl Lower for TraitAlias {
         self.bounds.lower(s);
         self.gens.where_.lower(s);
         self.semi.lower(s);
+    }
+}
+impl Pretty for TraitAlias {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.cbox(INDENT);
+        &self.vis.pretty(p);
+        p.word("trait ");
+        &self.ident.pretty(p);
+        &self.gens.pretty(p);
+        p.word(" = ");
+        p.neverbreak();
+        for x in self.bounds.iter().delimited() {
+            if !x.is_first {
+                p.space();
+                p.word("+ ");
+            }
+            &x.pretty(p);
+        }
+        p.where_with_semi(&self.gens.where_);
+        p.end();
+        p.hardbreak();
     }
 }
 
@@ -740,6 +1037,25 @@ impl Lower for Type {
         self.eq.lower(s);
         self.typ.lower(s);
         self.semi.lower(s);
+    }
+}
+impl Pretty for Type {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.cbox(INDENT);
+        &self.vis.pretty(p);
+        p.word("type ");
+        &self.ident.pretty(p);
+        &self.gens.pretty(p);
+        p.where_oneline(&self.gens.where_);
+        p.word("= ");
+        p.neverbreak();
+        p.ibox(-INDENT);
+        &self.typ.pretty(p);
+        p.end();
+        p.word(";");
+        p.end();
+        p.hardbreak();
     }
 }
 
@@ -794,6 +1110,28 @@ impl Lower for Union {
         self.fields.lower(s);
     }
 }
+impl Pretty for Union {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.cbox(INDENT);
+        &self.vis.pretty(p);
+        p.word("union ");
+        &self.ident.pretty(p);
+        &self.gens.pretty(p);
+        p.where_for_body(&self.gens.where_);
+        p.word("{");
+        p.hardbreak_if_nonempty();
+        for x in &self.fields.fields {
+            x.pretty(p);
+            p.word(",");
+            p.hardbreak();
+        }
+        p.offset(-INDENT);
+        p.end();
+        p.word("}");
+        p.hardbreak();
+    }
+}
 
 pub struct Use {
     pub attrs: Vec<attr::Attr>,
@@ -819,6 +1157,19 @@ impl Lower for Use {
         self.semi.lower(s);
     }
 }
+impl Pretty for Use {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        &self.vis.pretty(p);
+        p.word("use ");
+        if self.colon.is_some() {
+            p.word("::");
+        }
+        &self.tree.pretty(p);
+        p.word(";");
+        p.hardbreak();
+    }
+}
 fn parse_item_use(s: Stream, root: bool) -> Res<Option<Use>> {
     let attrs = s.call(attr::Attr::parse_outers)?;
     let vis: data::Visibility = s.parse()?;
@@ -838,6 +1189,324 @@ fn parse_item_use(s: Stream, root: bool) -> Res<Option<Use>> {
         tree,
         semi,
     }))
+}
+
+pub struct Verbatim(pub pm2::Stream);
+impl Pretty for Verbatim {
+    fn pretty(&self, p: &mut Print) {
+        use verbatim::{FlexibleItemConst, FlexibleItemFn, FlexibleItemStatic, FlexibleItemType, WhereClauseLocation};
+        enum ItemVerbatim {
+            Ellipsis,
+            Empty,
+            FlexConst(FlexibleItemConst),
+            FlexFn(FlexibleItemFn),
+            FlexImpl(FlexImpl),
+            FlexStatic(FlexibleItemStatic),
+            FlexType(FlexibleItemType),
+            Mac(Mac),
+            UseBrace(UseBrace),
+        }
+        struct FlexImpl {
+            attrs: Vec<attr::Attr>,
+            vis: data::Visibility,
+            defaultness: bool,
+            unsafe_: bool,
+            gens: gen::Gens,
+            const_: ImplConstness,
+            neg: bool,
+            trait_: Option<Type>,
+            typ: Type,
+            impls: Vec<Impl>,
+        }
+        enum ImplConstness {
+            None,
+            MaybeConst,
+            Const,
+        }
+        struct Mac {
+            attrs: Vec<attr::Attr>,
+            vis: data::Visibility,
+            ident: Ident,
+            args: Option<Stream>,
+            body: Stream,
+        }
+        struct UseBrace {
+            attrs: Vec<attr::Attr>,
+            vis: data::Visibility,
+            trees: punct::Puncted<RootUseTree, Token![,]>,
+        }
+        struct RootUseTree {
+            colon: Option<Token![::]>,
+            inner: use_::Tree,
+        }
+        impl parse::Parse for ImplConstness {
+            fn parse(s: parse::Stream) -> Res<Self> {
+                use ImplConstness::*;
+                if s.parse::<Option<Token![?]>>()?.is_some() {
+                    s.parse::<Token![const]>()?;
+                    Ok(MaybeConst)
+                } else if s.parse::<Option<Token![const]>>()?.is_some() {
+                    Ok(Const)
+                } else {
+                    Ok(None)
+                }
+            }
+        }
+        impl parse::Parse for RootUseTree {
+            fn parse(s: parse::Stream) -> Res<Self> {
+                Ok(RootUseTree {
+                    colon: s.parse()?,
+                    inner: s.parse()?,
+                })
+            }
+        }
+        impl parse::Parse for ItemVerbatim {
+            fn parse(s: parse::Stream) -> Res<Self> {
+                if s.is_empty() {
+                    return Ok(ItemVerbatim::Empty);
+                } else if s.peek(Token![...]) {
+                    s.parse::<Token![...]>()?;
+                    return Ok(ItemVerbatim::Ellipsis);
+                }
+                let mut attrs = s.call(attr::Attr::parse_outer)?;
+                let vis: data::Visibility = s.parse()?;
+                let look = s.lookahead1();
+                if look.peek(Token![const]) && (s.peek2(Ident) || s.peek2(Token![_])) {
+                    let default = false;
+                    let y = FlexibleItemConst::parse(attrs, vis, default, s)?;
+                    Ok(ItemVerbatim::FlexConst(y))
+                } else if s.peek(Token![const])
+                    || look.peek(Token![async])
+                    || look.peek(Token![unsafe]) && !s.peek2(Token![impl])
+                    || look.peek(Token![extern])
+                    || look.peek(Token![fn])
+                {
+                    let default = false;
+                    let y = FlexibleItemFn::parse(attrs, vis, default, s)?;
+                    Ok(ItemVerbatim::FlexFn(y))
+                } else if look.peek(Token![default]) || s.peek(Token![unsafe]) || look.peek(Token![impl]) {
+                    let default = s.parse::<Option<Token![default]>>()?.is_some();
+                    let unsafe_ = s.parse::<Option<Token![unsafe]>>()?.is_some();
+                    s.parse::<Token![impl]>()?;
+                    let has_generics = s.peek(Token![<])
+                        && (s.peek2(Token![>])
+                            || s.peek2(Token![#])
+                            || (s.peek2(Ident) || s.peek2(Lifetime))
+                                && (s.peek3(Token![:])
+                                    || s.peek3(Token![,])
+                                    || s.peek3(Token![>])
+                                    || s.peek3(Token![=]))
+                            || s.peek2(Token![const]));
+                    let mut gens: gen::Gens = if has_generics { s.parse()? } else { gen::Gens::default() };
+                    let const_: ImplConstness = s.parse()?;
+                    let neg = !s.peek2(tok::Brace) && s.parse::<Option<Token![!]>>()?.is_some();
+                    let first: Type = s.parse()?;
+                    let (trait_, typ) = if s.parse::<Option<Token![for]>>()?.is_some() {
+                        (Some(first), s.parse()?)
+                    } else {
+                        (None, first)
+                    };
+                    gens.where_ = s.parse()?;
+                    let y;
+                    braced!(y in s);
+                    let inner_attrs = y.call(attr::Attr::parse_inner)?;
+                    attrs.extend(inner_attrs);
+                    let mut impls = Vec::new();
+                    while !y.is_empty() {
+                        impls.push(y.parse()?);
+                    }
+                    Ok(ItemVerbatim::FlexImpl(FlexImpl {
+                        attrs,
+                        vis,
+                        default,
+                        unsafe_,
+                        gens,
+                        const_,
+                        neg,
+                        trait_,
+                        typ,
+                        impls,
+                    }))
+                } else if look.peek(Token![macro]) {
+                    s.parse::<Token![macro]>()?;
+                    let ident: Ident = s.parse()?;
+                    let args = if s.peek(tok::Paren) {
+                        let y;
+                        parenthesized!(y in s);
+                        Some(y.parse::<Stream>()?)
+                    } else {
+                        None
+                    };
+                    let y;
+                    braced!(y in s);
+                    let body: Stream = y.parse()?;
+                    Ok(ItemVerbatim::Mac(Mac {
+                        attrs,
+                        vis,
+                        ident,
+                        args,
+                        body,
+                    }))
+                } else if look.peek(Token![static]) {
+                    let y = FlexibleItemStatic::parse(attrs, vis, s)?;
+                    Ok(ItemVerbatim::FlexStatic(y))
+                } else if look.peek(Token![type]) {
+                    let default = false;
+                    let y = FlexibleItemType::parse(attrs, vis, default, s, WhereClauseLocation::BeforeEq)?;
+                    Ok(ItemVerbatim::FlexType(y))
+                } else if look.peek(Token![use]) {
+                    s.parse::<Token![use]>()?;
+                    let y;
+                    braced!(y in s);
+                    let trees = y.parse_terminated(RootUseTree::parse, Token![,])?;
+                    s.parse::<Token![;]>()?;
+                    Ok(ItemVerbatim::UseBrace(UseBrace { attrs, vis, trees }))
+                } else {
+                    Err(look.error())
+                }
+            }
+        }
+        let item: ItemVerbatim = match parse2(self.clone()) {
+            Ok(x) => x,
+            Err(_) => unimplemented!("Item::Verbatim `{}`", self),
+        };
+        use ItemVerbatim::*;
+        match item {
+            Empty => {
+                p.hardbreak();
+            },
+            Ellipsis => {
+                p.word("...");
+                p.hardbreak();
+            },
+            FlexConst(x) => {
+                &x.pretty(p);
+            },
+            FlexFn(x) => {
+                &x.pretty(p);
+            },
+            FlexImpl(x) => {
+                p.outer_attrs(&x.attrs);
+                p.cbox(INDENT);
+                p.ibox(-INDENT);
+                p.cbox(INDENT);
+                &x.vis.pretty(p);
+                if x.defaultness {
+                    p.word("default ");
+                }
+                if x.unsafe_ {
+                    p.word("unsafe ");
+                }
+                p.word("impl");
+                &x.gens.pretty(p);
+                p.end();
+                p.nbsp();
+                match x.const_ {
+                    ImplConstness::None => {},
+                    ImplConstness::MaybeConst => p.word("?const "),
+                    ImplConstness::Const => p.word("const "),
+                }
+                if x.neg {
+                    p.word("!");
+                }
+                if let Some(x) = &x.trait_ {
+                    x.pretty(p);
+                    p.space();
+                    p.word("for ");
+                }
+                &x.typ.pretty(p);
+                p.end();
+                p.where_for_body(&x.gens.where_);
+                p.word("{");
+                p.hardbreak_if_nonempty();
+                p.inner_attrs(&x.attrs);
+                for x in &x.impls {
+                    x.pretty(p);
+                }
+                p.offset(-INDENT);
+                p.end();
+                p.word("}");
+                p.hardbreak();
+            },
+            Mac(x) => {
+                p.outer_attrs(&x.attrs);
+                &x.vis.pretty(p);
+                p.word("macro ");
+                &x.ident.pretty(p);
+                if let Some(x) = &x.args {
+                    p.word("(");
+                    p.cbox(INDENT);
+                    p.zerobreak();
+                    p.ibox(0);
+                    p.macro_rules_tokens(x.clone(), true);
+                    p.end();
+                    p.zerobreak();
+                    p.offset(-INDENT);
+                    p.end();
+                    p.word(")");
+                }
+                p.word(" {");
+                if !x.body.is_empty() {
+                    p.neverbreak();
+                    p.cbox(INDENT);
+                    p.hardbreak();
+                    p.ibox(0);
+                    p.macro_rules_tokens(x.body.clone(), false);
+                    p.end();
+                    p.hardbreak();
+                    p.offset(-INDENT);
+                    p.end();
+                }
+                p.word("}");
+                p.hardbreak();
+            },
+            FlexStatic(x) => {
+                p.flexible_item_static(&x);
+            },
+            FlexType(x) => {
+                p.flexible_item_type(&x);
+            },
+            UseBrace(x) => {
+                p.outer_attrs(&x.attrs);
+                &x.vis.pretty(p);
+                p.word("use ");
+                if x.trees.len() == 1 {
+                    p.word("::");
+                    p.use_tree(&x.trees[0].inner);
+                } else {
+                    p.cbox(INDENT);
+                    p.word("{");
+                    p.zerobreak();
+                    p.ibox(0);
+                    for x in x.trees.iter().delimited() {
+                        if x.colon.is_some() {
+                            p.word("::");
+                        }
+                        &x.inner.pretty(p);
+                        if !x.is_last {
+                            p.word(",");
+                            let mut y = &x.inner;
+                            while let use_::Tree::Path(x) = y {
+                                y = &x.tree;
+                            }
+                            if let use_::Tree::Group(_) = y {
+                                p.hardbreak();
+                            } else {
+                                p.space();
+                            }
+                        }
+                    }
+                    p.end();
+                    p.trailing_comma(true);
+                    p.offset(-INDENT);
+                    p.word("}");
+                    p.end();
+                }
+                p.word(";");
+                p.hardbreak();
+            },
+        }
+    }
 }
 
 pub struct Receiver {
@@ -1759,6 +2428,18 @@ pub mod use_ {
             parse_tree(s, root).map(Option::unwrap)
         }
     }
+    impl Pretty for Tree {
+        fn pretty(&self, p: &mut Print) {
+            use Tree::*;
+            match self {
+                Glob(x) => x.pretty(p),
+                Group(x) => x.pretty(p),
+                Name(x) => x.pretty(p),
+                Path(x) => x.pretty(p),
+                Rename(x) => x.pretty(p),
+            }
+        }
+    }
     pub fn parse_tree(s: Stream, root: bool) -> Res<Option<Tree>> {
         let look = s.look1();
         if look.peek(ident::Ident)
@@ -1817,7 +2498,7 @@ pub mod use_ {
             if has_root {
                 Ok(None)
             } else {
-                Ok(Some(Tree::Group(Group { brace, elems })))
+                Ok(Some(Tree::Group(Group { brace, trees: elems })))
             }
         } else {
             Err(look.error())
@@ -1836,6 +2517,13 @@ pub mod use_ {
             self.tree.lower(s);
         }
     }
+    impl Pretty for Path {
+        fn pretty(&self, p: &mut Print) {
+            &self.ident.pretty(p);
+            p.word("::");
+            &self.tree.pretty(p);
+        }
+    }
 
     pub struct Name {
         pub ident: Ident,
@@ -1843,6 +2531,11 @@ pub mod use_ {
     impl Lower for Name {
         fn lower(&self, s: &mut Stream) {
             self.ident.lower(s);
+        }
+    }
+    impl Pretty for Name {
+        fn pretty(&self, p: &mut Print) {
+            &self.ident.pretty(p);
         }
     }
 
@@ -1858,6 +2551,13 @@ pub mod use_ {
             self.rename.lower(s);
         }
     }
+    impl Pretty for Rename {
+        fn pretty(&self, p: &mut Print) {
+            &self.ident.pretty(p);
+            p.word(" as ");
+            &self.rename.pretty(p);
+        }
+    }
 
     pub struct Glob {
         pub star: Token![*],
@@ -1867,16 +2567,55 @@ pub mod use_ {
             self.star.lower(s);
         }
     }
-
+    impl Pretty for Glob {
+        fn pretty(&self, p: &mut Print) {
+            let _ = self;
+            p.word("*");
+        }
+    }
     pub struct Group {
         pub brace: tok::Brace,
-        pub elems: Puncted<Tree, Token![,]>,
+        pub trees: Puncted<Tree, Token![,]>,
     }
     impl Lower for Group {
         fn lower(&self, s: &mut Stream) {
             self.brace.surround(s, |s| {
-                self.elems.lower(s);
+                self.trees.lower(s);
             });
+        }
+    }
+    impl Pretty for Group {
+        fn pretty(&self, p: &mut Print) {
+            if self.trees.is_empty() {
+                p.word("{}");
+            } else if self.trees.len() == 1 {
+                &self.trees[0].pretty(p);
+            } else {
+                p.cbox(INDENT);
+                p.word("{");
+                p.zerobreak();
+                p.ibox(0);
+                for x in self.trees.iter().delimited() {
+                    &x.pretty(p);
+                    if !x.is_last {
+                        p.word(",");
+                        let mut y = *x;
+                        while let Tree::Path(x) = y {
+                            y = &x.tree;
+                        }
+                        if let Tree::Group(_) = y {
+                            p.hardbreak();
+                        } else {
+                            p.space();
+                        }
+                    }
+                }
+                p.end();
+                p.trailing_comma(true);
+                p.offset(-INDENT);
+                p.word("}");
+                p.end();
+            }
         }
     }
 }
@@ -1976,7 +2715,7 @@ pub fn parse_rest_of_item(beg: parse::Buffer, mut attrs: Vec<attr::Attr>, s: Str
         let sig: Sig = s.parse()?;
         if s.peek(Token![;]) {
             s.parse::<Token![;]>()?;
-            Ok(Item::Stream(parse::parse_verbatim(&beg, s)))
+            Ok(Item::Verbatim(parse::parse_verbatim(&beg, s)))
         } else {
             parse_rest_of_fn(s, Vec::new(), vis, sig).map(Item::Fn)
         }
@@ -2002,7 +2741,7 @@ pub fn parse_rest_of_item(beg: parse::Buffer, mut attrs: Vec<attr::Attr>, s: Str
         let allow_crate_root_in_path = true;
         match parse_item_use(s, allow_crate_root_in_path)? {
             Some(item_use) => Ok(Item::Use(item_use)),
-            None => Ok(Item::Stream(parse::parse_verbatim(&beg, s))),
+            None => Ok(Item::Verbatim(parse::parse_verbatim(&beg, s))),
         }
     } else if look.peek(Token![static]) {
         let vis = s.parse()?;
@@ -2013,13 +2752,13 @@ pub fn parse_rest_of_item(beg: parse::Buffer, mut attrs: Vec<attr::Attr>, s: Str
             s.parse::<Token![=]>()?;
             s.parse::<expr::Expr>()?;
             s.parse::<Token![;]>()?;
-            Ok(Item::Stream(parse::parse_verbatim(&beg, s)))
+            Ok(Item::Verbatim(parse::parse_verbatim(&beg, s)))
         } else {
             let colon = s.parse()?;
             let ty = s.parse()?;
             if s.peek(Token![;]) {
                 s.parse::<Token![;]>()?;
-                Ok(Item::Stream(parse::parse_verbatim(&beg, s)))
+                Ok(Item::Verbatim(parse::parse_verbatim(&beg, s)))
             } else {
                 Ok(Item::Static(Static {
                     attrs: Vec::new(),
@@ -2048,7 +2787,7 @@ pub fn parse_rest_of_item(beg: parse::Buffer, mut attrs: Vec<attr::Attr>, s: Str
         let ty = s.parse()?;
         if s.peek(Token![;]) {
             s.parse::<Token![;]>()?;
-            Ok(Item::Stream(parse::parse_verbatim(&beg, s)))
+            Ok(Item::Verbatim(parse::parse_verbatim(&beg, s)))
         } else {
             Ok(Item::Const(Const {
                 attrs: Vec::new(),
@@ -2073,7 +2812,7 @@ pub fn parse_rest_of_item(beg: parse::Buffer, mut attrs: Vec<attr::Attr>, s: Str
             if let Some(item) = parse_impl(s, allow_verbatim_impl)? {
                 Ok(Item::Impl(item))
             } else {
-                Ok(Item::Stream(parse::parse_verbatim(&beg, s)))
+                Ok(Item::Verbatim(parse::parse_verbatim(&beg, s)))
             }
         } else if look.peek(Token![extern]) {
             s.parse().map(Item::Foreign)
@@ -2101,7 +2840,7 @@ pub fn parse_rest_of_item(beg: parse::Buffer, mut attrs: Vec<attr::Attr>, s: Str
         if let Some(item) = parse_impl(s, allow_verbatim_impl)? {
             Ok(Item::Impl(item))
         } else {
-            Ok(Item::Stream(parse::parse_verbatim(&beg, s)))
+            Ok(Item::Verbatim(parse::parse_verbatim(&beg, s)))
         }
     } else if look.peek(Token![macro]) {
         s.advance_to(&ahead);
@@ -2138,7 +2877,7 @@ fn parse_macro2(beg: parse::Buffer, _: data::Visibility, s: Stream) -> Res<Item>
     } else {
         return Err(look.error());
     }
-    Ok(Item::Stream(parse::parse_verbatim(&beg, s)))
+    Ok(Item::Verbatim(parse::parse_verbatim(&beg, s)))
 }
 fn peek_signature(s: Stream) -> bool {
     let y = s.fork();
@@ -2282,7 +3021,7 @@ fn parse_item_type(beg: parse::Buffer, s: Stream) -> Res<Item> {
     } = Flexible::parse(s, TypeDefault::Disallowed, WhereLoc::BeforeEq)?;
     let (eq, typ) = match typ {
         Some(x) if colon.is_none() => x,
-        _ => return Ok(Item::Stream(parse::parse_verbatim(&beg, s))),
+        _ => return Ok(Item::Verbatim(parse::parse_verbatim(&beg, s))),
     };
     Ok(Item::Type(Type {
         attrs: Vec::new(),
@@ -2344,7 +3083,7 @@ fn parse_rest_of_trait(
         attrs,
         vis,
         unsafe_,
-        auto_,
+        auto: auto_,
         restriction: None,
         trait_,
         ident,
@@ -2493,7 +3232,7 @@ fn parse_impl(s: Stream, verbatim: bool) -> Res<Option<Impl>> {
     } else {
         Ok(Some(Impl {
             attrs,
-            default_,
+            default: default_,
             unsafe_,
             impl_,
             gens,
