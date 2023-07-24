@@ -1,19 +1,7 @@
 use super::pm2::{Delim, Group, Ident, Literal, Spacing, Stream, Tree};
 use super::{
-    braced, item::File, AngleBracketedGenericArguments, Arm, AssocConst, AssocType, BinOp, Block, Block,
-    BoundLifetimes, ConstParam, Constraint, Expr, Field, FieldPat, FieldValue, Fields, FieldsUnnamed, FnArg,
-    ForeignItem, ForeignItemFn, ForeignItemMacro, ForeignItemStatic, ForeignItemType, GenericArgument, GenericParam,
-    Generics, Ident, IdentExt, ImplItem, ImplItemConst, ImplItemFn, ImplItemMacro, ImplItemType, Index, Item,
-    ItemConst, ItemEnum, ItemExternCrate, ItemFn, ItemForeignMod, ItemImpl, ItemMacro, ItemMod, ItemStatic, ItemStruct,
-    ItemTrait, ItemTraitAlias, ItemType, ItemUnion, ItemUse, Label, Lifetime, LifetimeParam, Lit, LitBool, LitByte,
-    LitByteStr, LitChar, LitFloat, LitInt, LitStr, Macro, MacroDelim, MacroDelim, Member, Meta, MetaList,
-    MetaNameValue, ParenthesizedGenericArguments, Path, PathArguments, PathSegment, PredicateLifetime, PredicateType,
-    QSelf, RangeLimits, Receiver, Signature, Signature, StaticMutability, Stmt, Token, TraitBound, TraitBoundModifier,
-    TraitItem, TraitItemConst, TraitItemFn, TraitItemMacro, TraitItemType, TypeImplTrait, TypeParam, TypeParamBound,
-    TypeParamBound, UnOp, UseGlob, UseGroup, UseName, UsePath, UseRename, UseTree, Variant, VisRestricted, Visibility,
-    Visibility, WhereClause, WherePredicate, *,
+    braced, item::File, Block, Expr, Ident, Index, Macro, MacroDelim, MacroDelim, Path, Stmt, Token, Visibility, *,
 };
-
 use std::iter::Peekable;
 use std::ops::Deref;
 use std::ops::{Index, IndexMut};
@@ -25,6 +13,7 @@ pub enum Breaks {
     Consistent,
     Inconsistent,
 }
+
 #[derive(Clone, Copy, Default)]
 pub struct BreakToken {
     pub offset: isize,
@@ -35,11 +24,13 @@ pub struct BreakToken {
     pub if_nonempty: bool,
     pub never_break: bool,
 }
+
 #[derive(Clone, Copy)]
 pub struct BeginToken {
     pub offset: isize,
     pub breaks: Breaks,
 }
+
 #[derive(Clone)]
 pub enum Token {
     String(Cow<'static, str>),
@@ -47,6 +38,7 @@ pub enum Token {
     Begin(BeginToken),
     End,
 }
+
 #[derive(Copy, Clone)]
 enum PrintFrame {
     Fits(Breaks),
@@ -421,15 +413,6 @@ impl Print {
             ..BreakToken::default()
         });
     }
-}
-
-#[derive(Clone)]
-struct BufEntry {
-    token: Token,
-    size: isize,
-}
-
-impl Print {
     //attr
     pub fn outer_attrs(&mut self, xs: &[attr::Attr]) {
         for x in xs {
@@ -545,9 +528,6 @@ impl Print {
             }
         }
     }
-}
-
-impl Print {
     //expr
     pub fn call_args(&mut self, xs: &punct::Puncted<Expr, Token![,]>) {
         let mut iter = xs.iter();
@@ -589,9 +569,6 @@ impl Print {
         }
         self.word("}");
     }
-}
-
-impl Print {
     //generics
     pub fn where_for_body(&mut self, x: &Option<WhereClause>) {
         let breaks = true;
@@ -613,87 +590,7 @@ impl Print {
         let semi = true;
         x.pretty(self, breaks, semi);
     }
-}
-
-pub struct Delimited<I: Iterator> {
-    is_first: bool,
-    iter: Peekable<I>,
-}
-pub trait IterDelimited: Iterator + Sized {
-    fn delimited(self) -> Delimited<Self> {
-        Delimited {
-            is_first: true,
-            iter: self.peekable(),
-        }
-    }
-}
-impl<I: Iterator> IterDelimited for I {}
-pub struct IteratorItem<T> {
-    value: T,
-    pub is_first: bool,
-    pub is_last: bool,
-}
-impl<I: Iterator> Iterator for Delimited<I> {
-    type Item = IteratorItem<I::Item>;
-    fn next(&mut self) -> Option<Self::Item> {
-        let item = IteratorItem {
-            value: self.iter.next()?,
-            is_first: self.is_first,
-            is_last: self.iter.peek().is_none(),
-        };
-        self.is_first = false;
-        Some(item)
-    }
-}
-impl<T> Deref for IteratorItem<T> {
-    type Target = T;
-    fn deref(&self) -> &Self::Target {
-        &self.value
-    }
-}
-
-impl Print {
     //mac
-    pub fn mac(&mut self, mac: &Macro, ident: Option<&Ident>, semicolon: bool) {
-        if mac.path.is_ident("macro_rules") {
-            if let Some(ident) = ident {
-                self.macro_rules(ident, &mac.tokens);
-                return;
-            }
-        }
-        if ident.is_none() && self.standard_library_macro(mac, semicolon) {
-            return;
-        }
-        self.path(&mac.path, path::Kind::Simple);
-        self.word("!");
-        if let Some(ident) = ident {
-            self.nbsp();
-            self.ident(ident);
-        }
-        let (open, close, delim_break) = match mac.delim {
-            MacroDelim::Paren(_) => ("(", ")", Self::zerobreak as fn(&mut Self)),
-            MacroDelim::Brace(_) => (" {", "}", Self::hardbreak as fn(&mut Self)),
-            MacroDelim::Bracket(_) => ("[", "]", Self::zerobreak as fn(&mut Self)),
-        };
-        self.word(open);
-        if !mac.tokens.is_empty() {
-            self.cbox(INDENT);
-            delim_break(self);
-            self.ibox(0);
-            self.macro_rules_tokens(mac.tokens.clone(), false);
-            self.end();
-            delim_break(self);
-            self.offset(-INDENT);
-            self.end();
-        }
-        self.word(close);
-        if semicolon {
-            match mac.delim {
-                MacroDelim::Paren(_) | MacroDelim::Bracket(_) => self.word(";"),
-                MacroDelim::Brace(_) => {},
-            }
-        }
-    }
     fn macro_rules(&mut self, name: &Ident, rules: &Stream) {
         enum State {
             Start,
@@ -844,7 +741,84 @@ impl Print {
             state = next_state;
         }
     }
+    //token
+    pub fn single_token(&mut self, token: Token, group_contents: fn(&mut Self, Stream)) {
+        match token {
+            Token::Group(delim, stream) => self.token_group(delim, stream, group_contents),
+            Token::Ident(ident) => self.ident(&ident),
+            Token::Punct(ch, _spacing) => self.token_punct(ch),
+            Token::Literal(literal) => self.token_literal(&literal),
+        }
+    }
+    fn token_group(&mut self, delim: Delim, stream: Stream, group_contents: fn(&mut Self, Stream)) {
+        delim.pretty_open(self);
+        if !stream.is_empty() {
+            if delim == Delim::Brace {
+                self.space();
+            }
+            group_contents(self, stream);
+            if delim == Delim::Brace {
+                self.space();
+            }
+        }
+        delim.pretty_close(self);
+    }
+    pub fn ident(&mut self, ident: &Ident) {
+        self.word(ident.to_string());
+    }
+    pub fn token_punct(&mut self, ch: char) {
+        self.word(ch.to_string());
+    }
+    pub fn token_literal(&mut self, literal: &Literal) {
+        self.word(literal.to_string());
+    }
 }
+
+#[derive(Clone)]
+struct BufEntry {
+    token: Token,
+    size: isize,
+}
+
+pub struct Delimited<I: Iterator> {
+    is_first: bool,
+    iter: Peekable<I>,
+}
+impl<I: Iterator> Iterator for Delimited<I> {
+    type Item = IteratorItem<I::Item>;
+    fn next(&mut self) -> Option<Self::Item> {
+        let item = IteratorItem {
+            value: self.iter.next()?,
+            is_first: self.is_first,
+            is_last: self.iter.peek().is_none(),
+        };
+        self.is_first = false;
+        Some(item)
+    }
+}
+
+pub trait IterDelimited: Iterator + Sized {
+    fn delimited(self) -> Delimited<Self> {
+        Delimited {
+            is_first: true,
+            iter: self.peekable(),
+        }
+    }
+}
+impl<I: Iterator> IterDelimited for I {}
+
+pub struct IteratorItem<T> {
+    value: T,
+    pub is_first: bool,
+    pub is_last: bool,
+}
+impl<T> Deref for IteratorItem<T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        &self.value
+    }
+}
+
 fn is_keyword(ident: &Ident) -> bool {
     match ident.to_string().as_str() {
         "as" | "async" | "await" | "box" | "break" | "const" | "continue" | "crate" | "dyn" | "else" | "enum"
@@ -1312,39 +1286,6 @@ impl<T> IndexMut<usize> for RingBuffer<T> {
     }
 }
 
-impl Print {
-    //token
-    pub fn single_token(&mut self, token: Token, group_contents: fn(&mut Self, Stream)) {
-        match token {
-            Token::Group(delim, stream) => self.token_group(delim, stream, group_contents),
-            Token::Ident(ident) => self.ident(&ident),
-            Token::Punct(ch, _spacing) => self.token_punct(ch),
-            Token::Literal(literal) => self.token_literal(&literal),
-        }
-    }
-    fn token_group(&mut self, delim: Delim, stream: Stream, group_contents: fn(&mut Self, Stream)) {
-        delim.pretty_open(self);
-        if !stream.is_empty() {
-            if delim == Delim::Brace {
-                self.space();
-            }
-            group_contents(self, stream);
-            if delim == Delim::Brace {
-                self.space();
-            }
-        }
-        delim.pretty_close(self);
-    }
-    pub fn ident(&mut self, ident: &Ident) {
-        self.word(ident.to_string());
-    }
-    pub fn token_punct(&mut self, ch: char) {
-        self.word(ch.to_string());
-    }
-    pub fn token_literal(&mut self, literal: &Literal) {
-        self.word(literal.to_string());
-    }
-}
 pub enum Token {
     Group(Delim, Stream),
     Ident(Ident),

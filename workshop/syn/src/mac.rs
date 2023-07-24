@@ -37,6 +37,49 @@ impl Lower for Mac {
         self.delim.surround(s, self.toks.clone());
     }
 }
+impl Pretty for Mac {
+    fn pretty(&self, p: &mut Print, ident: Option<&Ident>, semi: bool) {
+        if self.path.is_ident("macro_rules") {
+            if let Some(x) = ident {
+                p.macro_rules(x, &self.toks);
+                return;
+            }
+        }
+        if ident.is_none() && p.standard_library_macro(self, semi) {
+            return;
+        }
+        &self.path.pretty(p, path::Kind::Simple);
+        p.word("!");
+        if let Some(x) = ident {
+            p.nbsp();
+            x.pretty(x);
+        }
+        use tok::Delim::*;
+        let (open, close, f) = match self.delim {
+            Brace(_) => (" {", "}", Print::hardbreak as fn(&mut Self)),
+            Bracket(_) => ("[", "]", Print::zerobreak as fn(&mut Self)),
+            Paren(_) => ("(", ")", Print::zerobreak as fn(&mut Self)),
+        };
+        p.word(open);
+        if !self.toks.is_empty() {
+            p.cbox(INDENT);
+            f(p);
+            p.ibox(0);
+            p.macro_rules_tokens(self.toks.clone(), false);
+            p.end();
+            f(p);
+            p.offset(-INDENT);
+            p.end();
+        }
+        p.word(close);
+        if semi {
+            match self.delim {
+                Paren(_) | Bracket(_) => p.word(";"),
+                Brace(_) => {},
+            }
+        }
+    }
+}
 
 pub fn parse_delim(s: Stream) -> Res<(tok::Delim, pm2::Stream)> {
     s.step(|c| {
