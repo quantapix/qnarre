@@ -512,21 +512,21 @@ impl Delim {
             Paren(_) | Bracket(_) => false,
         }
     }
-    pub fn pretty_open(self, p: &mut Print) {
+    pub fn pretty_open(&self, p: &mut Print) {
         use Delim::*;
         p.word(match self {
-            Paren => "(",
-            Brace => "{",
-            Bracket => "[",
+            Paren(_) => "(",
+            Brace(_) => "{",
+            Bracket(_) => "[",
             None => return,
         });
     }
-    pub fn pretty_close(self, p: &mut Print) {
+    pub fn pretty_close(&self, p: &mut Print) {
         use Delim::*;
         p.word(match self {
-            Paren => ")",
-            Brace => "}",
-            Bracket => "]",
+            Paren(_) => ")",
+            Brace(_) => "}",
+            Bracket(_) => "]",
             None => return,
         });
     }

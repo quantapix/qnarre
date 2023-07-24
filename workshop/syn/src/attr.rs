@@ -370,14 +370,15 @@ impl Lower for List {
 }
 impl Pretty for List {
     fn pretty(&self, p: &mut Print) {
-        p.path(&self.path, path::Kind::Simple);
+        &self.path.pretty(p, path::Kind::Simple);
+        use tok::Delim::*;
         let delim = match self.delim {
-            MacroDelim::Paren(_) => Delim::Parenthesis,
-            MacroDelim::Brace(_) => Delim::Brace,
-            MacroDelim::Bracket(_) => Delim::Bracket,
+            Brace(_) => pm2::Delim::Brace,
+            Bracket(_) => pm2::Delim::Bracket,
+            Paren(_) => pm2::Delim::Paren,
         };
-        let group = Group::new(delim, self.tokens.clone());
-        p.attr_tokens(Stream::from(Tree::Group(group)));
+        let y = pm2::Group::new(delim, self.toks.clone());
+        p.attr_tokens(Stream::from(pm2::Tree::Group(y)));
     }
 }
 

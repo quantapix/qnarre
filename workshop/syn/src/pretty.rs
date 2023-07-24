@@ -445,7 +445,7 @@ impl Print {
             }
         }
     }
-    fn attr_tokens(&mut self, tokens: Stream) {
+    pub fn attr_tokens(&mut self, tokens: Stream) {
         let mut stack = Vec::new();
         stack.push((tokens.into_iter().peekable(), Delim::None));
         let mut space = Self::nbsp as fn(&mut Self);

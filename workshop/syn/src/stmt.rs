@@ -12,7 +12,7 @@ impl Block {
         loop {
             use Stmt::*;
             while let semi @ Some(_) = s.parse()? {
-                ys.push(Expr(Expr::Verbatim(pm2::Stream::new()), semi));
+                ys.push(Expr(expr::Expr::Verbatim(pm2::Stream::new()), semi));
             }
             if s.is_empty() {
                 break;
@@ -315,9 +315,8 @@ fn parse_expr(s: Stream, mut attrs: Vec<attr::Attr>, nosemi: NoSemi) -> Res<Stmt
             Cast(x) => &mut x.expr,
             Array(_) | Async(_) | Await(_) | Block(_) | Break(_) | Call(_) | Closure(_) | Const(_) | Continue(_)
             | Field(_) | ForLoop(_) | Group(_) | If(_) | Index(_) | Infer(_) | Let(_) | Lit(_) | Loop(_) | Mac(_)
-            | Match(_) | MethodCall(_) | Paren(_) | Path(_) | Range(_) | Reference(_) | Repeat(_) | Return(_)
-            | Struct(_) | Try(_) | TryBlock(_) | Tuple(_) | Unary(_) | Unsafe(_) | While(_) | Yield(_)
-            | Verbatim(_) => break,
+            | Match(_) | MethodCall(_) | Paren(_) | Path(_) | Range(_) | Ref(_) | Repeat(_) | Return(_) | Struct(_)
+            | Try(_) | TryBlock(_) | Tuple(_) | Unary(_) | Unsafe(_) | While(_) | Yield(_) | Verbatim(_) => break,
         };
     }
     attrs.extend(tgt.replace_attrs(Vec::new()));

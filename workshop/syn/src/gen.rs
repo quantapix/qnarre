@@ -249,7 +249,6 @@ pub mod bound {
                 Ellipsis,
                 TildeConst(Trait),
             }
-            use Type::*;
             impl parse::Parse for Type {
                 fn parse(s: parse::Stream) -> Res<Self> {
                     let y;
@@ -278,10 +277,10 @@ pub mod bound {
                 Err(_) => unimplemented!("TypeParamBound::Verbatim `{}`", self),
             };
             match y {
-                Ellipsis => {
+                Type::Ellipsis => {
                     p.word("...");
                 },
-                TildeConst(x) => {
+                Type::TildeConst(x) => {
                     let tilde = true;
                     &x.pretty(p, tilde);
                 },
