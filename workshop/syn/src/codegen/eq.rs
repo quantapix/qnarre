@@ -543,7 +543,7 @@ impl PartialEq for item::foreign::Item {
             (item::foreign::Item::Static(self0), item::foreign::Item::Static(other0)) => self0 == other0,
             (item::foreign::Item::Type(self0), item::foreign::Item::Type(other0)) => self0 == other0,
             (item::foreign::Item::Macro(self0), item::foreign::Item::Macro(other0)) => self0 == other0,
-            (item::foreign::Item::Stream(self0), item::foreign::Item::Stream(other0)) => {
+            (item::foreign::Item::Verbatim(self0), item::foreign::Item::Verbatim(other0)) => {
                 StreamHelper(self0) == StreamHelper(other0)
             },
             _ => false,

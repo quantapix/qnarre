@@ -1348,7 +1348,7 @@ where
         item::foreign::Item::Static(_binding_0) => item::foreign::Item::Static(f.fold_foreign_item_static(_binding_0)),
         item::foreign::Item::Type(_binding_0) => item::foreign::Item::Type(f.fold_foreign_item_type(_binding_0)),
         item::foreign::Item::Macro(_binding_0) => item::foreign::Item::Macro(f.fold_foreign_item_macro(_binding_0)),
-        item::foreign::Item::Stream(_binding_0) => item::foreign::Item::Stream(_binding_0),
+        item::foreign::Item::Verbatim(_binding_0) => item::foreign::Item::Verbatim(_binding_0),
     }
 }
 pub fn fold_foreign_item_fn<F>(f: &mut F, node: item::foreign::Fn) -> item::foreign::Fn

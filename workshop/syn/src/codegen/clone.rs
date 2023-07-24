@@ -693,7 +693,7 @@ impl Clone for item::foreign::Item {
             item::foreign::Item::Static(v0) => item::foreign::Item::Static(v0.clone()),
             item::foreign::Item::Type(v0) => item::foreign::Item::Type(v0.clone()),
             item::foreign::Item::Macro(v0) => item::foreign::Item::Macro(v0.clone()),
-            item::foreign::Item::Stream(v0) => item::foreign::Item::Stream(v0.clone()),
+            item::foreign::Item::Verbatim(v0) => item::foreign::Item::Verbatim(v0.clone()),
         }
     }
 }

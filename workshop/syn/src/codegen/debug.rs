@@ -1081,7 +1081,7 @@ impl Debug for item::foreign::Item {
             item::foreign::Item::Static(x) => x.debug(f, "Static"),
             item::foreign::Item::Type(x) => x.debug(f, "Type"),
             item::foreign::Item::Macro(x) => x.debug(f, "Macro"),
-            item::foreign::Item::Stream(x) => {
+            item::foreign::Item::Verbatim(x) => {
                 let mut f = f.debug_tuple("Stream");
                 f.field(x);
                 f.finish()

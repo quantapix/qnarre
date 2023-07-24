@@ -1580,7 +1580,7 @@ where
         item::foreign::Item::Macro(_binding_0) => {
             v.visit_foreign_item_macro_mut(_binding_0);
         },
-        item::foreign::Item::Stream(_binding_0) => {
+        item::foreign::Item::Verbatim(_binding_0) => {
             skip!(_binding_0);
         },
     }

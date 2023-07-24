@@ -965,7 +965,7 @@ impl Hash for item::foreign::Item {
                 state.write_u8(3u8);
                 x.hash(state);
             },
-            item::foreign::Item::Stream(x) => {
+            item::foreign::Item::Verbatim(x) => {
                 state.write_u8(4u8);
                 StreamHelper(x).hash(state);
             },
