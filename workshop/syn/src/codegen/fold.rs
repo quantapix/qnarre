@@ -2279,7 +2279,7 @@ where
         item::trait_::Item::Fn(_binding_0) => item::trait_::Item::Fn(f.fold_trait_item_fn(_binding_0)),
         item::trait_::Item::Type(_binding_0) => item::trait_::Item::Type(f.fold_trait_item_type(_binding_0)),
         item::trait_::Item::Macro(_binding_0) => item::trait_::Item::Macro(f.fold_trait_item_macro(_binding_0)),
-        item::trait_::Item::Stream(_binding_0) => item::trait_::Item::Stream(_binding_0),
+        item::trait_::Item::Verbatim(_binding_0) => item::trait_::Item::Verbatim(_binding_0),
     }
 }
 pub fn fold_trait_item_const<F>(f: &mut F, node: item::trait_::Const) -> item::trait_::Const

@@ -1367,7 +1367,7 @@ impl Pretty for Verbatim {
         }
         let y: Type = match parse2(self.clone()) {
             Ok(x) => x,
-            Err(_) => unimplemented!("Item::Verbatim `{}`", self),
+            Err(_) => unimplemented!("item::Item::Verbatim `{}`", self),
         };
         use Type::*;
         match y {
@@ -2031,7 +2031,7 @@ pub mod foreign {
             }
             let foreign_item: Type = match syn::parse2(self.clone()) {
                 Ok(foreign_item) => foreign_item,
-                Err(_) => unimplemented!("ForeignItem::Verbatim `{}`", self),
+                Err(_) => unimplemented!("foreign::Item::Verbatim `{}`", self),
             };
             match foreign_item {
                 Type::Empty => {
@@ -2300,9 +2300,9 @@ pub mod trait_ {
         pub enum Item {
             Const(Const),
             Fn(Fn),
-            Type(Type),
             Mac(Mac),
-            Stream(pm2::Stream),
+            Type(Type),
+            Verbatim(Verbatim),
         }
     }
     impl Parse for Item {
@@ -2345,18 +2345,30 @@ pub mod trait_ {
             }?;
             match (vis, default) {
                 (data::Visibility::Inherited, None) => {},
-                _ => return Ok(Item::Stream(parse::parse_verbatim(&beg, s))),
+                _ => return Ok(Item::Verbatim(parse::parse_verbatim(&beg, s))),
             }
             let ys = match &mut y {
                 Item::Const(item) => &mut item.attrs,
                 Item::Fn(item) => &mut item.attrs,
                 Item::Type(item) => &mut item.attrs,
                 Item::Mac(item) => &mut item.attrs,
-                Item::Stream(_) => unreachable!(),
+                Item::Verbatim(_) => unreachable!(),
             };
             attrs.append(ys);
             *ys = attrs;
             Ok(y)
+        }
+    }
+    impl Pretty for Item {
+        fn pretty(&self, p: &mut Print) {
+            use self::Item::*;
+            match self {
+                Const(x) => x.pretty(p),
+                Fn(x) => x.pretty(p),
+                Mac(x) => x.pretty(p),
+                Type(x) => x.pretty(p),
+                Verbatim(x) => x.pretty(p),
+            }
         }
     }
 
@@ -2413,6 +2425,25 @@ pub mod trait_ {
             self.semi.lower(s);
         }
     }
+    impl Pretty for Const {
+        fn pretty(&self, p: &mut Print) {
+            p.outer_attrs(&self.attrs);
+            p.cbox(0);
+            p.word("const ");
+            &self.ident.pretty(p);
+            &self.gens.pretty(p);
+            p.word(": ");
+            &self.typ.pretty(p);
+            if let Some((_, x)) = &self.default {
+                p.word(" = ");
+                p.neverbreak();
+                x.pretty(p);
+            }
+            p.word(";");
+            p.end();
+            p.hardbreak();
+        }
+    }
 
     pub struct Fn {
         pub attrs: Vec<attr::Attr>,
@@ -2460,6 +2491,58 @@ pub mod trait_ {
                     ToksOrDefault(&self.semi).lower(s);
                 },
             }
+        }
+    }
+    impl Pretty for Fn {
+        fn pretty(&self, p: &mut Print) {
+            p.outer_attrs(&self.attrs);
+            p.cbox(INDENT);
+            &self.sig.pretty(p);
+            if let Some(x) = &self.default {
+                p.where_for_body(&self.sig.gens.where_);
+                p.word("{");
+                p.hardbreak_if_nonempty();
+                p.inner_attrs(&self.attrs);
+                for x in &x.stmts {
+                    x.pretty(p);
+                }
+                p.offset(-INDENT);
+                p.end();
+                p.word("}");
+            } else {
+                p.where_with_semi(&self.sig.gens.where_);
+                p.end();
+            }
+            p.hardbreak();
+        }
+    }
+
+    pub struct Mac {
+        pub attrs: Vec<attr::Attr>,
+        pub mac: mac::Mac,
+        pub semi: Option<Token![;]>,
+    }
+    impl Parse for Mac {
+        fn parse(s: Stream) -> Res<Self> {
+            let attrs = s.call(attr::Attr::parse_outers)?;
+            let mac: mac::Mac = s.parse()?;
+            let semi: Option<Token![;]> = if mac.delim.is_brace() { None } else { Some(s.parse()?) };
+            Ok(Mac { attrs, mac, semi })
+        }
+    }
+    impl Lower for Mac {
+        fn lower(&self, s: &mut Stream) {
+            s.append_all(self.attrs.outers());
+            self.mac.lower(s);
+            self.semi.lower(s);
+        }
+    }
+    impl Pretty for Mac {
+        fn pretty(&self, p: &mut Print) {
+            p.outer_attrs(&self.attrs);
+            let semi = true;
+            &self.mac.pretty(p, None, semi);
+            p.hardbreak();
         }
     }
 
@@ -2513,25 +2596,108 @@ pub mod trait_ {
             self.semi.lower(s);
         }
     }
-
-    pub struct Mac {
-        pub attrs: Vec<attr::Attr>,
-        pub mac: mac::Mac,
-        pub semi: Option<Token![;]>,
-    }
-    impl Parse for Mac {
-        fn parse(s: Stream) -> Res<Self> {
-            let attrs = s.call(attr::Attr::parse_outers)?;
-            let mac: mac::Mac = s.parse()?;
-            let semi: Option<Token![;]> = if mac.delim.is_brace() { None } else { Some(s.parse()?) };
-            Ok(Mac { attrs, mac, semi })
+    impl Pretty for Type {
+        fn pretty(&self, p: &mut Print) {
+            p.outer_attrs(&self.attrs);
+            p.cbox(INDENT);
+            p.word("type ");
+            &self.ident.pretty(p);
+            &self.gens.pretty(p);
+            for x in self.bounds.iter().delimited() {
+                if x.is_first {
+                    p.word(": ");
+                } else {
+                    p.space();
+                    p.word("+ ");
+                }
+                &x.pretty(p);
+            }
+            if let Some((_, x)) = &self.default {
+                p.word(" = ");
+                p.neverbreak();
+                p.ibox(-INDENT);
+                x.pretty(p);
+                p.end();
+            }
+            p.where_oneline_with_semi(&self.gens.where_);
+            p.end();
+            p.hardbreak();
         }
     }
-    impl Lower for Mac {
-        fn lower(&self, s: &mut Stream) {
-            s.append_all(self.attrs.outers());
-            self.mac.lower(s);
-            self.semi.lower(s);
+
+    pub struct Verbatim(pub pm2::Stream);
+    impl Pretty for Verbatim {
+        fn pretty(&self, p: &mut Print) {
+            enum Type {
+                Empty,
+                Ellipsis,
+                FlexType(flex::Type),
+                PubOrDefault(PubOrDefault),
+            }
+            use Type::*;
+            struct PubOrDefault {
+                attrs: Vec<attr::Attr>,
+                vis: data::Visibility,
+                default: bool,
+                trait_: Trait,
+            }
+            impl parse::Parse for Type {
+                fn parse(s: parse::Stream) -> Res<Self> {
+                    if s.is_empty() {
+                        return Ok(Empty);
+                    } else if s.peek(Token![...]) {
+                        s.parse::<Token![...]>()?;
+                        return Ok(Ellipsis);
+                    }
+                    let attrs = s.call(attr::Attr::parse_outer)?;
+                    let vis: data::Visibility = s.parse()?;
+                    let default = s.parse::<Option<Token![default]>>()?.is_some();
+                    let look = s.lookahead1();
+                    if look.peek(Token![type]) {
+                        let y = flex::Type::parse(attrs, vis, default, s, WhereLoc::AfterEq)?;
+                        Ok(FlexType(y))
+                    } else if (look.peek(Token![const])
+                        || look.peek(Token![async])
+                        || look.peek(Token![unsafe])
+                        || look.peek(Token![extern])
+                        || look.peek(Token![fn]))
+                        && (!matches!(vis, data::Visibility::Inherited) || default)
+                    {
+                        Ok(PubOrDefault(PubOrDefault {
+                            attrs,
+                            vis,
+                            default,
+                            trait_: s.parse()?,
+                        }))
+                    } else {
+                        Err(look.error())
+                    }
+                }
+            }
+            let y: Type = match parse2(self.clone()) {
+                Ok(x) => x,
+                Err(_) => unimplemented!("trait_::Item::Verbatim `{}`", self),
+            };
+            match y {
+                Empty => {
+                    p.hardbreak();
+                },
+                Ellipsis => {
+                    p.word("...");
+                    p.hardbreak();
+                },
+                FlexType(x) => {
+                    &x.pretty(p);
+                },
+                PubOrDefault(x) => {
+                    p.outer_attrs(&x.attrs);
+                    &x.vis.pretty(p);
+                    if x.default {
+                        p.word("default ");
+                    }
+                    &x.trait_.pretty(p);
+                },
+            }
         }
     }
 }
@@ -2697,6 +2863,7 @@ pub mod use_ {
             p.word("*");
         }
     }
+
     pub struct Group {
         pub brace: tok::Brace,
         pub trees: Puncted<Tree, Token![,]>,
@@ -3539,7 +3706,7 @@ fn parse_trait_item_type(beg: parse::Buffer, s: Stream) -> Res<trait_::Item> {
         semi,
     } = Flexible::parse(s, TypeDefault::Disallowed, WhereLoc::AfterEq)?;
     if vis.is_some() {
-        Ok(trait_::Item::Stream(parse::parse_verbatim(&beg, s)))
+        Ok(trait_::Item::Verbatim(parse::parse_verbatim(&beg, s)))
     } else {
         Ok(trait_::Item::Type(trait_::Type {
             attrs: Vec::new(),

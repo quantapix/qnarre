@@ -2705,7 +2705,7 @@ where
         item::trait_::Item::Macro(_binding_0) => {
             v.visit_trait_item_macro(_binding_0);
         },
-        item::trait_::Item::Stream(_binding_0) => {
+        item::trait_::Item::Verbatim(_binding_0) => {
             skip!(_binding_0);
         },
     }

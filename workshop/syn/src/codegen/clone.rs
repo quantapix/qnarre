@@ -1471,7 +1471,7 @@ impl Clone for item::trait_::Item {
             item::trait_::Item::Fn(v0) => item::trait_::Item::Fn(v0.clone()),
             item::trait_::Item::Type(v0) => item::trait_::Item::Type(v0.clone()),
             item::trait_::Item::Macro(v0) => item::trait_::Item::Macro(v0.clone()),
-            item::trait_::Item::Stream(v0) => item::trait_::Item::Stream(v0.clone()),
+            item::trait_::Item::Verbatim(v0) => item::trait_::Item::Verbatim(v0.clone()),
         }
     }
 }

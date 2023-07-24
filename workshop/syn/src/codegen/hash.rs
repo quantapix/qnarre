@@ -2001,7 +2001,7 @@ impl Hash for item::trait_::Item {
                 h.write_u8(3u8);
                 x.hash(h);
             },
-            Stream(x) => {
+            Verbatim(x) => {
                 h.write_u8(4u8);
                 StreamHelper(x).hash(h);
             },

@@ -1168,7 +1168,7 @@ impl PartialEq for item::trait_::Item {
             (item::trait_::Item::Fn(self0), item::trait_::Item::Fn(other0)) => self0 == other0,
             (item::trait_::Item::Type(self0), item::trait_::Item::Type(other0)) => self0 == other0,
             (item::trait_::Item::Macro(self0), item::trait_::Item::Macro(other0)) => self0 == other0,
-            (item::trait_::Item::Stream(self0), item::trait_::Item::Stream(other0)) => {
+            (item::trait_::Item::Verbatim(self0), item::trait_::Item::Verbatim(other0)) => {
                 StreamHelper(self0) == StreamHelper(other0)
             },
             _ => false,

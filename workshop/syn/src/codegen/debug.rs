@@ -2190,7 +2190,7 @@ impl Debug for item::trait_::Item {
             item::trait_::Item::Fn(x) => x.debug(f, "Fn"),
             item::trait_::Item::Type(x) => x.debug(f, "Type"),
             item::trait_::Item::Macro(x) => x.debug(f, "Macro"),
-            item::trait_::Item::Stream(x) => {
+            item::trait_::Item::Verbatim(x) => {
                 let mut f = f.debug_tuple("Stream");
                 f.field(x);
                 f.finish()
