@@ -751,6 +751,29 @@ impl Pretty for Option<Where> {
     }
 }
 
+impl Print {
+    pub fn where_for_body(&mut self, x: &Option<Where>) {
+        let breaks = true;
+        let semi = false;
+        x.pretty(self, breaks, semi);
+    }
+    pub fn where_with_semi(&mut self, x: &Option<Where>) {
+        let breaks = true;
+        let semi = true;
+        x.pretty(self, breaks, semi);
+    }
+    pub fn where_oneline(&mut self, x: &Option<Where>) {
+        let breaks = false;
+        let semi = false;
+        x.pretty(self, breaks, semi);
+    }
+    pub fn where_oneline_with_semi(&mut self, x: &Option<Where>) {
+        let breaks = false;
+        let semi = true;
+        x.pretty(self, breaks, semi);
+    }
+}
+
 pub mod where_ {
     use super::*;
     ast_enum_of_structs! {

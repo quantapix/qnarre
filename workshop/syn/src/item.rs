@@ -1308,8 +1308,8 @@ impl Pretty for Verbatim {
                     gens.where_ = s.parse()?;
                     let y;
                     braced!(y in s);
-                    let inner_attrs = y.call(attr::Attr::parse_inner)?;
-                    attrs.extend(inner_attrs);
+                    let ys = y.call(attr::Attr::parse_inner)?;
+                    attrs.extend(ys);
                     let mut impls = Vec::new();
                     while !y.is_empty() {
                         impls.push(y.parse()?);

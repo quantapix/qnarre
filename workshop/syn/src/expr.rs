@@ -2846,14 +2846,14 @@ fn unary_expr(x: Stream, allow: AllowStruct) -> Res<Expr> {
         trailer_expr(beg, attrs, x, allow)
     }
 }
-fn trailer_expr(beg: parse::Buffer, mut attrs: Vec<attr::Attr>, x: Stream, allow: AllowStruct) -> Res<Expr> {
-    let atom = atom_expr(x, allow)?;
-    let mut y = trailer_helper(x, atom)?;
-    if let Expr::Verbatim(tokens) = &mut y {
-        *tokens = parse::parse_verbatim(&beg, x);
+fn trailer_expr(beg: parse::Buffer, mut attrs: Vec<attr::Attr>, s: Stream, allow: AllowStruct) -> Res<Expr> {
+    let atom = atom_expr(s, allow)?;
+    let mut y = trailer_helper(s, atom)?;
+    if let Expr::Verbatim(y) = &mut y {
+        *y = parse::parse_verbatim(&beg, s);
     } else {
-        let inner_attrs = y.replace_attrs(Vec::new());
-        attrs.extend(inner_attrs);
+        let ys = y.replace_attrs(Vec::new());
+        attrs.extend(ys);
         y.replace_attrs(attrs);
     }
     Ok(y)

@@ -184,6 +184,23 @@ fn is_blocklike(x: &str) -> bool {
     depth == 0
 }
 
+impl Print {
+    pub fn outer_attrs(&mut self, xs: &[attr::Attr]) {
+        for x in xs {
+            if let attr::Style::Outer = x.style {
+                x.pretty(self);
+            }
+        }
+    }
+    pub fn inner_attrs(&mut self, xs: &[attr::Attr]) {
+        for x in xs {
+            if let attr::Style::Inner(_) = x.style {
+                x.pretty(self);
+            }
+        }
+    }
+}
+
 pub trait Filter<'a> {
     type Ret: Iterator<Item = &'a Attr>;
     fn inners(self) -> Self::Ret;
@@ -378,7 +395,108 @@ impl Pretty for List {
             Paren(_) => pm2::Delim::Paren,
         };
         let y = pm2::Group::new(delim, self.toks.clone());
-        p.attr_tokens(Stream::from(pm2::Tree::Group(y)));
+        attr_tokens(p, Stream::from(pm2::Tree::Group(y)));
+        use pm2::{Delim, Tree};
+        fn attr_tokens(p: &mut Print, tokens: Stream) {
+            let mut stack = Vec::new();
+            stack.push((tokens.into_iter().peekable(), Delim::None));
+            let mut space = Print::nbsp as fn(&mut Print);
+            #[derive(PartialEq)]
+            enum State {
+                Word,
+                Punct,
+                TrailingComma,
+            }
+            use State::*;
+            let mut state = Word;
+            while let Some((tokens, delim)) = stack.last_mut() {
+                match tokens.next() {
+                    Some(Tree::Ident(x)) => {
+                        if let Word = state {
+                            space(p);
+                        }
+                        p.ident(&x);
+                        state = Word;
+                    },
+                    Some(Tree::Punct(x)) => {
+                        let x = x.as_char();
+                        if let (Word, '=') = (state, x) {
+                            p.nbsp();
+                        }
+                        if x == ',' && tokens.peek().is_none() {
+                            p.trailing_comma(true);
+                            state = TrailingComma;
+                        } else {
+                            p.token_punct(x);
+                            if x == '=' {
+                                p.nbsp();
+                            } else if x == ',' {
+                                space(p);
+                            }
+                            state = Punct;
+                        }
+                    },
+                    Some(Tree::Literal(x)) => {
+                        if let Word = state {
+                            space(p);
+                        }
+                        p.token_literal(&x);
+                        state = Word;
+                    },
+                    Some(Tree::Group(x)) => {
+                        let delim = x.delim();
+                        let stream = x.stream();
+                        use Delim::*;
+                        match delim {
+                            Paren => {
+                                p.word("(");
+                                p.cbox(INDENT);
+                                p.zerobreak();
+                                state = Punct;
+                            },
+                            Brace => {
+                                p.word("{");
+                                state = Punct;
+                            },
+                            Bracket => {
+                                p.word("[");
+                                state = Punct;
+                            },
+                            None => {},
+                        }
+                        stack.push((stream.into_iter().peekable(), delim));
+                        space = Print::space;
+                    },
+                    None => {
+                        use Delim::*;
+                        match delim {
+                            Paren => {
+                                if state != TrailingComma {
+                                    p.zerobreak();
+                                }
+                                p.offset(-INDENT);
+                                p.end();
+                                p.word(")");
+                                state = Punct;
+                            },
+                            Brace => {
+                                p.word("}");
+                                state = Punct;
+                            },
+                            Bracket => {
+                                p.word("]");
+                                state = Punct;
+                            },
+                            None => {},
+                        }
+                        stack.pop();
+                        if stack.is_empty() {
+                            space = Print::nbsp;
+                        }
+                    },
+                }
+            }
+        }
     }
 }
 
