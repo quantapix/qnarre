@@ -1,159 +1,123 @@
 use super::pm2::{Delim, Group, Ident, Literal, Spacing, Stream, Tree};
-use super::{
-    braced, item::File, Block, Expr, Ident, Index, Macro, MacroDelim, MacroDelim, Path, Stmt, Token, Visibility, *,
+use super::{item::File, Expr, Ident, Index, Macro, Path, Stmt, Token, *};
+use std::{
+    borrow::Cow,
+    cmp,
+    collections::VecDeque,
+    iter,
+    iter::Peekable,
+    ops::{Deref, Index, IndexMut},
+    ptr,
 };
-use std::iter::Peekable;
-use std::ops::Deref;
-use std::ops::{Index, IndexMut};
-use std::ptr;
-use std::{borrow::Cow, cmp, collections::VecDeque, iter};
-
-#[derive(Clone, Copy, PartialEq)]
-pub enum Breaks {
-    Consistent,
-    Inconsistent,
-}
-
-#[derive(Clone, Copy, Default)]
-pub struct BreakToken {
-    pub offset: isize,
-    pub blank_space: usize,
-    pub pre_break: Option<char>,
-    pub post_break: Option<char>,
-    pub no_break: Option<char>,
-    pub if_nonempty: bool,
-    pub never_break: bool,
-}
-
-#[derive(Clone, Copy)]
-pub struct BeginToken {
-    pub offset: isize,
-    pub breaks: Breaks,
-}
-
-#[derive(Clone)]
-pub enum Token {
-    String(Cow<'static, str>),
-    Break(BreakToken),
-    Begin(BeginToken),
-    End,
-}
-
-#[derive(Copy, Clone)]
-enum PrintFrame {
-    Fits(Breaks),
-    Broken(usize, Breaks),
-}
-pub const SIZE_INFINITY: isize = 0xffff;
 
 pub trait Pretty {
     fn pretty(&self, p: &mut Print);
 }
 
 pub struct Print {
-    out: String,
-    space: isize,
-    buf: RingBuffer<BufEntry>,
-    left_total: isize,
-    right_total: isize,
-    scan_stack: VecDeque<usize>,
-    print_stack: Vec<PrintFrame>,
+    buf: Buffer<Entry>,
+    frames: Vec<Frame>,
     indent: usize,
-    pending_indentation: usize,
+    left: isize,
+    out: String,
+    pending: usize,
+    right: isize,
+    scans: VecDeque<usize>,
+    space: isize,
 }
 impl Print {
     pub fn new() -> Self {
         Print {
-            out: String::new(),
-            space: MARGIN,
-            buf: RingBuffer::new(),
-            left_total: 0,
-            right_total: 0,
-            scan_stack: VecDeque::new(),
-            print_stack: Vec::new(),
+            buf: Buffer::new(),
+            frames: Vec::new(),
             indent: 0,
-            pending_indentation: 0,
+            left: 0,
+            out: String::new(),
+            pending: 0,
+            right: 0,
+            scans: VecDeque::new(),
+            space: MARGIN,
         }
     }
     pub fn eof(mut self) -> String {
-        if !self.scan_stack.is_empty() {
+        if !self.scans.is_empty() {
             self.check_stack(0);
             self.advance_left();
         }
         self.out
     }
-    pub fn scan_begin(&mut self, token: BeginToken) {
-        if self.scan_stack.is_empty() {
-            self.left_total = 1;
-            self.right_total = 1;
+    pub fn scan_begin(&mut self, token: Begin) {
+        if self.scans.is_empty() {
+            self.left = 1;
+            self.right = 1;
             self.buf.clear();
         }
-        let right = self.buf.push(BufEntry {
-            token: Token::Begin(token),
-            size: -self.right_total,
+        let right = self.buf.push(Entry {
+            tok: Token::Begin(token),
+            size: -self.right,
         });
-        self.scan_stack.push_back(right);
+        self.scans.push_back(right);
     }
     pub fn scan_end(&mut self) {
-        if self.scan_stack.is_empty() {
+        if self.scans.is_empty() {
             self.print_end();
         } else {
             if !self.buf.is_empty() {
-                if let Token::Break(break_token) = self.buf.last().token {
+                if let Token::Break(break_token) = self.buf.last().tok {
                     if self.buf.len() >= 2 {
-                        if let Token::Begin(_) = self.buf.second_last().token {
+                        if let Token::Begin(_) = self.buf.second_last().tok {
                             self.buf.pop_last();
                             self.buf.pop_last();
-                            self.scan_stack.pop_back();
-                            self.scan_stack.pop_back();
-                            self.right_total -= break_token.blank_space as isize;
+                            self.scans.pop_back();
+                            self.scans.pop_back();
+                            self.right -= break_token.blank_space as isize;
                             return;
                         }
                     }
                     if break_token.if_nonempty {
                         self.buf.pop_last();
-                        self.scan_stack.pop_back();
-                        self.right_total -= break_token.blank_space as isize;
+                        self.scans.pop_back();
+                        self.right -= break_token.blank_space as isize;
                     }
                 }
             }
-            let right = self.buf.push(BufEntry {
-                token: Token::End,
+            let right = self.buf.push(Entry {
+                tok: Token::End,
                 size: -1,
             });
-            self.scan_stack.push_back(right);
+            self.scans.push_back(right);
         }
     }
-    pub fn scan_break(&mut self, token: BreakToken) {
-        if self.scan_stack.is_empty() {
-            self.left_total = 1;
-            self.right_total = 1;
+    pub fn scan_break(&mut self, token: Break) {
+        if self.scans.is_empty() {
+            self.left = 1;
+            self.right = 1;
             self.buf.clear();
         } else {
             self.check_stack(0);
         }
-        let right = self.buf.push(BufEntry {
-            token: Token::Break(token),
-            size: -self.right_total,
+        let right = self.buf.push(Entry {
+            tok: Token::Break(token),
+            size: -self.right,
         });
-        self.scan_stack.push_back(right);
-        self.right_total += token.blank_space as isize;
+        self.scans.push_back(right);
+        self.right += token.blank_space as isize;
     }
     pub fn scan_string(&mut self, string: Cow<'static, str>) {
-        if self.scan_stack.is_empty() {
+        if self.scans.is_empty() {
             self.print_string(string);
         } else {
             let len = string.len() as isize;
-            self.buf.push(BufEntry {
-                token: Token::String(string),
+            self.buf.push(Entry {
+                tok: Token::String(string),
                 size: len,
             });
-            self.right_total += len;
+            self.right += len;
             self.check_stream();
         }
     }
     pub fn offset(&mut self, offset: isize) {
-        match &mut self.buf.last_mut().token {
+        match &mut self.buf.last_mut().tok {
             Token::Break(token) => token.offset += offset,
             Token::Begin(_) => {},
             Token::String(_) | Token::End => unreachable!(),
@@ -161,20 +125,20 @@ impl Print {
     }
     pub fn end_with_max_width(&mut self, max: isize) {
         let mut depth = 1;
-        for &index in self.scan_stack.iter().rev() {
+        for &index in self.scans.iter().rev() {
             let entry = &self.buf[index];
-            match entry.token {
+            match entry.tok {
                 Token::Begin(_) => {
                     depth -= 1;
                     if depth == 0 {
                         if entry.size < 0 {
-                            let actual_width = entry.size + self.right_total;
+                            let actual_width = entry.size + self.right;
                             if actual_width > max {
-                                self.buf.push(BufEntry {
-                                    token: Token::String(Cow::Borrowed("")),
+                                self.buf.push(Entry {
+                                    tok: Token::String(Cow::Borrowed("")),
                                     size: SIZE_INFINITY,
                                 });
-                                self.right_total += SIZE_INFINITY;
+                                self.right += SIZE_INFINITY;
                             }
                         }
                         break;
@@ -188,9 +152,9 @@ impl Print {
         self.scan_end();
     }
     fn check_stream(&mut self) {
-        while self.right_total - self.left_total > self.space {
-            if *self.scan_stack.front().unwrap() == self.buf.index_of_first() {
-                self.scan_stack.pop_front().unwrap();
+        while self.right - self.left > self.space {
+            if *self.scans.front().unwrap() == self.buf.idx_of_first() {
+                self.scans.pop_front().unwrap();
                 self.buf.first_mut().size = SIZE_INFINITY;
             }
             self.advance_left();
@@ -202,13 +166,13 @@ impl Print {
     fn advance_left(&mut self) {
         while self.buf.first().size >= 0 {
             let left = self.buf.pop_first();
-            match left.token {
+            match left.tok {
                 Token::String(string) => {
-                    self.left_total += left.size;
+                    self.left += left.size;
                     self.print_string(string);
                 },
                 Token::Break(token) => {
-                    self.left_total += token.blank_space as isize;
+                    self.left += token.blank_space as isize;
                     self.print_break(token, left.size);
                 },
                 Token::Begin(token) => self.print_begin(token, left.size),
@@ -220,25 +184,25 @@ impl Print {
         }
     }
     fn check_stack(&mut self, mut depth: usize) {
-        while let Some(&index) = self.scan_stack.back() {
+        while let Some(&index) = self.scans.back() {
             let entry = &mut self.buf[index];
-            match entry.token {
+            match entry.tok {
                 Token::Begin(_) => {
                     if depth == 0 {
                         break;
                     }
-                    self.scan_stack.pop_back().unwrap();
-                    entry.size += self.right_total;
+                    self.scans.pop_back().unwrap();
+                    entry.size += self.right;
                     depth -= 1;
                 },
                 Token::End => {
-                    self.scan_stack.pop_back().unwrap();
+                    self.scans.pop_back().unwrap();
                     entry.size = 1;
                     depth += 1;
                 },
                 Token::Break(_) => {
-                    self.scan_stack.pop_back().unwrap();
-                    entry.size += self.right_total;
+                    self.scans.pop_back().unwrap();
+                    entry.size += self.right;
                     if depth == 0 {
                         break;
                     }
@@ -247,18 +211,18 @@ impl Print {
             }
         }
     }
-    fn get_top(&self) -> PrintFrame {
-        const OUTER: PrintFrame = PrintFrame::Broken(0, Breaks::Inconsistent);
-        self.print_stack.last().map_or(OUTER, PrintFrame::clone)
+    fn get_top(&self) -> Frame {
+        const OUTER: Frame = Frame::Broken(0, Breaks::Inconsistent);
+        self.frames.last().map_or(OUTER, Frame::clone)
     }
-    fn print_begin(&mut self, token: BeginToken, size: isize) {
+    fn print_begin(&mut self, token: Begin, size: isize) {
         if cfg!(prettyplease_debug) {
             self.out.push(match token.breaks {
                 Breaks::Consistent => '«',
                 Breaks::Inconsistent => '‹',
             });
             if cfg!(prettyplease_debug_indent) {
-                self.out.extend(token.offset.to_string().chars().map(|ch| match ch {
+                self.out.extend(token.off.to_string().chars().map(|ch| match ch {
                     '0'..='9' => ['₀', '₁', '₂', '₃', '₄', '₅', '₆', '₇', '₈', '₉'][(ch as u8 - b'0') as usize],
                     '-' => '₋',
                     _ => unreachable!(),
@@ -266,19 +230,19 @@ impl Print {
             }
         }
         if size > self.space {
-            self.print_stack.push(PrintFrame::Broken(self.indent, token.breaks));
-            self.indent = usize::try_from(self.indent as isize + token.offset).unwrap();
+            self.frames.push(Frame::Broken(self.indent, token.breaks));
+            self.indent = usize::try_from(self.indent as isize + token.off).unwrap();
         } else {
-            self.print_stack.push(PrintFrame::Fits(token.breaks));
+            self.frames.push(Frame::Fits(token.breaks));
         }
     }
     fn print_end(&mut self) {
-        let breaks = match self.print_stack.pop().unwrap() {
-            PrintFrame::Broken(indent, breaks) => {
+        let breaks = match self.frames.pop().unwrap() {
+            Frame::Broken(indent, breaks) => {
                 self.indent = indent;
                 breaks
             },
-            PrintFrame::Fits(breaks) => breaks,
+            Frame::Fits(breaks) => breaks,
         };
         if cfg!(prettyplease_debug) {
             self.out.push(match breaks {
@@ -287,15 +251,15 @@ impl Print {
             });
         }
     }
-    fn print_break(&mut self, token: BreakToken, size: isize) {
+    fn print_break(&mut self, token: Break, size: isize) {
         let fits = token.never_break
             || match self.get_top() {
-                PrintFrame::Fits(..) => true,
-                PrintFrame::Broken(.., Breaks::Consistent) => false,
-                PrintFrame::Broken(.., Breaks::Inconsistent) => size <= self.space,
+                Frame::Fits(..) => true,
+                Frame::Broken(.., Breaks::Consistent) => false,
+                Frame::Broken(.., Breaks::Inconsistent) => size <= self.space,
             };
         if fits {
-            self.pending_indentation += token.blank_space;
+            self.pending += token.blank_space;
             self.space -= token.blank_space as isize;
             if let Some(no_break) = token.no_break {
                 self.out.push(no_break);
@@ -313,8 +277,8 @@ impl Print {
                 self.out.push('·');
             }
             self.out.push('\n');
-            let indent = self.indent as isize + token.offset;
-            self.pending_indentation = usize::try_from(indent).unwrap();
+            let indent = self.indent as isize + token.off;
+            self.pending = usize::try_from(indent).unwrap();
             self.space = cmp::max(MARGIN - indent, MIN_SPACE);
             if let Some(post_break) = token.post_break {
                 self.print_indent();
@@ -329,19 +293,19 @@ impl Print {
         self.space -= string.len() as isize;
     }
     fn print_indent(&mut self) {
-        self.out.reserve(self.pending_indentation);
-        self.out.extend(iter::repeat(' ').take(self.pending_indentation));
-        self.pending_indentation = 0;
+        self.out.reserve(self.pending);
+        self.out.extend(iter::repeat(' ').take(self.pending));
+        self.pending = 0;
     }
     pub fn ibox(&mut self, indent: isize) {
-        self.scan_begin(BeginToken {
-            offset: indent,
+        self.scan_begin(Begin {
+            off: indent,
             breaks: Breaks::Inconsistent,
         });
     }
     pub fn cbox(&mut self, indent: isize) {
-        self.scan_begin(BeginToken {
-            offset: indent,
+        self.scan_begin(Begin {
+            off: indent,
             breaks: Breaks::Consistent,
         });
     }
@@ -353,9 +317,9 @@ impl Print {
         self.scan_string(s);
     }
     fn spaces(&mut self, n: usize) {
-        self.scan_break(BreakToken {
+        self.scan_break(Break {
             blank_space: n,
-            ..BreakToken::default()
+            ..Break::default()
         });
     }
     pub fn zerobreak(&mut self) {
@@ -371,24 +335,24 @@ impl Print {
         self.spaces(SIZE_INFINITY as usize);
     }
     pub fn space_if_nonempty(&mut self) {
-        self.scan_break(BreakToken {
+        self.scan_break(Break {
             blank_space: 1,
             if_nonempty: true,
-            ..BreakToken::default()
+            ..Break::default()
         });
     }
     pub fn hardbreak_if_nonempty(&mut self) {
-        self.scan_break(BreakToken {
+        self.scan_break(Break {
             blank_space: SIZE_INFINITY as usize,
             if_nonempty: true,
-            ..BreakToken::default()
+            ..Break::default()
         });
     }
     pub fn trailing_comma(&mut self, is_last: bool) {
         if is_last {
-            self.scan_break(BreakToken {
+            self.scan_break(Break {
                 pre_break: Some(','),
-                ..BreakToken::default()
+                ..Break::default()
             });
         } else {
             self.word(",");
@@ -397,10 +361,10 @@ impl Print {
     }
     pub fn trailing_comma_or_space(&mut self, is_last: bool) {
         if is_last {
-            self.scan_break(BreakToken {
+            self.scan_break(Break {
                 blank_space: 1,
                 pre_break: Some(','),
-                ..BreakToken::default()
+                ..Break::default()
             });
         } else {
             self.word(",");
@@ -408,9 +372,9 @@ impl Print {
         }
     }
     pub fn neverbreak(&mut self) {
-        self.scan_break(BreakToken {
+        self.scan_break(Break {
             never_break: true,
-            ..BreakToken::default()
+            ..Break::default()
         });
     }
     //attr
@@ -547,7 +511,7 @@ impl Print {
             },
         }
     }
-    pub fn small_block(&mut self, block: &Block, attrs: &[attr::Attr]) {
+    pub fn small_block(&mut self, block: &stmt::Block, attrs: &[attr::Attr]) {
         self.word("{");
         if attr::has_inner(attrs) || !block.stmts.is_empty() {
             self.space();
@@ -775,10 +739,112 @@ impl Print {
 }
 
 #[derive(Clone)]
-struct BufEntry {
-    token: Token,
+struct Entry {
+    tok: Token,
     size: isize,
 }
+
+struct Buffer<T> {
+    data: VecDeque<T>,
+    off: usize,
+}
+impl<T> Buffer<T> {
+    fn new() -> Self {
+        Buffer {
+            data: VecDeque::new(),
+            off: 0,
+        }
+    }
+    fn is_empty(&self) -> bool {
+        self.data.is_empty()
+    }
+    fn len(&self) -> usize {
+        self.data.len()
+    }
+    fn push(&mut self, x: T) -> usize {
+        let y = self.off + self.data.len();
+        self.data.push_back(x);
+        y
+    }
+    fn clear(&mut self) {
+        self.data.clear();
+    }
+    fn idx_of_first(&self) -> usize {
+        self.off
+    }
+    fn first(&self) -> &T {
+        &self.data[0]
+    }
+    fn first_mut(&mut self) -> &mut T {
+        &mut self.data[0]
+    }
+    fn pop_first(&mut self) -> T {
+        self.off += 1;
+        self.data.pop_front().unwrap()
+    }
+    fn last(&self) -> &T {
+        self.data.back().unwrap()
+    }
+    fn last_mut(&mut self) -> &mut T {
+        self.data.back_mut().unwrap()
+    }
+    fn pop_last(&mut self) {
+        self.data.pop_back().unwrap();
+    }
+    fn second_last(&self) -> &T {
+        &self.data[self.data.len() - 2]
+    }
+}
+impl<T> Index<usize> for Buffer<T> {
+    type Output = T;
+    fn index(&self, x: usize) -> &Self::Output {
+        &self.data[x.checked_sub(self.off).unwrap()]
+    }
+}
+impl<T> IndexMut<usize> for Buffer<T> {
+    fn index_mut(&mut self, x: usize) -> &mut Self::Output {
+        &mut self.data[x.checked_sub(self.off).unwrap()]
+    }
+}
+
+#[derive(Copy, Clone)]
+enum Frame {
+    Fits(Breaks),
+    Broken(usize, Breaks),
+}
+
+#[derive(Clone, Copy, PartialEq)]
+enum Breaks {
+    Consistent,
+    Inconsistent,
+}
+
+#[derive(Clone)]
+pub enum Token {
+    String(Cow<'static, str>),
+    Break(Break),
+    Begin(Begin),
+    End,
+}
+
+#[derive(Clone, Copy, Default)]
+pub struct Break {
+    pub off: isize,
+    pub blank_space: usize,
+    pub pre_break: Option<char>,
+    pub post_break: Option<char>,
+    pub no_break: Option<char>,
+    pub if_nonempty: bool,
+    pub never_break: bool,
+}
+
+#[derive(Clone, Copy)]
+pub struct Begin {
+    pub off: isize,
+    pub breaks: Breaks,
+}
+
+pub const SIZE_INFINITY: isize = 0xffff;
 
 pub struct Delimited<I: Iterator> {
     is_first: bool,
@@ -829,6 +895,7 @@ fn is_keyword(ident: &Ident) -> bool {
     }
 }
 mod standard_library {
+    use super::*;
     enum KnownMacro {
         Expr(Expr),
         Exprs(Vec<Expr>),
@@ -849,7 +916,7 @@ mod standard_library {
     }
     struct ThreadLocal {
         attrs: Vec<attr::Attr>,
-        vis: Visibility,
+        vis: data::Visibility,
         name: Ident,
         ty: Type,
         init: Expr,
@@ -1003,7 +1070,7 @@ mod standard_library {
             let mut items = Vec::new();
             while !input.is_empty() {
                 let attrs = input.call(attr::Attr::parse_outer)?;
-                let vis: Visibility = input.parse()?;
+                let vis: data::Visibility = input.parse()?;
                 input.parse::<Token![static]>()?;
                 let name: Ident = input.parse()?;
                 input.parse::<Token![:]>()?;
@@ -1220,69 +1287,6 @@ mod standard_library {
                 },
             }
         }
-    }
-}
-
-pub struct RingBuffer<T> {
-    data: VecDeque<T>,
-    offset: usize,
-}
-impl<T> RingBuffer<T> {
-    pub fn new() -> Self {
-        RingBuffer {
-            data: VecDeque::new(),
-            offset: 0,
-        }
-    }
-    pub fn is_empty(&self) -> bool {
-        self.data.is_empty()
-    }
-    pub fn len(&self) -> usize {
-        self.data.len()
-    }
-    pub fn push(&mut self, value: T) -> usize {
-        let index = self.offset + self.data.len();
-        self.data.push_back(value);
-        index
-    }
-    pub fn clear(&mut self) {
-        self.data.clear();
-    }
-    pub fn index_of_first(&self) -> usize {
-        self.offset
-    }
-    pub fn first(&self) -> &T {
-        &self.data[0]
-    }
-    pub fn first_mut(&mut self) -> &mut T {
-        &mut self.data[0]
-    }
-    pub fn pop_first(&mut self) -> T {
-        self.offset += 1;
-        self.data.pop_front().unwrap()
-    }
-    pub fn last(&self) -> &T {
-        self.data.back().unwrap()
-    }
-    pub fn last_mut(&mut self) -> &mut T {
-        self.data.back_mut().unwrap()
-    }
-    pub fn second_last(&self) -> &T {
-        &self.data[self.data.len() - 2]
-    }
-    pub fn pop_last(&mut self) {
-        self.data.pop_back().unwrap();
-    }
-}
-impl<T> Index<usize> for RingBuffer<T> {
-    type Output = T;
-    fn index(&self, index: usize) -> &Self::Output {
-        &self.data[index.checked_sub(self.offset).unwrap()]
-    }
-}
-impl<T> IndexMut<usize> for RingBuffer<T> {
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        &mut self.data[index.checked_sub(self.offset).unwrap()]
     }
 }
 
