@@ -32,6 +32,7 @@ mod pm2;
 mod pretty;
 mod punct;
 mod stmt;
+mod structure;
 mod tok;
 mod typ;
 
