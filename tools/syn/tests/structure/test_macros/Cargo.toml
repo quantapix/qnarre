@@ -1,0 +1,16 @@
+[package]
+name = "test_macros"
+version = "0.1.0"
+authors = ["Nika Layzell <nika@thelayzells.com>"]
+
+[lib]
+path = "macros.rs"
+proc-macro = true
+
+[dependencies]
+synstructure = { path = "../../" }
+syn = "2"
+quote = "1"
+proc-macro2 = "1"
+
+synstructure_test_traits = { path = "../../test_traits" }

@@ -1,0 +1,11 @@
+[package]
+name = "test_suite"
+version = "0.1.0"
+authors = ["Nika Layzell <nika@thelayzells.com>"]
+
+[lib]
+path = "test.rs"
+
+[dependencies]
+synstructure_test_traits = { path = "../test_traits" }
+test_macros = { path = "test_macros" }
