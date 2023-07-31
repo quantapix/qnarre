@@ -1,26 +1,13 @@
-#![allow(
-    clippy::default_trait_access,
-    clippy::missing_errors_doc,
-    clippy::missing_panics_doc,
-    clippy::must_use_candidate,
-    clippy::needless_pass_by_value
-)]
-#[cfg(all(
-    not(all(target_arch = "wasm32", any(target_os = "unknown", target_os = "wasi"))),
-    feature = "proc-macro"
-))]
-extern crate proc_macro;
-use proc_macro2::{Span, TokenStream, TokenTree};
-pub use quote::quote;
+use super::{
+    braced,
+    parse::{ParseStream, Parser},
+    punctuated, token,
+    visit::{self, Visit},
+    DeriveInput, Error, Field, Fields, FieldsNamed, FieldsUnnamed, GenericParam, Generics, Ident, PredicateType,
+    Result, Token, TraitBound, Type, TypeMacro, TypeParamBound, TypePath, WhereClause, WherePredicate, *,
+};
 use quote::{format_ident, quote_spanned, ToTokens};
 use std::collections::HashSet;
-use syn::parse::{ParseStream, Parser};
-use syn::visit::{self, Visit};
-use syn::{
-    braced, punctuated, token, Attribute, Data, DeriveInput, Error, Expr, Field, Fields, FieldsNamed, FieldsUnnamed,
-    GenericParam, Generics, Ident, PredicateType, Result, Token, TraitBound, Type, TypeMacro, TypeParamBound, TypePath,
-    WhereClause, WherePredicate,
-};
 use unicode_xid::UnicodeXID;
 pub mod macros;
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -40,12 +27,12 @@ pub enum BindStyle {
     RefMut,
 }
 impl ToTokens for BindStyle {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         match self {
             BindStyle::Move => {},
-            BindStyle::MoveMut => quote_spanned!(Span::call_site() => mut).to_tokens(tokens),
-            BindStyle::Ref => quote_spanned!(Span::call_site() => ref).to_tokens(tokens),
-            BindStyle::RefMut => quote_spanned!(Span::call_site() => ref mut).to_tokens(tokens),
+            BindStyle::MoveMut => quote_spanned!(pm2::Span::call_site() => mut).to_tokens(tokens),
+            BindStyle::Ref => quote_spanned!(pm2::Span::call_site() => ref).to_tokens(tokens),
+            BindStyle::RefMut => quote_spanned!(pm2::Span::call_site() => ref mut).to_tokens(tokens),
         }
     }
 }
@@ -81,7 +68,7 @@ fn sanitize_ident(s: &str) -> Ident {
         }
         res.push(c);
     }
-    Ident::new(&res, Span::call_site())
+    Ident::new(&res, pm2::Span::call_site())
 }
 fn merge_generics(into: &mut Generics, from: &Generics) -> Result<()> {
     for p in &from.params {
@@ -145,7 +132,7 @@ pub struct BindingInfo<'a> {
     index: usize,
 }
 impl<'a> ToTokens for BindingInfo<'a> {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut pm2::Stream) {
         self.binding.to_tokens(tokens);
     }
 }
@@ -153,7 +140,7 @@ impl<'a> BindingInfo<'a> {
     pub fn ast(&self) -> &'a Field {
         self.field
     }
-    pub fn pat(&self) -> TokenStream {
+    pub fn pat(&self) -> pm2::Stream {
         let BindingInfo { binding, style, .. } = self;
         quote!(#style #binding)
     }
@@ -163,10 +150,10 @@ impl<'a> BindingInfo<'a> {
 }
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct VariantAst<'a> {
-    pub attrs: &'a [Attribute],
+    pub attrs: &'a [attr::Attr],
     pub ident: &'a Ident,
     pub fields: &'a Fields,
-    pub discriminant: &'a Option<(token::Eq, Expr)>,
+    pub discriminant: &'a Option<(token::Eq, expr::Expr)>,
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct VariantInfo<'a> {
@@ -244,8 +231,8 @@ impl<'a> VariantInfo<'a> {
     pub fn omitted_bindings(&self) -> bool {
         self.original_length != self.bindings.len()
     }
-    pub fn pat(&self) -> TokenStream {
-        let mut t = TokenStream::new();
+    pub fn pat(&self) -> pm2::Stream {
+        let mut t = pm2::Stream::new();
         if let Some(prefix) = self.prefix {
             prefix.to_tokens(&mut t);
             quote!(::).to_tokens(&mut t);
@@ -255,7 +242,7 @@ impl<'a> VariantInfo<'a> {
             Fields::Unit => {
                 assert!(self.bindings.is_empty());
             },
-            Fields::Unnamed(..) => token::Paren(Span::call_site()).surround(&mut t, |t| {
+            Fields::Unnamed(..) => token::Paren(pm2::Span::call_site()).surround(&mut t, |t| {
                 let mut expected_index = 0;
                 for binding in &self.bindings {
                     while expected_index < binding.index {
@@ -270,7 +257,7 @@ impl<'a> VariantInfo<'a> {
                     quote!(..).to_tokens(t);
                 }
             }),
-            Fields::Named(..) => token::Brace(Span::call_site()).surround(&mut t, |t| {
+            Fields::Named(..) => token::Brace(pm2::Span::call_site()).surround(&mut t, |t| {
                 for binding in &self.bindings {
                     binding.field.ident.to_tokens(t);
                     quote!(:).to_tokens(t);
@@ -284,12 +271,12 @@ impl<'a> VariantInfo<'a> {
         }
         t
     }
-    pub fn construct<F, T>(&self, mut func: F) -> TokenStream
+    pub fn construct<F, T>(&self, mut func: F) -> pm2::Stream
     where
         F: FnMut(&Field, usize) -> T,
         T: ToTokens,
     {
-        let mut t = TokenStream::new();
+        let mut t = pm2::Stream::new();
         if let Some(prefix) = self.prefix {
             quote!(#prefix ::).to_tokens(&mut t);
         }
@@ -317,13 +304,13 @@ impl<'a> VariantInfo<'a> {
         }
         t
     }
-    pub fn each<F, R>(&self, mut f: F) -> TokenStream
+    pub fn each<F, R>(&self, mut f: F) -> pm2::Stream
     where
         F: FnMut(&BindingInfo<'_>) -> R,
         R: ToTokens,
     {
         let pat = self.pat();
-        let mut body = TokenStream::new();
+        let mut body = pm2::Stream::new();
         for binding in &self.bindings {
             token::Brace::default().surround(&mut body, |body| {
                 f(binding).to_tokens(body);
@@ -331,9 +318,9 @@ impl<'a> VariantInfo<'a> {
         }
         quote!(#pat => { #body })
     }
-    pub fn fold<F, I, R>(&self, init: I, mut f: F) -> TokenStream
+    pub fn fold<F, I, R>(&self, init: I, mut f: F) -> pm2::Stream
     where
-        F: FnMut(TokenStream, &BindingInfo<'_>) -> R,
+        F: FnMut(pm2::Stream, &BindingInfo<'_>) -> R,
         I: ToTokens,
         R: ToTokens,
     {
@@ -414,7 +401,7 @@ impl<'a> Structure<'a> {
     }
     pub fn try_new(ast: &'a DeriveInput) -> Result<Self> {
         let variants = match &ast.data {
-            Data::Enum(data) => (&data.variants)
+            data::Data::Enum(data) => (&data.variants)
                 .into_iter()
                 .map(|v| {
                     VariantInfo::new(
@@ -429,7 +416,7 @@ impl<'a> Structure<'a> {
                     )
                 })
                 .collect::<Vec<_>>(),
-            Data::Struct(data) => {
+            data::Data::Struct(data) => {
                 vec![VariantInfo::new(
                     VariantAst {
                         attrs: &ast.attrs,
@@ -441,7 +428,7 @@ impl<'a> Structure<'a> {
                     &ast.generics,
                 )]
             },
-            Data::Union(_) => {
+            data::Data::Union(_) => {
                 return Err(Error::new_spanned(ast, "unexpected unsupported untagged union"));
             },
         };
@@ -467,12 +454,12 @@ impl<'a> Structure<'a> {
     pub fn omitted_variants(&self) -> bool {
         self.omitted_variants
     }
-    pub fn each<F, R>(&self, mut f: F) -> TokenStream
+    pub fn each<F, R>(&self, mut f: F) -> pm2::Stream
     where
         F: FnMut(&BindingInfo<'_>) -> R,
         R: ToTokens,
     {
-        let mut t = TokenStream::new();
+        let mut t = pm2::Stream::new();
         for variant in &self.variants {
             variant.each(&mut f).to_tokens(&mut t);
         }
@@ -481,13 +468,13 @@ impl<'a> Structure<'a> {
         }
         t
     }
-    pub fn fold<F, I, R>(&self, init: I, mut f: F) -> TokenStream
+    pub fn fold<F, I, R>(&self, init: I, mut f: F) -> pm2::Stream
     where
-        F: FnMut(TokenStream, &BindingInfo<'_>) -> R,
+        F: FnMut(pm2::Stream, &BindingInfo<'_>) -> R,
         I: ToTokens,
         R: ToTokens,
     {
-        let mut t = TokenStream::new();
+        let mut t = pm2::Stream::new();
         for variant in &self.variants {
             variant.fold(&init, &mut f).to_tokens(&mut t);
         }
@@ -496,12 +483,12 @@ impl<'a> Structure<'a> {
         }
         t
     }
-    pub fn each_variant<F, R>(&self, mut f: F) -> TokenStream
+    pub fn each_variant<F, R>(&self, mut f: F) -> pm2::Stream
     where
         F: FnMut(&VariantInfo<'_>) -> R,
         R: ToTokens,
     {
-        let mut t = TokenStream::new();
+        let mut t = pm2::Stream::new();
         for variant in &self.variants {
             let pat = variant.pat();
             let body = f(variant);
@@ -671,13 +658,13 @@ impl<'a> Structure<'a> {
         self.underscore_const = enabled;
         self
     }
-    pub fn bound_impl<P: ToTokens, B: ToTokens>(&self, path: P, body: B) -> TokenStream {
+    pub fn bound_impl<P: ToTokens, B: ToTokens>(&self, path: P, body: B) -> pm2::Stream {
         self.impl_internal(path.into_token_stream(), body.into_token_stream(), quote!(), None)
     }
-    pub fn unsafe_bound_impl<P: ToTokens, B: ToTokens>(&self, path: P, body: B) -> TokenStream {
+    pub fn unsafe_bound_impl<P: ToTokens, B: ToTokens>(&self, path: P, body: B) -> pm2::Stream {
         self.impl_internal(path.into_token_stream(), body.into_token_stream(), quote!(unsafe), None)
     }
-    pub fn unbound_impl<P: ToTokens, B: ToTokens>(&self, path: P, body: B) -> TokenStream {
+    pub fn unbound_impl<P: ToTokens, B: ToTokens>(&self, path: P, body: B) -> pm2::Stream {
         self.impl_internal(
             path.into_token_stream(),
             body.into_token_stream(),
@@ -686,7 +673,7 @@ impl<'a> Structure<'a> {
         )
     }
     #[deprecated]
-    pub fn unsafe_unbound_impl<P: ToTokens, B: ToTokens>(&self, path: P, body: B) -> TokenStream {
+    pub fn unsafe_unbound_impl<P: ToTokens, B: ToTokens>(&self, path: P, body: B) -> pm2::Stream {
         self.impl_internal(
             path.into_token_stream(),
             body.into_token_stream(),
@@ -696,11 +683,11 @@ impl<'a> Structure<'a> {
     }
     fn impl_internal(
         &self,
-        path: TokenStream,
-        body: TokenStream,
-        safety: TokenStream,
+        path: pm2::Stream,
+        body: pm2::Stream,
+        safety: pm2::Stream,
         mode: Option<AddBounds>,
-    ) -> TokenStream {
+    ) -> pm2::Stream {
         let mode = mode.unwrap_or(self.add_bounds);
         let name = &self.ast.ident;
         let mut gen_clone = self.ast.generics.clone();
@@ -742,14 +729,14 @@ impl<'a> Structure<'a> {
             }
         }
     }
-    pub fn gen_impl(&self, cfg: TokenStream) -> TokenStream {
+    pub fn gen_impl(&self, cfg: pm2::Stream) -> pm2::Stream {
         Parser::parse2(
-            |input: ParseStream<'_>| -> Result<TokenStream> { self.gen_impl_parse(input, true) },
+            |input: ParseStream<'_>| -> Result<pm2::Stream> { self.gen_impl_parse(input, true) },
             cfg,
         )
         .expect("Failed to parse gen_impl")
     }
-    fn gen_impl_parse(&self, input: ParseStream<'_>, wrap: bool) -> Result<TokenStream> {
+    fn gen_impl_parse(&self, input: ParseStream<'_>, wrap: bool) -> Result<pm2::Stream> {
         fn parse_prefix(input: ParseStream<'_>) -> Result<Option<Token![unsafe]>> {
             if input.parse::<Ident>()? != "gen" {
                 return Err(input.error("Expected keyword `gen`"));
@@ -763,7 +750,7 @@ impl<'a> Structure<'a> {
             if parse_prefix(&input.fork()).is_ok() {
                 break;
             }
-            before.push(input.parse::<TokenTree>()?);
+            before.push(input.parse::<pm2::Tree>()?);
         }
         let safety = parse_prefix(input)?;
         let mut generics = input.parse::<Generics>()?;
@@ -774,9 +761,9 @@ impl<'a> Structure<'a> {
         generics.where_clause = input.parse()?;
         let body;
         braced!(body in input);
-        let body = body.parse::<TokenStream>()?;
+        let body = body.parse::<pm2::Stream>()?;
         let maybe_next_impl = self.gen_impl_parse(&input.fork(), false);
-        let mut after = input.parse::<TokenStream>()?;
+        let mut after = input.parse::<pm2::Stream>()?;
         if let Ok(stream) = maybe_next_impl {
             after = stream;
         }
@@ -845,12 +832,12 @@ fn trim_start_matches(s: &str, c: char) -> &str {
     s.trim_left_matches(c)
 }
 pub trait MacroResult {
-    fn into_result(self) -> Result<TokenStream>;
+    fn into_result(self) -> Result<pm2::Stream>;
     #[cfg(all(
         not(all(target_arch = "wasm32", any(target_os = "unknown", target_os = "wasi"))),
         feature = "proc-macro"
     ))]
-    fn into_stream(self) -> proc_macro::TokenStream
+    fn into_stream(self) -> proc_macro::pm2::Stream
     where
         Self: Sized,
     {
@@ -864,21 +851,21 @@ pub trait MacroResult {
     not(all(target_arch = "wasm32", any(target_os = "unknown", target_os = "wasi"))),
     feature = "proc-macro"
 ))]
-impl MacroResult for proc_macro::TokenStream {
-    fn into_result(self) -> Result<TokenStream> {
+impl MacroResult for proc_macro::pm2::Stream {
+    fn into_result(self) -> Result<pm2::Stream> {
         Ok(self.into())
     }
-    fn into_stream(self) -> proc_macro::TokenStream {
+    fn into_stream(self) -> proc_macro::pm2::Stream {
         self
     }
 }
-impl MacroResult for TokenStream {
-    fn into_result(self) -> Result<TokenStream> {
+impl MacroResult for pm2::Stream {
+    fn into_result(self) -> Result<pm2::Stream> {
         Ok(self)
     }
 }
 impl<T: MacroResult> MacroResult for Result<T> {
-    fn into_result(self) -> Result<TokenStream> {
+    fn into_result(self) -> Result<pm2::Stream> {
         match self {
             Ok(v) => v.into_result(),
             Err(err) => Err(err),
