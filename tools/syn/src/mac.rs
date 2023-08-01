@@ -16,13 +16,13 @@ impl Mac {
     }
 }
 impl Parse for Mac {
-    fn parse(x: Stream) -> Res<Self> {
+    fn parse(s: Stream) -> Res<Self> {
         let toks;
         Ok(Mac {
-            path: x.call(Path::parse_mod_style)?,
-            bang: x.parse()?,
+            path: s.call(Path::parse_mod_style)?,
+            bang: s.parse()?,
             delim: {
-                let (y, x) = parse_delim(x)?;
+                let (y, x) = parse_delim(s)?;
                 toks = x;
                 y
             },

@@ -565,19 +565,19 @@ pub mod param {
         pub default: Option<expr::Expr>,
     }
     impl Parse for Const {
-        fn parse(x: Stream) -> Res<Self> {
+        fn parse(s: Stream) -> Res<Self> {
             let mut default = None;
             Ok(Const {
-                attrs: x.call(attr::Attr::parse_outers)?,
-                const_: x.parse()?,
-                ident: x.parse()?,
-                colon: x.parse()?,
-                typ: x.parse()?,
+                attrs: s.call(attr::Attr::parse_outers)?,
+                const_: s.parse()?,
+                ident: s.parse()?,
+                colon: s.parse()?,
+                typ: s.parse()?,
                 eq: {
-                    if x.peek(Token![=]) {
-                        let eq = x.parse()?;
-                        default = Some(path::const_arg(x)?);
-                        Some(eq)
+                    if s.peek(Token![=]) {
+                        let y = s.parse()?;
+                        default = Some(path::const_arg(s)?);
+                        Some(y)
                     } else {
                         None
                     }

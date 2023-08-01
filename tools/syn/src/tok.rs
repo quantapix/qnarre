@@ -125,9 +125,9 @@ macro_rules! def_keywords {
                 fn hash<H: Hasher>(&self, _: &mut H) {}
             }
             impl Parse for $n {
-                fn parse(x: parse::Stream) -> Res<Self> {
+                fn parse(s: parse::Stream) -> Res<Self> {
                     Ok($n {
-                        span: crate::tok::parse_kw(x, $t)?,
+                        span: crate::tok::parse_kw(s, $t)?,
                     })
                 }
             }
@@ -285,8 +285,8 @@ impl Lower for Underscore {
     }
 }
 impl Parse for Underscore {
-    fn parse(x: Stream) -> Res<Self> {
-        x.step(|x| {
+    fn parse(s: Stream) -> Res<Self> {
+        s.step(|x| {
             if let Some((x, rest)) = x.ident() {
                 if x == "_" {
                     return Ok((Underscore(x.span()), rest));
@@ -333,9 +333,9 @@ macro_rules! def_punct {
                 }
             }
             impl Parse for $n {
-                fn parse(x: Stream) -> Res<Self> {
+                fn parse(s: Stream) -> Res<Self> {
                     Ok($n {
-                        spans: crate::tok::parse_punct(x, $t)?,
+                        spans: crate::tok::parse_punct(s, $t)?,
                     })
                 }
             }

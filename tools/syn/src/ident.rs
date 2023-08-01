@@ -1,8 +1,8 @@
 use super::*;
 
 impl Parse for Ident {
-    fn parse(x: Stream) -> Res<Self> {
-        x.step(|c| {
+    fn parse(s: Stream) -> Res<Self> {
+        s.step(|c| {
             if let Some((x, rest)) = c.ident() {
                 if tok::accept_as_ident(&x) {
                     Ok((x, rest))
@@ -113,8 +113,8 @@ impl Hash for Life {
     }
 }
 impl Parse for Life {
-    fn parse(x: Stream) -> Res<Self> {
-        x.step(|c| c.life().ok_or_else(|| c.err("expected life")))
+    fn parse(s: Stream) -> Res<Self> {
+        s.step(|c| c.life().ok_or_else(|| c.err("expected life")))
     }
 }
 impl Lower for Life {

@@ -130,8 +130,8 @@ where
     }
 }
 impl Parse for Path {
-    fn parse(x: Stream) -> Res<Self> {
-        Self::parse_helper(x, false)
+    fn parse(s: Stream) -> Res<Self> {
+        Self::parse_helper(s, false)
     }
 }
 impl Lower for Path {
@@ -271,50 +271,50 @@ pub enum Arg {
     Constraint(Constraint),
 }
 impl Parse for Arg {
-    fn parse(x: Stream) -> Res<Self> {
-        if x.peek(Life) && !x.peek2(Token![+]) {
-            return Ok(Arg::Life(x.parse()?));
+    fn parse(s: Stream) -> Res<Self> {
+        if s.peek(Life) && !s.peek2(Token![+]) {
+            return Ok(Arg::Life(s.parse()?));
         }
-        if x.peek(lit::Lit) || x.peek(tok::Brace) {
-            return const_arg(x).map(Arg::Const);
+        if s.peek(lit::Lit) || s.peek(tok::Brace) {
+            return const_arg(s).map(Arg::Const);
         }
-        let mut y: typ::Type = x.parse()?;
+        let mut y: typ::Type = s.parse()?;
         match y {
-            typ::Type::Path(mut ty)
-                if ty.qself.is_none()
-                    && ty.path.colon.is_none()
-                    && ty.path.segs.len() == 1
-                    && match &ty.path.segments[0].arguments {
+            typ::Type::Path(mut s)
+                if s.qself.is_none()
+                    && s.path.colon.is_none()
+                    && s.path.segs.len() == 1
+                    && match &s.path.segments[0].arguments {
                         Args::None | Args::AngleBracketed(_) => true,
                         Args::Parenthesized(_) => false,
                     } =>
             {
-                if let Some(eq) = x.parse::<Option<Token![=]>>()? {
-                    let seg = ty.path.segs.pop().unwrap().into_value();
+                if let Some(eq) = s.parse::<Option<Token![=]>>()? {
+                    let seg = s.path.segs.pop().unwrap().into_value();
                     let ident = seg.ident;
-                    let gnrs = match seg.args {
+                    let args = match seg.args {
                         Args::None => None,
                         Args::Angled(x) => Some(x),
                         Args::Parenthesized(_) => unreachable!(),
                     };
-                    return if x.peek(lit::Lit) || x.peek(tok::Brace) {
+                    return if s.peek(lit::Lit) || s.peek(tok::Brace) {
                         Ok(Arg::AssocConst(AssocConst {
                             ident,
-                            args: gnrs,
+                            args,
                             eq,
-                            val: const_arg(x)?,
+                            val: const_arg(s)?,
                         }))
                     } else {
                         Ok(Arg::AssocType(AssocType {
                             ident,
-                            args: gnrs,
+                            args,
                             eq,
-                            typ: x.parse()?,
+                            typ: s.parse()?,
                         }))
                     };
                 }
-                if let Some(colon) = x.parse::<Option<Token![:]>>()? {
-                    let seg = ty.path.segs.pop().unwrap().into_value();
+                if let Some(colon) = s.parse::<Option<Token![:]>>()? {
+                    let seg = s.path.segs.pop().unwrap().into_value();
                     return Ok(Arg::Constraint(Constraint {
                         ident: seg.ident,
                         args: match seg.args {
@@ -326,22 +326,22 @@ impl Parse for Arg {
                         bounds: {
                             let mut ys = Puncted::new();
                             loop {
-                                if x.peek(Token![,]) || x.peek(Token![>]) {
+                                if s.peek(Token![,]) || s.peek(Token![>]) {
                                     break;
                                 }
-                                let y: gen::bound::Type = x.parse()?;
+                                let y: gen::bound::Type = s.parse()?;
                                 ys.push_value(y);
-                                if !x.peek(Token![+]) {
+                                if !s.peek(Token![+]) {
                                     break;
                                 }
-                                let y: Token![+] = x.parse()?;
+                                let y: Token![+] = s.parse()?;
                                 ys.push_punct(y);
                             }
                             ys
                         },
                     }));
                 }
-                y = typ::Type::Path(ty);
+                y = typ::Type::Path(s);
             },
             _ => {},
         }

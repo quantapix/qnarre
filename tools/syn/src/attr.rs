@@ -340,9 +340,9 @@ impl Meta {
     }
 }
 impl Parse for Meta {
-    fn parse(x: Stream) -> Res<Self> {
-        let y = x.call(Path::parse_mod_style)?;
-        parse_after_path(y, x)
+    fn parse(s: Stream) -> Res<Self> {
+        let y = s.call(Path::parse_mod_style)?;
+        parse_after_path(y, s)
     }
 }
 impl Pretty for Meta {
@@ -374,9 +374,9 @@ impl List {
     }
 }
 impl Parse for List {
-    fn parse(x: Stream) -> Res<Self> {
-        let y = x.call(Path::parse_mod_style)?;
-        parse_list_after_path(y, x)
+    fn parse(s: Stream) -> Res<Self> {
+        let y = s.call(Path::parse_mod_style)?;
+        parse_list_after_path(y, s)
     }
 }
 impl Lower for List {
@@ -506,9 +506,9 @@ pub struct NameValue {
     pub val: expr::Expr,
 }
 impl Parse for NameValue {
-    fn parse(x: Stream) -> Res<Self> {
-        let y = x.call(Path::parse_mod_style)?;
-        parse_name_value_after_path(y, x)
+    fn parse(s: Stream) -> Res<Self> {
+        let y = s.call(Path::parse_mod_style)?;
+        parse_name_value_after_path(y, s)
     }
 }
 impl Lower for NameValue {
@@ -535,10 +535,10 @@ impl<'a> Nested<'a> {
         self.ins.parse::<Token![=]>()?;
         Ok(self.ins)
     }
-    pub fn parse(&self, cb: impl FnMut(Nested) -> Res<()>) -> Res<()> {
+    pub fn parse(&self, f: impl FnMut(Nested) -> Res<()>) -> Res<()> {
         let y;
         parenthesized!(y in self.ins);
-        parse_nested(&y, cb)
+        parse_nested(&y, f)
     }
     pub fn err(&self, x: impl Display) -> Err {
         let beg = self.path.segs[0].ident.span();

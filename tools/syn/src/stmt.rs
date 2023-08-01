@@ -57,9 +57,9 @@ pub enum Stmt {
     Mac(Mac),
 }
 impl Parse for Stmt {
-    fn parse(x: Stream) -> Res<Self> {
-        let nosemi = NoSemi(false);
-        parse_stmt(x, nosemi)
+    fn parse(s: Stream) -> Res<Self> {
+        let y = NoSemi(false);
+        parse_stmt(s, y)
     }
 }
 impl Lower for Stmt {

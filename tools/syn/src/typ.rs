@@ -27,10 +27,10 @@ impl Type {
     }
 }
 impl Parse for Type {
-    fn parse(x: Stream) -> Res<Self> {
+    fn parse(s: Stream) -> Res<Self> {
         let plus = true;
-        let group_gen = true;
-        parse_ambig_typ(x, plus, group_gen)
+        let gen = true;
+        parse_ambig_typ(s, plus, gen)
     }
 }
 impl Pretty for Type {
@@ -63,13 +63,13 @@ pub struct Array {
     pub len: expr::Expr,
 }
 impl Parse for Array {
-    fn parse(x: Stream) -> Res<Self> {
-        let gist;
+    fn parse(s: Stream) -> Res<Self> {
+        let y;
         Ok(Array {
-            bracket: bracketed!(gist in x),
-            elem: gist.parse()?,
-            semi: gist.parse()?,
-            len: gist.parse()?,
+            bracket: bracketed!(y in s),
+            elem: y.parse()?,
+            semi: y.parse()?,
+            len: y.parse()?,
         })
     }
 }
@@ -103,15 +103,15 @@ pub struct Fn {
     pub ret: Ret,
 }
 impl Parse for Fn {
-    fn parse(x: Stream) -> Res<Self> {
+    fn parse(s: Stream) -> Res<Self> {
         let args;
         let mut vari = None;
         Ok(Fn {
-            lifes: x.parse()?,
-            unsafe_: x.parse()?,
-            abi: x.parse()?,
-            fn_: x.parse()?,
-            paren: parenthesized!(args in x),
+            lifes: s.parse()?,
+            unsafe_: s.parse()?,
+            abi: s.parse()?,
+            fn_: s.parse()?,
+            paren: parenthesized!(args in s),
             args: {
                 let mut ys = Puncted::new();
                 while !args.is_empty() {
@@ -124,18 +124,18 @@ impl Parse for Fn {
                         break;
                     }
                     let allow_self = ys.is_empty();
-                    let arg = parse_fn_arg(&args, allow_self)?;
-                    ys.push_value(FnArg { attrs, ..arg });
+                    let y = parse_fn_arg(&args, allow_self)?;
+                    ys.push_value(FnArg { attrs, ..y });
                     if args.is_empty() {
                         break;
                     }
-                    let comma = args.parse()?;
-                    ys.push_punct(comma);
+                    let y = args.parse()?;
+                    ys.push_punct(y);
                 }
                 ys
             },
             vari,
-            ret: x.call(Ret::without_plus)?,
+            ret: s.call(Ret::without_plus)?,
         })
     }
 }
@@ -192,8 +192,8 @@ pub struct Group {
     pub elem: Box<Type>,
 }
 impl Parse for Group {
-    fn parse(x: Stream) -> Res<Self> {
-        let y = parse::parse_group(x)?;
+    fn parse(s: Stream) -> Res<Self> {
+        let y = parse::parse_group(s)?;
         Ok(Group {
             group: y.tok,
             elem: y.buf.parse()?,
@@ -222,9 +222,9 @@ impl Impl {
         let plus = false;
         Self::parse(x, plus)
     }
-    pub fn parse(x: Stream, plus: bool) -> Res<Self> {
-        let impl_: Token![impl] = x.parse()?;
-        let bounds = gen::bound::Type::parse_many(x, plus)?;
+    pub fn parse(s: Stream, plus: bool) -> Res<Self> {
+        let impl_: Token![impl] = s.parse()?;
+        let bounds = gen::bound::Type::parse_many(s, plus)?;
         let mut last = None;
         let mut one = false;
         for x in &bounds {
@@ -246,9 +246,9 @@ impl Impl {
     }
 }
 impl Parse for Impl {
-    fn parse(x: Stream) -> Res<Self> {
+    fn parse(s: Stream) -> Res<Self> {
         let plus = true;
-        Self::parse(x, plus)
+        Self::parse(s, plus)
     }
 }
 impl Lower for Impl {
@@ -273,8 +273,8 @@ pub struct Infer {
     pub underscore: Token![_],
 }
 impl Parse for Infer {
-    fn parse(x: Stream) -> Res<Self> {
-        Ok(Infer { underscore: x.parse()? })
+    fn parse(s: Stream) -> Res<Self> {
+        Ok(Infer { underscore: s.parse()? })
     }
 }
 impl Lower for Infer {
@@ -293,8 +293,8 @@ pub struct Mac {
     pub mac: mac::Mac,
 }
 impl Parse for Mac {
-    fn parse(x: Stream) -> Res<Self> {
-        Ok(Mac { mac: x.parse()? })
+    fn parse(s: Stream) -> Res<Self> {
+        Ok(Mac { mac: s.parse()? })
     }
 }
 impl Lower for Mac {
@@ -313,8 +313,8 @@ pub struct Never {
     pub bang: Token![!],
 }
 impl Parse for Never {
-    fn parse(x: Stream) -> Res<Self> {
-        Ok(Never { bang: x.parse()? })
+    fn parse(s: Stream) -> Res<Self> {
+        Ok(Never { bang: s.parse()? })
     }
 }
 impl Lower for Never {
@@ -334,21 +334,21 @@ pub struct Paren {
     pub elem: Box<Type>,
 }
 impl Paren {
-    fn parse(x: Stream, plus: bool) -> Res<Self> {
-        let gist;
+    fn parse(s: Stream, plus: bool) -> Res<Self> {
+        let y;
         Ok(Paren {
-            paren: parenthesized!(gist in x),
+            paren: parenthesized!(y in s),
             elem: Box::new({
-                let group_gen = true;
-                parse_ambig_typ(&gist, plus, group_gen)?
+                let gen = true;
+                parse_ambig_typ(&y, plus, gen)?
             }),
         })
     }
 }
 impl Parse for Paren {
-    fn parse(x: Stream) -> Res<Self> {
+    fn parse(s: Stream) -> Res<Self> {
         let plus = false;
-        Self::parse(x, plus)
+        Self::parse(s, plus)
     }
 }
 impl Lower for Paren {
@@ -371,9 +371,9 @@ pub struct Path {
     pub path: Path,
 }
 impl Parse for Path {
-    fn parse(x: Stream) -> Res<Self> {
-        let expr_style = false;
-        let (qself, path) = path::qpath(x, expr_style)?;
+    fn parse(s: Stream) -> Res<Self> {
+        let style = false;
+        let (qself, path) = path::qpath(s, style)?;
         Ok(Path { qself, path })
     }
 }
@@ -395,13 +395,13 @@ pub struct Ptr {
     pub elem: Box<Type>,
 }
 impl Parse for Ptr {
-    fn parse(x: Stream) -> Res<Self> {
-        let star: Token![*] = x.parse()?;
-        let look = x.look1();
+    fn parse(s: Stream) -> Res<Self> {
+        let star: Token![*] = s.parse()?;
+        let look = s.look1();
         let (const_, mut_) = if look.peek(Token![const]) {
-            (Some(x.parse()?), None)
+            (Some(s.parse()?), None)
         } else if look.peek(Token![mut]) {
-            (None, Some(x.parse()?))
+            (None, Some(s.parse()?))
         } else {
             return Err(look.err());
         };
@@ -409,7 +409,7 @@ impl Parse for Ptr {
             star,
             const_,
             mut_,
-            elem: Box::new(x.call(Type::without_plus)?),
+            elem: Box::new(s.call(Type::without_plus)?),
         })
     }
 }
@@ -444,12 +444,12 @@ pub struct Ref {
     pub elem: Box<Type>,
 }
 impl Parse for Ref {
-    fn parse(x: Stream) -> Res<Self> {
+    fn parse(s: Stream) -> Res<Self> {
         Ok(Ref {
-            and: x.parse()?,
-            life: x.parse()?,
-            mut_: x.parse()?,
-            elem: Box::new(x.call(Type::without_plus)?),
+            and: s.parse()?,
+            life: s.parse()?,
+            mut_: s.parse()?,
+            elem: Box::new(s.call(Type::without_plus)?),
         })
     }
 }
@@ -480,11 +480,11 @@ pub struct Slice {
     pub elem: Box<Type>,
 }
 impl Parse for Slice {
-    fn parse(x: Stream) -> Res<Self> {
-        let gist;
+    fn parse(s: Stream) -> Res<Self> {
+        let y;
         Ok(Slice {
-            bracket: bracketed!(gist in x),
-            elem: gist.parse()?,
+            bracket: bracketed!(y in s),
+            elem: y.parse()?,
         })
     }
 }
@@ -512,13 +512,13 @@ impl Trait {
         let plus = false;
         Self::parse(x, plus)
     }
-    pub fn parse(x: Stream, plus: bool) -> Res<Self> {
-        let dyn_: Option<Token![dyn]> = x.parse()?;
+    pub fn parse(s: Stream, plus: bool) -> Res<Self> {
+        let dyn_: Option<Token![dyn]> = s.parse()?;
         let span = match &dyn_ {
             Some(x) => x.span,
-            None => x.span(),
+            None => s.span(),
         };
-        let bounds = Self::parse_bounds(span, x, plus)?;
+        let bounds = Self::parse_bounds(span, s, plus)?;
         Ok(Trait { dyn_, bounds })
     }
     fn parse_bounds(s: pm2::Span, x: Stream, plus: bool) -> Res<Puncted<gen::bound::Type, Token![+]>> {
@@ -544,9 +544,9 @@ impl Trait {
     }
 }
 impl Parse for Trait {
-    fn parse(x: Stream) -> Res<Self> {
+    fn parse(s: Stream) -> Res<Self> {
         let plus = true;
-        Self::parse(x, plus)
+        Self::parse(s, plus)
     }
 }
 impl Lower for Trait {
@@ -572,28 +572,28 @@ pub struct Tuple {
     pub elems: Puncted<Type, Token![,]>,
 }
 impl Parse for Tuple {
-    fn parse(x: Stream) -> Res<Self> {
-        let gist;
-        let paren = parenthesized!(gist in x);
-        if gist.is_empty() {
+    fn parse(s: Stream) -> Res<Self> {
+        let y;
+        let paren = parenthesized!(y in s);
+        if y.is_empty() {
             return Ok(Tuple {
                 paren,
                 elems: Puncted::new(),
             });
         }
-        let first: Type = gist.parse()?;
+        let first: Type = y.parse()?;
         Ok(Tuple {
             paren,
             elems: {
                 let mut ys = Puncted::new();
                 ys.push_value(first);
-                ys.push_punct(gist.parse()?);
-                while !gist.is_empty() {
-                    ys.push_value(gist.parse()?);
-                    if gist.is_empty() {
+                ys.push_punct(y.parse()?);
+                while !y.is_empty() {
+                    ys.push_value(y.parse()?);
+                    if y.is_empty() {
                         break;
                     }
-                    ys.push_punct(gist.parse()?);
+                    ys.push_punct(y.parse()?);
                 }
                 ys
             },
@@ -635,17 +635,17 @@ pub struct Abi {
     pub name: Option<lit::Str>,
 }
 impl Parse for Abi {
-    fn parse(x: Stream) -> Res<Self> {
+    fn parse(s: Stream) -> Res<Self> {
         Ok(Abi {
-            extern_: x.parse()?,
-            name: x.parse()?,
+            extern_: s.parse()?,
+            name: s.parse()?,
         })
     }
 }
 impl Parse for Option<Abi> {
-    fn parse(x: Stream) -> Res<Self> {
-        if x.peek(Token![extern]) {
-            x.parse().map(Some)
+    fn parse(s: Stream) -> Res<Self> {
+        if s.peek(Token![extern]) {
+            s.parse().map(Some)
         } else {
             Ok(None)
         }
@@ -673,9 +673,9 @@ pub struct FnArg {
     pub typ: Type,
 }
 impl Parse for FnArg {
-    fn parse(x: Stream) -> Res<Self> {
+    fn parse(s: Stream) -> Res<Self> {
         let self_ = false;
-        parse_fn_arg(x, self_)
+        parse_fn_arg(s, self_)
     }
 }
 impl Lower for FnArg {
@@ -736,21 +736,21 @@ impl Ret {
         let plus = false;
         Self::parse(x, plus)
     }
-    pub fn parse(x: Stream, plus: bool) -> Res<Self> {
-        if x.peek(Token![->]) {
-            let arrow = x.parse()?;
-            let group_gen = true;
-            let ty = parse_ambig_typ(x, plus, group_gen)?;
-            Ok(Ret::Type(arrow, Box::new(ty)))
+    pub fn parse(s: Stream, plus: bool) -> Res<Self> {
+        if s.peek(Token![->]) {
+            let arrow = s.parse()?;
+            let gen = true;
+            let y = parse_ambig_typ(s, plus, gen)?;
+            Ok(Ret::Type(arrow, Box::new(y)))
         } else {
             Ok(Ret::Default)
         }
     }
 }
 impl Parse for Ret {
-    fn parse(x: Stream) -> Res<Self> {
+    fn parse(s: Stream) -> Res<Self> {
         let plus = true;
-        Self::parse(x, plus)
+        Self::parse(s, plus)
     }
 }
 impl Lower for Ret {
@@ -912,51 +912,51 @@ pub fn parse_ambig_typ(s: Stream, plus: bool, gen: bool) -> Res<Type> {
         }
     }
     if look.peek(tok::Paren) {
-        let gist;
-        let paren = parenthesized!(gist in s);
-        if gist.is_empty() {
+        let y;
+        let paren = parenthesized!(y in s);
+        if y.is_empty() {
             return Ok(Type::Tuple(Tuple {
                 paren,
                 elems: Puncted::new(),
             }));
         }
-        if gist.peek(Life) {
+        if y.peek(Life) {
             return Ok(Type::Paren(Paren {
                 paren,
-                elem: Box::new(Type::TraitObject(gist.parse()?)),
+                elem: Box::new(Type::TraitObject(y.parse()?)),
             }));
         }
-        if gist.peek(Token![?]) {
+        if y.peek(Token![?]) {
             return Ok(Type::TraitObject(Trait {
                 dyn_: None,
                 bounds: {
                     let mut ys = Puncted::new();
                     ys.push_value(gen::bound::Type::Trait(gen::bound::Trait {
                         paren: Some(paren),
-                        ..gist.parse()?
+                        ..y.parse()?
                     }));
-                    while let Some(plus) = s.parse()? {
-                        ys.push_punct(plus);
+                    while let Some(x) = s.parse()? {
+                        ys.push_punct(x);
                         ys.push_value(s.parse()?);
                     }
                     ys
                 },
             }));
         }
-        let mut first: Type = gist.parse()?;
-        if gist.peek(Token![,]) {
+        let mut first: Type = y.parse()?;
+        if y.peek(Token![,]) {
             return Ok(Type::Tuple(Tuple {
                 paren,
                 elems: {
                     let mut ys = Puncted::new();
                     ys.push_value(first);
-                    ys.push_punct(gist.parse()?);
-                    while !gist.is_empty() {
-                        ys.push_value(gist.parse()?);
-                        if gist.is_empty() {
+                    ys.push_punct(y.parse()?);
+                    while !y.is_empty() {
+                        ys.push_value(y.parse()?);
+                        if y.is_empty() {
                             break;
                         }
-                        ys.push_punct(gist.parse()?);
+                        ys.push_punct(y.parse()?);
                     }
                     ys
                 },
@@ -991,8 +991,8 @@ pub fn parse_ambig_typ(s: Stream, plus: bool, gen: bool) -> Res<Type> {
                     bounds: {
                         let mut ys = Puncted::new();
                         ys.push_value(first);
-                        while let Some(plus) = s.parse()? {
-                            ys.push_punct(plus);
+                        while let Some(x) = s.parse()? {
+                            ys.push_punct(x);
                             ys.push_value(s.parse()?);
                         }
                         ys
@@ -1059,9 +1059,9 @@ pub fn parse_ambig_typ(s: Stream, plus: bool, gen: bool) -> Res<Type> {
         Ok(Type::Path(typ))
     } else if look.peek(Token![dyn]) {
         let dyn_: Token![dyn] = s.parse()?;
-        let dyn_span = dyn_.span;
+        let span = dyn_.span;
         let star: Option<Token![*]> = s.parse()?;
-        let bounds = Trait::parse_bounds(dyn_span, s, plus)?;
+        let bounds = Trait::parse_bounds(span, s, plus)?;
         return Ok(if star.is_some() {
             Type::Stream(parse::parse_verbatim(&beg, s))
         } else {
@@ -1071,15 +1071,15 @@ pub fn parse_ambig_typ(s: Stream, plus: bool, gen: bool) -> Res<Type> {
             })
         });
     } else if look.peek(tok::Bracket) {
-        let gist;
-        let bracket = bracketed!(gist in s);
-        let elem: Type = gist.parse()?;
-        if gist.peek(Token![;]) {
+        let y;
+        let bracket = bracketed!(y in s);
+        let elem: Type = y.parse()?;
+        if y.peek(Token![;]) {
             Ok(Type::Array(Array {
                 bracket,
                 elem: Box::new(elem),
-                semi: gist.parse()?,
-                len: gist.parse()?,
+                semi: y.parse()?,
+                len: y.parse()?,
             }))
         } else {
             Ok(Type::Slice(Slice {

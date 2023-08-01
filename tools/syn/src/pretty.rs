@@ -800,7 +800,7 @@ mod standard_library {
                 }
                 let arg = if input.peek(Ident::peek_any) && input.peek2(Token![=]) && !input.peek2(Token![==]) {
                     let key = input.call(Ident::parse_any)?;
-                    let eq_token: Token![=] = input.parse()?;
+                    let eq: Token![=] = input.parse()?;
                     let value: Expr = input.parse()?;
                     Expr::Assign(expr::Assign {
                         attrs: Vec::new(),
@@ -809,7 +809,7 @@ mod standard_library {
                             qself: None,
                             path: Path::from(key),
                         })),
-                        eq_token,
+                        eq,
                         right: Box::new(value),
                     })
                 } else {
