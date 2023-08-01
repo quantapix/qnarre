@@ -374,30 +374,30 @@ mod parse {
     mod parsing {
         use super::AstItem;
         use std::collections::{BTreeMap, BTreeSet};
-        use syn::parse::{ParseStream, Result};
+        use syn::parse::{parse::Stream, Result};
         use syn::pm2::Stream;
         use syn::quote::quote;
         use syn::{
             braced, bracketed, parenthesized, parse_quote, token, Attribute, Expr, Ident, Lit, LitStr, Path, Token,
         };
         use syn_codegen as types;
-        fn peek_tag(input: ParseStream, tag: &str) -> bool {
-            let ahead = input.fork();
+        fn peek_tag(s: parse::Stream, tag: &str) -> bool {
+            let ahead = s.fork();
             ahead.parse::<Token![#]>().is_ok() && ahead.parse::<Ident>().map(|ident| ident == tag).unwrap_or(false)
         }
-        fn full(input: ParseStream) -> Vec<Attribute> {
-            if peek_tag(input, "full") {
-                input.parse::<Token![#]>().unwrap();
-                input.parse::<Ident>().unwrap();
+        fn full(s: parse::Stream) -> Vec<Attribute> {
+            if peek_tag(s, "full") {
+                s.parse::<Token![#]>().unwrap();
+                s.parse::<Ident>().unwrap();
                 vec![parse_quote!(#[cfg(feature = "full")])]
             } else {
                 vec![]
             }
         }
-        fn ast_struct_inner(input: ParseStream) -> Result<AstItem> {
-            let ident: Ident = input.parse()?;
-            let features = full(input);
-            let rest: Stream = input.parse()?;
+        fn ast_struct_inner(s: parse::Stream) -> Result<AstItem> {
+            let ident: Ident = s.parse()?;
+            let features = full(s);
+            let rest: Stream = s.parse()?;
             Ok(AstItem {
                 ast: syn::parse2(quote! {
                     pub struct #ident #rest
@@ -405,29 +405,29 @@ mod parse {
                 features,
             })
         }
-        pub fn ast_struct(input: ParseStream) -> Result<AstItem> {
-            input.call(Attribute::parse_outer)?;
-            input.parse::<Token![pub]>()?;
-            input.parse::<Token![struct]>()?;
-            let res = input.call(ast_struct_inner)?;
+        pub fn ast_struct(s: parse::Stream) -> Result<AstItem> {
+            s.call(Attribute::parse_outer)?;
+            s.parse::<Token![pub]>()?;
+            s.parse::<Token![struct]>()?;
+            let res = s.call(ast_struct_inner)?;
             Ok(res)
         }
-        fn no_visit(input: ParseStream) -> bool {
-            if peek_tag(input, "no_visit") {
-                input.parse::<Token![#]>().unwrap();
-                input.parse::<Ident>().unwrap();
+        fn no_visit(s: parse::Stream) -> bool {
+            if peek_tag(s, "no_visit") {
+                s.parse::<Token![#]>().unwrap();
+                s.parse::<Ident>().unwrap();
                 true
             } else {
                 false
             }
         }
-        pub fn ast_enum(input: ParseStream) -> Result<Option<AstItem>> {
-            let attrs = input.call(Attribute::parse_outer)?;
-            input.parse::<Token![pub]>()?;
-            input.parse::<Token![enum]>()?;
-            let ident: Ident = input.parse()?;
-            let no_visit = no_visit(input);
-            let rest: Stream = input.parse()?;
+        pub fn ast_enum(s: parse::Stream) -> Result<Option<AstItem>> {
+            let attrs = s.call(Attribute::parse_outer)?;
+            s.parse::<Token![pub]>()?;
+            s.parse::<Token![enum]>()?;
+            let ident: Ident = s.parse()?;
+            let no_visit = no_visit(s);
+            let rest: Stream = s.parse()?;
             Ok(if no_visit {
                 None
             } else {
@@ -445,31 +445,31 @@ mod parse {
             name: Ident,
             member: Option<Path>,
         }
-        fn eos_variant(input: ParseStream) -> Result<EosVariant> {
-            let attrs = input.call(Attribute::parse_outer)?;
-            let variant: Ident = input.parse()?;
-            let member = if input.peek(token::Paren) {
+        fn eos_variant(s: parse::Stream) -> Result<EosVariant> {
+            let attrs = s.call(Attribute::parse_outer)?;
+            let variant: Ident = s.parse()?;
+            let member = if s.peek(token::Paren) {
                 let content;
-                parenthesized!(content in input);
+                parenthesized!(content in s);
                 let path: Path = content.parse()?;
                 Some(path)
             } else {
                 None
             };
-            input.parse::<Token![,]>()?;
+            s.parse::<Token![,]>()?;
             Ok(EosVariant {
                 attrs,
                 name: variant,
                 member,
             })
         }
-        pub fn ast_enum_of_structs(input: ParseStream) -> Result<AstItem> {
-            let attrs = input.call(Attribute::parse_outer)?;
-            input.parse::<Token![pub]>()?;
-            input.parse::<Token![enum]>()?;
-            let ident: Ident = input.parse()?;
+        pub fn ast_enum_of_structs(s: parse::Stream) -> Result<AstItem> {
+            let attrs = s.call(Attribute::parse_outer)?;
+            s.parse::<Token![pub]>()?;
+            s.parse::<Token![enum]>()?;
+            let ident: Ident = s.parse()?;
             let content;
-            braced!(content in input);
+            braced!(content in s);
             let mut variants = Vec::new();
             while !content.is_empty() {
                 variants.push(content.call(eos_variant)?);
@@ -501,16 +501,16 @@ mod parse {
             syn::custom_kw!(macro_rules);
             syn::custom_kw!(Token);
         }
-        pub fn parse_token_macro(input: ParseStream) -> Result<BTreeMap<String, String>> {
+        pub fn parse_token_macro(s: parse::Stream) -> Result<BTreeMap<String, String>> {
             let mut tokens = BTreeMap::new();
-            while !input.is_empty() {
+            while !s.is_empty() {
                 let pattern;
-                bracketed!(pattern in input);
+                bracketed!(pattern in s);
                 let token = pattern.parse::<Stream>()?.to_string();
-                input.parse::<Token![=>]>()?;
+                s.parse::<Token![=>]>()?;
                 let expansion;
-                braced!(expansion in input);
-                input.parse::<Token![;]>()?;
+                braced!(expansion in s);
+                s.parse::<Token![;]>()?;
                 expansion.parse::<Token![$]>()?;
                 let path: Path = expansion.parse()?;
                 let ty = path.segments.last().unwrap().ident.to_string();
@@ -518,20 +518,20 @@ mod parse {
             }
             Ok(tokens)
         }
-        fn parse_feature(input: ParseStream) -> Result<String> {
-            let i: Ident = input.parse()?;
+        fn parse_feature(s: parse::Stream) -> Result<String> {
+            let i: Ident = s.parse()?;
             assert_eq!(i, "feature");
-            input.parse::<Token![=]>()?;
-            let s = input.parse::<LitStr>()?;
+            s.parse::<Token![=]>()?;
+            let s = s.parse::<LitStr>()?;
             Ok(s.value())
         }
-        pub fn parse_features(input: ParseStream) -> Result<types::Features> {
+        pub fn parse_features(s: parse::Stream) -> Result<types::Features> {
             let mut features = BTreeSet::new();
-            let i: Ident = input.fork().parse()?;
+            let i: Ident = s.fork().parse()?;
             if i == "any" {
-                input.parse::<Ident>()?;
+                s.parse::<Ident>()?;
                 let nested;
-                parenthesized!(nested in input);
+                parenthesized!(nested in s);
                 while !nested.is_empty() {
                     features.insert(parse_feature(&nested)?);
                     if !nested.is_empty() {
@@ -539,8 +539,8 @@ mod parse {
                     }
                 }
             } else if i == "feature" {
-                features.insert(parse_feature(input)?);
-                assert!(input.is_empty());
+                features.insert(parse_feature(s)?);
+                assert!(s.is_empty());
             } else {
                 panic!("{:?}", i);
             }

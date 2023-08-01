@@ -304,8 +304,8 @@ impl Lower for Mac {
 }
 impl Pretty for Mac {
     fn pretty(&self, p: &mut Print) {
-        let semicolon = false;
-        &self.mac.pretty(p, None, semicolon);
+        let semi = false;
+        &self.mac.pretty(p, None, semi);
     }
 }
 

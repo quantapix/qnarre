@@ -1,5 +1,5 @@
 use super::{
-    parse::{ParseStream, Parser},
+    parse::{parse::Stream, Parser},
     visit::{self, Visit},
     Error, Field, Fields, FieldsNamed, FieldsUnnamed, GenericParam, Ident, PredicateType, Result, Token, TraitBound,
     Type, TypeMacro, TypeParamBound, TypePath, WhereClause, WherePredicate, *,
@@ -726,18 +726,18 @@ impl<'a> Structure<'a> {
     }
     pub fn gen_impl(&self, cfg: pm2::Stream) -> pm2::Stream {
         Parser::parse2(
-            |input: ParseStream<'_>| -> Result<pm2::Stream> { self.gen_impl_parse(input, true) },
+            |input: parse::Stream<'_>| -> Result<pm2::Stream> { self.gen_impl_parse(input, true) },
             cfg,
         )
         .expect("Failed to parse gen_impl")
     }
-    fn gen_impl_parse(&self, input: ParseStream<'_>, wrap: bool) -> Result<pm2::Stream> {
-        fn parse_prefix(input: ParseStream<'_>) -> Result<Option<Token![unsafe]>> {
-            if input.parse::<Ident>()? != "gen" {
-                return Err(input.error("Expected keyword `gen`"));
+    fn gen_impl_parse(&self, input: parse::Stream<'_>, wrap: bool) -> Result<pm2::Stream> {
+        fn parse_prefix(s: parse::Stream<'_>) -> Result<Option<Token![unsafe]>> {
+            if s.parse::<Ident>()? != "gen" {
+                return Err(s.error("Expected keyword `gen`"));
             }
-            let safety = input.parse::<Option<Token![unsafe]>>()?;
-            let _ = input.parse::<Token![impl]>()?;
+            let safety = s.parse::<Option<Token![unsafe]>>()?;
+            let _ = s.parse::<Token![impl]>()?;
             Ok(safety)
         }
         let mut before = vec![];

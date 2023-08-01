@@ -139,8 +139,8 @@ impl Pretty for Stmt {
             },
             Mac(x) => {
                 p.outer_attrs(&x.attrs);
-                let semicolon = true;
-                &x.mac.pretty(p, None, semicolon);
+                let semi = true;
+                &x.mac.pretty(p, None, semi);
                 p.hardbreak();
             },
         }

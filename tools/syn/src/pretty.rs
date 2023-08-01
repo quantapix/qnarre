@@ -790,18 +790,18 @@ mod standard_library {
         args: Vec<Expr>,
     }
     impl parse::Parse for FormatArgs {
-        fn parse(input: parse::Stream) -> Res<Self> {
-            let format_string: Expr = input.parse()?;
+        fn parse(s: parse::Stream) -> Res<Self> {
+            let format_string: Expr = s.parse()?;
             let mut args = Vec::new();
-            while !input.is_empty() {
-                input.parse::<Token![,]>()?;
-                if input.is_empty() {
+            while !s.is_empty() {
+                s.parse::<Token![,]>()?;
+                if s.is_empty() {
                     break;
                 }
-                let arg = if input.peek(Ident::peek_any) && input.peek2(Token![=]) && !input.peek2(Token![==]) {
-                    let key = input.call(Ident::parse_any)?;
-                    let eq: Token![=] = input.parse()?;
-                    let value: Expr = input.parse()?;
+                let arg = if s.peek(Ident::peek_any) && s.peek2(Token![=]) && !s.peek2(Token![==]) {
+                    let key = s.call(Ident::parse_any)?;
+                    let eq: Token![=] = s.parse()?;
+                    let value: Expr = s.parse()?;
                     Expr::Assign(expr::Assign {
                         attrs: Vec::new(),
                         left: Box::new(Expr::Path(expr::Path {
@@ -813,7 +813,7 @@ mod standard_library {
                         right: Box::new(value),
                     })
                 } else {
-                    input.parse()?
+                    s.parse()?
                 };
                 args.push(arg);
             }
@@ -821,185 +821,185 @@ mod standard_library {
         }
     }
     impl KnownMacro {
-        fn parse_expr(input: parse::Stream) -> Res<Self> {
-            let expr: Expr = input.parse()?;
-            Ok(KnownMacro::Expr(expr))
+        fn parse_expr(s: parse::Stream) -> Res<Self> {
+            let y: Expr = s.parse()?;
+            Ok(KnownMacro::Expr(y))
         }
-        fn parse_expr_comma(input: parse::Stream) -> Res<Self> {
-            let expr: Expr = input.parse()?;
-            input.parse::<Option<Token![,]>>()?;
-            Ok(KnownMacro::Exprs(vec![expr]))
+        fn parse_expr_comma(s: parse::Stream) -> Res<Self> {
+            let y: Expr = s.parse()?;
+            s.parse::<Option<Token![,]>>()?;
+            Ok(KnownMacro::Exprs(vec![y]))
         }
-        fn parse_exprs(input: parse::Stream) -> Res<Self> {
-            let exprs = input.parse_terminated(Expr::parse, Token![,])?;
-            Ok(KnownMacro::Exprs(Vec::from_iter(exprs)))
+        fn parse_exprs(s: parse::Stream) -> Res<Self> {
+            let ys = s.parse_terminated(Expr::parse, Token![,])?;
+            Ok(KnownMacro::Exprs(Vec::from_iter(ys)))
         }
-        fn parse_assert(input: parse::Stream) -> Res<Self> {
-            let mut exprs = Vec::new();
-            let cond: Expr = input.parse()?;
-            exprs.push(cond);
-            if input.parse::<Option<Token![,]>>()?.is_some() && !input.is_empty() {
-                let format_args: FormatArgs = input.parse()?;
-                exprs.push(format_args.format_string);
-                exprs.extend(format_args.args);
+        fn parse_assert(s: parse::Stream) -> Res<Self> {
+            let mut ys = Vec::new();
+            let cond: Expr = s.parse()?;
+            ys.push(cond);
+            if s.parse::<Option<Token![,]>>()?.is_some() && !s.is_empty() {
+                let y: FormatArgs = s.parse()?;
+                ys.push(y.format_string);
+                ys.extend(y.args);
             }
-            Ok(KnownMacro::Exprs(exprs))
+            Ok(KnownMacro::Exprs(ys))
         }
-        fn parse_assert_cmp(input: parse::Stream) -> Res<Self> {
-            let mut exprs = Vec::new();
-            let left: Expr = input.parse()?;
-            exprs.push(left);
-            input.parse::<Token![,]>()?;
-            let right: Expr = input.parse()?;
-            exprs.push(right);
-            if input.parse::<Option<Token![,]>>()?.is_some() && !input.is_empty() {
-                let format_args: FormatArgs = input.parse()?;
-                exprs.push(format_args.format_string);
-                exprs.extend(format_args.args);
+        fn parse_assert_cmp(s: parse::Stream) -> Res<Self> {
+            let mut ys = Vec::new();
+            let left: Expr = s.parse()?;
+            ys.push(left);
+            s.parse::<Token![,]>()?;
+            let right: Expr = s.parse()?;
+            ys.push(right);
+            if s.parse::<Option<Token![,]>>()?.is_some() && !s.is_empty() {
+                let y: FormatArgs = s.parse()?;
+                ys.push(y.format_string);
+                ys.extend(y.args);
             }
-            Ok(KnownMacro::Exprs(exprs))
+            Ok(KnownMacro::Exprs(ys))
         }
-        fn parse_cfg(input: parse::Stream) -> Res<Self> {
-            fn parse_single(input: parse::Stream) -> Res<Cfg> {
-                let ident: Ident = input.parse()?;
-                if input.peek(tok::Paren) && (ident == "all" || ident == "any") {
-                    let content;
-                    parenthesized!(content in input);
-                    let list = content.call(parse_multiple)?;
+        fn parse_cfg(s: parse::Stream) -> Res<Self> {
+            fn parse_single(s: parse::Stream) -> Res<Cfg> {
+                let ident: Ident = s.parse()?;
+                if s.peek(tok::Paren) && (ident == "all" || ident == "any") {
+                    let y;
+                    parenthesized!(y in s);
+                    let list = y.call(parse_multiple)?;
                     Ok(Cfg::Call(ident, list))
-                } else if input.peek(tok::Paren) && ident == "not" {
-                    let content;
-                    parenthesized!(content in input);
-                    let cfg = content.call(parse_single)?;
-                    content.parse::<Option<Token![,]>>()?;
+                } else if s.peek(tok::Paren) && ident == "not" {
+                    let y;
+                    parenthesized!(y in s);
+                    let cfg = y.call(parse_single)?;
+                    y.parse::<Option<Token![,]>>()?;
                     Ok(Cfg::Call(ident, vec![cfg]))
-                } else if input.peek(Token![=]) {
-                    input.parse::<Token![=]>()?;
-                    let string: Lit = input.parse()?;
-                    Ok(Cfg::Eq(ident, Some(string)))
+                } else if s.peek(Token![=]) {
+                    s.parse::<Token![=]>()?;
+                    let y: lit::Lit = s.parse()?;
+                    Ok(Cfg::Eq(ident, Some(y)))
                 } else {
                     Ok(Cfg::Eq(ident, None))
                 }
             }
-            fn parse_multiple(input: parse::Stream) -> Res<Vec<Cfg>> {
-                let mut vec = Vec::new();
-                while !input.is_empty() {
-                    let cfg = input.call(parse_single)?;
-                    vec.push(cfg);
-                    if input.is_empty() {
+            fn parse_multiple(s: parse::Stream) -> Res<Vec<Cfg>> {
+                let mut ys = Vec::new();
+                while !s.is_empty() {
+                    let cfg = s.call(parse_single)?;
+                    ys.push(cfg);
+                    if s.is_empty() {
                         break;
                     }
-                    input.parse::<Token![,]>()?;
+                    s.parse::<Token![,]>()?;
                 }
-                Ok(vec)
+                Ok(ys)
             }
-            let cfg = input.call(parse_single)?;
-            input.parse::<Option<Token![,]>>()?;
+            let cfg = s.call(parse_single)?;
+            s.parse::<Option<Token![,]>>()?;
             Ok(KnownMacro::Cfg(cfg))
         }
-        fn parse_env(input: parse::Stream) -> Res<Self> {
-            let mut exprs = Vec::new();
-            let name: Expr = input.parse()?;
-            exprs.push(name);
-            if input.parse::<Option<Token![,]>>()?.is_some() && !input.is_empty() {
-                let error_msg: Expr = input.parse()?;
-                exprs.push(error_msg);
-                input.parse::<Option<Token![,]>>()?;
+        fn parse_env(s: parse::Stream) -> Res<Self> {
+            let mut ys = Vec::new();
+            let name: Expr = s.parse()?;
+            ys.push(name);
+            if s.parse::<Option<Token![,]>>()?.is_some() && !s.is_empty() {
+                let y: Expr = s.parse()?;
+                ys.push(y);
+                s.parse::<Option<Token![,]>>()?;
             }
-            Ok(KnownMacro::Exprs(exprs))
+            Ok(KnownMacro::Exprs(ys))
         }
-        fn parse_format_args(input: parse::Stream) -> Res<Self> {
-            let format_args: FormatArgs = input.parse()?;
-            let mut exprs = format_args.args;
-            exprs.insert(0, format_args.format_string);
-            Ok(KnownMacro::Exprs(exprs))
+        fn parse_format_args(s: parse::Stream) -> Res<Self> {
+            let y: FormatArgs = s.parse()?;
+            let mut ys = y.args;
+            ys.insert(0, y.format_string);
+            Ok(KnownMacro::Exprs(ys))
         }
-        fn parse_matches(input: parse::Stream) -> Res<Self> {
-            let expression: Expr = input.parse()?;
-            input.parse::<Token![,]>()?;
-            let pattern = input.call(pat::Pat::parse_multi_with_leading_vert)?;
-            let guard = if input.parse::<Option<Token![if]>>()?.is_some() {
-                Some(input.parse()?)
+        fn parse_matches(s: parse::Stream) -> Res<Self> {
+            let expression: Expr = s.parse()?;
+            s.parse::<Token![,]>()?;
+            let pattern = s.call(pat::Pat::parse_multi_with_leading_vert)?;
+            let guard = if s.parse::<Option<Token![if]>>()?.is_some() {
+                Some(s.parse()?)
             } else {
                 None
             };
-            input.parse::<Option<Token![,]>>()?;
+            s.parse::<Option<Token![,]>>()?;
             Ok(KnownMacro::Matches(Matches {
                 expression,
                 pattern,
                 guard,
             }))
         }
-        fn parse_thread_local(input: parse::Stream) -> Res<Self> {
-            let mut items = Vec::new();
-            while !input.is_empty() {
-                let attrs = input.call(attr::Attr::parse_outer)?;
-                let vis: data::Visibility = input.parse()?;
-                input.parse::<Token![static]>()?;
-                let name: Ident = input.parse()?;
-                input.parse::<Token![:]>()?;
-                let ty: Type = input.parse()?;
-                input.parse::<Token![=]>()?;
-                let init: Expr = input.parse()?;
-                if input.is_empty() {
+        fn parse_thread_local(s: parse::Stream) -> Res<Self> {
+            let mut ys = Vec::new();
+            while !s.is_empty() {
+                let attrs = s.call(attr::Attr::parse_outer)?;
+                let vis: data::Visibility = s.parse()?;
+                s.parse::<Token![static]>()?;
+                let name: Ident = s.parse()?;
+                s.parse::<Token![:]>()?;
+                let typ: typ::Type = s.parse()?;
+                s.parse::<Token![=]>()?;
+                let init: Expr = s.parse()?;
+                if s.is_empty() {
                     break;
                 }
-                input.parse::<Token![;]>()?;
-                items.push(ThreadLocal {
+                s.parse::<Token![;]>()?;
+                ys.push(ThreadLocal {
                     attrs,
                     vis,
                     name,
-                    ty,
+                    ty: typ,
                     init,
                 });
             }
-            Ok(KnownMacro::ThreadLocal(items))
+            Ok(KnownMacro::ThreadLocal(ys))
         }
-        fn parse_vec(input: parse::Stream) -> Res<Self> {
-            if input.is_empty() {
+        fn parse_vec(s: parse::Stream) -> Res<Self> {
+            if s.is_empty() {
                 return Ok(KnownMacro::VecArray(Vec::new()));
             }
-            let first: Expr = input.parse()?;
-            if input.parse::<Option<Token![;]>>()?.is_some() {
-                let len: Expr = input.parse()?;
+            let first: Expr = s.parse()?;
+            if s.parse::<Option<Token![;]>>()?.is_some() {
+                let len: Expr = s.parse()?;
                 Ok(KnownMacro::VecRepeat { elem: first, n: len })
             } else {
-                let mut vec = vec![first];
-                while !input.is_empty() {
-                    input.parse::<Token![,]>()?;
-                    if input.is_empty() {
+                let mut ys = vec![first];
+                while !s.is_empty() {
+                    s.parse::<Token![,]>()?;
+                    if s.is_empty() {
                         break;
                     }
-                    let next: Expr = input.parse()?;
-                    vec.push(next);
+                    let y: Expr = s.parse()?;
+                    ys.push(y);
                 }
-                Ok(KnownMacro::VecArray(vec))
+                Ok(KnownMacro::VecArray(ys))
             }
         }
-        fn parse_write(input: parse::Stream) -> Res<Self> {
-            let mut exprs = Vec::new();
-            let dst: Expr = input.parse()?;
-            exprs.push(dst);
-            input.parse::<Token![,]>()?;
-            let format_args: FormatArgs = input.parse()?;
-            exprs.push(format_args.format_string);
-            exprs.extend(format_args.args);
-            Ok(KnownMacro::Exprs(exprs))
+        fn parse_write(s: parse::Stream) -> Res<Self> {
+            let mut ys = Vec::new();
+            let dst: Expr = s.parse()?;
+            ys.push(dst);
+            s.parse::<Token![,]>()?;
+            let y: FormatArgs = s.parse()?;
+            ys.push(y.format_string);
+            ys.extend(y.args);
+            Ok(KnownMacro::Exprs(ys))
         }
-        fn parse_writeln(input: parse::Stream) -> Res<Self> {
-            let mut exprs = Vec::new();
-            let dst: Expr = input.parse()?;
-            exprs.push(dst);
-            if input.parse::<Option<Token![,]>>()?.is_some() && !input.is_empty() {
-                let format_args: FormatArgs = input.parse()?;
-                exprs.push(format_args.format_string);
-                exprs.extend(format_args.args);
+        fn parse_writeln(s: parse::Stream) -> Res<Self> {
+            let mut ys = Vec::new();
+            let dst: Expr = s.parse()?;
+            ys.push(dst);
+            if s.parse::<Option<Token![,]>>()?.is_some() && !s.is_empty() {
+                let y: FormatArgs = s.parse()?;
+                ys.push(y.format_string);
+                ys.extend(y.args);
             }
-            Ok(KnownMacro::Exprs(exprs))
+            Ok(KnownMacro::Exprs(ys))
         }
     }
     impl Print {
-        pub fn standard_library_macro(&mut self, mac: &Macro, mut semicolon: bool) -> bool {
+        pub fn standard_library_macro(&mut self, mac: &Macro, mut semi: bool) -> bool {
             let name = mac.path.segments.last().unwrap().ident.to_string();
             let parser = match name.as_str() {
                 "addr_of" | "addr_of_mut" => KnownMacro::parse_expr,
@@ -1094,7 +1094,7 @@ mod standard_library {
                     self.offset(-INDENT);
                     self.end();
                     self.word("}");
-                    semicolon = false;
+                    semi = false;
                 },
                 KnownMacro::VecArray(vec) => {
                     self.word("[");
@@ -1122,7 +1122,7 @@ mod standard_library {
                     self.word("]");
                 },
             }
-            if semicolon {
+            if semi {
                 self.word(";");
             }
             true
