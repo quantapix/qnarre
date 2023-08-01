@@ -1269,7 +1269,7 @@ impl Pretty for Verbatim {
                 let mut attrs = s.call(attr::Attr::parse_outer)?;
                 let vis: data::Visibility = s.parse()?;
                 let look = s.lookahead1();
-                if look.peek(Token![const]) && (s.peek2(Ident) || s.peek2(Token![_])) {
+                if look.peek(Token![const]) && (s.peek2(ident::Ident) || s.peek2(Token![_])) {
                     let default = false;
                     let y = flex::Const::parse(attrs, vis, default, s)?;
                     Ok(Type::FlexConst(y))
@@ -1289,7 +1289,7 @@ impl Pretty for Verbatim {
                     let has_generics = s.peek(Token![<])
                         && (s.peek2(Token![>])
                             || s.peek2(Token![#])
-                            || (s.peek2(Ident) || s.peek2(Life))
+                            || (s.peek2(ident::Ident) || s.peek2(Life))
                                 && (s.peek3(Token![:])
                                     || s.peek3(Token![,])
                                     || s.peek3(Token![>])
@@ -1350,7 +1350,7 @@ impl Pretty for Verbatim {
                     Ok(Type::FlexStatic(y))
                 } else if look.peek(Token![type]) {
                     let default = false;
-                    let y = flex::Type::parse(attrs, vis, default, s, flex::WhereLoc::BeforeEq)?;
+                    let y = flex::Type::parse(attrs, vis, default, s, WhereLoc::BeforeEq)?;
                     Ok(Type::FlexType(y))
                 } else if look.peek(Token![use]) {
                     s.parse::<Token![use]>()?;
@@ -2121,18 +2121,18 @@ pub mod foreign {
                         let y = flex::Static::parse(attrs, vis, s)?;
                         Ok(Type::FlexStatic(y))
                     } else if look.peek(Token![type]) {
-                        let y = flex::Type::parse(attrs, vis, default, s, flex::WhereLoc::Both)?;
+                        let y = flex::Type::parse(attrs, vis, default, s, WhereLoc::Both)?;
                         Ok(Type::FlexType(y))
                     } else {
                         Err(look.error())
                     }
                 }
             }
-            let foreign_item: Type = match syn::parse2(self.clone()) {
-                Ok(foreign_item) => foreign_item,
+            let y: Type = match parse2(self.clone()) {
+                Ok(x) => x,
                 Err(_) => unimplemented!("foreign::Item::Verbatim `{}`", self),
             };
-            match foreign_item {
+            match y {
                 Type::Empty => {
                     p.hardbreak();
                 },
@@ -2140,14 +2140,14 @@ pub mod foreign {
                     p.word("...");
                     p.hardbreak();
                 },
-                Type::FlexFn(foreign_item) => {
-                    p.flexible_item_fn(&foreign_item);
+                Type::FlexFn(x) => {
+                    p.flexible_item_fn(&x);
                 },
-                Type::FlexStatic(foreign_item) => {
-                    p.flexible_item_static(&foreign_item);
+                Type::FlexStatic(x) => {
+                    p.flexible_item_static(&x);
                 },
-                Type::FlexType(foreign_item) => {
-                    p.flexible_item_type(&foreign_item);
+                Type::FlexType(x) => {
+                    p.flexible_item_type(&x);
                 },
             }
         }
@@ -2498,7 +2498,7 @@ pub mod impl_ {
                     let vis: data::Visibility = s.parse()?;
                     let default = s.parse::<Option<Token![default]>>()?.is_some();
                     let look = s.lookahead1();
-                    if look.peek(Token![const]) && (s.peek2(Ident) || s.peek2(Token![_])) {
+                    if look.peek(Token![const]) && (s.peek2(ident::Ident) || s.peek2(Token![_])) {
                         let y = flex::Const::parse(attrs, vis, default, s)?;
                         Ok(FlexConst(y))
                     } else if s.peek(Token![const])

@@ -1,5 +1,5 @@
-use super::pm2::{Delim, Group, Ident, Literal, Spacing, Stream, Tree};
-use super::{item::File, Expr, Ident, Index, Macro, Path, Stmt, Token, *};
+use super::pm2::{Delim, Group, Lit, Spacing, Stream, Tree};
+use super::{expr::Expr, *};
 use std::{
     borrow::Cow,
     cmp,
@@ -7,7 +7,6 @@ use std::{
     iter,
     iter::Peekable,
     ops::{Deref, Index, IndexMut},
-    ptr,
 };
 
 pub trait Pretty {
@@ -252,7 +251,7 @@ impl Print {
         }
     }
     fn print_break(&mut self, token: Break, size: isize) {
-        let fits = token.never_break
+        let fits = token.never
             || match self.get_top() {
                 Frame::Fits(..) => true,
                 Frame::Broken(.., Breaks::Consistent) => false,
@@ -269,7 +268,7 @@ impl Print {
                 self.out.push('·');
             }
         } else {
-            if let Some(pre_break) = token.pre_break {
+            if let Some(pre_break) = token.pre {
                 self.print_indent();
                 self.out.push(pre_break);
             }
@@ -280,7 +279,7 @@ impl Print {
             let indent = self.indent as isize + token.off;
             self.pending = usize::try_from(indent).unwrap();
             self.space = cmp::max(MARGIN - indent, MIN_SPACE);
-            if let Some(post_break) = token.post_break {
+            if let Some(post_break) = token.post {
                 self.print_indent();
                 self.out.push(post_break);
                 self.space -= post_break.len_utf8() as isize;
@@ -351,7 +350,7 @@ impl Print {
     pub fn trailing_comma(&mut self, is_last: bool) {
         if is_last {
             self.scan_break(Break {
-                pre_break: Some(','),
+                pre: Some(','),
                 ..Break::default()
             });
         } else {
@@ -363,7 +362,7 @@ impl Print {
         if is_last {
             self.scan_break(Break {
                 blank_space: 1,
-                pre_break: Some(','),
+                pre: Some(','),
                 ..Break::default()
             });
         } else {
@@ -373,7 +372,7 @@ impl Print {
     }
     pub fn neverbreak(&mut self) {
         self.scan_break(Break {
-            never_break: true,
+            never: true,
             ..Break::default()
         });
     }
@@ -402,7 +401,7 @@ impl Print {
             self.space();
             self.inner_attrs(attrs);
             match (block.stmts.get(0), block.stmts.get(1)) {
-                (Some(Stmt::Expr(expr, None)), None) if expr.break_after() => {
+                (Some(stmt::Stmt::Expr(expr, None)), None) if expr.break_after() => {
                     self.ibox(0);
                     expr.pretty_beg_of_line(self, true);
                     self.end();
@@ -525,21 +524,21 @@ impl Print {
                 (DollarIdent, Token::Punct(':', Spacing::Alone)) => (false, DollarIdentColon),
                 (DollarIdentColon, Token::Ident(_)) => (false, Other),
                 (DollarParen, Token::Punct('+' | '*' | '?', Spacing::Alone)) => (false, Other),
-                (DollarParen, Token::Ident(_) | Token::Literal(_)) => (false, DollarParenSep),
+                (DollarParen, Token::Ident(_) | Token::Lit(_)) => (false, DollarParenSep),
                 (DollarParen, Token::Punct(_, Spacing::Joint)) => (false, DollarParen),
                 (DollarParen, Token::Punct(_, Spacing::Alone)) => (false, DollarParenSep),
                 (DollarParenSep, Token::Punct('+' | '*', _)) => (false, Other),
                 (Pound, Token::Punct('!', _)) => (false, PoundBang),
-                (Dollar, Token::Group(Delim::Parenthesis, _)) => (false, DollarParen),
+                (Dollar, Token::Group(Delim::Paren, _)) => (false, DollarParen),
                 (Pound | PoundBang, Token::Group(Delim::Bracket, _)) => (false, Other),
-                (Ident, Token::Group(Delim::Parenthesis | Delim::Bracket, _)) => (false, Delim),
+                (Ident, Token::Group(Delim::Paren | Delim::Bracket, _)) => (false, Delim),
                 (Ident, Token::Punct('!', Spacing::Alone)) => (false, IdentBang),
-                (IdentBang, Token::Group(Delim::Parenthesis | Delim::Bracket, _)) => (false, Other),
+                (IdentBang, Token::Group(Delim::Parent | Delim::Bracket, _)) => (false, Other),
                 (Colon, Token::Punct(':', _)) => (false, Colon2),
-                (_, Token::Group(Delim::Parenthesis | Delim::Bracket, _)) => (true, Delim),
+                (_, Token::Group(Delim::Parent | Delim::Bracket, _)) => (true, Delim),
                 (_, Token::Group(Delim::Brace | Delim::None, _)) => (true, Other),
                 (_, Token::Ident(ident)) if !is_keyword(ident) => (state != Dot && state != Colon2, Ident),
-                (_, Token::Literal(_)) => (state != Dot, Ident),
+                (_, Token::Lit(_)) => (state != Dot, Ident),
                 (_, Token::Punct(',' | ';', _)) => (false, Other),
                 (_, Token::Punct('.', _)) if !matcher => (state != Ident && state != Delim, Dot),
                 (_, Token::Punct(':', Spacing::Joint)) => (state != Ident, Colon),
@@ -575,7 +574,7 @@ impl Print {
             Token::Group(delim, stream) => self.token_group(delim, stream, group_contents),
             Token::Ident(ident) => self.ident(&ident),
             Token::Punct(ch, _spacing) => self.token_punct(ch),
-            Token::Literal(literal) => self.token_literal(&literal),
+            Token::Lit(literal) => self.token_literal(&literal),
         }
     }
     fn token_group(&mut self, delim: Delim, stream: Stream, group_contents: fn(&mut Self, Stream)) {
@@ -597,15 +596,9 @@ impl Print {
     pub fn token_punct(&mut self, ch: char) {
         self.word(ch.to_string());
     }
-    pub fn token_literal(&mut self, literal: &Literal) {
+    pub fn token_literal(&mut self, literal: &Lit) {
         self.word(literal.to_string());
     }
-}
-
-#[derive(Clone)]
-struct Entry {
-    tok: Token,
-    size: isize,
 }
 
 struct Buffer<T> {
@@ -671,6 +664,12 @@ impl<T> IndexMut<usize> for Buffer<T> {
     }
 }
 
+#[derive(Clone)]
+struct Entry {
+    tok: Token,
+    size: isize,
+}
+
 #[derive(Copy, Clone)]
 enum Frame {
     Fits(Breaks),
@@ -695,11 +694,11 @@ pub enum Token {
 pub struct Break {
     pub off: isize,
     pub blank_space: usize,
-    pub pre_break: Option<char>,
-    pub post_break: Option<char>,
+    pub pre: Option<char>,
+    pub post: Option<char>,
     pub no_break: Option<char>,
     pub if_nonempty: bool,
-    pub never_break: bool,
+    pub never: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -760,7 +759,7 @@ fn is_keyword(ident: &Ident) -> bool {
 }
 mod standard_library {
     use super::*;
-    enum KnownMacro {
+    enum KnownMac {
         Expr(Expr),
         Exprs(Vec<Expr>),
         Cfg(Cfg),
@@ -782,7 +781,7 @@ mod standard_library {
         attrs: Vec<attr::Attr>,
         vis: data::Visibility,
         name: Ident,
-        ty: Type,
+        typ: typ::Type,
         init: Expr,
     }
     struct FormatArgs {
@@ -820,19 +819,19 @@ mod standard_library {
             Ok(FormatArgs { format_string, args })
         }
     }
-    impl KnownMacro {
+    impl KnownMac {
         fn parse_expr(s: parse::Stream) -> Res<Self> {
             let y: Expr = s.parse()?;
-            Ok(KnownMacro::Expr(y))
+            Ok(KnownMac::Expr(y))
         }
         fn parse_expr_comma(s: parse::Stream) -> Res<Self> {
             let y: Expr = s.parse()?;
             s.parse::<Option<Token![,]>>()?;
-            Ok(KnownMacro::Exprs(vec![y]))
+            Ok(KnownMac::Exprs(vec![y]))
         }
         fn parse_exprs(s: parse::Stream) -> Res<Self> {
             let ys = s.parse_terminated(Expr::parse, Token![,])?;
-            Ok(KnownMacro::Exprs(Vec::from_iter(ys)))
+            Ok(KnownMac::Exprs(Vec::from_iter(ys)))
         }
         fn parse_assert(s: parse::Stream) -> Res<Self> {
             let mut ys = Vec::new();
@@ -843,7 +842,7 @@ mod standard_library {
                 ys.push(y.format_string);
                 ys.extend(y.args);
             }
-            Ok(KnownMacro::Exprs(ys))
+            Ok(KnownMac::Exprs(ys))
         }
         fn parse_assert_cmp(s: parse::Stream) -> Res<Self> {
             let mut ys = Vec::new();
@@ -857,7 +856,7 @@ mod standard_library {
                 ys.push(y.format_string);
                 ys.extend(y.args);
             }
-            Ok(KnownMacro::Exprs(ys))
+            Ok(KnownMac::Exprs(ys))
         }
         fn parse_cfg(s: parse::Stream) -> Res<Self> {
             fn parse_single(s: parse::Stream) -> Res<Cfg> {
@@ -895,7 +894,7 @@ mod standard_library {
             }
             let cfg = s.call(parse_single)?;
             s.parse::<Option<Token![,]>>()?;
-            Ok(KnownMacro::Cfg(cfg))
+            Ok(KnownMac::Cfg(cfg))
         }
         fn parse_env(s: parse::Stream) -> Res<Self> {
             let mut ys = Vec::new();
@@ -906,13 +905,13 @@ mod standard_library {
                 ys.push(y);
                 s.parse::<Option<Token![,]>>()?;
             }
-            Ok(KnownMacro::Exprs(ys))
+            Ok(KnownMac::Exprs(ys))
         }
         fn parse_format_args(s: parse::Stream) -> Res<Self> {
             let y: FormatArgs = s.parse()?;
             let mut ys = y.args;
             ys.insert(0, y.format_string);
-            Ok(KnownMacro::Exprs(ys))
+            Ok(KnownMac::Exprs(ys))
         }
         fn parse_matches(s: parse::Stream) -> Res<Self> {
             let expression: Expr = s.parse()?;
@@ -924,7 +923,7 @@ mod standard_library {
                 None
             };
             s.parse::<Option<Token![,]>>()?;
-            Ok(KnownMacro::Matches(Matches {
+            Ok(KnownMac::Matches(Matches {
                 expression,
                 pattern,
                 guard,
@@ -949,20 +948,20 @@ mod standard_library {
                     attrs,
                     vis,
                     name,
-                    ty: typ,
+                    typ,
                     init,
                 });
             }
-            Ok(KnownMacro::ThreadLocal(ys))
+            Ok(KnownMac::ThreadLocal(ys))
         }
         fn parse_vec(s: parse::Stream) -> Res<Self> {
             if s.is_empty() {
-                return Ok(KnownMacro::VecArray(Vec::new()));
+                return Ok(KnownMac::VecArray(Vec::new()));
             }
             let first: Expr = s.parse()?;
             if s.parse::<Option<Token![;]>>()?.is_some() {
                 let len: Expr = s.parse()?;
-                Ok(KnownMacro::VecRepeat { elem: first, n: len })
+                Ok(KnownMac::VecRepeat { elem: first, n: len })
             } else {
                 let mut ys = vec![first];
                 while !s.is_empty() {
@@ -973,7 +972,7 @@ mod standard_library {
                     let y: Expr = s.parse()?;
                     ys.push(y);
                 }
-                Ok(KnownMacro::VecArray(ys))
+                Ok(KnownMac::VecArray(ys))
             }
         }
         fn parse_write(s: parse::Stream) -> Res<Self> {
@@ -984,7 +983,7 @@ mod standard_library {
             let y: FormatArgs = s.parse()?;
             ys.push(y.format_string);
             ys.extend(y.args);
-            Ok(KnownMacro::Exprs(ys))
+            Ok(KnownMac::Exprs(ys))
         }
         fn parse_writeln(s: parse::Stream) -> Res<Self> {
             let mut ys = Vec::new();
@@ -995,29 +994,29 @@ mod standard_library {
                 ys.push(y.format_string);
                 ys.extend(y.args);
             }
-            Ok(KnownMacro::Exprs(ys))
+            Ok(KnownMac::Exprs(ys))
         }
     }
     impl Print {
-        pub fn standard_library_macro(&mut self, mac: &Macro, mut semi: bool) -> bool {
+        pub fn standard_library_macro(&mut self, mac: &mac::Mac, mut semi: bool) -> bool {
             let name = mac.path.segments.last().unwrap().ident.to_string();
             let parser = match name.as_str() {
-                "addr_of" | "addr_of_mut" => KnownMacro::parse_expr,
-                "assert" | "debug_assert" => KnownMacro::parse_assert,
-                "assert_eq" | "assert_ne" | "debug_assert_eq" | "debug_assert_ne" => KnownMacro::parse_assert_cmp,
-                "cfg" => KnownMacro::parse_cfg,
+                "addr_of" | "addr_of_mut" => KnownMac::parse_expr,
+                "assert" | "debug_assert" => KnownMac::parse_assert,
+                "assert_eq" | "assert_ne" | "debug_assert_eq" | "debug_assert_ne" => KnownMac::parse_assert_cmp,
+                "cfg" => KnownMac::parse_cfg,
                 "compile_error" | "include" | "include_bytes" | "include_str" | "option_env" => {
-                    KnownMacro::parse_expr_comma
+                    KnownMac::parse_expr_comma
                 },
-                "concat" | "concat_bytes" | "dbg" => KnownMacro::parse_exprs,
+                "concat" | "concat_bytes" | "dbg" => KnownMac::parse_exprs,
                 "const_format_args" | "eprint" | "eprintln" | "format" | "format_args" | "format_args_nl" | "panic"
-                | "print" | "println" | "todo" | "unimplemented" | "unreachable" => KnownMacro::parse_format_args,
-                "env" => KnownMacro::parse_env,
-                "matches" => KnownMacro::parse_matches,
-                "thread_local" => KnownMacro::parse_thread_local,
-                "vec" => KnownMacro::parse_vec,
-                "write" => KnownMacro::parse_write,
-                "writeln" => KnownMacro::parse_writeln,
+                | "print" | "println" | "todo" | "unimplemented" | "unreachable" => KnownMac::parse_format_args,
+                "env" => KnownMac::parse_env,
+                "matches" => KnownMac::parse_matches,
+                "thread_local" => KnownMac::parse_thread_local,
+                "vec" => KnownMac::parse_vec,
+                "write" => KnownMac::parse_write,
+                "writeln" => KnownMac::parse_writeln,
                 _ => return false,
             };
             let known_macro = match parser.parse2(mac.tokens.clone()) {
@@ -1027,7 +1026,7 @@ mod standard_library {
             self.path(&mac.path, path::Kind::Simple);
             self.word("!");
             match &known_macro {
-                KnownMacro::Expr(expr) => {
+                KnownMac::Expr(expr) => {
                     self.word("(");
                     self.cbox(INDENT);
                     self.zerobreak();
@@ -1037,7 +1036,7 @@ mod standard_library {
                     self.end();
                     self.word(")");
                 },
-                KnownMacro::Exprs(exprs) => {
+                KnownMac::Exprs(exprs) => {
                     self.word("(");
                     self.cbox(INDENT);
                     self.zerobreak();
@@ -1049,12 +1048,12 @@ mod standard_library {
                     self.end();
                     self.word(")");
                 },
-                KnownMacro::Cfg(cfg) => {
+                KnownMac::Cfg(cfg) => {
                     self.word("(");
                     self.cfg(cfg);
                     self.word(")");
                 },
-                KnownMacro::Matches(matches) => {
+                KnownMac::Matches(matches) => {
                     self.word("(");
                     self.cbox(INDENT);
                     self.zerobreak();
@@ -1072,7 +1071,7 @@ mod standard_library {
                     self.end();
                     self.word(")");
                 },
-                KnownMacro::ThreadLocal(items) => {
+                KnownMac::ThreadLocal(items) => {
                     self.word(" {");
                     self.cbox(INDENT);
                     self.hardbreak_if_nonempty();
@@ -1083,7 +1082,7 @@ mod standard_library {
                         self.word("static ");
                         self.ident(&item.name);
                         self.word(": ");
-                        self.ty(&item.ty);
+                        self.ty(&item.typ);
                         self.word(" = ");
                         self.neverbreak();
                         self.expr(&item.init);
@@ -1096,7 +1095,7 @@ mod standard_library {
                     self.word("}");
                     semi = false;
                 },
-                KnownMacro::VecArray(vec) => {
+                KnownMac::VecArray(vec) => {
                     self.word("[");
                     self.cbox(INDENT);
                     self.zerobreak();
@@ -1108,7 +1107,7 @@ mod standard_library {
                     self.end();
                     self.word("]");
                 },
-                KnownMacro::VecRepeat { elem, n } => {
+                KnownMac::VecRepeat { elem, n } => {
                     self.word("[");
                     self.cbox(INDENT);
                     self.zerobreak();
@@ -1157,21 +1156,21 @@ mod standard_library {
 pub enum Token {
     Group(Delim, Stream),
     Ident(Ident),
+    Lit(Lit),
     Punct(char, Spacing),
-    Literal(Literal),
 }
 impl From<Tree> for Token {
-    fn from(tt: Tree) -> Self {
-        match tt {
-            Tree::Group(group) => Token::Group(group.delim(), group.stream()),
-            Tree::Ident(ident) => Token::Ident(ident),
-            Tree::Punct(punct) => Token::Punct(punct.as_char(), punct.spacing()),
-            Tree::Literal(literal) => Token::Literal(literal),
+    fn from(x: Tree) -> Self {
+        match x {
+            Tree::Group(x) => Token::Group(x.delim(), x.stream()),
+            Tree::Ident(x) => Token::Ident(x),
+            Tree::Punct(x) => Token::Punct(x.as_char(), x.spacing()),
+            Tree::Lit(x) => Token::Lit(x),
         }
     }
 }
 
-pub fn unparse(file: &File) -> String {
+pub fn unparse(file: &item::File) -> String {
     let mut p = Print::new();
     p.file(file);
     p.eof()
