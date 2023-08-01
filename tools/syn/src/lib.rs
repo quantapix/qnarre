@@ -11,7 +11,7 @@ use std::{
 
 #[macro_use]
 mod quote;
-use quote::{Lower, StreamExt};
+use quote::Lower;
 
 #[macro_use]
 mod mac;

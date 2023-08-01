@@ -644,7 +644,7 @@ pub mod param {
         }
     }
 }
-use param::Param;
+pub use param::Param;
 
 pub struct Where {
     pub where_: Token![where],

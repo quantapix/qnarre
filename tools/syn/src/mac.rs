@@ -456,7 +456,7 @@ macro_rules! parse_macro_input {
         }
     };
     ($n:ident with $p:path) => {
-        match $crate::parse::Parser::parse($p, $n) {
+        match $crate::Parser::parse($p, $n) {
             Ok(x) => x,
             Err(x) => {
                 return $crate::pm2::Stream::from(x.to_compile_error());

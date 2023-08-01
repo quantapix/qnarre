@@ -1240,12 +1240,11 @@ impl Pretty for Verbatim {
         }
         impl parse::Parse for Const {
             fn parse(s: parse::Stream) -> Res<Self> {
-                use Const::*;
                 if s.parse::<Option<Token![?]>>()?.is_some() {
                     s.parse::<Token![const]>()?;
-                    Ok(MaybeConst)
+                    Ok(Const::MaybeConst)
                 } else if s.parse::<Option<Token![const]>>()?.is_some() {
-                    Ok(Const)
+                    Ok(Const::Const)
                 } else {
                     Ok(None)
                 }
@@ -1290,7 +1289,7 @@ impl Pretty for Verbatim {
                     let has_generics = s.peek(Token![<])
                         && (s.peek2(Token![>])
                             || s.peek2(Token![#])
-                            || (s.peek2(Ident) || s.peek2(Lifetime))
+                            || (s.peek2(Ident) || s.peek2(Life))
                                 && (s.peek3(Token![:])
                                     || s.peek3(Token![,])
                                     || s.peek3(Token![>])
@@ -2091,7 +2090,6 @@ pub mod foreign {
     pub struct Verbatim(pub pm2::Stream);
     impl Pretty for Verbatim {
         fn pretty(&self, p: &mut Print) {
-            use verbatim::{flex::Fn, flex::Static, flex::Type, flex::WhereLoc};
             enum Type {
                 Ellipsis,
                 Empty,

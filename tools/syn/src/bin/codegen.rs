@@ -156,7 +156,7 @@ mod parse {
     use anyhow::{bail, Result};
     use indexmap::IndexMap;
     use std::collections::BTreeMap;
-    use syn::parse::{Error, Parser};
+    use syn::parse::Error;
     use syn::{
         parse_quote, Attribute, Data, DataEnum, DataStruct, Fields, GenericArgument, Ident, Input, Item, PathArguments,
         TypeMacro, TypePath, TypeTuple, UseTree, Visibility,
