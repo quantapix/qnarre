@@ -9,8 +9,25 @@ use std::{
     ops::{Deref, Index, IndexMut},
 };
 
+pub enum Args {
+    Kind(path::Kind),
+    BegLine(bool),
+}
+impl Args {
+    pub fn beg_line(x: &Option<Args>) {
+        match x {
+            Some(x) => match x {
+                Args::BegLine(x) => x,
+                _ => &false,
+            },
+            None => &false,
+        }
+    }
+}
+
 pub trait Pretty {
-    fn pretty(&self, p: &mut Print);
+    fn pretty(&self, p: &mut Print) {}
+    fn pretty_with_args(&self, p: &mut Print, x: &Option<Args>) {}
 }
 
 pub struct Print {
@@ -183,8 +200,8 @@ impl Print {
         }
     }
     fn check_stack(&mut self, mut depth: usize) {
-        while let Some(&index) = self.scans.back() {
-            let entry = &mut self.buf[index];
+        while let Some(&i) = self.scans.back() {
+            let entry = &mut self.buf[i];
             match entry.tok {
                 Token::Begin(_) => {
                     if depth == 0 {
@@ -403,7 +420,7 @@ impl Print {
             match (block.stmts.get(0), block.stmts.get(1)) {
                 (Some(stmt::Stmt::Expr(expr, None)), None) if expr.break_after() => {
                     self.ibox(0);
-                    expr.pretty_beg_of_line(self, true);
+                    expr.pretty_beg_line(self, true);
                     self.end();
                     self.space();
                 },

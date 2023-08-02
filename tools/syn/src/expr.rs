@@ -290,15 +290,15 @@ impl Expr {
         }
         p.end();
     }
-    fn pretty_sub(&self, p: &mut Print, beg_of_line: bool) {
+    fn pretty_sub(&self, p: &mut Print, bol: bool) {
         use Expr::*;
         match self {
-            Await(x) => x.pretty_sub(p, beg_of_line),
+            Await(x) => x.pretty_sub(p, bol),
             Call(x) => x.pretty_sub(p),
-            Field(x) => x.pretty_sub(p, beg_of_line),
-            Index(x) => x.pretty_sub(p, beg_of_line),
-            MethodCall(x) => x.pretty_sub(p, beg_of_line, false),
-            Try(x) => x.pretty_sub(p, beg_of_line),
+            Field(x) => x.pretty_sub(p, bol),
+            Index(x) => x.pretty_sub(p, bol),
+            MethodCall(x) => x.pretty_sub(p, bol, false),
+            Try(x) => x.pretty_sub(p, bol),
             _ => {
                 p.cbox(-INDENT);
                 self.pretty(p);
@@ -306,19 +306,19 @@ impl Expr {
             },
         }
     }
-    pub fn pretty_beg_of_line(&self, p: &mut Print, beg_of_line: bool) {
+    pub fn pretty_beg_line(&self, p: &mut Print, bol: bool) {
         use Expr::*;
         match self {
-            Await(x) => p.expr_await(x, beg_of_line),
-            Field(x) => p.expr_field(x, beg_of_line),
-            Index(x) => p.expr_index(x, beg_of_line),
-            MethodCall(x) => p.expr_method_call(x, beg_of_line),
-            Try(x) => p.expr_try(x, beg_of_line),
+            Await(x) => x.pretty_with_args(p, bol),
+            Field(x) => x.pretty_with_args(p, bol),
+            Index(x) => x.pretty_with_args(p, bol),
+            MethodCall(x) => x.pretty_with_args(p, bol),
+            Try(x) => x.pretty_with_args(p, bol),
             _ => p.expr(self),
         }
     }
-    fn pretty_zerobreak(&self, p: &mut Print, beg_of_line: bool) {
-        if beg_of_line && self.is_short_ident() {
+    fn pretty_zerobreak(&self, p: &mut Print, bol: bool) {
+        if bol && self.is_short_ident() {
             return;
         }
         p.zerobreak();
@@ -336,27 +336,27 @@ impl Pretty for Expr {
             Array(x) => x.pretty(p),
             Assign(x) => x.pretty(p),
             Async(x) => x.pretty(p),
-            Await(x) => x.pretty(p, false),
+            Await(x) => x.pretty_with_args(p, pretty::Args::BegLine(false)),
             Binary(x) => x.pretty(p),
             Block(x) => x.pretty(p),
             Break(x) => x.pretty(p),
-            Call(x) => x.pretty(p, false),
+            Call(x) => x.pretty_with_args(p, pretty::Args::BegLine(false)),
             Cast(x) => x.pretty(p),
             Closure(x) => x.pretty(p),
             Const(x) => x.pretty(p),
             Continue(x) => x.pretty(p),
-            Field(x) => x.pretty(p, false),
+            Field(x) => x.pretty_with_args(p, pretty::Args::BegLine(false)),
             ForLoop(x) => x.pretty(p),
             Group(x) => x.pretty(p),
             If(x) => x.pretty(p),
-            Index(x) => x.pretty(p, false),
+            Index(x) => x.pretty_with_args(p, pretty::Args::BegLine(false)),
             Infer(x) => x.pretty(p),
             Let(x) => x.pretty(p),
             Lit(x) => x.pretty(p),
             Loop(x) => x.pretty(p),
             Mac(x) => x.pretty(p),
             Match(x) => x.pretty(p),
-            MethodCall(x) => x.pretty(p, false),
+            MethodCall(x) => x.pretty_with_args(p, pretty::Args::BegLine(false)),
             Paren(x) => x.pretty(p),
             Path(x) => x.pretty(p),
             Range(x) => x.pretty(p),
@@ -364,7 +364,7 @@ impl Pretty for Expr {
             Repeat(x) => x.pretty(p),
             Return(x) => x.pretty(p),
             Struct(x) => x.pretty(p),
-            Try(x) => x.pretty(p),
+            Try(x) => x.pretty_with_args(p, pretty::Args::BegLine(false)),
             TryBlock(x) => x.pretty(p),
             Tuple(x) => x.pretty(p),
             Unary(x) => x.pretty(p),
@@ -531,9 +531,9 @@ pub struct Await {
     pub await_: Token![await],
 }
 impl Await {
-    fn pretty_sub(&self, p: &mut Print, beg_of_line: bool) {
-        &self.expr.pretty_sub(p, beg_of_line);
-        &self.expr.pretty_zerobreak(p, beg_of_line);
+    fn pretty_sub(&self, p: &mut Print, bol: bool) {
+        &self.expr.pretty_sub(p, bol);
+        &self.expr.pretty_zerobreak(p, bol);
         p.word(".await");
     }
 }
@@ -546,10 +546,10 @@ impl Lower for Await {
     }
 }
 impl Pretty for Await {
-    fn pretty(&self, p: &mut Print, beg_of_line: bool) {
+    fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
         p.outer_attrs(&self.attrs);
         p.cbox(INDENT);
-        self.pretty_sub(p, beg_of_line);
+        self.pretty_sub(p, pretty::Args::beg_line(x));
         p.end();
     }
 }
@@ -684,9 +684,9 @@ impl Lower for Call {
     }
 }
 impl Pretty for Call {
-    fn pretty(&self, p: &mut Call, beg_of_line: bool) {
+    fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
         p.outer_attrs(&self.attrs);
-        &self.func.pretty_beg_of_line(p, beg_of_line);
+        &self.func.pretty_beg_line(p, pretty::Args::beg_line(x));
         p.word("(");
         p.call_args(&self.args);
         p.word(")");
@@ -912,9 +912,9 @@ pub struct Field {
     pub memb: Member,
 }
 impl Field {
-    fn pretty_sub(&self, p: &mut Print, beg_of_line: bool) {
-        &self.expr.pretty_sub(p, beg_of_line);
-        &self.expr.pretty_zerobreak(p, beg_of_line);
+    fn pretty_sub(&self, p: &mut Print, bol: bool) {
+        &self.expr.pretty_sub(p, bol);
+        &self.expr.pretty_zerobreak(p, bol);
         p.word(".");
         &self.memb.pretty(p);
     }
@@ -928,10 +928,10 @@ impl Lower for Field {
     }
 }
 impl Pretty for Field {
-    fn pretty(&self, p: &mut Print, beg_of_line: bool) {
+    fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
         p.outer_attrs(&self.attrs);
         p.cbox(INDENT);
-        self.pretty_sub(p, beg_of_line);
+        self.pretty_sub(p, pretty::Args::beg_line(x));
         p.end();
     }
 }
@@ -1132,8 +1132,8 @@ pub struct Index {
     pub idx: Box<Expr>,
 }
 impl Index {
-    fn pretty_sub(&self, p: &mut Print, beg_of_line: bool) {
-        &self.expr.pretty_sub(p, beg_of_line);
+    fn pretty_sub(&self, p: &mut Print, bol: bool) {
+        &self.expr.pretty_sub(p, bol);
         p.word("[");
         &self.idx.pretty(p);
         p.word("]");
@@ -1162,9 +1162,9 @@ impl Lower for Index {
     }
 }
 impl Pretty for Index {
-    fn pretty(&self, p: &mut Print, beg_of_line: bool) {
+    fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
         p.outer_attrs(&self.attrs);
-        &self.expr.pretty_beg_of_line(p, beg_of_line);
+        &self.expr.pretty_beg_line(p, pretty::Args::beg_line(x));
         p.word("[");
         &self.idx.pretty(p);
         p.word("]");
@@ -1430,13 +1430,13 @@ pub struct MethodCall {
     pub args: Puncted<Expr, Token![,]>,
 }
 impl MethodCall {
-    fn pretty_sub(&self, p: &mut Print, beg_of_line: bool, unindent: bool) {
-        &self.expr.pretty_sub(p, beg_of_line);
-        &self.expr.pretty_zerobreak(p, beg_of_line);
+    fn pretty_sub(&self, p: &mut Print, bol: bool, unindent: bool) {
+        &self.expr.pretty_sub(p, bol);
+        &self.expr.pretty_zerobreak(p, bol);
         p.word(".");
         &self.method.pretty(p);
         if let Some(x) = &self.turbofish {
-            x.pretty(p, path::Kind::Expr);
+            x.pretty_with_args(p, path::Kind::Expr);
         }
         p.cbox(if unindent { -INDENT } else { 0 });
         p.word("(");
@@ -1458,11 +1458,12 @@ impl Lower for MethodCall {
     }
 }
 impl Pretty for MethodCall {
-    fn pretty(&self, p: &mut Print, beg_of_line: bool) {
+    fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
         p.outer_attrs(&self.attrs);
         p.cbox(INDENT);
-        let unindent = beg_of_line && &self.expr.is_short_ident();
-        self.pretty_sub(p, beg_of_line, unindent);
+        let bol = pretty::Args::beg_line(x);
+        let unindent = bol && &self.expr.is_short_ident();
+        self.pretty_sub(p, bol, unindent);
         p.end();
     }
 }
@@ -1714,8 +1715,8 @@ pub struct Try {
     pub question: Token![?],
 }
 impl Try {
-    fn pretty_sub(&self, p: &mut Print, beg_of_line: bool) {
-        &self.expr.pretty_sub(p, beg_of_line);
+    fn pretty_sub(&self, p: &mut Print, bol: bool) {
+        &self.expr.pretty_sub(p, bol);
         p.word("?");
     }
 }
@@ -1727,9 +1728,9 @@ impl Lower for Try {
     }
 }
 impl Pretty for Try {
-    fn pretty(&self, p: &mut Print, beg_of_line: bool) {
+    fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
         p.outer_attrs(&self.attrs);
-        &self.expr.pretty_beg_of_line(p, beg_of_line);
+        &self.expr.pretty_beg_line(p, pretty::Args::beg_line(x));
         p.word("?");
     }
 }
@@ -2569,7 +2570,7 @@ impl Pretty for Arm {
                 pre: Some('{'),
                 ..pretty::Break::default()
             });
-            body.pretty_beg_of_line(p, true);
+            body.pretty_beg_line(p, true);
             p.scan_break(pretty::Break {
                 off: -INDENT,
                 pre: body.add_semi().then(|| ';'),

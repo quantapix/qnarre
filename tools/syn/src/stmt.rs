@@ -83,14 +83,14 @@ impl Pretty for Stmt {
             Expr(x, None) => {
                 if x.break_after() {
                     p.ibox(0);
-                    x.pretty_beg_of_line(p, true);
+                    x.pretty_beg_line(p, true);
                     if x.add_semi() {
                         p.word(";");
                     }
                     p.end();
                     p.hardbreak();
                 } else {
-                    x.pretty_beg_of_line(p, true);
+                    x.pretty_beg_line(p, true);
                 }
             },
             Expr(x, Some(_)) => {
@@ -100,7 +100,7 @@ impl Pretty for Stmt {
                     }
                 }
                 p.ibox(0);
-                x.pretty_beg_of_line(p, true);
+                x.pretty_beg_line(p, true);
                 if !x.remove_semi() {
                     p.word(";");
                 }

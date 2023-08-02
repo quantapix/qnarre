@@ -387,7 +387,7 @@ impl Lower for List {
 }
 impl Pretty for List {
     fn pretty(&self, p: &mut Print) {
-        &self.path.pretty(p, path::Kind::Simple);
+        &self.path.pretty_with_args(p, path::Kind::Simple);
         use tok::Delim::*;
         let delim = match self.delim {
             Brace(_) => pm2::Delim::Brace,
@@ -409,8 +409,8 @@ impl Pretty for List {
             }
             use State::*;
             let mut state = Word;
-            while let Some((tokens, delim)) = stack.last_mut() {
-                match tokens.next() {
+            while let Some((toks, delim)) = stack.last_mut() {
+                match toks.next() {
                     Some(Tree::Ident(x)) => {
                         if let Word = state {
                             space(p);
@@ -423,7 +423,7 @@ impl Pretty for List {
                         if let (Word, '=') = (state, x) {
                             p.nbsp();
                         }
-                        if x == ',' && tokens.peek().is_none() {
+                        if x == ',' && toks.peek().is_none() {
                             p.trailing_comma(true);
                             state = TrailingComma;
                         } else {
