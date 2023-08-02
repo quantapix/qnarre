@@ -422,7 +422,7 @@ pub mod discouraged {
                 }
             }
             self.cell
-                .set(unsafe { mem::transmute::<Cursor, Cursor<'static>>(fork.cursor()) });
+                .set(unsafe { std::mem::transmute::<Cursor, Cursor<'static>>(fork.cursor()) });
         }
     }
     pub trait AnyDelim {
@@ -446,12 +446,12 @@ pub mod discouraged {
 }
 
 pub fn advance_step_cursor<'c, 'a>(_: Step<'c, 'a>, to: Cursor<'c>) -> Cursor<'a> {
-    unsafe { mem::transmute::<Cursor<'c>, Cursor<'a>>(to) }
+    unsafe { std::mem::transmute::<Cursor<'c>, Cursor<'a>>(to) }
 }
 pub fn new_parse_buffer(scope: Span, cur: Cursor, unexp: Rc<Cell<Unexpected>>) -> Buffer {
     Buffer {
         scope,
-        cur: Cell::new(unsafe { mem::transmute::<Cursor, Cursor<'static>>(cur) }),
+        cur: Cell::new(unsafe { std::mem::transmute::<Cursor, Cursor<'static>>(cur) }),
         _marker: PhantomData,
         unexp: Cell::new(Some(unexp)),
     }

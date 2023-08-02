@@ -93,7 +93,7 @@ impl Expr {
             | Unary(Unary { attrs, .. })
             | Unsafe(Unsafe { attrs, .. })
             | While(While { attrs, .. })
-            | Yield(Yield { attrs, .. }) => mem::replace(attrs, y),
+            | Yield(Yield { attrs, .. }) => std::mem::replace(attrs, y),
             Verbatim(_) => Vec::new(),
         }
     }
@@ -800,16 +800,16 @@ impl Pretty for Closure {
                 if wrap_in_brace {
                     p.cbox(INDENT);
                     let okay_to_brace = &self.body.parseable_as_stmt();
-                    p.scan_break(BreakToken {
-                        pre_break: Some(if okay_to_brace { '{' } else { '(' }),
-                        ..BreakToken::default()
+                    p.scan_break(pretty::Break {
+                        pre: Some(if okay_to_brace { '{' } else { '(' }),
+                        ..pretty::Break::default()
                     });
                     &self.body.pretty(p);
-                    p.scan_break(BreakToken {
-                        offset: -INDENT,
-                        pre_break: (okay_to_brace && &self.body.add_semi()).then(|| ';'),
-                        post_break: Some(if okay_to_brace { '}' } else { ')' }),
-                        ..BreakToken::default()
+                    p.scan_break(pretty::Break {
+                        off: -INDENT,
+                        pre: (okay_to_brace && &self.body.add_semi()).then(|| ';'),
+                        post: Some(if okay_to_brace { '}' } else { ')' }),
+                        ..pretty::Break::default()
                     });
                     p.end();
                 } else {
@@ -2565,17 +2565,17 @@ impl Pretty for Arm {
             p.nbsp();
             p.neverbreak();
             p.cbox(INDENT);
-            p.scan_break(BreakToken {
-                pre_break: Some('{'),
-                ..BreakToken::default()
+            p.scan_break(pretty::Break {
+                pre: Some('{'),
+                ..pretty::Break::default()
             });
             body.pretty_beg_of_line(p, true);
-            p.scan_break(BreakToken {
-                offset: -INDENT,
-                pre_break: body.add_semi().then(|| ';'),
-                post_break: Some('}'),
+            p.scan_break(pretty::Break {
+                off: -INDENT,
+                pre: body.add_semi().then(|| ';'),
+                post: Some('}'),
                 no_break: body.needs_term().then(|| ','),
-                ..BreakToken::default()
+                ..pretty::Break::default()
             });
             p.end();
             p.end();
@@ -3395,7 +3395,7 @@ fn multi_index(e: &mut Expr, dot: &mut Token![.], float: lit::Float) -> Res<bool
         let mut index: Index = parse::parse_str(part).map_err(|err| Err::new(float_span, err))?;
         let part_end = offset + part.len();
         index.span = float_token.subspan(offset..part_end).unwrap_or(float_span);
-        let base = mem::replace(e, Expr::DUMMY);
+        let base = std::mem::replace(e, Expr::DUMMY);
         *e = Expr::Field(Field {
             attrs: Vec::new(),
             expr: Box::new(base),

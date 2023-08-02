@@ -490,7 +490,7 @@ impl Pretty for Angled {
             for x in &self.args {
                 if group(x) == g {
                     x.pretty(p);
-                    p.trailing_comma(ptr::eq(x, last.unwrap()));
+                    p.trailing_comma(std::ptr::eq(x, last.unwrap()));
                 }
             }
         }

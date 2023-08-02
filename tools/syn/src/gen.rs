@@ -1066,7 +1066,7 @@ impl Pretty for Gens {
             for x in &self.params {
                 if group(x) == g {
                     x.pretty(p);
-                    p.trailing_comma(ptr::eq(x, last.unwrap()));
+                    p.trailing_comma(std::ptr::eq(x, last.unwrap()));
                 }
             }
         }

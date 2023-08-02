@@ -1042,7 +1042,6 @@ mod imp {
         mem::ManuallyDrop,
         ops::RangeBounds,
         path::PathBuf,
-        ptr,
         str::{Bytes, CharIndices, Chars},
     };
 
@@ -2240,7 +2239,7 @@ mod imp {
         }
         fn take_trees(self) -> rcvec::Builder<Tree> {
             let y = ManuallyDrop::new(self);
-            unsafe { ptr::read(&y.trees) }.make_owned()
+            unsafe { std::ptr::read(&y.trees) }.make_owned()
         }
     }
     impl Drop for Stream {
@@ -2734,7 +2733,7 @@ mod rcvec {
             T: Clone,
         {
             let vec = if let Some(x) = Rc::get_mut(&mut self.vec) {
-                mem::replace(x, Vec::new())
+                std::mem::replace(x, Vec::new())
             } else {
                 Vec::clone(&self.vec)
             };

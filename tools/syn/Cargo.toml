@@ -6,6 +6,7 @@ license = "https://github.com/dtolnay/syn (a36a1f7f)"
 
 [dependencies]
 unicode-ident = "1"
+unicode-xid = "0.2"
 
 [dev-dependencies]
 anyhow = "1"

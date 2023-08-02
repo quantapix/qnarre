@@ -80,7 +80,7 @@ impl Item {
             | Item::TraitAlias(TraitAlias { attrs, .. })
             | Item::Type(Type { attrs, .. })
             | Item::Union(Union { attrs, .. })
-            | Item::Use(Use { attrs, .. }) => mem::replace(attrs, ys),
+            | Item::Use(Use { attrs, .. }) => std::mem::replace(attrs, ys),
             Item::Verbatim(_) => Vec::new(),
         }
     }
@@ -1226,8 +1226,8 @@ impl Pretty for Verbatim {
             attrs: Vec<attr::Attr>,
             vis: data::Visibility,
             ident: Ident,
-            args: Option<Stream>,
-            body: Stream,
+            args: Option<pm2::Stream>,
+            body: pm2::Stream,
         }
         struct UseBrace {
             attrs: Vec<attr::Attr>,
