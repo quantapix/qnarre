@@ -13,7 +13,7 @@ pub trait Fold {
     fn fold_abi(&mut self, i: Abi) -> Abi {
         fold_abi(self, i)
     }
-    fn fold_angle_bracketed_generic_arguments(&mut self, i: AngledArgs) -> AngledArgs {
+    fn fold_angle_bracketed_generic_arguments(&mut self, i: path::Angled) -> path::Angled {
         fold_angle_bracketed_generic_arguments(self, i)
     }
     fn fold_arm(&mut self, i: Arm) -> Arm {
@@ -566,11 +566,11 @@ where
         name: (node.name).map(|it| f.fold_lit_str(it)),
     }
 }
-pub fn fold_angle_bracketed_generic_arguments<F>(f: &mut F, node: AngledArgs) -> AngledArgs
+pub fn fold_angle_bracketed_generic_arguments<F>(f: &mut F, node: path::Angled) -> path::Angled
 where
     F: Fold + ?Sized,
 {
-    AngledArgs {
+    path::Angled {
         colon2: node.colon2,
         lt: node.lt,
         args: FoldHelper::lift(node.args, |it| f.fold_generic_argument(it)),

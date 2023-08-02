@@ -257,16 +257,16 @@ mod parse {
     fn introspect_type(item: &syn::Type, lookup: &Lookup) -> types::Type {
         match item {
             syn::Type::Path(TypePath { qself: None, path }) => {
-                let last = path.segments.last().unwrap();
+                let last = path.segs.last().unwrap();
                 let string = last.ident.to_string();
                 match string.as_str() {
                     "Option" => {
-                        let nested = introspect_type(first_arg(&last.arguments), lookup);
+                        let nested = introspect_type(first_arg(&last.args), lookup);
                         types::Type::Option(Box::new(nested))
                     },
                     "Punctuated" => {
-                        let nested = introspect_type(first_arg(&last.arguments), lookup);
-                        let punct = match introspect_type(last_arg(&last.arguments), lookup) {
+                        let nested = introspect_type(first_arg(&last.args), lookup);
+                        let punct = match introspect_type(last_arg(&last.args), lookup) {
                             types::Type::Token(s) => s,
                             _ => panic!(),
                         };
@@ -276,11 +276,11 @@ mod parse {
                         })
                     },
                     "Vec" => {
-                        let nested = introspect_type(first_arg(&last.arguments), lookup);
+                        let nested = introspect_type(first_arg(&last.args), lookup);
                         types::Type::Vec(Box::new(nested))
                     },
                     "Box" => {
-                        let nested = introspect_type(first_arg(&last.arguments), lookup);
+                        let nested = introspect_type(first_arg(&last.args), lookup);
                         types::Type::Box(Box::new(nested))
                     },
                     "Brace" | "Bracket" | "Paren" | "Group" => types::Type::Group(string),
@@ -303,7 +303,7 @@ mod parse {
                 let tys = elems.iter().map(|ty| introspect_type(ty, lookup)).collect();
                 types::Type::Tuple(tys)
             },
-            syn::Type::Macro(TypeMacro { mac }) if mac.path.segments.last().unwrap().ident == "Token" => {
+            syn::Type::Macro(TypeMacro { mac }) if mac.path.segs.last().unwrap().ident == "Token" => {
                 let content = mac.tokens.to_string();
                 let ty = lookup.tokens.get(&content).unwrap().to_string();
                 types::Type::Token(ty)
@@ -513,7 +513,7 @@ mod parse {
                 s.parse::<Token![;]>()?;
                 expansion.parse::<Token![$]>()?;
                 let path: Path = expansion.parse()?;
-                let ty = path.segments.last().unwrap().ident.to_string();
+                let ty = path.segs.last().unwrap().ident.to_string();
                 tokens.insert(token, ty.to_string());
             }
             Ok(tokens)

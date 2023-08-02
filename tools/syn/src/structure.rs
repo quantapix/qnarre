@@ -690,10 +690,10 @@ impl<'a> Structure<'a> {
         let mut where_ = where_.cloned();
         self.add_trait_bounds(&bound, &mut where_, mode);
         let mut extern_crate = quote!();
-        if bound.path.leading_colon.is_none() {
-            if let Some(seg) = bound.path.segments.first() {
-                let seg = &seg.ident;
-                extern_crate = quote! { extern crate #seg; };
+        if bound.path.colon.is_none() {
+            if let Some(x) = bound.path.segs.first() {
+                let seg = &x.ident;
+                extern_crate = quote! { extern crate #x; };
             }
         }
         let generated = quote! {

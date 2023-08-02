@@ -1,17 +1,17 @@
 #![allow(clippy::clone_on_copy, clippy::expl_impl_clone_on_copy)]
 use crate::*;
 
-impl Clone for Abi {
+impl Clone for typ::Abi {
     fn clone(&self) -> Self {
-        Abi {
+        typ::Abi {
             extern_: self.extern_.clone(),
             name: self.name.clone(),
         }
     }
 }
-impl Clone for AngledArgs {
+impl Clone for path::Angled {
     fn clone(&self) -> Self {
-        AngledArgs {
+        path::Angled {
             colon2: self.colon2.clone(),
             lt: self.lt.clone(),
             args: self.args.clone(),
@@ -19,9 +19,9 @@ impl Clone for AngledArgs {
         }
     }
 }
-impl Clone for Arm {
+impl Clone for expr::Arm {
     fn clone(&self) -> Self {
-        Arm {
+        expr::Arm {
             attrs: self.attrs.clone(),
             pat: self.pat.clone(),
             guard: self.guard.clone(),

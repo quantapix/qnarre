@@ -15,7 +15,7 @@ pub trait Visit<'ast> {
     fn visit_abi(&mut self, i: &'ast Abi) {
         visit_abi(self, i);
     }
-    fn visit_angle_bracketed_generic_arguments(&mut self, i: &'ast AngledArgs) {
+    fn visit_angle_bracketed_generic_arguments(&mut self, i: &'ast path::Angled) {
         visit_angle_bracketed_generic_arguments(self, i);
     }
     fn visit_arm(&mut self, i: &'ast Arm) {
@@ -568,7 +568,7 @@ where
         v.visit_lit_str(it);
     }
 }
-pub fn visit_angle_bracketed_generic_arguments<'ast, V>(v: &mut V, node: &'ast AngledArgs)
+pub fn visit_angle_bracketed_generic_arguments<'ast, V>(v: &mut V, node: &'ast path::Angled)
 where
     V: Visit<'ast> + ?Sized,
 {
@@ -2083,7 +2083,7 @@ where
     }
     v.visit_visibility(&node.vis);
     skip!(node.use_);
-    skip!(node.leading_colon);
+    skip!(node.colon);
     v.visit_use_tree(&node.tree);
     skip!(node.semi);
 }
@@ -2492,7 +2492,7 @@ pub fn visit_path<'ast, V>(v: &mut V, node: &'ast Path)
 where
     V: Visit<'ast> + ?Sized,
 {
-    skip!(node.leading_colon);
+    skip!(node.colon);
     for el in Puncted::pairs(&node.segs) {
         let it = el.value();
         v.visit_path_segment(it);

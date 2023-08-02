@@ -1,6 +1,6 @@
 use crate::*;
 
-impl Debug for Abi {
+impl Debug for typ::Abi {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut f = f.debug_struct("Abi");
         f.field("extern_", &self.extern_);
@@ -8,9 +8,9 @@ impl Debug for Abi {
         f.finish()
     }
 }
-impl Debug for AngledArgs {
+impl Debug for path::Angled {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl AngledArgs {
+        impl path::Angled {
             fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut f = f.debug_struct(name);
                 f.field("colon2", &self.colon2);
@@ -20,10 +20,10 @@ impl Debug for AngledArgs {
                 f.finish()
             }
         }
-        self.debug(f, "path::path::AngledArgs")
+        self.debug(f, "path::path::path::Angled")
     }
 }
-impl Debug for Arm {
+impl Debug for expr::Arm {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut f = f.debug_struct("Arm");
         f.field("attrs", &self.attrs);
@@ -258,7 +258,7 @@ impl Debug for gen::bound::Lifes {
         let mut f = f.debug_struct("Bgen::bound::Lifes");
         f.field("for_", &self.for_);
         f.field("lt", &self.lt);
-        f.field("lifetimes", &self.lifes);
+        f.field("lifes", &self.lifes);
         f.field("gt", &self.gt);
         f.finish()
     }
@@ -539,13 +539,13 @@ impl Debug for expr::Closure {
             fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut f = f.debug_struct(name);
                 f.field("attrs", &self.attrs);
-                f.field("lifetimes", &self.lifes);
+                f.field("lifes", &self.lifes);
                 f.field("const_", &self.const_);
                 f.field("movability", &self.static_);
                 f.field("asyncness", &self.async_);
                 f.field("capture", &self.move_);
                 f.field("or1", &self.or1);
-                f.field("inputs", &self.inputs);
+                f.field("inputs", &self.ins);
                 f.field("or2", &self.or2);
                 f.field("output", &self.ret);
                 f.field("body", &self.body);
@@ -1617,7 +1617,7 @@ impl Debug for item::Use {
                 f.field("attrs", &self.attrs);
                 f.field("vis", &self.vis);
                 f.field("use_", &self.use_);
-                f.field("leading_colon", &self.colon);
+                f.field("colon", &self.colon);
                 f.field("tree", &self.tree);
                 f.field("semi", &self.semi);
                 f.finish()
@@ -1996,8 +1996,8 @@ impl Debug for Path {
         impl Path {
             fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut f = f.debug_struct(name);
-                f.field("leading_colon", &self.colon);
-                f.field("segments", &self.segs);
+                f.field("colon", &self.colon);
+                f.field("segs", &self.segs);
                 f.finish()
             }
         }
@@ -2018,7 +2018,7 @@ impl Debug for Segment {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut f = f.debug_struct("path::Segment");
         f.field("ident", &self.ident);
-        f.field("arguments", &self.args);
+        f.field("args", &self.args);
         f.finish()
     }
 }
@@ -2034,7 +2034,7 @@ impl Debug for gen::Where::Life {
 impl Debug for gen::Where::Type {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut f = f.debug_struct("PredicateType");
-        f.field("lifetimes", &self.lifes);
+        f.field("lifes", &self.lifes);
         f.field("bounded_ty", &self.bounded);
         f.field("colon", &self.colon);
         f.field("bounds", &self.bounds);
@@ -2163,8 +2163,8 @@ impl Debug for gen::bound::Trait {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut f = f.debug_struct("gen::bound::Trait");
         f.field("paren", &self.paren);
-        f.field("modifier", &self.modif);
-        f.field("lifetimes", &self.lifes);
+        f.field("modif", &self.modif);
+        f.field("lifes", &self.lifes);
         f.field("path", &self.path);
         f.finish()
     }
@@ -2311,7 +2311,7 @@ impl Debug for typ::Fn {
         impl typ::Fn {
             fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut y = f.debug_struct(name);
-                y.field("lifetimes", &self.lifes);
+                y.field("lifes", &self.lifes);
                 y.field("unsafe_", &self.unsafe_);
                 y.field("abi", &self.abi);
                 y.field("fn_", &self.fn_);

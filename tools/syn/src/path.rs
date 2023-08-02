@@ -2,9 +2,9 @@ use super::*;
 
 #[derive(Copy, Clone, PartialEq)]
 pub enum Kind {
+    Expr,
     Simple,
     Type,
-    Expr,
 }
 
 pub struct Path {
@@ -284,7 +284,7 @@ impl Parse for Arg {
                 if s.qself.is_none()
                     && s.path.colon.is_none()
                     && s.path.segs.len() == 1
-                    && match &s.path.segments[0].arguments {
+                    && match &s.path.segs[0].args {
                         Args::None | Args::AngleBracketed(_) => true,
                         Args::Parenthesized(_) => false,
                     } =>
@@ -499,6 +499,7 @@ impl Pretty for Angled {
         p.word(">");
     }
 }
+
 pub struct AssocType {
     pub ident: Ident,
     pub args: Option<Angled>,

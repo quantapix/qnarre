@@ -999,7 +999,7 @@ mod standard_library {
     }
     impl Print {
         pub fn standard_library_macro(&mut self, mac: &mac::Mac, mut semi: bool) -> bool {
-            let name = mac.path.segments.last().unwrap().ident.to_string();
+            let name = mac.path.segs.last().unwrap().ident.to_string();
             let parser = match name.as_str() {
                 "addr_of" | "addr_of_mut" => KnownMac::parse_expr,
                 "assert" | "debug_assert" => KnownMac::parse_assert,
@@ -1019,7 +1019,7 @@ mod standard_library {
                 "writeln" => KnownMac::parse_writeln,
                 _ => return false,
             };
-            let known_macro = match parser.parse2(mac.tokens.clone()) {
+            let known_macro = match parser.parse2(mac.toks.clone()) {
                 Ok(known_macro) => known_macro,
                 Err(_) => return false,
             };
