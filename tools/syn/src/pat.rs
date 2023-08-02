@@ -272,7 +272,7 @@ pub struct Struct {
 impl Lower for Struct {
     fn lower(&self, s: &mut Stream) {
         s.append_all(self.attrs.outers());
-        path::path_to_tokens(s, &self.qself, &self.path);
+        path::path_lower(s, &self.qself, &self.path);
         self.brace.surround(s, |s| {
             self.fields.lower(s);
             if !self.fields.empty_or_trailing() && self.rest.is_some() {
@@ -385,7 +385,7 @@ pub struct TupleStruct {
 impl Lower for TupleStruct {
     fn lower(&self, s: &mut Stream) {
         s.append_all(self.attrs.outers());
-        path::path_to_tokens(s, &self.qself, &self.path);
+        path::path_lower(s, &self.qself, &self.path);
         self.paren.surround(s, |s| {
             self.pats.lower(s);
         });

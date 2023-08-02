@@ -765,8 +765,8 @@ impl<T> Deref for IteratorItem<T> {
     }
 }
 
-fn is_keyword(ident: &Ident) -> bool {
-    match ident.to_string().as_str() {
+fn is_keyword(x: &Ident) -> bool {
+    match x.to_string().as_str() {
         "as" | "async" | "await" | "box" | "break" | "const" | "continue" | "crate" | "dyn" | "else" | "enum"
         | "extern" | "fn" | "for" | "if" | "impl" | "in" | "let" | "loop" | "macro" | "match" | "mod" | "move"
         | "mut" | "pub" | "ref" | "return" | "static" | "struct" | "trait" | "type" | "unsafe" | "use" | "where"

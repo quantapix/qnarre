@@ -379,7 +379,7 @@ impl Parse for Path {
 }
 impl Lower for Path {
     fn lower(&self, s: &mut Stream) {
-        path::path_to_tokens(s, &self.qself, &self.path);
+        path::path_lower(s, &self.qself, &self.path);
     }
 }
 impl Pretty for Path {

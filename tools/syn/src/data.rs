@@ -114,16 +114,16 @@ impl Visibility {
             _ => false,
         }
     }
-    fn parse_pub(x: Stream) -> Res<Self> {
-        let pub_ = x.parse::<Token![pub]>()?;
-        if x.peek(tok::Paren) {
-            let ahead = x.fork();
+    fn parse_pub(s: Stream) -> Res<Self> {
+        let pub_ = s.parse::<Token![pub]>()?;
+        if s.peek(tok::Paren) {
+            let ahead = s.fork();
             let y;
             let paren = parenthesized!(y in ahead);
             if y.peek(Token![crate]) || y.peek(Token![self]) || y.peek(Token![super]) {
                 let path = y.call(Ident::parse_any)?;
                 if y.is_empty() {
-                    x.advance_to(&ahead);
+                    s.advance_to(&ahead);
                     return Ok(Visibility::Restricted(Restricted {
                         pub_,
                         paren,
@@ -134,7 +134,7 @@ impl Visibility {
             } else if y.peek(Token![in]) {
                 let in_: Token![in] = y.parse()?;
                 let path = y.call(Path::parse_mod_style)?;
-                x.advance_to(&ahead);
+                s.advance_to(&ahead);
                 return Ok(Visibility::Restricted(Restricted {
                     pub_,
                     paren,

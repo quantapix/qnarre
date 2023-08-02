@@ -548,11 +548,11 @@ impl<'a> Nested<'a> {
 }
 
 pub fn parser(f: impl FnMut(Nested) -> Res<()>) -> impl Parser<Output = ()> {
-    |x: Stream| {
-        if x.is_empty() {
+    |s: Stream| {
+        if s.is_empty() {
             Ok(())
         } else {
-            parse_nested(x, f)
+            parse_nested(s, f)
         }
     }
 }

@@ -120,7 +120,7 @@ macro_rules! ast_enum_of_structs_impl {
         $($(
             ast_enum_from_struct!($n::$variant, $($m)::+);
         )*)*
-        generate_to_tokens! {
+        generate_lower! {
             ()
             tokens
             $n {
@@ -141,14 +141,14 @@ macro_rules! ast_enum_from_struct {
         }
     };
 }
-macro_rules! generate_to_tokens {
+macro_rules! generate_lower {
     (
         ($($arms:tt)*) $ys:ident $n:ident {
             $variant:ident,
             $($next:tt)*
         }
     ) => {
-        generate_to_tokens!(
+        generate_lower!(
             ($($arms)* $n::$variant => {})
             $ys $n { $($next)* }
         );
@@ -159,7 +159,7 @@ macro_rules! generate_to_tokens {
             $($next:tt)*
         }
     ) => {
-        generate_to_tokens!(
+        generate_lower!(
             ($($arms)* $n::$variant(_e) => _e.lower($ys),)
             $ys $n { $($next)* }
         );
@@ -197,7 +197,7 @@ macro_rules! custom_kw {
                 }
             }
             $crate::impl_parse_for_custom_kw!($n);
-            $crate::impl_to_tokens_for_custom_kw!($n);
+            $crate::impl_lower_for_custom_kw!($n);
             $crate::impl_clone_for_custom_kw!($n);
             $crate::impl_traits_for_custom_kw!($n);
         };
@@ -233,7 +233,7 @@ macro_rules! impl_parse_for_custom_kw {
     };
 }
 #[macro_export]
-macro_rules! impl_to_tokens_for_custom_kw {
+macro_rules! impl_lower_for_custom_kw {
     ($n:ident) => {
         impl<'a> $crate::Lower for $n<'a> {
             fn lower(&self, s: &mut $crate::pm2::Stream) {
@@ -297,7 +297,7 @@ macro_rules! custom_punctuation {
                 }
             }
             $crate::impl_parse_for_custom_punct!($n, $($tt)+);
-            $crate::impl_to_tokens_for_custom_punct!($n, $($tt)+);
+            $crate::impl_lower_for_custom_punct!($n, $($tt)+);
             $crate::impl_clone_for_custom_punct!($n, $($tt)+);
             $crate::impl_traits_for_custom_punct!($n, $($tt)+);
         };
@@ -324,11 +324,11 @@ macro_rules! impl_parse_for_custom_punct {
     };
 }
 #[macro_export]
-macro_rules! impl_to_tokens_for_custom_punct {
+macro_rules! impl_lower_for_custom_punct {
     ($n:ident, $($tt:tt)+) => {
         impl $crate::Lower for $n {
             fn lower(&self, s: &mut $crate::pm2::TokenStream) {
-                $crate::tok::punct_to_tokens($crate::stringify_punct!($($tt)+), &self.spans, s)
+                $crate::tok::punct_lower($crate::stringify_punct!($($tt)+), &self.spans, s)
             }
         }
     };

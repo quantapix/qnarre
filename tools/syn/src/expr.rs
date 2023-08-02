@@ -419,17 +419,17 @@ pub struct Array {
 }
 impl Parse for Array {
     fn parse(s: Stream) -> Res<Self> {
-        let y;
-        let bracket = bracketed!(y in s);
+        let x;
+        let bracket = bracketed!(x in s);
         let mut elems = Puncted::new();
-        while !y.is_empty() {
-            let first: Expr = y.parse()?;
-            elems.push_value(first);
-            if y.is_empty() {
+        while !x.is_empty() {
+            let y: Expr = x.parse()?;
+            elems.push_value(y);
+            if x.is_empty() {
                 break;
             }
-            let punct = y.parse()?;
-            elems.push_punct(punct);
+            let y = x.parse()?;
+            elems.push_punct(y);
         }
         Ok(Array {
             attrs: Vec::new(),
@@ -793,22 +793,22 @@ impl Pretty for Closure {
                 p.offset(-INDENT);
                 p.end();
                 p.neverbreak();
-                let wrap_in_brace = match &*self.body {
+                let wrap = match &*self.body {
                     Expr::Match(Match { attrs, .. }) | Expr::Call(Call { attrs, .. }) => attr::has_outer(attrs),
                     x => !x.is_blocklike(),
                 };
-                if wrap_in_brace {
+                if wrap {
                     p.cbox(INDENT);
-                    let okay_to_brace = &self.body.parseable_as_stmt();
+                    let brace = &self.body.parseable_as_stmt();
                     p.scan_break(pretty::Break {
-                        pre: Some(if okay_to_brace { '{' } else { '(' }),
+                        pre: Some(if brace { '{' } else { '(' }),
                         ..pretty::Break::default()
                     });
                     &self.body.pretty(p);
                     p.scan_break(pretty::Break {
                         off: -INDENT,
-                        pre: (okay_to_brace && &self.body.add_semi()).then(|| ';'),
-                        post: Some(if okay_to_brace { '}' } else { ')' }),
+                        pre: (brace && &self.body.add_semi()).then(|| ';'),
+                        post: Some(if brace { '}' } else { ')' }),
                         ..pretty::Break::default()
                     });
                     p.end();
@@ -1510,7 +1510,7 @@ impl Parse for Path {
 impl Lower for Path {
     fn lower(&self, s: &mut Stream) {
         attr::lower_outers(&self.attrs, s);
-        path::path_to_tokens(s, &self.qself, &self.path);
+        path::path_lower(s, &self.qself, &self.path);
     }
 }
 impl Pretty for Path {
@@ -1667,13 +1667,13 @@ pub struct Struct {
 impl Parse for Struct {
     fn parse(s: Stream) -> Res<Self> {
         let (qself, path) = path::qpath(s, true)?;
-        expr_struct_helper(s, qself, path)
+        expr_struct(s, qself, path)
     }
 }
 impl Lower for Struct {
     fn lower(&self, s: &mut Stream) {
         attr::lower_outers(&self.attrs, s);
-        path::path_to_tokens(s, &self.qself, &self.path);
+        path::path_lower(s, &self.qself, &self.path);
         self.brace.surround(s, |s| {
             self.fields.lower(s);
             if let Some(dot2) = &self.dot2 {
@@ -3054,7 +3054,7 @@ fn path_or_macro_or_struct(x: Stream, allow: AllowStruct) -> Res<Expr> {
         }));
     }
     if allow.0 && x.peek(tok::Brace) {
-        return expr_struct_helper(x, qself, path).map(Expr::Struct);
+        return expr_struct(x, qself, path).map(Expr::Struct);
     }
     Ok(Expr::Path(expr::Path {
         attrs: Vec::new(),
@@ -3329,9 +3329,9 @@ fn expr_ret(x: Stream, allow: AllowStruct) -> Res<Return> {
         },
     })
 }
-fn expr_struct_helper(x: Stream, qself: Option<path::QSelf>, path: Path) -> Res<Struct> {
+fn expr_struct(s: Stream, qself: Option<path::QSelf>, path: Path) -> Res<Struct> {
     let y;
-    let brace = braced!(y in x);
+    let brace = braced!(y in s);
     let mut fields = Puncted::new();
     while !y.is_empty() {
         if y.peek(Token![..]) {
@@ -3384,9 +3384,9 @@ fn expr_range(x: Stream, allow: AllowStruct) -> Res<Range> {
     })
 }
 fn multi_index(e: &mut Expr, dot: &mut Token![.], float: lit::Float) -> Res<bool> {
-    let float_token = float.token();
-    let float_span = float_token.span();
-    let mut float_repr = float_token.to_string();
+    let float_ = float.token();
+    let float_span = float_.span();
+    let mut float_repr = float_.to_string();
     let trailing_dot = float_repr.ends_with('.');
     if trailing_dot {
         float_repr.truncate(float_repr.len() - 1);
@@ -3395,7 +3395,7 @@ fn multi_index(e: &mut Expr, dot: &mut Token![.], float: lit::Float) -> Res<bool
     for part in float_repr.split('.') {
         let mut index: Index = parse::parse_str(part).map_err(|err| Err::new(float_span, err))?;
         let part_end = offset + part.len();
-        index.span = float_token.subspan(offset..part_end).unwrap_or(float_span);
+        index.span = float_.subspan(offset..part_end).unwrap_or(float_span);
         let base = std::mem::replace(e, Expr::DUMMY);
         *e = Expr::Field(Field {
             attrs: Vec::new(),
@@ -3403,7 +3403,7 @@ fn multi_index(e: &mut Expr, dot: &mut Token![.], float: lit::Float) -> Res<bool
             dot: Token![.](dot.span),
             memb: Member::Unnamed(index),
         });
-        let dot_span = float_token.subspan(part_end..part_end + 1).unwrap_or(float_span);
+        let dot_span = float_.subspan(part_end..part_end + 1).unwrap_or(float_span);
         *dot = Token![.](dot_span);
         offset = part_end + 1;
     }
@@ -3427,8 +3427,8 @@ fn check_cast(x: Stream) -> Res<()> {
     } else {
         return Ok(());
     };
-    let msg = format!("casts cannot be followed by {}", kind);
-    Err(x.error(msg))
+    let y = format!("casts cannot be followed by {}", kind);
+    Err(x.error(y))
 }
 
 fn parse_binop(x: Stream) -> Res<BinOp> {

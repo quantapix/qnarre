@@ -157,20 +157,20 @@ pub struct Segment {
     pub args: Args,
 }
 impl Segment {
-    fn parse_helper(x: Stream, expr_style: bool) -> Res<Self> {
-        if x.peek(Token![super]) || x.peek(Token![self]) || x.peek(Token![crate]) || x.peek(Token![try]) {
-            let y = x.call(Ident::parse_any)?;
+    fn parse_helper(s: Stream, style: bool) -> Res<Self> {
+        if s.peek(Token![super]) || s.peek(Token![self]) || s.peek(Token![crate]) || s.peek(Token![try]) {
+            let y = s.call(Ident::parse_any)?;
             return Ok(Segment::from(y));
         }
-        let ident = if x.peek(Token![Self]) {
-            x.call(Ident::parse_any)?
+        let ident = if s.peek(Token![Self]) {
+            s.call(Ident::parse_any)?
         } else {
-            x.parse()?
+            s.parse()?
         };
-        if !expr_style && x.peek(Token![<]) && !x.peek(Token![<=]) || x.peek(Token![::]) && x.peek3(Token![<]) {
+        if !style && s.peek(Token![<]) && !s.peek(Token![<=]) || s.peek(Token![::]) && s.peek3(Token![<]) {
             Ok(Segment {
                 ident,
-                args: Args::Angled(x.parse()?),
+                args: Args::Angled(s.parse()?),
             })
         } else {
             Ok(Segment::from(ident))
@@ -644,47 +644,47 @@ impl<'a> Display for DisplayPath<'a> {
     }
 }
 
-pub fn const_arg(x: Stream) -> Res<Expr> {
-    let y = x.look1();
-    if x.peek(lit::Lit) {
-        let y = x.parse()?;
+pub fn const_arg(s: Stream) -> Res<Expr> {
+    let y = s.look1();
+    if s.peek(lit::Lit) {
+        let y = s.parse()?;
         return Ok(Expr::Lit(y));
     }
-    if x.peek(ident::Ident) {
-        let y: Ident = x.parse()?;
+    if s.peek(ident::Ident) {
+        let y: Ident = s.parse()?;
         return Ok(Expr::Path(expr::Path {
             attrs: Vec::new(),
             qself: None,
             path: Path::from(y),
         }));
     }
-    if x.peek(tok::Brace) {
-        let y: expr::Block = x.parse()?;
+    if s.peek(tok::Brace) {
+        let y: expr::Block = s.parse()?;
         return Ok(Expr::Block(y));
     }
     Err(y.err())
 }
-pub fn qpath(x: Stream, expr_style: bool) -> Res<(Option<QSelf>, Path)> {
-    if x.peek(Token![<]) {
-        let lt: Token![<] = x.parse()?;
-        let this: typ::Type = x.parse()?;
-        let y = if x.peek(Token![as]) {
-            let as_: Token![as] = x.parse()?;
-            let y: Path = x.parse()?;
+pub fn qpath(s: Stream, style: bool) -> Res<(Option<QSelf>, Path)> {
+    if s.peek(Token![<]) {
+        let lt: Token![<] = s.parse()?;
+        let this: typ::Type = s.parse()?;
+        let y = if s.peek(Token![as]) {
+            let as_: Token![as] = s.parse()?;
+            let y: Path = s.parse()?;
             Some((as_, y))
         } else {
             None
         };
-        let gt: Token![>] = x.parse()?;
-        let colon2: Token![::] = x.parse()?;
+        let gt: Token![>] = s.parse()?;
+        let colon2: Token![::] = s.parse()?;
         let mut rest = Puncted::new();
         loop {
-            let path = Segment::parse_helper(x, expr_style)?;
+            let path = Segment::parse_helper(s, style)?;
             rest.push_value(path);
-            if !x.peek(Token![::]) {
+            if !s.peek(Token![::]) {
                 break;
             }
-            let punct: Token![::] = x.parse()?;
+            let punct: Token![::] = s.parse()?;
             rest.push_punct(punct);
         }
         let (pos, as_, y) = match y {
@@ -711,39 +711,39 @@ pub fn qpath(x: Stream, expr_style: bool) -> Res<(Option<QSelf>, Path)> {
         };
         Ok((Some(qself), y))
     } else {
-        let y = Path::parse_helper(x, expr_style)?;
+        let y = Path::parse_helper(s, style)?;
         Ok((None, y))
     }
 }
-pub fn path_to_tokens(ys: &mut Stream, qself: &Option<QSelf>, path: &Path) {
-    let qself = match qself {
+pub fn path_lower(s: &mut Stream, x: &Option<QSelf>, path: &Path) {
+    let x = match x {
         Some(x) => x,
         None => {
-            path.lower(ys);
+            path.lower(s);
             return;
         },
     };
-    qself.lt.lower(ys);
-    qself.typ.lower(ys);
-    let pos = cmp::min(qself.pos, path.segs.len());
-    let mut segs = path.segs.pairs();
+    x.lt.lower(s);
+    x.typ.lower(s);
+    let pos = cmp::min(x.pos, path.segs.len());
+    let mut ys = path.segs.pairs();
     if pos > 0 {
-        ToksOrDefault(&qself.as_).lower(ys);
-        path.colon.lower(ys);
-        for (i, x) in segs.by_ref().take(pos).enumerate() {
+        ToksOrDefault(&x.as_).lower(s);
+        path.colon.lower(s);
+        for (i, y) in ys.by_ref().take(pos).enumerate() {
             if i + 1 == pos {
-                x.value().lower(ys);
-                qself.gt.lower(ys);
-                x.punct().lower(ys);
+                y.value().lower(s);
+                x.gt.lower(s);
+                y.punct().lower(s);
             } else {
-                x.lower(ys);
+                y.lower(s);
             }
         }
     } else {
-        qself.gt.lower(ys);
-        path.colon.lower(ys);
+        x.gt.lower(s);
+        path.colon.lower(s);
     }
-    for x in segs {
-        x.lower(ys);
+    for y in ys {
+        y.lower(s);
     }
 }
