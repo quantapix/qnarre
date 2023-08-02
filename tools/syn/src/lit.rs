@@ -114,25 +114,25 @@ impl Lit {
 }
 impl Parse for Lit {
     fn parse(s: Stream) -> Res<Self> {
-        s.step(|c| {
-            if let Some((x, xs)) = c.literal() {
+        s.step(|x| {
+            if let Some((x, xs)) = x.literal() {
                 return Ok((Lit::new(x), xs));
             }
-            if let Some((x, xs)) = c.ident() {
+            if let Some((x, xs)) = x.ident() {
                 let val = x == "true";
                 if val || x == "false" {
                     let y = Bool { val, span: x.span() };
                     return Ok((Lit::Bool(y), xs));
                 }
             }
-            if let Some((x, xs)) = c.punct() {
+            if let Some((x, xs)) = x.punct() {
                 if x.as_char() == '-' {
                     if let Some((x, xs)) = parse_negative(x, xs) {
                         return Ok((x, xs));
                     }
                 }
             }
-            Err(c.err("expected literal"))
+            Err(x.err("expected literal"))
         })
     }
 }

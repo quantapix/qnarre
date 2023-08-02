@@ -51,7 +51,7 @@ macro_rules! impl_low_level {
         }
     };
 }
-impl_low_level!("punctuation token" punct Punct);
+impl_low_level!("punct token" punct Punct);
 impl_low_level!("literal" literal pm2::Lit);
 impl_low_level!("token" token_tree pm2::Tree);
 
@@ -91,11 +91,8 @@ macro_rules! def_keywords {
             pub struct $n {
                 pub span: pm2::Span,
             }
-            #[allow(non_snake_case)]
-            pub fn $n<S: IntoSpans<pm2::Span>>(s: S) -> $n {
-                $n {
-                    span: s.into_spans(),
-                }
+            pub fn $n<S: pm2::IntoSpans<pm2::Span>>(s: S) -> $n {
+                $n {                    span: s.into_spans()                }
             }
             impl std::default::Default for $n {
                 fn default() -> Self {
@@ -226,7 +223,7 @@ macro_rules! def_punct_structs {
                 pub spans: [pm2::Span; $len],
             }
             #[allow(non_snake_case)]
-            pub fn $n<S: IntoSpans<[pm2::Span; $len]>>(ss: S) -> $n {
+            pub fn $n<S: pm2::IntoSpans<[pm2::Span; $len]>>(ss: S) -> $n {
                 $n {
                     spans: ss.into_spans(),
                 }
@@ -419,7 +416,7 @@ macro_rules! def_delims {
                 }
             }
             #[allow(non_snake_case)]
-            pub fn $n<S: IntoSpans<pm2::DelimSpan>>(s: S) -> $n {
+            pub fn $n<S: pm2::IntoSpans<pm2::DelimSpan>>(s: S) -> $n {
                 $n {
                     span: s.into_spans(),
                 }
@@ -581,7 +578,7 @@ impl Tok for Group {
     }
 }
 #[allow(non_snake_case)]
-pub fn Group<S: IntoSpans<pm2::Span>>(s: S) -> Group {
+pub fn Group<S: pm2::IntoSpans<pm2::Span>>(s: S) -> Group {
     Group { span: s.into_spans() }
 }
 

@@ -1987,10 +1987,6 @@ impl Pretty for Verbatim {
             mutable: bool,
             expr: Expr,
         }
-        mod kw {
-            crate::custom_kw!(builtin);
-            crate::custom_kw!(raw);
-        }
         impl parse::Parse for Type {
             fn parse(s: parse::Stream) -> Res<Self> {
                 let ahead = s.fork();
@@ -2691,8 +2687,10 @@ impl Clone for AllowStruct {
 }
 
 mod kw {
-    crate::custom_kw!(builtin);
-    crate::custom_kw!(raw);
+    use super::*;
+    custom_kw!(builtin);
+    custom_kw!(raw);
+    custom_punct!(dummy, </>);
 }
 
 fn parse_expr(x: Stream, mut lhs: Expr, allow: AllowStruct, base: Precedence) -> Res<Expr> {

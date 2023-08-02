@@ -83,20 +83,20 @@ impl Pretty for Mac {
 }
 
 pub fn parse_delim(s: Stream) -> Res<(tok::Delim, pm2::Stream)> {
-    s.step(|c| {
-        if let Some((pm2::Tree::Group(x), rest)) = c.token_tree() {
+    s.step(|x| {
+        if let Some((pm2::Tree::Group(x), rest)) = x.token_tree() {
             let s = x.delim_span();
             let delim = match x.delim() {
                 pm2::Delim::Paren => tok::Delim::Paren(tok::Paren(s)),
                 pm2::Delim::Brace => tok::Delim::Brace(tok::Brace(s)),
                 pm2::Delim::Bracket => tok::Delim::Bracket(tok::Bracket(s)),
                 pm2::Delim::None => {
-                    return Err(c.err("expected delimiter"));
+                    return Err(x.err("expected delimiter"));
                 },
             };
             Ok(((delim, x.stream()), rest))
         } else {
-            Err(c.err("expected delimiter"))
+            Err(x.err("expected delimiter"))
         }
     })
 }
@@ -176,39 +176,99 @@ macro_rules! generate_lower {
     };
 }
 
-#[macro_export]
-macro_rules! custom_kw {
+pub trait StreamExt {
+    fn append<U>(&mut self, x: U)
+    where
+        U: Into<pm2::Tree>;
+    fn append_all<I>(&mut self, xs: I)
+    where
+        I: IntoIterator,
+        I::Item: Lower;
+    fn append_sep<I, U>(&mut self, xs: I, y: U)
+    where
+        I: IntoIterator,
+        I::Item: Lower,
+        U: Lower;
+    fn append_term<I, U>(&mut self, xs: I, y: U)
+    where
+        I: IntoIterator,
+        I::Item: Lower,
+        U: Lower;
+}
+impl StreamExt for pm2::Stream {
+    fn append<U>(&mut self, x: U)
+    where
+        U: Into<pm2::Tree>,
+    {
+        self.extend(iter::once(x.into()));
+    }
+    fn append_all<I>(&mut self, xs: I)
+    where
+        I: IntoIterator,
+        I::Item: Lower,
+    {
+        for x in xs {
+            x.lower(self);
+        }
+    }
+    fn append_sep<I, U>(&mut self, xs: I, y: U)
+    where
+        I: IntoIterator,
+        I::Item: Lower,
+        U: Lower,
+    {
+        for (i, x) in xs.into_iter().enumerate() {
+            if i > 0 {
+                y.lower(self);
+            }
+            x.lower(self);
+        }
+    }
+    fn append_term<I, U>(&mut self, xs: I, y: U)
+    where
+        I: IntoIterator,
+        I::Item: Lower,
+        U: Lower,
+    {
+        for x in xs {
+            x.lower(self);
+            y.lower(self);
+        }
+    }
+}
+
+macro_rules! clone_for_kw {
     ($n:ident) => {
-        #[allow(non_camel_case_types)]
-        pub struct $n<'a> {
-            pub span: $crate::pm2::Span,
-        }
-        #[allow(dead_code, non_snake_case)]
-        pub fn $n<__S: $crate::IntoSpans<$crate::pm2::Span>>(span: __S) -> $n {
-            $n {
-                span: $crate::IntoSpans::into_spans(span),
+        impl Copy for $n {}
+        impl Clone for $n {
+            fn clone(&self) -> Self {
+                *self
             }
         }
-        const _: () = {
-            impl<'a> Default for $n<'a> {
-                fn default() -> Self {
-                    $n {
-                        span: $crate::pm2::Span::call_site(),
-                    }
-                }
-            }
-            $crate::impl_parse_for_custom_kw!($n);
-            $crate::impl_lower_for_custom_kw!($n);
-            $crate::impl_clone_for_custom_kw!($n);
-            $crate::impl_traits_for_custom_kw!($n);
-        };
     };
 }
-#[macro_export]
-macro_rules! impl_parse_for_custom_kw {
+macro_rules! traits_for_kw {
     ($n:ident) => {
-        impl<'a> $crate::tok::Custom for $n<'a> {
-            fn peek(x: $crate::Cursor) -> bool {
+        impl Debug for $n {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                fmt::Formatter::write_str(f, std::concat!("Keyword [", std::stringify!($n), "]",))
+            }
+        }
+        impl Eq for $n {}
+        impl PartialEq for $n {
+            fn eq(&self, _: &Self) -> bool {
+                true
+            }
+        }
+        impl Hash for $n {
+            fn hash<H: Hasher>(&self, _: &mut H) {}
+        }
+    };
+}
+macro_rules! parse_for_kw {
+    ($n:ident) => {
+        impl tok::Custom for $n {
+            fn peek(x: Cursor) -> bool {
                 if let Some((x, _)) = x.ident() {
                     x == std::stringify!($n)
                 } else {
@@ -219,161 +279,60 @@ macro_rules! impl_parse_for_custom_kw {
                 std::concat!("`", std::stringify!($n), "`")
             }
         }
-        impl<'a> $crate::parse::Parse for $n<'a> {
-            fn parse(s: $crate::parse::Stream) -> $crate::Res<$n> {
-                s.step(|c| {
-                    if let Some((x, rest)) = c.ident() {
+        impl parse::Parse for $n {
+            fn parse(s: parse::Stream) -> Res<$n> {
+                s.step(|x| {
+                    if let Some((x, rest)) = x.ident() {
                         if x == std::stringify!($n) {
                             return Ok(($n { span: x.span() }, rest));
                         }
                     }
-                    Err(c.error(std::concat!("expected `", std::stringify!($n), "`",)))
+                    Err(x.error(std::concat!("expected `", std::stringify!($n), "`",)))
                 })
             }
         }
     };
 }
-#[macro_export]
-macro_rules! impl_lower_for_custom_kw {
+macro_rules! lower_for_kw {
     ($n:ident) => {
-        impl<'a> $crate::Lower for $n<'a> {
-            fn lower(&self, s: &mut $crate::pm2::Stream) {
-                let y = $crate::Ident::new(std::stringify!($n), self.span);
-                $crate::quote::StreamExt::append(s, y);
+        impl Lower for $n {
+            fn lower(&self, s: &mut pm2::Stream) {
+                let y = Ident::new(std::stringify!($n), self.span);
+                mac::StreamExt::append(s, y);
             }
         }
     };
 }
-#[macro_export]
-macro_rules! impl_clone_for_custom_kw {
+macro_rules! custom_kw {
     ($n:ident) => {
-        impl<'a> Copy for $n<'a> {}
-        #[allow(clippy::expl_impl_clone_on_copy)]
-        impl<'a> Clone for $n<'a> {
-            fn clone(&self) -> Self {
-                *self
-            }
-        }
-    };
-}
-#[macro_export]
-macro_rules! impl_traits_for_custom_kw {
-    ($n:ident) => {
-        impl<'a> std::fmt::Debug for $n<'a> {
-            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                std::fmt::Formatter::write_str(f, std::concat!("Keyword [", std::stringify!($n), "]",))
-            }
-        }
-        impl<'a> Eq for $n<'a> {}
-        impl<'a> PartialEq for $n<'a> {
-            fn eq(&self, _: &Self) -> bool {
-                true
-            }
-        }
-        impl<'a> std::hash::Hash for $n<'a> {
-            fn hash<__H: std::hash::Hasher>(&self, _: &mut __H) {}
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! custom_punctuation {
-    ($n:ident, $($tt:tt)+) => {
         pub struct $n {
-            pub spans: $crate::custom_punctuation_repr!($($tt)+),
+            pub span: pm2::Span,
         }
-        #[allow(dead_code, non_snake_case)]
-        pub fn $n<__S: $crate::IntoSpans<$crate::custom_punctuation_repr!($($tt)+)>>(
-            spans: __S,
-        ) -> $n {
-            let _ = 0 $(+ $crate::custom_punctuation_len!(strict, $tt))*;
-            $n {
-                spans: $crate::IntoSpans::into_spans(spans)
-            }
+        pub fn $n<S: pm2::IntoSpans<pm2::Span>>(s: S) -> $n {
+            $n { span: s.into_spans() }
         }
         const _: () = {
-            impl<'a> Default for $n<'a> {
+            impl Default for $n {
                 fn default() -> Self {
-                    $n($crate::pm2::Span::call_site())
+                    $n {
+                        span: pm2::Span::call_site(),
+                    }
                 }
             }
-            $crate::impl_parse_for_custom_punct!($n, $($tt)+);
-            $crate::impl_lower_for_custom_punct!($n, $($tt)+);
-            $crate::impl_clone_for_custom_punct!($n, $($tt)+);
-            $crate::impl_traits_for_custom_punct!($n, $($tt)+);
+            clone_for_kw!($n);
+            traits_for_kw!($n);
+            parse_for_kw!($n);
+            lower_for_kw!($n);
         };
     };
 }
-#[macro_export]
-macro_rules! impl_parse_for_custom_punct {
-    ($n:ident, $($tt:tt)+) => {
-        impl $crate::tok::Custom for $n {
-            fn peek(x: $crate::Cursor) -> bool {
-                $crate::tok::peek_punct(x, $crate::stringify_punct!($($tt)+))
-            }
-            fn display() -> &'static str {
-                std::concat!("`", $crate::stringify_punct!($($tt)+), "`")
-            }
-        }
-        impl $crate::parse::Parse for $n {
-            fn parse(s: $crate::parse::Stream) -> $crate::Res<$n> {
-                let ys: $crate::custom_punctuation_repr!($($tt)+) =
-                    $crate::tok::parse_punct(s, $crate::stringify_punct!($($tt)+))?;
-                Ok($n(ys))
-            }
-        }
-    };
+
+#[allow(unused_macros)]
+macro_rules! punct_unexpected {
+    () => {};
 }
-#[macro_export]
-macro_rules! impl_lower_for_custom_punct {
-    ($n:ident, $($tt:tt)+) => {
-        impl $crate::Lower for $n {
-            fn lower(&self, s: &mut $crate::pm2::TokenStream) {
-                $crate::tok::punct_lower($crate::stringify_punct!($($tt)+), &self.spans, s)
-            }
-        }
-    };
-}
-#[macro_export]
-macro_rules! impl_clone_for_custom_punct {
-    ($n:ident, $($tt:tt)+) => {
-        impl<'a> Copy for $n<'a> {}
-        #[allow(clippy::expl_impl_clone_on_copy)]
-        impl<'a> Clone for $n<'a> {
-            fn clone(&self) -> Self {
-                *self
-            }
-        }
-    };
-}
-#[macro_export]
-macro_rules! impl_traits_for_custom_punct {
-    ($n:ident, $($tt:tt)+) => {
-        impl<'a> std::fmt::Debug for $n<'a> {
-            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                std::fmt::Formatter::write_str(f, std::stringify!($n))
-            }
-        }
-        impl<'a> Eq for $n<'a> {}
-        impl<'a> PartialEq for $n<'a> {
-            fn eq(&self, _: &Self) -> bool {
-                true
-            }
-        }
-        impl<'a> std::hash::Hash for $n<'a> {
-            fn hash<__H: std::hash::Hasher>(&self, _: &mut __H) {}
-        }
-    };
-}
-#[macro_export]
-macro_rules! custom_punctuation_repr {
-    ($($tt:tt)+) => {
-        [$crate::pm2::Span; 0 $(+ $crate::custom_punctuation_len!(lenient, $tt))+]
-    };
-}
-#[macro_export]
 #[rustfmt::skip]
-macro_rules! custom_punctuation_len {
+macro_rules! punct_len {
     ($mode:ident, +)     => { 1 };
     ($mode:ident, +=)    => { 2 };
     ($mode:ident, &)     => { 1 };
@@ -420,16 +379,98 @@ macro_rules! custom_punctuation_len {
     ($mode:ident, -=)    => { 2 };
     ($mode:ident, ~)     => { 1 };
     (lenient, $tt:tt)    => { 0 };
-    (strict, $tt:tt)     => {{ $crate::custom_punctuation_unexpected!($tt); 0 }};
+    (strict, $tt:tt)     => {{ punct_unexpected!($tt); 0 }};
 }
-#[macro_export]
-macro_rules! custom_punctuation_unexpected {
-    () => {};
+macro_rules! punct_repr {
+    ($($tt:tt)+) => {
+        [$crate::pm2::Span; 0 $(+ punct_len!(lenient, $tt))+]
+    };
 }
-#[macro_export]
+macro_rules! clone_for_punct {
+    ($n:ident, $($tt:tt)+) => {
+        impl Copy for $n {}
+        impl Clone for $n {
+            fn clone(&self) -> Self {
+                *self
+            }
+        }
+    };
+}
+macro_rules! traits_for_punct {
+    ($n:ident, $($tt:tt)+) => {
+        impl Debug for $n {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                fmt::Formatter::write_str(f, std::stringify!($n))
+            }
+        }
+        impl Eq for $n {}
+        impl PartialEq for $n {
+            fn eq(&self, _: &Self) -> bool {
+                true
+            }
+        }
+        impl Hash for $n {
+            fn hash<H: Hasher>(&self, _: &mut H) {}
+        }
+    };
+}
 macro_rules! stringify_punct {
     ($($tt:tt)+) => {
         std::concat!($(std::stringify!($tt)),+)
+    };
+}
+macro_rules! parse_for_punct {
+    ($n:ident, $($tt:tt)+) => {
+        impl tok::Custom for $n {
+            fn peek(x: Cursor) -> bool {
+                tok::peek_punct(x, stringify_punct!($($tt)+))
+            }
+            fn display() -> &'static str {
+                std::concat!("`", stringify_punct!($($tt)+), "`")
+            }
+        }
+        impl parse::Parse for $n {
+            fn parse(s: parse::Stream) -> Res<$n> {
+                let ys: punct_repr!($($tt)+) =
+                    tok::parse_punct(s, stringify_punct!($($tt)+))?;
+                Ok($n(ys))
+            }
+        }
+    };
+}
+macro_rules! lower_for_punct {
+    ($n:ident, $($tt:tt)+) => {
+        impl Lower for $n {
+            fn lower(&self, s: &mut pm2::Stream) {
+                tok::punct_lower(stringify_punct!($($tt)+), &self.spans, s)
+            }
+        }
+    };
+}
+macro_rules! custom_punct {
+    ($n:ident, $($tt:tt)+) => {
+        pub struct $n {
+            pub spans: punct_repr!($($tt)+),
+        }
+        pub fn $n<S: pm2::IntoSpans<punct_repr!($($tt)+)>>(
+            s: S,
+        ) -> $n {
+            let _ = 0 $(+ punct_len!(strict, $tt))*;
+            $n {
+                spans: s.into_spans()
+            }
+        }
+        const _: () = {
+            impl Default for $n {
+                fn default() -> Self {
+                    $n(pm2::Span::call_site())
+                }
+            }
+            parse_for_punct!($n, $($tt)+);
+            lower_for_punct!($n, $($tt)+);
+            clone_for_punct!($n, $($tt)+);
+            traits_for_punct!($n, $($tt)+);
+        };
     };
 }
 

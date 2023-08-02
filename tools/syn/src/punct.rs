@@ -76,13 +76,13 @@ impl<T, P> Puncted<T, P> {
         );
         self.last = Some(Box::new(value));
     }
-    pub fn push_punct(&mut self, punctuation: P) {
+    pub fn push_punct(&mut self, x: P) {
         assert!(
             self.last.is_some(),
             "Puncted::push_punct: cannot push punctuation if Puncted is empty or already has trailing punctuation",
         );
         let last = self.last.take().unwrap();
-        self.inner.push((*last, punctuation));
+        self.inner.push((*last, x));
     }
     pub fn pop(&mut self) -> Option<Pair<T, P>> {
         if self.last.is_some() {

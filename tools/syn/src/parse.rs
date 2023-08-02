@@ -318,7 +318,7 @@ impl Parse for Punct {
     fn parse(s: Stream) -> Res<Self> {
         s.step(|x| match x.punct() {
             Some((y, c)) => Ok((y, c)),
-            None => Err(x.err("expected punctuation token")),
+            None => Err(x.err("expected punct token")),
         })
     }
 }
@@ -326,7 +326,7 @@ impl Parse for pm2::Lit {
     fn parse(s: Stream) -> Res<Self> {
         s.step(|x| match x.literal() {
             Some((y, c)) => Ok((y, c)),
-            None => Err(x.err("expected literal token")),
+            None => Err(x.err("expected lit token")),
         })
     }
 }

@@ -1,3 +1,5 @@
+#![allow(non_camel_case_types)]
+
 extern crate proc_macro as pm;
 
 use std::{
@@ -41,7 +43,7 @@ use err::{Err, Res};
 use ident::Life;
 use parse::{Parse, Parser, Stream};
 use path::Path;
-use pm2::{Ident, IntoSpans, Punct};
+use pm2::{Ident, Punct};
 use pretty::{Pretty, Print};
 use punct::Puncted;
 use tok::Tok;
@@ -108,7 +110,7 @@ mod look {
     }
 
     pub enum Marker {}
-    impl<S> IntoSpans<S> for Marker {
+    impl<S> pm2::IntoSpans<S> for Marker {
         fn into_spans(self) -> S {
             match self {}
         }

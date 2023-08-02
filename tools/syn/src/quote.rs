@@ -9,67 +9,6 @@ use std::{
     slice,
 };
 
-pub trait StreamExt {
-    fn append<U>(&mut self, x: U)
-    where
-        U: Into<Tree>;
-    fn append_all<I>(&mut self, xs: I)
-    where
-        I: IntoIterator,
-        I::Item: Lower;
-    fn append_sep<I, U>(&mut self, xs: I, op: U)
-    where
-        I: IntoIterator,
-        I::Item: Lower,
-        U: Lower;
-    fn append_term<I, U>(&mut self, xs: I, term: U)
-    where
-        I: IntoIterator,
-        I::Item: Lower,
-        U: Lower;
-}
-impl StreamExt for Stream {
-    fn append<U>(&mut self, x: U)
-    where
-        U: Into<Tree>,
-    {
-        self.extend(iter::once(x.into()));
-    }
-    fn append_all<I>(&mut self, xs: I)
-    where
-        I: IntoIterator,
-        I::Item: Lower,
-    {
-        for x in xs {
-            x.lower(self);
-        }
-    }
-    fn append_sep<I, U>(&mut self, xs: I, op: U)
-    where
-        I: IntoIterator,
-        I::Item: Lower,
-        U: Lower,
-    {
-        for (i, x) in xs.into_iter().enumerate() {
-            if i > 0 {
-                op.lower(self);
-            }
-            x.lower(self);
-        }
-    }
-    fn append_term<I, U>(&mut self, xs: I, term: U)
-    where
-        I: IntoIterator,
-        I::Item: Lower,
-        U: Lower,
-    {
-        for x in xs {
-            x.lower(self);
-            term.lower(self);
-        }
-    }
-}
-
 #[macro_export]
 macro_rules! format_ident {
     ($fmt:expr) => {

@@ -2,15 +2,15 @@ use super::*;
 
 impl Parse for Ident {
     fn parse(s: Stream) -> Res<Self> {
-        s.step(|c| {
-            if let Some((x, rest)) = c.ident() {
+        s.step(|x| {
+            if let Some((x, rest)) = x.ident() {
                 if tok::accept_as_ident(&x) {
                     Ok((x, rest))
                 } else {
-                    Err(c.err(format_args!("expected identifier, found keyword `{}`", x,)))
+                    Err(x.err(format_args!("expected identifier, found keyword `{}`", x,)))
                 }
             } else {
-                Err(c.err("expected identifier"))
+                Err(x.err("expected identifier"))
             }
         })
     }
@@ -114,7 +114,7 @@ impl Hash for Life {
 }
 impl Parse for Life {
     fn parse(s: Stream) -> Res<Self> {
-        s.step(|c| c.life().ok_or_else(|| c.err("expected life")))
+        s.step(|x| x.life().ok_or_else(|| x.err("expected life")))
     }
 }
 impl Lower for Life {
