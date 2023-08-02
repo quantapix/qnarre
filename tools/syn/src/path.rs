@@ -88,7 +88,7 @@ impl Path {
         let qself = match qself {
             Some(x) => x,
             None => {
-                self.pretty(p, kind);
+                self.pretty_with_args(p, kind);
                 return;
             },
         };
@@ -112,7 +112,7 @@ impl Path {
         }
         for x in xs {
             p.word("::");
-            x.pretty(p, kind);
+            x.pretty_with_args(p, kind);
         }
     }
 }
@@ -202,7 +202,7 @@ impl Lower for Segment {
 impl Pretty for Segment {
     fn pretty(&self, p: &mut Print, kind: Kind) {
         &self.ident.pretty(p);
-        &self.args.pretty(p, kind);
+        &self.args.pretty_with_args(p, kind);
     }
 }
 
@@ -253,7 +253,7 @@ impl Pretty for Args {
         match self {
             None => {},
             Angled(x) => {
-                x.pretty(p, kind);
+                x.pretty_with_args(p, kind);
             },
             Parenthesized(x) => {
                 x.pretty(p);
@@ -518,7 +518,7 @@ impl Pretty for AssocType {
     fn pretty(&self, p: &mut Print) {
         p.ident(&self.ident);
         if let Some(x) = &self.args {
-            x.pretty(p, Kind::Type);
+            x.pretty_with_args(p, Kind::Type);
         }
         p.word(" = ");
         &self.typ.pretty(p);
@@ -568,7 +568,7 @@ impl Pretty for Constraint {
     fn pretty(&self, p: &mut Print) {
         p.ident(&self.ident);
         if let Some(x) = &self.args {
-            x.pretty(p, Kind::Type);
+            x.pretty_with_args(p, Kind::Type);
         }
         p.ibox(INDENT);
         for x in self.bounds.iter().delimited() {

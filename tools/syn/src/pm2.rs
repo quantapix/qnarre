@@ -2676,7 +2676,7 @@ mod imp {
     }
 }
 mod rcvec {
-    use std::{mem, panic::RefUnwindSafe, rc::Rc, slice, vec};
+    use std::{panic::RefUnwindSafe, rc::Rc, slice, vec};
     pub struct Builder<T> {
         vec: Vec<T>,
     }

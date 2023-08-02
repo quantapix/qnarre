@@ -1,6 +1,5 @@
 use super::*;
 use crate::attr::Filter;
-use std::mem;
 
 pub struct File {
     pub shebang: Option<String>,
@@ -523,7 +522,7 @@ impl Pretty for Impl {
             if neg.is_some() {
                 p.word("!");
             }
-            x.pretty(p, path::Kind::Type);
+            x.pretty_with_args(p, path::Kind::Type);
             p.space();
             p.word("for ");
         }
@@ -598,7 +597,7 @@ impl Pretty for Mac {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
         let semi = true;
-        &self.mac.pretty(p, self.ident.as_ref(), semi);
+        &self.mac.pretty_with_args(p, (self.ident.as_ref(), semi));
         p.hardbreak();
     }
 }
@@ -1982,7 +1981,7 @@ pub mod foreign {
         fn pretty(&self, p: &mut Print) {
             p.outer_attrs(&self.attrs);
             let semi = true;
-            &self.mac.pretty(p, None, semi);
+            &self.mac.pretty_with_args(p, (None, semi));
             p.hardbreak();
         }
     }
@@ -2398,7 +2397,7 @@ pub mod impl_ {
         fn pretty(&self, p: &mut Print) {
             p.outer_attrs(&self.attrs);
             let semi = true;
-            &self.mac.pretty(p, None, semi);
+            &self.mac.pretty_with_args(p, (None, semi));
             p.hardbreak();
         }
     }
@@ -2791,7 +2790,7 @@ pub mod trait_ {
         fn pretty(&self, p: &mut Print) {
             p.outer_attrs(&self.attrs);
             let semi = true;
-            &self.mac.pretty(p, None, semi);
+            &self.mac.pretty_with_args(p, (None, semi));
             p.hardbreak();
         }
     }

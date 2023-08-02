@@ -38,7 +38,8 @@ impl Lower for Mac {
     }
 }
 impl Pretty for Mac {
-    fn pretty(&self, p: &mut Print, ident: Option<&Ident>, semi: bool) {
+    fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
+        let Some(ident, semi) = pretty::Args::ident_semi(x);
         if self.path.is_ident("macro_rules") {
             if let Some(x) = ident {
                 p.macro_rules(x, &self.toks);
@@ -48,7 +49,7 @@ impl Pretty for Mac {
         if ident.is_none() && p.standard_library_macro(self, semi) {
             return;
         }
-        &self.path.pretty(p, path::Kind::Simple);
+        &self.path.pretty_with_args(p, path::Kind::Simple);
         p.word("!");
         if let Some(x) = ident {
             p.nbsp();

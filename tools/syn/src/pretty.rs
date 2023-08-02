@@ -12,6 +12,7 @@ use std::{
 pub enum Args {
     Kind(path::Kind),
     BegLine(bool),
+    IdentSemi(&Ident, bool),
 }
 impl Args {
     pub fn beg_line(x: &Option<Args>) {
@@ -20,7 +21,16 @@ impl Args {
                 Args::BegLine(x) => x,
                 _ => &false,
             },
-            None => &false,
+            _ => &false,
+        }
+    }
+    pub fn ident_semi(x: &Option<Args>) {
+        match x {
+            Some(x) => match x {
+                Args::IdentSemi(x, semi) => Some((x, semi)),
+                _ => None,
+            },
+            _ => None,
         }
     }
 }
@@ -435,7 +445,7 @@ impl Print {
         self.word("}");
     }
     //mac
-    fn macro_rules(&mut self, name: &Ident, rules: &Stream) {
+    pub fn macro_rules(&mut self, name: &Ident, rules: &Stream) {
         enum State {
             Start,
             Matcher,
@@ -512,7 +522,7 @@ impl Print {
         self.end();
         self.word("}");
     }
-    pub fn macro_rules_tokens(&mut self, stream: Stream, matcher: bool) {
+    pub fn macro_rules_tokens(&mut self, s: Stream, matcher: bool) {
         #[derive(PartialEq)]
         enum State {
             Start,
@@ -534,7 +544,7 @@ impl Print {
         use State::*;
         let mut state = Start;
         let mut previous_is_joint = true;
-        for tt in stream {
+        for tt in s {
             let token = Token::from(tt);
             let (needs_space, next_state) = match (&state, &token) {
                 (Dollar, Token::Ident(_)) => (false, if matcher { DollarIdent } else { Other }),

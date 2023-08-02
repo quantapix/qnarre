@@ -286,7 +286,7 @@ impl Pretty for Struct {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
         p.cbox(INDENT);
-        &self.path.pretty(p, path::Kind::Expr);
+        &self.path.pretty_with_args(p, path::Kind::Expr);
         p.word(" {");
         p.space_if_nonempty();
         for x in self.fields.iter().delimited() {
@@ -394,7 +394,7 @@ impl Lower for TupleStruct {
 impl Pretty for TupleStruct {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
-        &self.path.pretty(p, path::Kind::Expr);
+        &self.path.pretty_with_args(p, path::Kind::Expr);
         p.word("(");
         p.cbox(INDENT);
         p.zerobreak();

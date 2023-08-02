@@ -305,7 +305,7 @@ impl Lower for Mac {
 impl Pretty for Mac {
     fn pretty(&self, p: &mut Print) {
         let semi = false;
-        &self.mac.pretty(p, None, semi);
+        &self.mac.pretty_with_args(p, (None, semi));
     }
 }
 
