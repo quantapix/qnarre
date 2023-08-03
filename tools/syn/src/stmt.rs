@@ -140,7 +140,7 @@ impl Pretty for Stmt {
             Mac(x) => {
                 p.outer_attrs(&x.attrs);
                 let semi = true;
-                &x.mac.pretty(p, None, semi);
+                &x.mac.pretty_with_args(p, (None, semi));
                 p.hardbreak();
             },
         }

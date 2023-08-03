@@ -65,7 +65,7 @@ pub mod bound {
             match self {
                 Type::Trait(x) => {
                     let tilde = false;
-                    x.pretty(p, tilde);
+                    x.pretty_with_args(p, tilde);
                 },
                 Type::Life(x) => x.pretty(p),
                 Type::Verbatim(x) => x.pretty(p),
@@ -282,7 +282,7 @@ pub mod bound {
                 },
                 Type::TildeConst(x) => {
                     let tilde = true;
-                    &x.pretty(p, tilde);
+                    &x.pretty_with_args(p, tilde);
                 },
             }
         }
@@ -747,7 +747,7 @@ impl Pretty for Option<Where> {
                 return;
             },
         };
-        y.pretty(p, breaks, semi);
+        y.pretty_with_args(p, (breaks, semi));
     }
 }
 
@@ -755,22 +755,22 @@ impl Print {
     pub fn where_for_body(&mut self, x: &Option<Where>) {
         let breaks = true;
         let semi = false;
-        x.pretty(self, breaks, semi);
+        x.pretty_with_args(self, (breaks, semi));
     }
     pub fn where_with_semi(&mut self, x: &Option<Where>) {
         let breaks = true;
         let semi = true;
-        x.pretty(self, breaks, semi);
+        x.pretty_with_args(self, (breaks, semi));
     }
     pub fn where_oneline(&mut self, x: &Option<Where>) {
         let breaks = false;
         let semi = false;
-        x.pretty(self, breaks, semi);
+        x.pretty_with_args(self, (breaks, semi));
     }
     pub fn where_oneline_with_semi(&mut self, x: &Option<Where>) {
         let breaks = false;
         let semi = true;
-        x.pretty(self, breaks, semi);
+        x.pretty_with_args(self, (breaks, semi));
     }
 }
 
