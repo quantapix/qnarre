@@ -129,7 +129,7 @@ pub mod bound {
                 if !x.is_first || self.path.colon.is_some() {
                     p.word("::");
                 }
-                &x.pretty(p, path::Kind::Type);
+                &x.pretty_with_args(p, path::Kind::Type);
             }
             if self.parenth.is_some() {
                 p.word(")");

@@ -9,12 +9,12 @@ use std::{
     ops::{Deref, Index, IndexMut},
 };
 
-pub enum Args {
+pub enum Args<'a> {
     Kind(path::Kind),
     BegLine(bool),
-    IdentSemi(&Ident, bool),
+    IdentSemi(&'a Ident, bool),
 }
-impl Args {
+impl<'a> Args<'a> {
     pub fn beg_line(x: &Option<Args>) {
         match x {
             Some(x) => match x {

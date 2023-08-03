@@ -258,9 +258,9 @@ where
 }
 impl<T, P> FromIterator<Pair<T, P>> for Puncted<T, P> {
     fn from_iter<I: IntoIterator<Item = Pair<T, P>>>(i: I) -> Self {
-        let mut ret = Puncted::new();
-        do_extend(&mut ret, i.into_iter());
-        ret
+        let mut y = Puncted::new();
+        do_extend(&mut y, i.into_iter());
+        y
     }
 }
 impl<T, P> Extend<Pair<T, P>> for Puncted<T, P>
@@ -278,12 +278,10 @@ impl<T, P> IntoIterator for Puncted<T, P> {
     type Item = T;
     type IntoIter = IntoIter<T>;
     fn into_iter(self) -> Self::IntoIter {
-        let mut elements = Vec::with_capacity(self.len());
-        elements.extend(self.inner.into_iter().map(|pair| pair.0));
-        elements.extend(self.last.map(|t| *t));
-        IntoIter {
-            inner: elements.into_iter(),
-        }
+        let mut ys = Vec::with_capacity(self.len());
+        ys.extend(self.inner.into_iter().map(|x| x.0));
+        ys.extend(self.last.map(|t| *t));
+        IntoIter { inner: ys.into_iter() }
     }
 }
 impl<'a, T, P> IntoIterator for &'a Puncted<T, P> {

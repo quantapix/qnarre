@@ -337,14 +337,14 @@ macro_rules! enum_of_impl {
         $($(
             enum_from!($n::$v, $($s)::+);
         )*)*
-        lower_of! {
+        $(lower_of! {
             ()
             $n {
                 $(
                     $v $($s)::+,
                 )*
             }
-        }
+        })*
     };
 }
 #[macro_export]

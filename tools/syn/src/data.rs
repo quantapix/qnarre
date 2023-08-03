@@ -289,7 +289,7 @@ impl Pretty for Variant {
                 p.word("{");
                 p.cbox(INDENT);
                 p.space();
-                for x in xs.named.iter().delimited() {
+                for x in xs.fields.iter().delimited() {
                     p.field(&x);
                     p.trailing_comma_or_space(x.is_last);
                 }
