@@ -73,7 +73,7 @@ impl Path {
         Ok(y)
     }
     pub fn parse_rest(s: Stream, path: &mut Self, style: bool) -> Res<()> {
-        while s.peek(Token![::]) && !s.peek3(tok::Paren) {
+        while s.peek(Token![::]) && !s.peek3(tok::Parenth) {
             let y: Token![::] = s.parse()?;
             path.segs.push_punct(y);
             let y = Segment::parse_helper(s, style)?;
@@ -209,7 +209,7 @@ impl Pretty for Segment {
 pub enum Args {
     None,
     Angled(Angled),
-    Parenthesized(Parenthesized),
+    Parenthed(Parenthed),
 }
 impl Args {
     pub fn is_empty(&self) -> bool {
@@ -217,14 +217,14 @@ impl Args {
         match self {
             None => true,
             Angled(x) => x.args.is_empty(),
-            Parenthesized(_) => false,
+            Parenthed(_) => false,
         }
     }
     pub fn is_none(&self) -> bool {
         use Args::*;
         match self {
             None => true,
-            Angled(_) | Parenthesized(_) => false,
+            Angled(_) | Parenthed(_) => false,
         }
     }
 }
@@ -241,7 +241,7 @@ impl Lower for Args {
             Angled(x) => {
                 x.lower(s);
             },
-            Parenthesized(x) => {
+            Parenthed(x) => {
                 x.lower(s);
             },
         }
@@ -255,7 +255,7 @@ impl Pretty for Args {
             Angled(x) => {
                 x.pretty_with_args(p, kind);
             },
-            Parenthesized(x) => {
+            Parenthed(x) => {
                 x.pretty(p);
             },
         }
@@ -286,7 +286,7 @@ impl Parse for Arg {
                     && s.path.segs.len() == 1
                     && match &s.path.segs[0].args {
                         Args::None | Args::AngleBracketed(_) => true,
-                        Args::Parenthesized(_) => false,
+                        Args::Parenthed(_) => false,
                     } =>
             {
                 if let Some(eq) = s.parse::<Option<Token![=]>>()? {
@@ -295,7 +295,7 @@ impl Parse for Arg {
                     let args = match seg.args {
                         Args::None => None,
                         Args::Angled(x) => Some(x),
-                        Args::Parenthesized(_) => unreachable!(),
+                        Args::Parenthed(_) => unreachable!(),
                     };
                     return if s.peek(lit::Lit) || s.peek(tok::Brace) {
                         Ok(Arg::AssocConst(AssocConst {
@@ -320,7 +320,7 @@ impl Parse for Arg {
                         args: match seg.args {
                             Args::None => None,
                             Args::Angled(x) => Some(x),
-                            Args::Parenthesized(_) => unreachable!(),
+                            Args::Parenthed(_) => unreachable!(),
                         },
                         colon,
                         bounds: {
@@ -584,30 +584,30 @@ impl Pretty for Constraint {
     }
 }
 
-pub struct Parenthesized {
-    pub paren: tok::Paren,
+pub struct Parenthed {
+    pub parenth: tok::Parenth,
     pub args: Puncted<typ::Type, Token![,]>,
     pub ret: typ::Ret,
 }
-impl Parse for Parenthesized {
+impl Parse for Parenthed {
     fn parse(s: Stream) -> Res<Self> {
         let y;
-        Ok(Parenthesized {
-            paren: parenthesized!(y in s),
+        Ok(Parenthed {
+            parenth: parenthed!(y in s),
             args: y.parse_terminated(typ::Type::parse, Token![,])?,
             ret: s.call(typ::Ret::without_plus)?,
         })
     }
 }
-impl Lower for Parenthesized {
+impl Lower for Parenthed {
     fn lower(&self, s: &mut Stream) {
-        self.paren.surround(s, |s| {
+        self.parenth.surround(s, |s| {
             self.args.lower(s);
         });
         self.ret.lower(s);
     }
 }
-impl Pretty for Parenthesized {
+impl Pretty for Parenthed {
     fn pretty(&self, p: &mut Print) {
         p.cbox(INDENT);
         p.word("(");

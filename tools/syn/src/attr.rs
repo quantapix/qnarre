@@ -392,7 +392,7 @@ impl Pretty for List {
         let delim = match self.delim {
             Brace(_) => pm2::Delim::Brace,
             Bracket(_) => pm2::Delim::Bracket,
-            Paren(_) => pm2::Delim::Paren,
+            Parenth(_) => pm2::Delim::Parenth,
         };
         let y = pm2::Group::new(delim, self.toks.clone());
         attr_tokens(p, Stream::from(pm2::Tree::Group(y)));
@@ -448,7 +448,7 @@ impl Pretty for List {
                         let stream = x.stream();
                         use Delim::*;
                         match delim {
-                            Paren => {
+                            Parenth => {
                                 p.word("(");
                                 p.cbox(INDENT);
                                 p.zerobreak();
@@ -470,7 +470,7 @@ impl Pretty for List {
                     None => {
                         use Delim::*;
                         match delim {
-                            Paren => {
+                            Parenth => {
                                 if state != TrailingComma {
                                     p.zerobreak();
                                 }
@@ -537,7 +537,7 @@ impl<'a> Nested<'a> {
     }
     pub fn parse(&self, f: impl FnMut(Nested) -> Res<()>) -> Res<()> {
         let y;
-        parenthesized!(y in self.ins);
+        parenthed!(y in self.ins);
         parse_nested(&y, f)
     }
     pub fn err(&self, x: impl Display) -> Err {
@@ -571,7 +571,7 @@ pub fn parse_nested(ins: Stream, mut f: impl FnMut(Nested) -> Res<()>) -> Res<()
     }
 }
 pub fn parse_after_path(p: Path, s: Stream) -> Res<Meta> {
-    if s.peek(tok::Paren) || s.peek(tok::Bracket) || s.peek(tok::Brace) {
+    if s.peek(tok::Parenth) || s.peek(tok::Bracket) || s.peek(tok::Brace) {
         parse_list_after_path(p, s).map(Meta::List)
     } else if s.peek(Token![=]) {
         parse_name_value_after_path(p, s).map(Meta::NameValue)

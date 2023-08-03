@@ -25,7 +25,7 @@ pub mod bound {
                     || s.peek(Token![::])
                     || s.peek(Token![?])
                     || s.peek(Life)
-                    || s.peek(tok::Paren)
+                    || s.peek(tok::Parenth)
                     || s.peek(Token![~]))
                 {
                     break;
@@ -41,8 +41,8 @@ pub mod bound {
             }
             let beg = s.fork();
             let y;
-            let (paren, y) = if s.peek(tok::Paren) {
-                (Some(parenthesized!(y in s)), &y)
+            let (parenth, y) = if s.peek(tok::Parenth) {
+                (Some(parenthed!(y in s)), &y)
             } else {
                 (None, s)
             };
@@ -52,7 +52,7 @@ pub mod bound {
                 y.parse::<Token![const]>()?;
             }
             let mut y: Trait = y.parse()?;
-            y.paren = paren;
+            y.parenth = parenth;
             if is_tilde_const {
                 Ok(Type::Verbatim(parse::parse_verbatim(&beg, s)))
             } else {
@@ -74,7 +74,7 @@ pub mod bound {
     }
 
     pub struct Trait {
-        pub paren: Option<tok::Paren>,
+        pub parenth: Option<tok::Parenth>,
         pub modif: Modifier,
         pub lifes: Option<Lifes>,
         pub path: Path,
@@ -85,15 +85,15 @@ pub mod bound {
             let lifes: Option<Lifes> = s.parse()?;
             let mut path: Path = s.parse()?;
             if path.segs.last().unwrap().args.is_empty()
-                && (s.peek(tok::Paren) || s.peek(Token![::]) && s.peek3(tok::Paren))
+                && (s.peek(tok::Parenth) || s.peek(Token![::]) && s.peek3(tok::Parenth))
             {
                 s.parse::<Option<Token![::]>>()?;
-                let y: path::Parenthesized = s.parse()?;
-                let y = path::Args::Parenthesized(y);
+                let y: path::Parenthed = s.parse()?;
+                let y = path::Args::Parenthed(y);
                 path.segs.last_mut().unwrap().args = y;
             }
             Ok(Trait {
-                paren: None,
+                parenth: None,
                 modif,
                 lifes,
                 path,
@@ -107,7 +107,7 @@ pub mod bound {
                 self.lifes.lower(s);
                 self.path.lower(s);
             };
-            match &self.paren {
+            match &self.parenth {
                 Some(x) => x.surround(s, y),
                 None => y(s),
             }
@@ -115,7 +115,7 @@ pub mod bound {
     }
     impl Pretty for Trait {
         fn pretty(&self, p: &mut Print, tilde: bool) {
-            if self.paren.is_some() {
+            if self.parenth.is_some() {
                 p.word("(");
             }
             if tilde {
@@ -131,7 +131,7 @@ pub mod bound {
                 }
                 &x.pretty(p, path::Kind::Type);
             }
-            if self.paren.is_some() {
+            if self.parenth.is_some() {
                 p.word(")");
             }
         }
@@ -252,8 +252,8 @@ pub mod bound {
             impl parse::Parse for Type {
                 fn parse(s: parse::Stream) -> Res<Self> {
                     let y;
-                    let (paren, y) = if s.peek(tok::Paren) {
-                        (Some(parenthesized!(y in s)), &y)
+                    let (parenth, y) = if s.peek(tok::Parenth) {
+                        (Some(parenthed!(y in s)), &y)
                     } else {
                         (None, s)
                     };
@@ -262,7 +262,7 @@ pub mod bound {
                         y.parse::<Token![~]>()?;
                         y.parse::<Token![const]>()?;
                         let mut y: Trait = y.parse()?;
-                        y.paren = paren;
+                        y.parenth = parenth;
                         Ok(Type::TildeConst(y))
                     } else if look.peek(Token![...]) {
                         y.parse::<Token![...]>()?;

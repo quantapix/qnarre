@@ -8,7 +8,7 @@ ast_enum_of_structs! {
         Lit(Lit),
         Mac(Mac),
         Or(Or),
-        Paren(Paren),
+        Parenth(Parenth),
         Path(Path),
         Range(Range),
         Ref(Ref),
@@ -30,7 +30,7 @@ impl Pat {
             && (s.peek2(Token![::])
                 || s.peek2(Token![!])
                 || s.peek2(tok::Brace)
-                || s.peek2(tok::Paren)
+                || s.peek2(tok::Parenth)
                 || s.peek2(Token![..]))
             || s.peek(Token![self]) && s.peek2(Token![::])
             || look.peek(Token![::])
@@ -50,7 +50,7 @@ impl Pat {
             s.call(parse_ident).map(Pat::Ident)
         } else if look.peek(Token![&]) {
             s.call(parse_ref).map(Pat::Ref)
-        } else if look.peek(tok::Paren) {
+        } else if look.peek(tok::Parenth) {
             s.call(parse_paren_or_tuple)
         } else if look.peek(tok::Bracket) {
             s.call(parse_slice).map(Pat::Slice)
@@ -79,7 +79,7 @@ impl Pretty for Pat {
             Lit(x) => x.pretty(p),
             Mac(x) => x.pretty(p),
             Or(x) => x.pretty(p),
-            Paren(x) => x.pretty(p),
+            Parenth(x) => x.pretty(p),
             Path(x) => x.pretty(p),
             Range(x) => p.expr_range(x),
             Ref(x) => x.pretty(p),
@@ -172,20 +172,20 @@ impl Pretty for Or {
     }
 }
 
-pub struct Paren {
+pub struct Parenth {
     pub attrs: Vec<attr::Attr>,
-    pub paren: tok::Paren,
+    pub parenth: tok::Parenth,
     pub pat: Box<Pat>,
 }
-impl Lower for Paren {
+impl Lower for Parenth {
     fn lower(&self, s: &mut Stream) {
         s.append_all(self.attrs.outers());
-        self.paren.surround(s, |s| {
+        self.parenth.surround(s, |s| {
             self.pat.lower(s);
         });
     }
 }
-impl Pretty for Paren {
+impl Pretty for Parenth {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
         p.word("(");
@@ -341,13 +341,13 @@ impl Member {
 
 pub struct Tuple {
     pub attrs: Vec<attr::Attr>,
-    pub paren: tok::Paren,
+    pub parenth: tok::Parenth,
     pub pats: Puncted<Pat, Token![,]>,
 }
 impl Lower for Tuple {
     fn lower(&self, s: &mut Stream) {
         s.append_all(self.attrs.outers());
-        self.paren.surround(s, |s| {
+        self.parenth.surround(s, |s| {
             self.pats.lower(s);
         });
     }
@@ -379,14 +379,14 @@ pub struct TupleStruct {
     pub attrs: Vec<attr::Attr>,
     pub qself: Option<path::QSelf>,
     pub path: Path,
-    pub paren: tok::Paren,
+    pub parenth: tok::Parenth,
     pub pats: Puncted<Pat, Token![,]>,
 }
 impl Lower for TupleStruct {
     fn lower(&self, s: &mut Stream) {
         s.append_all(self.attrs.outers());
         path::path_lower(s, &self.qself, &self.path);
-        self.paren.surround(s, |s| {
+        self.parenth.surround(s, |s| {
             self.pats.lower(s);
         });
     }
@@ -649,7 +649,7 @@ fn parse_path_or_mac_or_struct_or_range(s: Stream) -> Res<Pat> {
     }
     if s.peek(tok::Brace) {
         parse_struct(s, qself, path).map(Pat::Struct)
-    } else if s.peek(tok::Paren) {
+    } else if s.peek(tok::Parenth) {
         parse_tuple_struct(s, qself, path).map(Pat::TupleStruct)
     } else if s.peek(Token![..]) {
         parse_range(s, qself, path)
@@ -663,15 +663,15 @@ fn parse_path_or_mac_or_struct_or_range(s: Stream) -> Res<Pat> {
 }
 fn parse_paren_or_tuple(s: Stream) -> Res<Pat> {
     let y;
-    let paren = parenthesized!(y in s);
+    let parenth = parenthed!(y in s);
     let mut elems = Puncted::new();
     while !y.is_empty() {
         let x = Pat::parse_many(&y)?;
         if y.is_empty() {
             if elems.is_empty() && !matches!(x, Pat::Rest(_)) {
-                return Ok(Pat::Paren(Paren {
+                return Ok(Pat::Parenth(Parenth {
                     attrs: Vec::new(),
-                    paren,
+                    parenth,
                     pat: Box::new(x),
                 }));
             }
@@ -684,7 +684,7 @@ fn parse_paren_or_tuple(s: Stream) -> Res<Pat> {
     }
     Ok(Pat::Tuple(Tuple {
         attrs: Vec::new(),
-        paren,
+        parenth,
         pats: elems,
     }))
 }
@@ -827,7 +827,7 @@ fn parse_struct(s: Stream, qself: Option<path::QSelf>, path: Path) -> Res<Struct
 }
 fn parse_tuple_struct(s: Stream, qself: Option<path::QSelf>, path: Path) -> Res<TupleStruct> {
     let y;
-    let paren = parenthesized!(y in s);
+    let parenth = parenthed!(y in s);
     let mut elems = Puncted::new();
     while !y.is_empty() {
         let x = Pat::parse_many(&y)?;
@@ -842,7 +842,7 @@ fn parse_tuple_struct(s: Stream, qself: Option<path::QSelf>, path: Path) -> Res<
         attrs: Vec::new(),
         qself,
         path,
-        paren,
+        parenth,
         pats: elems,
     })
 }

@@ -197,7 +197,7 @@ impl PartialEq for expr::Expr {
             (Mac(x), Mac(y)) => x == y,
             (Match(x), Match(y)) => x == y,
             (MethodCall(x), MethodCall(y)) => x == y,
-            (Paren(x), Paren(y)) => x == y,
+            (Parenth(x), Parenth(y)) => x == y,
             (Path(x), Path(y)) => x == y,
             (Range(x), Range(y)) => x == y,
             (Ref(x), Ref(y)) => x == y,
@@ -376,8 +376,8 @@ impl PartialEq for expr::MethodCall {
             && self.args == x.args
     }
 }
-impl Eq for expr::Paren {}
-impl PartialEq for expr::Paren {
+impl Eq for expr::Parenth {}
+impl PartialEq for expr::Parenth {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.expr == x.expr
     }
@@ -886,7 +886,7 @@ impl Eq for tok::Delim {}
 impl PartialEq for tok::Delim {
     fn eq(&self, x: &Self) -> bool {
         match (self, x) {
-            (tok::Delim::Paren(_), tok::Delim::Paren(_)) => true,
+            (tok::Delim::Parenth(_), tok::Delim::Parenth(_)) => true,
             (tok::Delim::Brace(_), tok::Delim::Brace(_)) => true,
             (tok::Delim::Bracket(_), tok::Delim::Bracket(_)) => true,
             _ => false,
@@ -916,10 +916,10 @@ impl PartialEq for attr::NameValue {
         self.name == x.name && self.val == x.val
     }
 }
-impl Eq for ParenthesizedArgs {}
-impl PartialEq for ParenthesizedArgs {
+impl Eq for path::Parenthed {}
+impl PartialEq for path::Parenthed {
     fn eq(&self, x: &Self) -> bool {
-        self.ins == x.ins && self.out == x.out
+        self.args == x.args && self.ret == x.ret
     }
 }
 impl Eq for pat::Pat {}
@@ -931,7 +931,7 @@ impl PartialEq for pat::Pat {
             (pat::Pat::Lit(x), pat::Pat::Lit(y)) => x == y,
             (pat::Pat::Mac(x), pat::Pat::Mac(y)) => x == y,
             (pat::Pat::Or(x), pat::Pat::Or(y)) => x == y,
-            (pat::Pat::Paren(x), pat::Pat::Paren(y)) => x == y,
+            (pat::Pat::Parenth(x), pat::Pat::Parenth(y)) => x == y,
             (pat::Pat::Path(x), pat::Pat::Path(y)) => x == y,
             (pat::Pat::Range(x), pat::Pat::Range(y)) => x == y,
             (pat::Pat::Ref(x), pat::Pat::Ref(y)) => x == y,
@@ -963,8 +963,8 @@ impl PartialEq for pat::Or {
         self.attrs == x.attrs && self.vert == x.vert && self.cases == x.cases
     }
 }
-impl Eq for pat::Paren {}
-impl PartialEq for pat::Paren {
+impl Eq for pat::Parenth {}
+impl PartialEq for pat::Parenth {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.pat == x.pat
     }
@@ -1027,13 +1027,14 @@ impl PartialEq for Path {
         self.colon == x.colon && self.segs == x.segs
     }
 }
-impl Eq for Args {}
-impl PartialEq for Args {
+impl Eq for path::Args {}
+impl PartialEq for path::Args {
     fn eq(&self, x: &Self) -> bool {
+        use path::Args::*;
         match (self, x) {
-            (Args::None, Args::None) => true,
-            (Args::Angled(x), Args::Angled(y)) => x == y,
-            (Args::Parenthesized(x), Args::Parenthesized(y)) => x == y,
+            (None, None) => true,
+            (Angled(x), Angled(y)) => x == y,
+            (Parenthed(x), Parenthed(y)) => x == y,
             _ => false,
         }
     }
@@ -1137,7 +1138,7 @@ impl PartialEq for stmt::Mac {
 impl Eq for gen::bound::Trait {}
 impl PartialEq for gen::bound::Trait {
     fn eq(&self, x: &Self) -> bool {
-        self.paren == x.paren && self.modif == x.modif && self.lifes == x.lifes && self.path == x.path
+        self.parenth == x.parenth && self.modif == x.modif && self.lifes == x.lifes && self.path == x.path
     }
 }
 impl Eq for gen::bound::Modifier {}
@@ -1207,7 +1208,7 @@ impl PartialEq for typ::Type {
             (typ::Type::Infer(x), typ::Type::Infer(y)) => x == y,
             (typ::Type::Mac(x), typ::Type::Mac(y)) => x == y,
             (typ::Type::Never(x), typ::Type::Never(y)) => x == y,
-            (typ::Type::Paren(x), typ::Type::Paren(y)) => x == y,
+            (typ::Type::Parenth(x), typ::Type::Parenth(y)) => x == y,
             (typ::Type::Path(x), typ::Type::Path(y)) => x == y,
             (typ::Type::Ptr(x), typ::Type::Ptr(y)) => x == y,
             (typ::Type::Ref(x), typ::Type::Ref(y)) => x == y,
@@ -1288,8 +1289,8 @@ impl PartialEq for gen::bound::Type {
         }
     }
 }
-impl Eq for typ::Paren {}
-impl PartialEq for typ::Paren {
+impl Eq for typ::Parenth {}
+impl PartialEq for typ::Parenth {
     fn eq(&self, x: &Self) -> bool {
         self.elem == x.elem
     }

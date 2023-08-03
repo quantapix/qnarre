@@ -4,13 +4,13 @@ use super::{
 };
 use std::{cell::Cell, rc::Rc};
 
-pub struct Parens<'a> {
-    pub tok: tok::Paren,
+pub struct Parenths<'a> {
+    pub tok: tok::Parenth,
     pub buf: Buffer<'a>,
 }
-pub fn parse_parens<'a>(x: &Buffer<'a>) -> Res<Parens<'a>> {
-    parse_delimited(x, Delim::Paren).map(|(span, buf)| Parens {
-        tok: tok::Paren(span),
+pub fn parse_parenths<'a>(x: &Buffer<'a>) -> Res<Parenths<'a>> {
+    parse_delimited(x, Delim::Parenth).map(|(x, buf)| Parenths {
+        tok: tok::Parenth(x),
         buf,
     })
 }
@@ -20,8 +20,8 @@ pub struct Braces<'a> {
     pub buf: Buffer<'a>,
 }
 pub fn parse_braces<'a>(x: &Buffer<'a>) -> Res<Braces<'a>> {
-    parse_delimited(x, Delim::Brace).map(|(span, buf)| Braces {
-        tok: tok::Brace(span),
+    parse_delimited(x, Delim::Brace).map(|(x, buf)| Braces {
+        tok: tok::Brace(x),
         buf,
     })
 }
@@ -31,8 +31,8 @@ pub struct Brackets<'a> {
     pub buf: Buffer<'a>,
 }
 pub fn parse_brackets<'a>(x: &Buffer<'a>) -> Res<Brackets<'a>> {
-    parse_delimited(x, Delim::Bracket).map(|(span, buf)| Brackets {
-        tok: tok::Bracket(span),
+    parse_delimited(x, Delim::Bracket).map(|(x, buf)| Brackets {
+        tok: tok::Bracket(x),
         buf,
     })
 }
@@ -57,7 +57,7 @@ fn parse_delimited<'a>(b: &Buffer<'a>, d: Delim) -> Res<(DelimSpan, Buffer<'a>)>
             Ok(((span, y), rest))
         } else {
             let y = match d {
-                Delim::Paren => "expected parentheses",
+                Delim::Parenth => "expected parentheses",
                 Delim::Brace => "expected braces",
                 Delim::Bracket => "expected brackets",
                 Delim::None => "expected group",

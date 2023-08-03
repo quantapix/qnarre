@@ -1439,7 +1439,7 @@ impl Debug for Lite<syn::expr::MethodCall> {
         f.finish()
     }
 }
-impl Debug for Lite<syn::expr::Paren> {
+impl Debug for Lite<syn::expr::Parenth> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut f = f.debug_struct("expr::Paren");
         if !self.value.attrs.is_empty() {
@@ -2976,7 +2976,7 @@ impl Debug for Lite<syn::Macro> {
 impl Debug for Lite<syn::tok::Delim> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match &self.value {
-            syn::tok::Delim::Paren(_val) => {
+            syn::tok::Delim::Parenth(_val) => {
                 f.write_str("MacroDelimiter::Paren")?;
                 Ok(())
             },
@@ -3132,7 +3132,7 @@ impl Debug for Lite<syn::pat::Pat> {
                 }
                 f.finish()
             },
-            syn::pat::Pat::Paren(_val) => {
+            syn::pat::Pat::Parenth(_val) => {
                 let mut f = f.debug_struct("pat::Pat::Paren");
                 if !_val.attrs.is_empty() {
                     f.field("attrs", Lite(&_val.attrs));
@@ -3773,7 +3773,7 @@ impl Debug for Lite<syn::stmt::Mac> {
 impl Debug for Lite<syn::gen::bound::Trait> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut f = f.debug_struct("gen::bound::Trait");
-        if self.value.paren.is_some() {
+        if self.value.parenth.is_some() {
             f.field("paren", &Present);
         }
         match self.value.modif {
@@ -4098,7 +4098,7 @@ impl Debug for Lite<syn::typ::Type> {
                 let mut f = f.debug_struct("Type::Never");
                 f.finish()
             },
-            syn::typ::Type::Paren(_val) => {
+            syn::typ::Type::Parenth(_val) => {
                 let mut f = f.debug_struct("Type::Paren");
                 f.field("elem", Lite(&_val.elem));
                 f.finish()
@@ -4345,7 +4345,7 @@ impl Debug for Lite<syn::gen::bound::Type> {
         }
     }
 }
-impl Debug for Lite<syn::typ::Paren> {
+impl Debug for Lite<syn::typ::Parenth> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut f = f.debug_struct("typ::Paren");
         f.field("elem", Lite(&self.value.elem));

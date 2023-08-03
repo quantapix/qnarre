@@ -234,7 +234,7 @@ impl<'a> VariantInfo<'a> {
             data::Fields::Unit => {
                 assert!(self.bindings.is_empty());
             },
-            data::Fields::Unnamed(..) => tok::Paren(pm2::Span::call_site()).surround(&mut t, |t| {
+            data::Fields::Unnamed(..) => tok::Parenth(pm2::Span::call_site()).surround(&mut t, |t| {
                 let mut i = 0;
                 for x in &self.bindings {
                     while i < x.index {
@@ -276,7 +276,7 @@ impl<'a> VariantInfo<'a> {
         match &self.ast.fields {
             data::Fields::Unit => (),
             data::Fields::Unnamed(data::Unnamed { fields, .. }) => {
-                tok::Paren::default().surround(&mut t, |t| {
+                tok::Parenth::default().surround(&mut t, |t| {
                     for (i, field) in fields.into_iter().enumerate() {
                         func(field, i).lower(t);
                         quote!(,).lower(t);
@@ -860,7 +860,7 @@ mod tests {
     use super::*;
     #[test]
     fn test_each_enum() {
-        let di: syn::data::Input = syn::parse_quote! {
+        let di: data::Input = parse_quote! {
          enum A {
              Foo(usize, bool),
              Bar(bool, usize),

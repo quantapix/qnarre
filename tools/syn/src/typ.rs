@@ -9,7 +9,7 @@ ast_enum_of_structs! {
         Infer(Infer),
         Mac(Mac),
         Never(Never),
-        Paren(Paren),
+        Parenth(Parenth),
         Path(Path),
         Ptr(Ptr),
         Ref(Ref),
@@ -44,7 +44,7 @@ impl Pretty for Type {
             Infer(x) => x.pretty(p),
             Mac(x) => x.pretty(p),
             Never(x) => x.pretty(p),
-            Paren(x) => x.pretty(p),
+            Parenth(x) => x.pretty(p),
             Path(x) => x.pretty(p),
             Ptr(x) => x.pretty(p),
             Ref(x) => x.pretty(p),
@@ -97,7 +97,7 @@ pub struct Fn {
     pub unsafe_: Option<Token![unsafe]>,
     pub abi: Option<Abi>,
     pub fn_: Token![fn],
-    pub paren: tok::Paren,
+    pub parenth: tok::Parenth,
     pub args: Puncted<FnArg, Token![,]>,
     pub vari: Option<Variadic>,
     pub ret: Ret,
@@ -111,7 +111,7 @@ impl Parse for Fn {
             unsafe_: s.parse()?,
             abi: s.parse()?,
             fn_: s.parse()?,
-            paren: parenthesized!(args in s),
+            parenth: parenthed!(args in s),
             args: {
                 let mut ys = Puncted::new();
                 while !args.is_empty() {
@@ -145,7 +145,7 @@ impl Lower for Fn {
         self.unsafe_.lower(s);
         self.abi.lower(s);
         self.fn_.lower(s);
-        self.paren.surround(s, |s| {
+        self.parenth.surround(s, |s| {
             self.args.lower(s);
             if let Some(x) = &self.vari {
                 if !self.args.empty_or_trailing() {
@@ -329,15 +329,15 @@ impl Pretty for Never {
     }
 }
 
-pub struct Paren {
-    pub paren: tok::Paren,
+pub struct Parenth {
+    pub parenth: tok::Parenth,
     pub elem: Box<Type>,
 }
-impl Paren {
+impl Parenth {
     fn parse(s: Stream, plus: bool) -> Res<Self> {
         let y;
-        Ok(Paren {
-            paren: parenthesized!(y in s),
+        Ok(Parenth {
+            parenth: parenthed!(y in s),
             elem: Box::new({
                 let gen = true;
                 parse_ambig_typ(&y, plus, gen)?
@@ -345,20 +345,20 @@ impl Paren {
         })
     }
 }
-impl Parse for Paren {
+impl Parse for Parenth {
     fn parse(s: Stream) -> Res<Self> {
         let plus = false;
         Self::parse(s, plus)
     }
 }
-impl Lower for Paren {
+impl Lower for Parenth {
     fn lower(&self, s: &mut Stream) {
-        self.paren.surround(s, |s| {
+        self.parenth.surround(s, |s| {
             self.elem.lower(s);
         });
     }
 }
-impl Pretty for Paren {
+impl Pretty for Parenth {
     fn pretty(&self, p: &mut Print) {
         p.word("(");
         &self.elem.pretty(p);
@@ -568,22 +568,22 @@ impl Pretty for Trait {
 }
 
 pub struct Tuple {
-    pub paren: tok::Paren,
+    pub parenth: tok::Parenth,
     pub elems: Puncted<Type, Token![,]>,
 }
 impl Parse for Tuple {
     fn parse(s: Stream) -> Res<Self> {
         let y;
-        let paren = parenthesized!(y in s);
+        let parenth = parenthed!(y in s);
         if y.is_empty() {
             return Ok(Tuple {
-                paren,
+                parenth,
                 elems: Puncted::new(),
             });
         }
         let first: Type = y.parse()?;
         Ok(Tuple {
-            paren,
+            parenth,
             elems: {
                 let mut ys = Puncted::new();
                 ys.push_value(first);
@@ -602,7 +602,7 @@ impl Parse for Tuple {
 }
 impl Lower for Tuple {
     fn lower(&self, s: &mut Stream) {
-        self.paren.surround(s, |s| {
+        self.parenth.surround(s, |s| {
             self.elems.lower(s);
             if self.elems.len() == 1 && !self.elems.trailing_punct() {
                 <Token![,]>::default().lower(s);
@@ -911,18 +911,18 @@ pub fn parse_ambig_typ(s: Stream, plus: bool, gen: bool) -> Res<Type> {
             return Err(look.err());
         }
     }
-    if look.peek(tok::Paren) {
+    if look.peek(tok::Parenth) {
         let y;
-        let paren = parenthesized!(y in s);
+        let parenth = parenthed!(y in s);
         if y.is_empty() {
             return Ok(Type::Tuple(Tuple {
-                paren,
+                parenth,
                 elems: Puncted::new(),
             }));
         }
         if y.peek(Life) {
-            return Ok(Type::Paren(Paren {
-                paren,
+            return Ok(Type::Parenth(Parenth {
+                parenth,
                 elem: Box::new(Type::TraitObject(y.parse()?)),
             }));
         }
@@ -932,7 +932,7 @@ pub fn parse_ambig_typ(s: Stream, plus: bool, gen: bool) -> Res<Type> {
                 bounds: {
                     let mut ys = Puncted::new();
                     ys.push_value(gen::bound::Type::Trait(gen::bound::Trait {
-                        paren: Some(paren),
+                        parenth: Some(parenth),
                         ..y.parse()?
                     }));
                     while let Some(x) = s.parse()? {
@@ -946,7 +946,7 @@ pub fn parse_ambig_typ(s: Stream, plus: bool, gen: bool) -> Res<Type> {
         let mut first: Type = y.parse()?;
         if y.peek(Token![,]) {
             return Ok(Type::Tuple(Tuple {
-                paren,
+                parenth,
                 elems: {
                     let mut ys = Puncted::new();
                     ys.push_value(first);
@@ -966,7 +966,7 @@ pub fn parse_ambig_typ(s: Stream, plus: bool, gen: bool) -> Res<Type> {
             loop {
                 let first = match first {
                     Type::Path(Path { qself: None, path }) => gen::bound::Type::Trait(gen::bound::Trait {
-                        paren: Some(paren),
+                        parenth: Some(parenth),
                         modif: gen::bound::Modifier::None,
                         lifes: None,
                         path,
@@ -978,7 +978,7 @@ pub fn parse_ambig_typ(s: Stream, plus: bool, gen: bool) -> Res<Type> {
                         }
                         match bounds.into_iter().next().unwrap() {
                             gen::bound::Type::Trait(trait_bound) => gen::bound::Type::Trait(gen::bound::Trait {
-                                paren: Some(paren),
+                                parenth: Some(parenth),
                                 ..trait_bound
                             }),
                             other @ (gen::bound::Type::Life(_) | gen::bound::Type::Verbatim(_)) => other,
@@ -1000,8 +1000,8 @@ pub fn parse_ambig_typ(s: Stream, plus: bool, gen: bool) -> Res<Type> {
                 }));
             }
         }
-        Ok(Type::Paren(Paren {
-            paren,
+        Ok(Type::Parenth(Parenth {
+            parenth,
             elem: Box::new(first),
         }))
     } else if look.peek(Token![fn]) || look.peek(Token![unsafe]) || look.peek(Token![extern]) {
@@ -1035,7 +1035,7 @@ pub fn parse_ambig_typ(s: Stream, plus: bool, gen: bool) -> Res<Type> {
         if lifes.is_some() || plus && s.peek(Token![+]) {
             let mut bounds = Puncted::new();
             bounds.push_value(gen::bound::Type::Trait(gen::bound::Trait {
-                paren: None,
+                parenth: None,
                 modif: gen::bound::Modifier::None,
                 lifes,
                 path: typ.path,
@@ -1047,7 +1047,7 @@ pub fn parse_ambig_typ(s: Stream, plus: bool, gen: bool) -> Res<Type> {
                         || s.peek(Token![::])
                         || s.peek(Token![?])
                         || s.peek(Life)
-                        || s.peek(tok::Paren))
+                        || s.peek(tok::Parenth))
                     {
                         break;
                     }

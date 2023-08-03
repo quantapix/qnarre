@@ -556,9 +556,9 @@ impl Print {
                 (DollarParen, Token::Punct(_, Spacing::Alone)) => (false, DollarParenSep),
                 (DollarParenSep, Token::Punct('+' | '*', _)) => (false, Other),
                 (Pound, Token::Punct('!', _)) => (false, PoundBang),
-                (Dollar, Token::Group(Delim::Paren, _)) => (false, DollarParen),
+                (Dollar, Token::Group(Delim::Parenth, _)) => (false, DollarParen),
                 (Pound | PoundBang, Token::Group(Delim::Bracket, _)) => (false, Other),
-                (Ident, Token::Group(Delim::Paren | Delim::Bracket, _)) => (false, Delim),
+                (Ident, Token::Group(Delim::Parenth | Delim::Bracket, _)) => (false, Delim),
                 (Ident, Token::Punct('!', Spacing::Alone)) => (false, IdentBang),
                 (IdentBang, Token::Group(Delim::Parent | Delim::Bracket, _)) => (false, Other),
                 (Colon, Token::Punct(':', _)) => (false, Colon2),
@@ -888,14 +888,14 @@ mod standard_library {
         fn parse_cfg(s: parse::Stream) -> Res<Self> {
             fn parse_single(s: parse::Stream) -> Res<Cfg> {
                 let ident: Ident = s.parse()?;
-                if s.peek(tok::Paren) && (ident == "all" || ident == "any") {
+                if s.peek(tok::Parenth) && (ident == "all" || ident == "any") {
                     let y;
-                    parenthesized!(y in s);
+                    parenthed!(y in s);
                     let list = y.call(parse_multiple)?;
                     Ok(Cfg::Call(ident, list))
-                } else if s.peek(tok::Paren) && ident == "not" {
+                } else if s.peek(tok::Parenth) && ident == "not" {
                     let y;
-                    parenthesized!(y in s);
+                    parenthed!(y in s);
                     let cfg = y.call(parse_single)?;
                     y.parse::<Option<Token![,]>>()?;
                     Ok(Cfg::Call(ident, vec![cfg]))

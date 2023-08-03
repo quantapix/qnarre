@@ -116,17 +116,17 @@ impl Visibility {
     }
     fn parse_pub(s: Stream) -> Res<Self> {
         let pub_ = s.parse::<Token![pub]>()?;
-        if s.peek(tok::Paren) {
+        if s.peek(tok::Parenth) {
             let ahead = s.fork();
             let y;
-            let paren = parenthesized!(y in ahead);
+            let parenth = parenthed!(y in ahead);
             if y.peek(Token![crate]) || y.peek(Token![self]) || y.peek(Token![super]) {
                 let path = y.call(Ident::parse_any)?;
                 if y.is_empty() {
                     s.advance_to(&ahead);
                     return Ok(Visibility::Restricted(Restricted {
                         pub_,
-                        paren,
+                        parenth,
                         in_: None,
                         path: Box::new(Path::from(path)),
                     }));
@@ -137,7 +137,7 @@ impl Visibility {
                 s.advance_to(&ahead);
                 return Ok(Visibility::Restricted(Restricted {
                     pub_,
-                    paren,
+                    parenth,
                     in_: Some(in_),
                     path: Box::new(path),
                 }));
@@ -185,14 +185,14 @@ impl Pretty for Visibility {
 
 pub struct Restricted {
     pub pub_: Token![pub],
-    pub paren: tok::Paren,
+    pub parenth: tok::Parenth,
     pub in_: Option<Token![in]>,
     pub path: Box<Path>,
 }
 impl Lower for Restricted {
     fn lower(&self, s: &mut Stream) {
         self.pub_.lower(s);
-        self.paren.surround(s, |s| {
+        self.parenth.surround(s, |s| {
             self.in_.lower(s);
             self.path.lower(s);
         });
@@ -247,7 +247,7 @@ impl Parse for Variant {
         let ident: Ident = s.parse()?;
         let fields = if s.peek(tok::Brace) {
             Fields::Named(s.parse()?)
-        } else if s.peek(tok::Paren) {
+        } else if s.peek(tok::Parenth) {
             Fields::Unnamed(s.parse()?)
         } else {
             Fields::Unit
@@ -401,21 +401,21 @@ impl Lower for Named {
 }
 
 pub struct Unnamed {
-    pub paren: tok::Paren,
+    pub parenth: tok::Parenth,
     pub fields: Puncted<Field, Token![,]>,
 }
 impl Parse for Unnamed {
     fn parse(s: Stream) -> Res<Self> {
         let y;
         Ok(Unnamed {
-            paren: parenthesized!(y in s),
+            parenth: parenthed!(y in s),
             fields: y.parse_terminated(Field::parse_unnamed, Token![,])?,
         })
     }
 }
 impl Lower for Unnamed {
     fn lower(&self, s: &mut Stream) {
-        self.paren.surround(s, |s| {
+        self.parenth.surround(s, |s| {
             self.fields.lower(s);
         });
     }
@@ -501,7 +501,7 @@ pub fn parse_struct(s: Stream) -> Res<(Option<gen::Where>, Fields, Option<Token!
         where_ = Some(s.parse()?);
         look = s.look1();
     }
-    if where_.is_none() && look.peek(tok::Paren) {
+    if where_.is_none() && look.peek(tok::Parenth) {
         let y = s.parse()?;
         look = s.look1();
         if look.peek(Token![where]) {

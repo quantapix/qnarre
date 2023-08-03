@@ -452,14 +452,14 @@ macro_rules! def_delims {
 def_delims! {
     Brace pub struct Brace
     Bracket pub struct Bracket
-    Paren pub struct Paren
+    Parenth pub struct Parenth
 }
 impl Tok for Brace {
     fn peek(x: Cursor) -> bool {
         look::is_delim(x, pm2::Delim::Brace)
     }
     fn display() -> &'static str {
-        "curly braces"
+        "braces"
     }
 }
 impl Tok for Bracket {
@@ -467,12 +467,12 @@ impl Tok for Bracket {
         look::is_delim(x, pm2::Delim::Bracket)
     }
     fn display() -> &'static str {
-        "square brackets"
+        "brackets"
     }
 }
-impl Tok for Paren {
+impl Tok for Parenth {
     fn peek(x: Cursor) -> bool {
-        look::is_delim(x, pm2::Delim::Paren)
+        look::is_delim(x, pm2::Delim::Parenth)
     }
     fn display() -> &'static str {
         "parentheses"
@@ -480,25 +480,25 @@ impl Tok for Paren {
 }
 
 pub enum Delim {
-    Paren(Paren),
     Brace(Brace),
     Bracket(Bracket),
+    Parenth(Parenth),
 }
 impl Delim {
     pub fn span(&self) -> &pm2::DelimSpan {
         use Delim::*;
         match self {
-            Paren(x) => &x.span,
             Brace(x) => &x.span,
             Bracket(x) => &x.span,
+            Parenth(x) => &x.span,
         }
     }
     pub fn surround(&self, s: &mut Stream, inner: pm2::Stream) {
         use Delim::*;
         let (delim, span) = match self {
-            Paren(x) => (pm2::Delim::Paren, x.span),
             Brace(x) => (pm2::Delim::Brace, x.span),
             Bracket(x) => (pm2::Delim::Bracket, x.span),
+            Parenth(x) => (pm2::Delim::Parenth, x.span),
         };
         delim_lower(delim, span.join(), s, inner);
     }
@@ -506,24 +506,24 @@ impl Delim {
         use Delim::*;
         match self {
             Brace(_) => true,
-            Paren(_) | Bracket(_) => false,
+            Bracket(_) | Parenth(_) => false,
         }
     }
     pub fn pretty_open(&self, p: &mut Print) {
         use Delim::*;
         p.word(match self {
-            Paren(_) => "(",
             Brace(_) => "{",
             Bracket(_) => "[",
+            Parenth(_) => "(",
             None => return,
         });
     }
     pub fn pretty_close(&self, p: &mut Print) {
         use Delim::*;
         p.word(match self {
-            Paren(_) => ")",
             Brace(_) => "}",
             Bracket(_) => "]",
+            Parenth(_) => ")",
             None => return,
         });
     }

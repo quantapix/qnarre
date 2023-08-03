@@ -151,7 +151,7 @@ impl<'a> PartialEq for TreeHelper<'a> {
         match (self.0, x.0) {
             (pm2::Tree::Group(g1), pm2::Tree::Group(g2)) => {
                 match (g1.delim(), g2.delim()) {
-                    (Paren, Paren) | (Brace, Brace) | (Bracket, Bracket) | (None, None) => {},
+                    (Parenth, Parenth) | (Brace, Brace) | (Bracket, Bracket) | (None, None) => {},
                     _ => return false,
                 }
                 let s1 = g1.stream().into_iter();
@@ -187,7 +187,7 @@ impl<'a> Hash for TreeHelper<'a> {
                 0u8.hash(h);
                 use pm2::Delim::*;
                 match g.delim() {
-                    Paren => 0u8.hash(h),
+                    Parenth => 0u8.hash(h),
                     Brace => 1u8.hash(h),
                     Bracket => 2u8.hash(h),
                     None => 3u8.hash(h),

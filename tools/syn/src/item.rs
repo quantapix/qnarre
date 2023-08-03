@@ -580,7 +580,7 @@ impl Lower for Mac {
         self.mac.bang.lower(s);
         self.ident.lower(s);
         match &self.mac.delim {
-            tok::Delim::Paren(x) => {
+            tok::Delim::Parenth(x) => {
                 x.surround(s, |s| self.mac.toks.lower(s));
             },
             tok::Delim::Brace(x) => {
@@ -1327,9 +1327,9 @@ impl Pretty for Verbatim {
                 } else if look.peek(Token![macro]) {
                     s.parse::<Token![macro]>()?;
                     let ident: Ident = s.parse()?;
-                    let args = if s.peek(tok::Paren) {
+                    let args = if s.peek(tok::Parenth) {
                         let y;
-                        parenthesized!(y in s);
+                        parenthed!(y in s);
                         Some(y.parse::<Stream>()?)
                     } else {
                         None
@@ -1666,7 +1666,7 @@ pub struct Sig {
     pub fn_: Token![fn],
     pub ident: Ident,
     pub gens: gen::Gens,
-    pub paren: tok::Paren,
+    pub parenth: tok::Parenth,
     pub args: Puncted<FnArg, Token![,]>,
     pub vari: Option<Variadic>,
     pub ret: typ::Ret,
@@ -1690,7 +1690,7 @@ impl Parse for Sig {
         let ident: Ident = s.parse()?;
         let mut gens: gen::Gens = s.parse()?;
         let y;
-        let paren = parenthesized!(y in s);
+        let parenth = parenthed!(y in s);
         let (args, vari) = parse_fn_args(&y)?;
         let ret: typ::Ret = s.parse()?;
         gens.where_ = s.parse()?;
@@ -1702,7 +1702,7 @@ impl Parse for Sig {
             fn_,
             ident,
             gens,
-            paren,
+            parenth,
             args,
             vari,
             ret,
@@ -1718,7 +1718,7 @@ impl Lower for Sig {
         self.fn_.lower(s);
         self.ident.lower(s);
         self.gens.lower(s);
-        self.paren.surround(s, |s| {
+        self.parenth.surround(s, |s| {
             self.args.lower(s);
             if let Some(x) = &self.vari {
                 if !self.args.empty_or_trailing() {
@@ -3671,9 +3671,9 @@ fn parse_macro2(beg: parse::Buffer, _: data::Visibility, s: Stream) -> Res<Item>
     s.parse::<Token![macro]>()?;
     s.parse::<Ident>()?;
     let mut look = s.look1();
-    if look.peek(tok::Paren) {
+    if look.peek(tok::Parenth) {
         let y;
-        parenthesized!(y in s);
+        parenthed!(y in s);
         y.parse::<Stream>()?;
         look = s.look1();
     }

@@ -389,7 +389,7 @@ impl Hash for expr::Expr {
                 h.write_u8(23u8);
                 x.hash(h);
             },
-            Paren(x) => {
+            Parenth(x) => {
                 h.write_u8(24u8);
                 x.hash(h);
             },
@@ -695,7 +695,7 @@ impl Hash for expr::MethodCall {
         self.args.hash(state);
     }
 }
-impl Hash for expr::Paren {
+impl Hash for expr::Parenth {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -1528,7 +1528,7 @@ impl Hash for tok::Delim {
         H: Hasher,
     {
         match self {
-            tok::Delim::Paren(_) => {
+            tok::Delim::Parenth(_) => {
                 state.write_u8(0u8);
             },
             tok::Delim::Brace(_) => {
@@ -1580,13 +1580,13 @@ impl Hash for attr::NameValue {
         self.val.hash(state);
     }
 }
-impl Hash for ParenthesizedArgs {
+impl Hash for path::Parenthed {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
-        self.ins.hash(state);
-        self.out.hash(state);
+        self.args.hash(state);
+        self.ret.hash(state);
     }
 }
 impl Hash for pat::Pat {
@@ -1615,7 +1615,7 @@ impl Hash for pat::Pat {
                 state.write_u8(4u8);
                 x.hash(state);
             },
-            pat::Pat::Paren(x) => {
+            pat::Pat::Parenth(x) => {
                 state.write_u8(5u8);
                 x.hash(state);
             },
@@ -1688,7 +1688,7 @@ impl Hash for pat::Or {
         self.cases.hash(state);
     }
 }
-impl Hash for pat::Paren {
+impl Hash for pat::Parenth {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -1783,20 +1783,21 @@ impl Hash for Path {
         self.segs.hash(state);
     }
 }
-impl Hash for Args {
+impl Hash for path::Args {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
+        use path::Args::*;
         match self {
-            Args::None => {
+            None => {
                 state.write_u8(0u8);
             },
-            Args::Angled(x) => {
+            Angled(x) => {
                 state.write_u8(1u8);
                 x.hash(state);
             },
-            Args::Parenthesized(x) => {
+            Parenthed(x) => {
                 state.write_u8(2u8);
                 x.hash(state);
             },
@@ -1956,7 +1957,7 @@ impl Hash for gen::bound::Trait {
     where
         H: Hasher,
     {
-        self.paren.hash(h);
+        self.parenth.hash(h);
         self.modif.hash(h);
         self.lifes.hash(h);
         self.path.hash(h);
@@ -2089,7 +2090,7 @@ impl Hash for typ::Type {
                 h.write_u8(6u8);
                 x.hash(h);
             },
-            Paren(x) => {
+            Parenth(x) => {
                 h.write_u8(7u8);
                 x.hash(h);
             },
@@ -2218,7 +2219,7 @@ impl Hash for gen::bound::Type {
         }
     }
 }
-impl Hash for typ::Paren {
+impl Hash for typ::Parenth {
     fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,

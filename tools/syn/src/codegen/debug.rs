@@ -378,7 +378,7 @@ impl Debug for expr::Expr {
             Mac(x) => x.debug(f, "Macro"),
             Match(x) => x.debug(f, "Match"),
             MethodCall(x) => x.debug(f, "MethodCall"),
-            Paren(x) => x.debug(f, "Paren"),
+            Parenth(x) => x.debug(f, "Parenth"),
             Path(x) => x.debug(f, "Path"),
             Range(x) => x.debug(f, "Range"),
             Ref(x) => x.debug(f, "Reference"),
@@ -510,7 +510,7 @@ impl Debug for expr::Call {
                 let mut f = f.debug_struct(name);
                 f.field("attrs", &self.attrs);
                 f.field("func", &self.func);
-                f.field("paren", &self.paren);
+                f.field("parenth", &self.parenth);
                 f.field("args", &self.args);
                 f.finish()
             }
@@ -757,7 +757,7 @@ impl Debug for expr::MethodCall {
                 f.field("dot", &self.dot);
                 f.field("method", &self.method);
                 f.field("turbofish", &self.turbofish);
-                f.field("paren", &self.paren);
+                f.field("parenth", &self.parenth);
                 f.field("args", &self.args);
                 f.finish()
             }
@@ -765,23 +765,23 @@ impl Debug for expr::MethodCall {
         self.debug(f, "expr::MethodCall")
     }
 }
-impl Debug for expr::Paren {
+impl Debug for expr::Parenth {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl expr::Paren {
+        impl expr::Parenth {
             fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut f = f.debug_struct(name);
                 f.field("attrs", &self.attrs);
-                f.field("paren", &self.paren);
+                f.field("parenth", &self.parenth);
                 f.field("expr", &self.expr);
                 f.finish()
             }
         }
-        self.debug(f, "expr::Paren")
+        self.debug(f, "expr::Parenth")
     }
 }
-impl Debug for expr::Pathth {
+impl Debug for expr::Path {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl expr::Pathth {
+        impl expr::Path {
             fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut f = f.debug_struct(name);
                 f.field("attrs", &self.attrs);
@@ -905,7 +905,7 @@ impl Debug for expr::Tuple {
             fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut f = f.debug_struct(name);
                 f.field("attrs", &self.attrs);
-                f.field("paren", &self.paren);
+                f.field("parenth", &self.parenth);
                 f.field("elems", &self.elems);
                 f.finish()
             }
@@ -1039,7 +1039,7 @@ impl Debug for data::Unnamed {
         impl data::Unnamed {
             fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut f = f.debug_struct(name);
-                f.field("paren", &self.paren);
+                f.field("parenth", &self.parenth);
                 f.field("fields", &self.fields);
                 f.finish()
             }
@@ -1715,8 +1715,8 @@ impl Debug for tok::Delim {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("MacroDelimiter::")?;
         match self {
-            tok::Delim::Paren(x) => {
-                let mut f = f.debug_tuple("Paren");
+            tok::Delim::Parenth(x) => {
+                let mut f = f.debug_tuple("Parenth");
                 f.field(x);
                 f.finish()
             },
@@ -1788,18 +1788,18 @@ impl Debug for attr::NameValue {
         self.debug(f, "attr::NameValue")
     }
 }
-impl Debug for ParenthesizedArgs {
+impl Debug for path::Parenthed {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl ParenthesizedArgs {
+        impl path::Parenthed {
             fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut f = f.debug_struct(name);
-                f.field("paren", &self.paren);
-                f.field("inputs", &self.ins);
-                f.field("output", &self.out);
+                f.field("parenth", &self.parenth);
+                f.field("args", &self.args);
+                f.field("ret", &self.ret);
                 f.finish()
             }
         }
-        self.debug(f, "path::ParenthesizedArgs")
+        self.debug(f, "path::Parenthed")
     }
 }
 impl Debug for pat::Pat {
@@ -1811,7 +1811,7 @@ impl Debug for pat::Pat {
             pat::Pat::Lit(x) => x.debug(f, "Lit"),
             pat::Pat::Mac(x) => x.debug(f, "Macro"),
             pat::Pat::Or(x) => x.debug(f, "Or"),
-            pat::Pat::Paren(x) => x.debug(f, "Paren"),
+            pat::Pat::Parenth(x) => x.debug(f, "Parenth"),
             pat::Pat::Path(x) => x.debug(f, "Path"),
             pat::Pat::Range(x) => x.debug(f, "Range"),
             pat::Pat::Ref(x) => x.debug(f, "Reference"),
@@ -1860,18 +1860,18 @@ impl Debug for pat::Or {
         self.debug(f, "pat::Or")
     }
 }
-impl Debug for pat::Paren {
+impl Debug for pat::Parenth {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl pat::Paren {
+        impl pat::Parenth {
             fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut f = f.debug_struct(name);
                 f.field("attrs", &self.attrs);
-                f.field("paren", &self.paren);
+                f.field("parenth", &self.parenth);
                 f.field("pat", &self.pat);
                 f.finish()
             }
         }
-        self.debug(f, "pat::Paren")
+        self.debug(f, "pat::Parenth")
     }
 }
 impl Debug for pat::Ref {
@@ -1939,7 +1939,7 @@ impl Debug for pat::Tuple {
             fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut f = f.debug_struct(name);
                 f.field("attrs", &self.attrs);
-                f.field("paren", &self.paren);
+                f.field("parenth", &self.parenth);
                 f.field("elems", &self.pats);
                 f.finish()
             }
@@ -1955,7 +1955,7 @@ impl Debug for pat::TupleStructuct {
                 f.field("attrs", &self.attrs);
                 f.field("qself", &self.qself);
                 f.field("path", &self.path);
-                f.field("paren", &self.paren);
+                f.field("parenth", &self.parenth);
                 f.field("elems", &self.elems);
                 f.finish()
             }
@@ -2004,13 +2004,14 @@ impl Debug for Path {
         self.debug(f, "Path")
     }
 }
-impl Debug for Args {
+impl Debug for path::Args {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("path::Args::")?;
+        use path::Args::*;
         match self {
-            Args::None => f.write_str("None"),
-            Args::Angled(x) => x.debug(f, "AngleBracketed"),
-            Args::Parenthesized(x) => x.debug(f, "Parenthesized"),
+            None => f.write_str("None"),
+            Angled(x) => x.debug(f, "Angled"),
+            Parenthed(x) => x.debug(f, "Parenthed"),
         }
     }
 }
@@ -2105,7 +2106,7 @@ impl Debug for item::Sig {
         f.field("fn_", &self.fn_);
         f.field("ident", &self.ident);
         f.field("gens", &self.gens);
-        f.field("paren", &self.paren);
+        f.field("parenth", &self.parenth);
         f.field("inputs", &self.args);
         f.field("vari", &self.vari);
         f.field("output", &self.ret);
@@ -2162,7 +2163,7 @@ impl Debug for stmt::Mac {
 impl Debug for gen::bound::Trait {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut f = f.debug_struct("gen::bound::Trait");
-        f.field("paren", &self.paren);
+        f.field("parenth", &self.parenth);
         f.field("modif", &self.modif);
         f.field("lifes", &self.lifes);
         f.field("path", &self.path);
@@ -2276,7 +2277,7 @@ impl Debug for typ::Type {
             typ::Type::Infer(x) => x.debug(f, "Infer"),
             typ::Type::Mac(x) => x.debug(f, "Macro"),
             typ::Type::Never(x) => x.debug(f, "Never"),
-            typ::Type::Paren(x) => x.debug(f, "Paren"),
+            typ::Type::Parenth(x) => x.debug(f, "Parenth"),
             typ::Type::Path(x) => x.debug(f, "Path"),
             typ::Type::Ptr(x) => x.debug(f, "Ptr"),
             typ::Type::Ref(x) => x.debug(f, "Reference"),
@@ -2315,7 +2316,7 @@ impl Debug for typ::Fn {
                 y.field("unsafe_", &self.unsafe_);
                 y.field("abi", &self.abi);
                 y.field("fn_", &self.fn_);
-                y.field("paren", &self.paren);
+                y.field("parenth", &self.parenth);
                 y.field("inputs", &self.args);
                 y.field("vari", &self.vari);
                 y.field("output", &self.ret);
@@ -2417,17 +2418,17 @@ impl Debug for gen::bound::Type {
         }
     }
 }
-impl Debug for typ::Paren {
+impl Debug for typ::Parenth {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl typ::Paren {
+        impl typ::Parenth {
             fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut f = f.debug_struct(name);
-                f.field("paren", &self.paren);
+                f.field("parenth", &self.parenth);
                 f.field("elem", &self.elem);
                 f.finish()
             }
         }
-        self.debug(f, "typ::Paren")
+        self.debug(f, "typ::Parenth")
     }
 }
 impl Debug for typ::Path {
@@ -2504,7 +2505,7 @@ impl Debug for typ::Tuple {
         impl typ::Tuple {
             fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut f = f.debug_struct(name);
-                f.field("paren", &self.paren);
+                f.field("parenth", &self.parenth);
                 f.field("elems", &self.elems);
                 f.finish()
             }
@@ -2632,7 +2633,7 @@ impl Debug for data::Restricted {
             fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut f = f.debug_struct(name);
                 f.field("pub_", &self.pub_);
-                f.field("paren", &self.paren);
+                f.field("parenth", &self.parenth);
                 f.field("in_", &self.in_);
                 f.field("path", &self.path);
                 f.finish()

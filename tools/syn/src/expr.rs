@@ -27,7 +27,7 @@ ast_enum_of_structs! {
         Mac(Mac),
         Match(Match),
         MethodCall(MethodCall),
-        Paren(Paren),
+        Parenth(Parenth),
         Path(Path),
         Range(Range),
         Ref(Ref),
@@ -80,7 +80,7 @@ impl Expr {
             | Mac(Mac { attrs, .. })
             | Match(Match { attrs, .. })
             | MethodCall(MethodCall { attrs, .. })
-            | Paren(Paren { attrs, .. })
+            | Parenth(Parenth { attrs, .. })
             | Path(Path { attrs, .. })
             | Range(Range { attrs, .. })
             | Ref(Ref { attrs, .. })
@@ -114,7 +114,7 @@ impl Expr {
             | Unsafe(Unsafe { attrs, .. }) => !attr::has_outer(attrs),
             Assign(_) | Await(_) | Binary(_) | Break(_) | Call(_) | Cast(_) | Continue(_) | Field(_) | ForLoop(_)
             | Group(_) | If(_) | Index(_) | Infer(_) | Let(_) | Lit(_) | Loop(_) | Mac(_) | Match(_)
-            | MethodCall(_) | Paren(_) | Path(_) | Range(_) | Ref(_) | Repeat(_) | Return(_) | Try(_) | Unary(_)
+            | MethodCall(_) | Parenth(_) | Path(_) | Range(_) | Ref(_) | Repeat(_) | Return(_) | Try(_) | Unary(_)
             | Verbatim(_) | While(_) | Yield(_) => false,
         }
     }
@@ -124,7 +124,7 @@ impl Expr {
             If(_) | Match(_) | Block(_) | Unsafe(_) | While(_) | Loop(_) | ForLoop(_) | TryBlock(_) | Const(_) => false,
             Array(_) | Assign(_) | Async(_) | Await(_) | Binary(_) | Break(_) | Call(_) | Cast(_) | Closure(_)
             | Continue(_) | Field(_) | Group(_) | Index(_) | Infer(_) | Let(_) | Lit(_) | Mac(_) | MethodCall(_)
-            | Paren(_) | Path(_) | Range(_) | Ref(_) | Repeat(_) | Return(_) | Struct(_) | Try(_) | Tuple(_)
+            | Parenth(_) | Path(_) | Range(_) | Ref(_) | Repeat(_) | Return(_) | Struct(_) | Try(_) | Tuple(_)
             | Unary(_) | Yield(_) | Verbatim(_) => true,
         }
     }
@@ -132,7 +132,7 @@ impl Expr {
         use Expr::*;
         match self {
             Array(_) | Async(_) | Block(_) | Break(_) | Closure(_) | Const(_) | Continue(_) | ForLoop(_) | If(_)
-            | Infer(_) | Let(_) | Lit(_) | Loop(_) | Mac(_) | Match(_) | Paren(_) | Path(_) | Ref(_) | Repeat(_)
+            | Infer(_) | Let(_) | Lit(_) | Loop(_) | Mac(_) | Match(_) | Parenth(_) | Path(_) | Ref(_) | Repeat(_)
             | Return(_) | Struct(_) | TryBlock(_) | Tuple(_) | Unary(_) | Unsafe(_) | Verbatim(_) | While(_)
             | Yield(_) => true,
             Assign(x) => &x.left.parseable_as_stmt(),
@@ -166,7 +166,7 @@ impl Expr {
             | Ref(Ref { expr, .. })
             | Unary(Unary { expr, .. }) => expr.has_struct_lit(),
             Array(_) | Async(_) | Block(_) | Break(_) | Call(_) | Closure(_) | Const(_) | Continue(_) | ForLoop(_)
-            | Group(_) | If(_) | Infer(_) | Let(_) | Lit(_) | Loop(_) | Mac(_) | Match(_) | Paren(_) | Path(_)
+            | Group(_) | If(_) | Infer(_) | Let(_) | Lit(_) | Loop(_) | Mac(_) | Match(_) | Parenth(_) | Path(_)
             | Range(_) | Repeat(_) | Return(_) | Try(_) | TryBlock(_) | Tuple(_) | Unsafe(_) | &Verbatim(_)
             | While(_) | Yield(_) => false,
         }
@@ -214,7 +214,7 @@ impl Expr {
             | Call(Call { func: x, .. })
             | Group(Group { expr: x, .. })
             | Let(Let { expr: x, .. })
-            | Paren(Paren { expr: x, .. })
+            | Parenth(Parenth { expr: x, .. })
             | Range(Range { end: Some(x), .. })
             | Ref(Ref { expr: x, .. })
             | Return(Return { expr: Some(x), .. })
@@ -237,8 +237,8 @@ impl Expr {
             Group(x) => &x.expr.add_semi(),
             Array(_) | Async(_) | Await(_) | Block(_) | Call(_) | Cast(_) | Closure(_) | Const(_) | Field(_)
             | ForLoop(_) | If(_) | Index(_) | Infer(_) | Let(_) | Lit(_) | Loop(_) | Mac(_) | Match(_)
-            | MethodCall(_) | Paren(_) | Path(_) | Range(_) | Ref(_) | Repeat(_) | Struct(_) | Try(_) | TryBlock(_)
-            | Tuple(_) | Unary(_) | Unsafe(_) | Verbatim(_) | While(_) => false,
+            | MethodCall(_) | Parenth(_) | Path(_) | Range(_) | Ref(_) | Repeat(_) | Struct(_) | Try(_)
+            | TryBlock(_) | Tuple(_) | Unary(_) | Unsafe(_) | Verbatim(_) | While(_) => false,
         }
     }
     pub fn remove_semi(&self) -> bool {
@@ -252,7 +252,7 @@ impl Expr {
             },
             Array(_) | Assign(_) | Async(_) | Await(_) | Binary(_) | Block(_) | Break(_) | Call(_) | Cast(_)
             | Closure(_) | Continue(_) | Const(_) | Field(_) | Index(_) | Infer(_) | Let(_) | Lit(_) | Loop(_)
-            | Mac(_) | Match(_) | MethodCall(_) | Paren(_) | Path(_) | Range(_) | Ref(_) | Repeat(_) | Return(_)
+            | Mac(_) | Match(_) | MethodCall(_) | Parenth(_) | Path(_) | Range(_) | Ref(_) | Repeat(_) | Return(_)
             | Struct(_) | Try(_) | TryBlock(_) | Tuple(_) | Unary(_) | Unsafe(_) | Verbatim(_) | Yield(_) => false,
         }
     }
@@ -266,7 +266,7 @@ impl Expr {
     }
     fn lower_struct(&self, s: &mut Stream) {
         if let Expr::Struct(_) = *self {
-            tok::Paren::default().surround(s, |s| {
+            tok::Parenth::default().surround(s, |s| {
                 self.lower(s);
             });
         } else {
@@ -274,13 +274,13 @@ impl Expr {
         }
     }
     fn pretty_struct(&self, p: &mut Print) {
-        let paren = self.has_struct_lit();
-        if paren {
+        let parenth = self.has_struct_lit();
+        if parenth {
             p.word("(");
         }
         p.cbox(0);
         self.pretty(p);
-        if paren {
+        if parenth {
             p.word(")");
         }
         if self.needs_newline() {
@@ -357,7 +357,7 @@ impl Pretty for Expr {
             Mac(x) => x.pretty(p),
             Match(x) => x.pretty(p),
             MethodCall(x) => x.pretty_with_args(p, pretty::Args::BegLine(false)),
-            Paren(x) => x.pretty(p),
+            Parenth(x) => x.pretty(p),
             Path(x) => x.pretty(p),
             Range(x) => x.pretty(p),
             Ref(x) => x.pretty(p),
@@ -663,7 +663,7 @@ impl Pretty for Break {
 pub struct Call {
     pub attrs: Vec<attr::Attr>,
     pub func: Box<Expr>,
-    pub paren: tok::Paren,
+    pub parenth: tok::Parenth,
     pub args: Puncted<Expr, Token![,]>,
 }
 impl Call {
@@ -678,7 +678,7 @@ impl Lower for Call {
     fn lower(&self, s: &mut Stream) {
         attr::lower_outers(&self.attrs, s);
         self.func.lower(s);
-        self.paren.surround(s, |s| {
+        self.parenth.surround(s, |s| {
             self.args.lower(s);
         });
     }
@@ -1237,12 +1237,12 @@ impl Pretty for Let {
         p.end();
         p.space();
         p.word("= ");
-        let paren = &self.expr.has_struct_lit();
-        if paren {
+        let parenth = &self.expr.has_struct_lit();
+        if parenth {
             p.word("(");
         }
         &self.expr.pretty(p);
-        if paren {
+        if parenth {
             p.word(")");
         }
         p.end();
@@ -1426,7 +1426,7 @@ pub struct MethodCall {
     pub dot: Token![.],
     pub method: Ident,
     pub turbofish: Option<path::Angled>,
-    pub paren: tok::Paren,
+    pub parenth: tok::Parenth,
     pub args: Puncted<Expr, Token![,]>,
 }
 impl MethodCall {
@@ -1452,7 +1452,7 @@ impl Lower for MethodCall {
         self.dot.lower(s);
         self.method.lower(s);
         self.turbofish.lower(s);
-        self.paren.surround(s, |s| {
+        self.parenth.surround(s, |s| {
             self.args.lower(s);
         });
     }
@@ -1468,25 +1468,25 @@ impl Pretty for MethodCall {
     }
 }
 
-pub struct Paren {
+pub struct Parenth {
     pub attrs: Vec<attr::Attr>,
-    pub paren: tok::Paren,
+    pub parenth: tok::Parenth,
     pub expr: Box<Expr>,
 }
-impl Parse for Paren {
+impl Parse for Parenth {
     fn parse(s: Stream) -> Res<Self> {
-        expr_paren(s)
+        expr_parenth(s)
     }
 }
-impl Lower for Paren {
+impl Lower for Parenth {
     fn lower(&self, s: &mut Stream) {
         attr::lower_outers(&self.attrs, s);
-        self.paren.surround(s, |s| {
+        self.parenth.surround(s, |s| {
             self.expr.lower(s);
         });
     }
 }
-impl Pretty for Paren {
+impl Pretty for Parenth {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
         p.word("(");
@@ -1768,13 +1768,13 @@ impl Pretty for TryBlock {
 
 pub struct Tuple {
     pub attrs: Vec<attr::Attr>,
-    pub paren: tok::Paren,
+    pub parenth: tok::Parenth,
     pub elems: Puncted<Expr, Token![,]>,
 }
 impl Lower for Tuple {
     fn lower(&self, s: &mut Stream) {
         attr::lower_outers(&self.attrs, s);
-        self.paren.surround(s, |s| {
+        self.parenth.surround(s, |s| {
             self.elems.lower(s);
             if self.elems.len() == 1 && !self.elems.trailing_punct() {
                 <Token![,]>::default().lower(s);
@@ -2000,7 +2000,7 @@ impl Pretty for Verbatim {
                     s.parse::<Token![#]>()?;
                     let name: Ident = s.parse()?;
                     let args;
-                    parenthesized!(args in s);
+                    parenthed!(args in s);
                     let args: pm2::Stream = args.parse()?;
                     Ok(Builtin(Builtin { attrs, name, args }))
                 } else if lookahead.peek(Token![&]) {
@@ -2859,12 +2859,12 @@ fn trailer_expr(beg: parse::Buffer, mut attrs: Vec<attr::Attr>, s: Stream, allow
 }
 fn trailer_helper(x: Stream, mut y: Expr) -> Res<Expr> {
     loop {
-        if x.peek(tok::Paren) {
+        if x.peek(tok::Parenth) {
             let y;
             y = Expr::Call(Call {
                 attrs: Vec::new(),
                 func: Box::new(y),
-                paren: parenthesized!(y in x),
+                parenth: parenthed!(y in x),
                 args: y.parse_terminated(Expr::parse, Token![,])?,
             });
         } else if x.peek(Token![.])
@@ -2897,7 +2897,7 @@ fn trailer_helper(x: Stream, mut y: Expr) -> Res<Expr> {
             } else {
                 None
             };
-            if turbofish.is_some() || x.peek(tok::Paren) {
+            if turbofish.is_some() || x.peek(tok::Parenth) {
                 if let Member::Named(method) = memb {
                     let y;
                     y = Expr::MethodCall(MethodCall {
@@ -2906,7 +2906,7 @@ fn trailer_helper(x: Stream, mut y: Expr) -> Res<Expr> {
                         dot,
                         method,
                         turbofish,
-                        paren: parenthesized!(y in x),
+                        parenth: parenthed!(y in x),
                         args: y.parse_terminated(Expr::parse, Token![,])?,
                     });
                     continue;
@@ -2967,7 +2967,7 @@ fn atom_expr(x: Stream, allow: AllowStruct) -> Res<Expr> {
         || x.peek(Token![try]) && (x.peek2(Token![!]) || x.peek2(Token![::]))
     {
         path_or_macro_or_struct(x, allow)
-    } else if x.peek(tok::Paren) {
+    } else if x.peek(tok::Parenth) {
         paren_or_tuple(x)
     } else if x.peek(Token![break]) {
         expr_break(x, allow).map(Expr::Break)
@@ -3032,7 +3032,7 @@ fn expr_builtin(x: Stream) -> Res<Expr> {
     x.parse::<Token![#]>()?;
     x.parse::<Ident>()?;
     let args;
-    parenthesized!(args in x);
+    parenthed!(args in x);
     args.parse::<pm2::Stream>()?;
     Ok(Expr::Verbatim(parse::parse_verbatim(&begin, x)))
 }
@@ -3062,19 +3062,19 @@ fn path_or_macro_or_struct(x: Stream, allow: AllowStruct) -> Res<Expr> {
 }
 fn paren_or_tuple(x: Stream) -> Res<Expr> {
     let y;
-    let paren = parenthesized!(y in x);
+    let parenth = parenthed!(y in x);
     if y.is_empty() {
         return Ok(Expr::Tuple(Tuple {
             attrs: Vec::new(),
-            paren,
+            parenth,
             elems: Puncted::new(),
         }));
     }
     let first: Expr = y.parse()?;
     if y.is_empty() {
-        return Ok(Expr::Paren(Paren {
+        return Ok(Expr::Parenth(Parenth {
             attrs: Vec::new(),
-            paren,
+            parenth,
             expr: Box::new(first),
         }));
     }
@@ -3091,7 +3091,7 @@ fn paren_or_tuple(x: Stream) -> Res<Expr> {
     }
     Ok(Expr::Tuple(Tuple {
         attrs: Vec::new(),
-        paren,
+        parenth,
         elems,
     }))
 }
@@ -3183,11 +3183,11 @@ fn expr_group(x: Stream) -> Res<Group> {
         expr: y.buf.parse()?,
     })
 }
-fn expr_paren(x: Stream) -> Res<Paren> {
+fn expr_parenth(x: Stream) -> Res<Parenth> {
     let y;
-    Ok(Paren {
+    Ok(Parenth {
         attrs: Vec::new(),
-        paren: parenthesized!(y in x),
+        parenth: parenthed!(y in x),
         expr: y.parse()?,
     })
 }
@@ -3282,7 +3282,7 @@ fn closure_arg(x: Stream) -> Res<pat::Pat> {
             Lit(x) => x.attrs = attrs,
             Mac(x) => x.attrs = attrs,
             Or(x) => x.attrs = attrs,
-            Paren(x) => x.attrs = attrs,
+            Parenth(x) => x.attrs = attrs,
             Path(x) => x.attrs = attrs,
             Range(x) => x.attrs = attrs,
             Ref(x) => x.attrs = attrs,
@@ -3411,7 +3411,7 @@ fn check_cast(x: Stream) -> Res<()> {
     let kind = if x.peek(Token![.]) && !x.peek(Token![..]) {
         if x.peek2(Token![await]) {
             "`.await`"
-        } else if x.peek2(ident::Ident) && (x.peek3(tok::Paren) || x.peek3(Token![::])) {
+        } else if x.peek2(ident::Ident) && (x.peek3(tok::Parenth) || x.peek3(Token![::])) {
             "a method call"
         } else {
             "a field access"
@@ -3420,7 +3420,7 @@ fn check_cast(x: Stream) -> Res<()> {
         "`?`"
     } else if x.peek(tok::Bracket) {
         "indexing"
-    } else if x.peek(tok::Paren) {
+    } else if x.peek(tok::Parenth) {
         "a function call"
     } else {
         return Ok(());

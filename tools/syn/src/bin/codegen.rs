@@ -11,11 +11,7 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
 };
-use syn::{
-    pm2::{Ident, Span, Stream},
-    quote::{format_ident, quote},
-    Index,
-};
+use syn::*;
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 struct Features {
@@ -155,11 +151,10 @@ mod parse {
     use super::*;
     use anyhow::{bail, Result};
     use indexmap::IndexMap;
-    use std::collections::BTreeMap;
     use syn::parse::Error;
     use syn::{
-        parse_quote, Attribute, Data, DataEnum, DataStruct, Fields, GenericArgument, Ident, Input, Item, PathArguments,
-        TypeMacro, TypePath, TypeTuple, UseTree, Visibility,
+        parse_quote, Data, DataEnum, DataStruct, Fields, GenericArgument, Ident, Input, Item, PathArguments, TypeMacro,
+        TypePath, TypeTuple, UseTree, Visibility,
     };
     use syn_codegen as types;
     use thiserror::Error;
@@ -191,7 +186,7 @@ mod parse {
     }
     pub struct AstItem {
         ast: Input,
-        features: Vec<Attribute>,
+        features: Vec<attr::Attr>,
     }
     fn introspect_item(item: &AstItem, lookup: &Lookup) -> types::Node {
         let features = introspect_features(&item.features);
@@ -283,7 +278,7 @@ mod parse {
                         let nested = introspect_type(first_arg(&last.args), lookup);
                         types::Type::Box(Box::new(nested))
                     },
-                    "Brace" | "Bracket" | "Paren" | "Group" => types::Type::Group(string),
+                    "Brace" | "Bracket" | "Parenth" | "Group" => types::Type::Group(string),
                     "Stream" | "Literal" | "Ident" | "Span" => types::Type::Ext(string),
                     "String" | "u32" | "usize" | "bool" => types::Type::Std(string),
                     _ => {
@@ -311,7 +306,7 @@ mod parse {
             _ => panic!("{}", quote!(#item).to_string()),
         }
     }
-    fn introspect_features(attrs: &[Attribute]) -> types::Features {
+    fn introspect_features(attrs: &[attr::Attr]) -> types::Features {
         let mut ret = types::Features::default();
         for attr in attrs {
             if !attr.path().is_ident("cfg") {
@@ -335,7 +330,7 @@ mod parse {
             _ => false,
         }
     }
-    fn is_non_exhaustive(attrs: &[Attribute]) -> bool {
+    fn is_non_exhaustive(attrs: &[attr::Attr]) -> bool {
         for attr in attrs {
             if attr.path().is_ident("non_exhaustive") {
                 return true;
@@ -343,7 +338,7 @@ mod parse {
         }
         false
     }
-    fn is_doc_hidden(attrs: &[Attribute]) -> bool {
+    fn is_doc_hidden(attrs: &[attr::Attr]) -> bool {
         for attr in attrs {
             if attr.path().is_ident("doc") && attr.parse_args::<parsing::kw::hidden>().is_ok() {
                 return true;
@@ -374,18 +369,13 @@ mod parse {
     mod parsing {
         use super::AstItem;
         use std::collections::{BTreeMap, BTreeSet};
-        use syn::parse::{parse::Stream, Result};
-        use syn::pm2::Stream;
-        use syn::quote::quote;
-        use syn::{
-            braced, bracketed, parenthesized, parse_quote, token, Attribute, Expr, Ident, Lit, LitStr, Path, Token,
-        };
+        use syn::*;
         use syn_codegen as types;
         fn peek_tag(s: parse::Stream, tag: &str) -> bool {
             let ahead = s.fork();
             ahead.parse::<Token![#]>().is_ok() && ahead.parse::<Ident>().map(|ident| ident == tag).unwrap_or(false)
         }
-        fn full(s: parse::Stream) -> Vec<Attribute> {
+        fn full(s: parse::Stream) -> Vec<attr::Attr> {
             if peek_tag(s, "full") {
                 s.parse::<Token![#]>().unwrap();
                 s.parse::<Ident>().unwrap();
@@ -406,7 +396,7 @@ mod parse {
             })
         }
         pub fn ast_struct(s: parse::Stream) -> Result<AstItem> {
-            s.call(Attribute::parse_outer)?;
+            s.call(attr::Attr::parse_outer)?;
             s.parse::<Token![pub]>()?;
             s.parse::<Token![struct]>()?;
             let res = s.call(ast_struct_inner)?;
@@ -422,7 +412,7 @@ mod parse {
             }
         }
         pub fn ast_enum(s: parse::Stream) -> Result<Option<AstItem>> {
-            let attrs = s.call(Attribute::parse_outer)?;
+            let attrs = s.call(attr::Attr::parse_outer)?;
             s.parse::<Token![pub]>()?;
             s.parse::<Token![enum]>()?;
             let ident: Ident = s.parse()?;
@@ -441,16 +431,16 @@ mod parse {
             })
         }
         struct EosVariant {
-            attrs: Vec<Attribute>,
+            attrs: Vec<attr::Attr>,
             name: Ident,
             member: Option<Path>,
         }
         fn eos_variant(s: parse::Stream) -> Result<EosVariant> {
-            let attrs = s.call(Attribute::parse_outer)?;
+            let attrs = s.call(attr::Attr::parse_outer)?;
             let variant: Ident = s.parse()?;
-            let member = if s.peek(token::Paren) {
+            let member = if s.peek(tok::Parenth) {
                 let content;
-                parenthesized!(content in s);
+                parenthed!(content in s);
                 let path: Path = content.parse()?;
                 Some(path)
             } else {
@@ -464,7 +454,7 @@ mod parse {
             })
         }
         pub fn ast_enum_of_structs(s: parse::Stream) -> Result<AstItem> {
-            let attrs = s.call(Attribute::parse_outer)?;
+            let attrs = s.call(attr::Attr::parse_outer)?;
             s.parse::<Token![pub]>()?;
             s.parse::<Token![enum]>()?;
             let ident: Ident = s.parse()?;
@@ -532,7 +522,7 @@ mod parse {
             if i == "any" {
                 s.parse::<Ident>()?;
                 let nested;
-                parenthesized!(nested in s);
+                parenthed!(nested in s);
                 while !nested.is_empty() {
                     features.insert(parse_feature(&nested)?);
                     if !nested.is_empty() {
@@ -547,7 +537,7 @@ mod parse {
             }
             Ok(types::Features { any: features })
         }
-        pub fn path_attr(attrs: &[Attribute]) -> Result<Option<&LitStr>> {
+        pub fn path_attr(attrs: &[attr::Attr]) -> Result<Option<&LitStr>> {
             for attr in attrs {
                 if attr.path().is_ident("path") {
                     if let Expr::Lit(expr) = &attr.meta.require_name_value()?.value {
@@ -560,10 +550,10 @@ mod parse {
             Ok(None)
         }
     }
-    fn clone_features(features: &[Attribute]) -> Vec<Attribute> {
+    fn clone_features(features: &[attr::Attr]) -> Vec<attr::Attr> {
         features.iter().map(|attr| parse_quote!(#attr)).collect()
     }
-    fn get_features(attrs: &[Attribute], base: &[Attribute]) -> Vec<Attribute> {
+    fn get_features(attrs: &[attr::Attr], base: &[attr::Attr]) -> Vec<attr::Attr> {
         let mut ret = clone_features(base);
         for attr in attrs {
             if attr.path().is_ident("cfg") {
@@ -582,7 +572,7 @@ mod parse {
     }
     fn load_file(
         relative_to_workspace_root: impl AsRef<Path>,
-        features: &[Attribute],
+        features: &[attr::Attr],
         lookup: &mut Lookup,
     ) -> Result<()> {
         let error = match do_load_file(&relative_to_workspace_root, features, lookup).err() {
@@ -600,7 +590,7 @@ mod parse {
     }
     fn do_load_file(
         relative_to_workspace_root: impl AsRef<Path>,
-        features: &[Attribute],
+        features: &[attr::Attr],
         lookup: &mut Lookup,
     ) -> Result<()> {
         let relative_to_workspace_root = relative_to_workspace_root.as_ref();

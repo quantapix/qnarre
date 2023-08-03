@@ -1,6 +1,109 @@
 use super::*;
 use std::iter;
 
+#[macro_export]
+macro_rules! Token {
+    [abstract]    => { tok::Abstract };
+    [as]          => { tok::As };
+    [async]       => { tok::Async };
+    [auto]        => { tok::Auto };
+    [await]       => { tok::Await };
+    [become]      => { tok::Become };
+    [box]         => { tok::Box };
+    [break]       => { tok::Break };
+    [const]       => { tok::Const };
+    [continue]    => { tok::Continue };
+    [crate]       => { tok::Crate };
+    [default]     => { tok::Default };
+    [do]          => { tok::Do };
+    [dyn]         => { tok::Dyn };
+    [else]        => { tok::Else };
+    [enum]        => { tok::Enum };
+    [extern]      => { tok::Extern };
+    [final]       => { tok::Final };
+    [fn]          => { tok::Fn };
+    [for]         => { tok::For };
+    [if]          => { tok::If };
+    [impl]        => { tok::Impl };
+    [in]          => { tok::In };
+    [let]         => { tok::Let };
+    [loop]        => { tok::Loop };
+    [macro]       => { tok::Macro };
+    [match]       => { tok::Match };
+    [mod]         => { tok::Mod };
+    [move]        => { tok::Move };
+    [mut]         => { tok::Mut };
+    [override]    => { tok::Override };
+    [priv]        => { tok::Priv };
+    [pub]         => { tok::Pub };
+    [ref]         => { tok::Ref };
+    [return]      => { tok::Return };
+    [Self]        => { tok::SelfType };
+    [self]        => { tok::SelfValue };
+    [static]      => { tok::Static };
+    [struct]      => { tok::Struct };
+    [super]       => { tok::Super };
+    [trait]       => { tok::Trait };
+    [try]         => { tok::Try };
+    [type]        => { tok::Type };
+    [typeof]      => { tok::Typeof };
+    [union]       => { tok::Union };
+    [unsafe]      => { tok::Unsafe };
+    [unsized]     => { tok::Unsized };
+    [use]         => { tok::Use };
+    [virtual]     => { tok::Virtual };
+    [where]       => { tok::Where };
+    [while]       => { tok::While };
+    [yield]       => { tok::Yield };
+    [&]           => { tok::And };
+    [&&]          => { tok::AndAnd };
+    [&=]          => { tok::AndEq };
+    [@]           => { tok::At };
+    [^]           => { tok::Caret };
+    [^=]          => { tok::CaretEq };
+    [:]           => { tok::Colon };
+    [,]           => { tok::Comma };
+    [$]           => { tok::Dollar };
+    [.]           => { tok::Dot };
+    [..]          => { tok::DotDot };
+    [...]         => { tok::DotDotDot };
+    [..=]         => { tok::DotDotEq };
+    [=]           => { tok::Eq };
+    [==]          => { tok::EqEq };
+    [=>]          => { tok::FatArrow };
+    [>=]          => { tok::Ge };
+    [>]           => { tok::Gt };
+    [<-]          => { tok::LArrow };
+    [<=]          => { tok::Le };
+    [<]           => { tok::Lt };
+    [-]           => { tok::Minus };
+    [-=]          => { tok::MinusEq };
+    [!=]          => { tok::Ne };
+    [!]           => { tok::Not };
+    [|]           => { tok::Or };
+    [|=]          => { tok::OrEq };
+    [||]          => { tok::OrOr };
+    [::]          => { tok::PathSep };
+    [%]           => { tok::Percent };
+    [%=]          => { tok::PercentEq };
+    [+]           => { tok::Plus };
+    [+=]          => { tok::PlusEq };
+    [#]           => { tok::Pound };
+    [?]           => { tok::Question };
+    [->]          => { tok::RArrow };
+    [;]           => { tok::Semi };
+    [<<]          => { tok::Shl };
+    [<<=]         => { tok::ShlEq };
+    [>>]          => { tok::Shr };
+    [>>=]         => { tok::ShrEq };
+    [/]           => { tok::Slash };
+    [/=]          => { tok::SlashEq };
+    [*]           => { tok::Star };
+    [*=]          => { tok::StarEq };
+    [~]           => { tok::Tilde };
+    [_]           => { tok::Underscore };
+}
+
 pub struct Mac {
     pub path: Path,
     pub bang: Token![!],
@@ -60,7 +163,7 @@ impl Pretty for Mac {
         let (open, close, f) = match self.delim {
             Brace(_) => (" {", "}", Print::hardbreak as fn(&mut Self)),
             Bracket(_) => ("[", "]", Print::zerobreak as fn(&mut Self)),
-            Paren(_) => ("(", ")", Print::zerobreak as fn(&mut Self)),
+            Parenth(_) => ("(", ")", Print::zerobreak as fn(&mut Self)),
         };
         p.word(open);
         if !self.toks.is_empty() {
@@ -76,7 +179,7 @@ impl Pretty for Mac {
         p.word(close);
         if semi {
             match self.delim {
-                Paren(_) | Bracket(_) => p.word(";"),
+                Parenth(_) | Bracket(_) => p.word(";"),
                 Brace(_) => {},
             }
         }
@@ -88,7 +191,7 @@ pub fn parse_delim(s: Stream) -> Res<(tok::Delim, pm2::Stream)> {
         if let Some((pm2::Tree::Group(x), rest)) = x.token_tree() {
             let s = x.delim_span();
             let delim = match x.delim() {
-                pm2::Delim::Paren => tok::Delim::Paren(tok::Paren(s)),
+                pm2::Delim::Parenth => tok::Delim::Parenth(tok::Parenth(s)),
                 pm2::Delim::Brace => tok::Delim::Brace(tok::Brace(s)),
                 pm2::Delim::Bracket => tok::Delim::Bracket(tok::Bracket(s)),
                 pm2::Delim::None => {
@@ -387,6 +490,12 @@ macro_rules! punct_repr {
         [$crate::pm2::Span; 0 $(+ punct_len!(lenient, $tt))+]
     };
 }
+macro_rules! stringify_punct {
+    ($($tt:tt)+) => {
+        std::concat!($(std::stringify!($tt)),+)
+    };
+}
+
 macro_rules! clone_for_punct {
     ($n:ident, $($tt:tt)+) => {
         impl Copy for $n {}
@@ -413,11 +522,6 @@ macro_rules! traits_for_punct {
         impl Hash for $n {
             fn hash<H: Hasher>(&self, _: &mut H) {}
         }
-    };
-}
-macro_rules! stringify_punct {
-    ($($tt:tt)+) => {
-        std::concat!($(std::stringify!($tt)),+)
     };
 }
 macro_rules! parse_for_punct {
@@ -478,13 +582,13 @@ macro_rules! custom_punct {
 #[macro_export]
 macro_rules! parse_quote {
     ($($tt:tt)*) => {
-        $crate::parse::parse_quote_fn($crate::quote::quote!($($tt)*))
+        parse::parse_quote_fn(quote!($($tt)*))
     };
 }
 #[macro_export]
 macro_rules! parse_quote_spanned {
-    ($span:expr=> $($tt:tt)*) => {
-        $crate::parse::parse_quote_fn($crate::quote::quote_spanned!($span=> $($tt)*))
+    ($s:expr=> $($tt:tt)*) => {
+        parse::parse_quote_fn(quote_spanned!($s => $($tt)*))
     };
 }
 
@@ -512,112 +616,9 @@ macro_rules! parse_macro_input {
 }
 
 #[macro_export]
-macro_rules! Token {
-    [abstract]    => { $crate::tok::Abstract };
-    [as]          => { $crate::tok::As };
-    [async]       => { $crate::tok::Async };
-    [auto]        => { $crate::tok::Auto };
-    [await]       => { $crate::tok::Await };
-    [become]      => { $crate::tok::Become };
-    [box]         => { $crate::tok::Box };
-    [break]       => { $crate::tok::Break };
-    [const]       => { $crate::tok::Const };
-    [continue]    => { $crate::tok::Continue };
-    [crate]       => { $crate::tok::Crate };
-    [default]     => { $crate::tok::Default };
-    [do]          => { $crate::tok::Do };
-    [dyn]         => { $crate::tok::Dyn };
-    [else]        => { $crate::tok::Else };
-    [enum]        => { $crate::tok::Enum };
-    [extern]      => { $crate::tok::Extern };
-    [final]       => { $crate::tok::Final };
-    [fn]          => { $crate::tok::Fn };
-    [for]         => { $crate::tok::For };
-    [if]          => { $crate::tok::If };
-    [impl]        => { $crate::tok::Impl };
-    [in]          => { $crate::tok::In };
-    [let]         => { $crate::tok::Let };
-    [loop]        => { $crate::tok::Loop };
-    [macro]       => { $crate::tok::Macro };
-    [match]       => { $crate::tok::Match };
-    [mod]         => { $crate::tok::Mod };
-    [move]        => { $crate::tok::Move };
-    [mut]         => { $crate::tok::Mut };
-    [override]    => { $crate::tok::Override };
-    [priv]        => { $crate::tok::Priv };
-    [pub]         => { $crate::tok::Pub };
-    [ref]         => { $crate::tok::Ref };
-    [return]      => { $crate::tok::Return };
-    [Self]        => { $crate::tok::SelfType };
-    [self]        => { $crate::tok::SelfValue };
-    [static]      => { $crate::tok::Static };
-    [struct]      => { $crate::tok::Struct };
-    [super]       => { $crate::tok::Super };
-    [trait]       => { $crate::tok::Trait };
-    [try]         => { $crate::tok::Try };
-    [type]        => { $crate::tok::Type };
-    [typeof]      => { $crate::tok::Typeof };
-    [union]       => { $crate::tok::Union };
-    [unsafe]      => { $crate::tok::Unsafe };
-    [unsized]     => { $crate::tok::Unsized };
-    [use]         => { $crate::tok::Use };
-    [virtual]     => { $crate::tok::Virtual };
-    [where]       => { $crate::tok::Where };
-    [while]       => { $crate::tok::While };
-    [yield]       => { $crate::tok::Yield };
-    [&]           => { $crate::tok::And };
-    [&&]          => { $crate::tok::AndAnd };
-    [&=]          => { $crate::tok::AndEq };
-    [@]           => { $crate::tok::At };
-    [^]           => { $crate::tok::Caret };
-    [^=]          => { $crate::tok::CaretEq };
-    [:]           => { $crate::tok::Colon };
-    [,]           => { $crate::tok::Comma };
-    [$]           => { $crate::tok::Dollar };
-    [.]           => { $crate::tok::Dot };
-    [..]          => { $crate::tok::DotDot };
-    [...]         => { $crate::tok::DotDotDot };
-    [..=]         => { $crate::tok::DotDotEq };
-    [=]           => { $crate::tok::Eq };
-    [==]          => { $crate::tok::EqEq };
-    [=>]          => { $crate::tok::FatArrow };
-    [>=]          => { $crate::tok::Ge };
-    [>]           => { $crate::tok::Gt };
-    [<-]          => { $crate::tok::LArrow };
-    [<=]          => { $crate::tok::Le };
-    [<]           => { $crate::tok::Lt };
-    [-]           => { $crate::tok::Minus };
-    [-=]          => { $crate::tok::MinusEq };
-    [!=]          => { $crate::tok::Ne };
-    [!]           => { $crate::tok::Not };
-    [|]           => { $crate::tok::Or };
-    [|=]          => { $crate::tok::OrEq };
-    [||]          => { $crate::tok::OrOr };
-    [::]          => { $crate::tok::PathSep };
-    [%]           => { $crate::tok::Percent };
-    [%=]          => { $crate::tok::PercentEq };
-    [+]           => { $crate::tok::Plus };
-    [+=]          => { $crate::tok::PlusEq };
-    [#]           => { $crate::tok::Pound };
-    [?]           => { $crate::tok::Question };
-    [->]          => { $crate::tok::RArrow };
-    [;]           => { $crate::tok::Semi };
-    [<<]          => { $crate::tok::Shl };
-    [<<=]         => { $crate::tok::ShlEq };
-    [>>]          => { $crate::tok::Shr };
-    [>>=]         => { $crate::tok::ShrEq };
-    [/]           => { $crate::tok::Slash };
-    [/=]          => { $crate::tok::SlashEq };
-    [*]           => { $crate::tok::Star };
-    [*=]          => { $crate::tok::StarEq };
-    [~]           => { $crate::tok::Tilde };
-    [_]           => { $crate::tok::Underscore };
-}
-
-#[macro_export]
-macro_rules! parenthesized {
+macro_rules! parenthed {
     ($n:ident in $s:expr) => {
-        match $crate::parse::parse_parens(&$s) {
+        match parse::parse_parenths(&$s) {
             Ok(x) => {
                 $n = x.buf;
                 x.tok
@@ -628,11 +629,10 @@ macro_rules! parenthesized {
         }
     };
 }
-
 #[macro_export]
 macro_rules! braced {
     ($n:ident in $s:expr) => {
-        match $crate::parse::parse_braces(&$s) {
+        match parse::parse_braces(&$s) {
             Ok(x) => {
                 $n = x.buf;
                 x.tok
@@ -647,7 +647,7 @@ macro_rules! braced {
 #[macro_export]
 macro_rules! bracketed {
     ($n:ident in $s:expr) => {
-        match $crate::parse::parse_brackets(&$s) {
+        match parse::parse_brackets(&$s) {
             Ok(x) => {
                 $n = x.buf;
                 x.tok

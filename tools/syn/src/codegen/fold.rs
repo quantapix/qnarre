@@ -142,7 +142,7 @@ pub trait Fold {
     fn fold_expr_method_call(&mut self, i: expr::MethodCall) -> expr::MethodCall {
         fold_expr_method_call(self, i)
     }
-    fn fold_expr_paren(&mut self, i: expr::Paren) -> expr::Paren {
+    fn fold_expr_paren(&mut self, i: expr::Parenth) -> expr::Parenth {
         fold_expr_paren(self, i)
     }
     fn fold_expr_path(&mut self, i: expr::Path) -> expr::Path {
@@ -364,7 +364,7 @@ pub trait Fold {
     fn fold_meta_name_value(&mut self, i: attr::NameValue) -> attr::NameValue {
         fold_meta_name_value(self, i)
     }
-    fn fold_parenthesized_generic_arguments(&mut self, i: ParenthesizedArgs) -> ParenthesizedArgs {
+    fn fold_parenthesized_generic_arguments(&mut self, i: path::Parenthed) -> path::Parenthed {
         fold_parenthesized_generic_arguments(self, i)
     }
     fn fold_pat(&mut self, i: pat::Pat) -> pat::Pat {
@@ -376,7 +376,7 @@ pub trait Fold {
     fn fold_pat_or(&mut self, i: pat::Or) -> pat::Or {
         fold_pat_or(self, i)
     }
-    fn fold_pat_paren(&mut self, i: pat::Paren) -> pat::Paren {
+    fn fold_pat_paren(&mut self, i: pat::Parenth) -> pat::Parenth {
         fold_pat_paren(self, i)
     }
     fn fold_pat_reference(&mut self, i: pat::Ref) -> pat::Ref {
@@ -496,7 +496,7 @@ pub trait Fold {
     fn fold_type_param_bound(&mut self, i: gen::bound::Type) -> gen::bound::Type {
         fold_type_param_bound(self, i)
     }
-    fn fold_type_paren(&mut self, i: typ::Paren) -> typ::Paren {
+    fn fold_type_paren(&mut self, i: typ::Parenth) -> typ::Parenth {
         fold_type_paren(self, i)
     }
     fn fold_type_path(&mut self, i: typ::Path) -> typ::Path {
@@ -813,7 +813,7 @@ where
         Expr::Macro(_binding_0) => Expr::Macro(f.fold_expr_macro(_binding_0)),
         Expr::Match(_binding_0) => Expr::Match(full!(f.fold_expr_match(_binding_0))),
         Expr::MethodCall(_binding_0) => Expr::MethodCall(full!(f.fold_expr_method_call(_binding_0))),
-        Expr::Paren(_binding_0) => Expr::Paren(f.fold_expr_paren(_binding_0)),
+        Expr::Parenth(_binding_0) => Expr::Parenth(f.fold_expr_paren(_binding_0)),
         Expr::Path(_binding_0) => Expr::Path(f.fold_expr_path(_binding_0)),
         Expr::Range(_binding_0) => Expr::Range(full!(f.fold_expr_range(_binding_0))),
         Expr::Reference(_binding_0) => Expr::Reference(full!(f.fold_expr_reference(_binding_0))),
@@ -912,7 +912,7 @@ where
     expr::Call {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         func: Box::new(f.fold_expr(*node.func)),
-        paren: node.paren,
+        parenth: node.parenth,
         args: FoldHelper::lift(node.args, |it| f.fold_expr(it)),
     }
 }
@@ -1095,17 +1095,17 @@ where
         dot: node.dot,
         method: f.fold_ident(node.method),
         turbofish: (node.turbofish).map(|it| f.fold_angle_bracketed_generic_arguments(it)),
-        paren: node.paren,
+        parenth: node.parenth,
         args: FoldHelper::lift(node.args, |it| f.fold_expr(it)),
     }
 }
-pub fn fold_expr_paren<F>(f: &mut F, node: expr::Paren) -> expr::Paren
+pub fn fold_expr_paren<F>(f: &mut F, node: expr::Parenth) -> expr::Parenth
 where
     F: Fold + ?Sized,
 {
-    expr::Paren {
+    expr::Parenth {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        paren: node.paren,
+        parenth: node.parenth,
         expr: Box::new(f.fold_expr(*node.expr)),
     }
 }
@@ -1203,7 +1203,7 @@ where
 {
     expr::Tuple {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        paren: node.paren,
+        parenth: node.parenth,
         elems: FoldHelper::lift(node.elems, |it| f.fold_expr(it)),
     }
 }
@@ -1316,7 +1316,7 @@ where
     F: Fold + ?Sized,
 {
     data::Unnamed {
-        paren: node.paren,
+        parenth: node.parenth,
         fields: FoldHelper::lift(node.fields, |it| f.fold_field(it)),
     }
 }
@@ -1909,7 +1909,7 @@ where
     F: Fold + ?Sized,
 {
     match node {
-        tok::Delim::Paren(_binding_0) => tok::Delim::Paren(_binding_0),
+        tok::Delim::Parenth(_binding_0) => tok::Delim::Parenth(_binding_0),
         tok::Delim::Brace(_binding_0) => tok::Delim::Brace(_binding_0),
         tok::Delim::Bracket(_binding_0) => tok::Delim::Bracket(_binding_0),
     }
@@ -1953,14 +1953,14 @@ where
         val: f.fold_expr(node.val),
     }
 }
-pub fn fold_parenthesized_generic_arguments<F>(f: &mut F, node: ParenthesizedArgs) -> ParenthesizedArgs
+pub fn fold_parenthesized_generic_arguments<F>(f: &mut F, node: path::Parenthed) -> path::Parenthed
 where
     F: Fold + ?Sized,
 {
-    ParenthesizedArgs {
-        paren: node.paren,
-        ins: FoldHelper::lift(node.ins, |it| f.fold_type(it)),
-        out: f.fold_return_type(node.out),
+    path::Parenthed {
+        parenth: node.parenth,
+        args: FoldHelper::lift(node.args, |ixt| f.fold_type(x)),
+        ret: f.fold_return_type(node.ret),
     }
 }
 pub fn fold_pat<F>(f: &mut F, node: pat::Pat) -> pat::Pat
@@ -1973,7 +1973,7 @@ where
         pat::Pat::Lit(_binding_0) => pat::Pat::Lit(f.fold_expr_lit(_binding_0)),
         pat::Pat::Mac(_binding_0) => pat::Pat::Mac(f.fold_expr_macro(_binding_0)),
         pat::Pat::Or(_binding_0) => pat::Pat::Or(f.fold_pat_or(_binding_0)),
-        pat::Pat::Paren(_binding_0) => pat::Pat::Paren(f.fold_pat_paren(_binding_0)),
+        pat::Pat::Parenth(_binding_0) => pat::Pat::Parenth(f.fold_pat_paren(_binding_0)),
         pat::Pat::Path(_binding_0) => pat::Pat::Path(f.fold_expr_path(_binding_0)),
         pat::Pat::Range(_binding_0) => pat::Pat::Range(f.fold_expr_range(_binding_0)),
         pat::Pat::Ref(_binding_0) => pat::Pat::Ref(f.fold_pat_reference(_binding_0)),
@@ -2009,13 +2009,13 @@ where
         cases: FoldHelper::lift(node.cases, |it| f.fold_pat(it)),
     }
 }
-pub fn fold_pat_paren<F>(f: &mut F, node: pat::Paren) -> pat::Paren
+pub fn fold_pat_paren<F>(f: &mut F, node: pat::Parenth) -> pat::Parenth
 where
     F: Fold + ?Sized,
 {
-    pat::Paren {
+    pat::Parenth {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        paren: node.paren,
+        parenth: node.parenth,
         pat: Box::new(f.fold_pat(*node.pat)),
     }
 }
@@ -2068,7 +2068,7 @@ where
 {
     pat::Tuple {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        paren: node.paren,
+        parenth: node.parenth,
         pats: FoldHelper::lift(node.pats, |it| f.fold_pat(it)),
     }
 }
@@ -2080,7 +2080,7 @@ where
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         qself: (node.qself).map(|it| f.fold_qself(it)),
         path: f.fold_path(node.path),
-        paren: node.paren,
+        parenth: node.parenth,
         elems: FoldHelper::lift(node.pats, |it| f.fold_pat(it)),
     }
 }
@@ -2113,14 +2113,15 @@ where
         segs: FoldHelper::lift(node.segs, |it| f.fold_path_segment(it)),
     }
 }
-pub fn fold_path_arguments<F>(f: &mut F, node: Args) -> Args
+pub fn fold_path_arguments<F>(f: &mut F, node: path::Args) -> path::Args
 where
     F: Fold + ?Sized,
 {
+    use path::Args::*;
     match node {
-        Args::None => Args::None,
-        Args::Angled(_binding_0) => Args::Angled(f.fold_angle_bracketed_generic_arguments(_binding_0)),
-        Args::Parenthesized(_binding_0) => Args::Parenthesized(f.fold_parenthesized_generic_arguments(_binding_0)),
+        None => Args::None,
+        Angled(_binding_0) => Angled(f.fold_angle_bracketed_generic_arguments(_binding_0)),
+        Parenthed(_binding_0) => arenthed(f.fold_parenthesized_generic_arguments(_binding_0)),
     }
 }
 pub fn fold_path_segment<F>(f: &mut F, node: Segment) -> Segment
@@ -2208,7 +2209,7 @@ where
         fn_: node.fn_,
         ident: f.fold_ident(node.ident),
         gens: f.fold_generics(node.gens),
-        paren: node.paren,
+        parenth: node.parenth,
         args: FoldHelper::lift(node.args, |it| f.fold_fn_arg(it)),
         vari: (node.vari).map(|it| f.fold_variadic(it)),
         ret: f.fold_return_type(node.ret),
@@ -2255,7 +2256,7 @@ where
     F: Fold + ?Sized,
 {
     gen::bound::Trait {
-        paren: node.paren,
+        parenth: node.parenth,
         modif: f.fold_trait_bound_modifier(node.modif),
         lifes: (node.lifes).map(|it| f.fold_bound_lifetimes(it)),
         path: f.fold_path(node.path),
@@ -2345,7 +2346,7 @@ where
         typ::Type::Infer(_binding_0) => typ::Type::Infer(f.fold_type_infer(_binding_0)),
         typ::Type::Mac(_binding_0) => typ::Type::Mac(f.fold_type_macro(_binding_0)),
         typ::Type::Never(_binding_0) => typ::Type::Never(f.fold_type_never(_binding_0)),
-        typ::Type::Paren(_binding_0) => typ::Type::Paren(f.fold_type_paren(_binding_0)),
+        typ::Type::Parenth(_binding_0) => typ::Type::Parenth(f.fold_type_paren(_binding_0)),
         typ::Type::Path(_binding_0) => typ::Type::Path(f.fold_type_path(_binding_0)),
         typ::Type::Ptr(_binding_0) => typ::Type::Ptr(f.fold_type_ptr(_binding_0)),
         typ::Type::Ref(_binding_0) => typ::Type::Ref(f.fold_type_reference(_binding_0)),
@@ -2375,7 +2376,7 @@ where
         unsafe_: node.unsafe_,
         abi: (node.abi).map(|it| f.fold_abi(it)),
         fn_: node.fn_,
-        paren: node.paren,
+        parenth: node.parenth,
         args: FoldHelper::lift(node.args, |it| f.fold_bare_fn_arg(it)),
         vari: (node.vari).map(|it| f.fold_bare_variadic(it)),
         ret: f.fold_return_type(node.ret),
@@ -2444,12 +2445,12 @@ where
         gen::bound::Type::Verbatim(_binding_0) => gen::bound::Type::Verbatim(_binding_0),
     }
 }
-pub fn fold_type_paren<F>(f: &mut F, node: typ::Paren) -> typ::Paren
+pub fn fold_type_paren<F>(f: &mut F, node: typ::Parenth) -> typ::Parenth
 where
     F: Fold + ?Sized,
 {
-    typ::Paren {
-        paren: node.paren,
+    typ::Parenth {
+        parenth: node.parenth,
         elem: Box::new(f.fold_type(*node.elem)),
     }
 }
@@ -2507,7 +2508,7 @@ where
     F: Fold + ?Sized,
 {
     typ::Tuple {
-        paren: node.paren,
+        parenth: node.parenth,
         elems: FoldHelper::lift(node.elems, |it| f.fold_type(it)),
     }
 }
@@ -2604,7 +2605,7 @@ where
 {
     data::Restricted {
         pub_: node.pub_,
-        paren: node.paren,
+        parenth: node.parenth,
         in_: node.in_,
         path: Box::new(f.fold_path(*node.path)),
     }

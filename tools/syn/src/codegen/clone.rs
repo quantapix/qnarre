@@ -133,12 +133,13 @@ impl Clone for Constraint {
         }
     }
 }
-impl Clone for Data {
+impl Clone for data::Data {
     fn clone(&self) -> Self {
+        use data::Data::*;
         match self {
-            Data::Struct(v0) => Data::Struct(v0.clone()),
-            Data::Enum(v0) => Data::Enum(v0.clone()),
-            Data::Union(v0) => Data::Union(v0.clone()),
+            Struct(x) => Struct(x.clone()),
+            Enum(x) => Enum(x.clone()),
+            Union(x) => Union(x.clone()),
         }
     }
 }
@@ -179,48 +180,49 @@ impl Clone for Input {
         }
     }
 }
-impl Clone for Expr {
+impl Clone for expr::Expr {
     fn clone(&self) -> Self {
+        use expr::Expr::*;
         match self {
-            Expr::Array(v0) => Expr::Array(v0.clone()),
-            Expr::Assign(v0) => Expr::Assign(v0.clone()),
-            Expr::Async(v0) => Expr::Async(v0.clone()),
-            Expr::Await(v0) => Expr::Await(v0.clone()),
-            Expr::Binary(v0) => Expr::Binary(v0.clone()),
-            Expr::Block(v0) => Expr::Block(v0.clone()),
-            Expr::Break(v0) => Expr::Break(v0.clone()),
-            Expr::Call(v0) => Expr::Call(v0.clone()),
-            Expr::Cast(v0) => Expr::Cast(v0.clone()),
-            Expr::Closure(v0) => Expr::Closure(v0.clone()),
-            Expr::Const(v0) => Expr::Const(v0.clone()),
-            Expr::Continue(v0) => Expr::Continue(v0.clone()),
-            Expr::Field(v0) => Expr::Field(v0.clone()),
-            Expr::ForLoop(v0) => Expr::ForLoop(v0.clone()),
-            Expr::Group(v0) => Expr::Group(v0.clone()),
-            Expr::If(v0) => Expr::If(v0.clone()),
-            Expr::Index(v0) => Expr::Index(v0.clone()),
-            Expr::Infer(v0) => Expr::Infer(v0.clone()),
-            Expr::Let(v0) => Expr::Let(v0.clone()),
-            Expr::Lit(v0) => Expr::Lit(v0.clone()),
-            Expr::Loop(v0) => Expr::Loop(v0.clone()),
-            Expr::Macro(v0) => Expr::Macro(v0.clone()),
-            Expr::Match(v0) => Expr::Match(v0.clone()),
-            Expr::MethodCall(v0) => Expr::MethodCall(v0.clone()),
-            Expr::Paren(v0) => Expr::Paren(v0.clone()),
-            Expr::Path(v0) => Expr::Path(v0.clone()),
-            Expr::Range(v0) => Expr::Range(v0.clone()),
-            Expr::Reference(v0) => Expr::Reference(v0.clone()),
-            Expr::Repeat(v0) => Expr::Repeat(v0.clone()),
-            Expr::Return(v0) => Expr::Return(v0.clone()),
-            Expr::Struct(v0) => Expr::Struct(v0.clone()),
-            Expr::Try(v0) => Expr::Try(v0.clone()),
-            Expr::TryBlock(v0) => Expr::TryBlock(v0.clone()),
-            Expr::Tuple(v0) => Expr::Tuple(v0.clone()),
-            Expr::Unary(v0) => Expr::Unary(v0.clone()),
-            Expr::Unsafe(v0) => Expr::Unsafe(v0.clone()),
-            Expr::Stream(v0) => Expr::Stream(v0.clone()),
-            Expr::While(v0) => Expr::While(v0.clone()),
-            Expr::Yield(v0) => Expr::Yield(v0.clone()),
+            Array(x) => Array(x.clone()),
+            Assign(x) => Assign(x.clone()),
+            Async(x) => Async(x.clone()),
+            Await(x) => Await(x.clone()),
+            Binary(x) => Binary(x.clone()),
+            Block(x) => Block(x.clone()),
+            Break(x) => Break(x.clone()),
+            Call(x) => Call(x.clone()),
+            Cast(x) => Cast(x.clone()),
+            Closure(x) => Closure(x.clone()),
+            Const(x) => Const(x.clone()),
+            Continue(x) => Continue(x.clone()),
+            Field(x) => Field(x.clone()),
+            ForLoop(x) => ForLoop(x.clone()),
+            Group(x) => Group(x.clone()),
+            If(x) => If(x.clone()),
+            Index(x) => Index(x.clone()),
+            Infer(x) => Infer(x.clone()),
+            Let(x) => Let(x.clone()),
+            Lit(x) => Lit(x.clone()),
+            Loop(x) => Loop(x.clone()),
+            Mac(x) => Mac(x.clone()),
+            Match(x) => Match(x.clone()),
+            MethodCall(x) => MethodCall(x.clone()),
+            Parenth(x) => Parenth(x.clone()),
+            Path(x) => Path(x.clone()),
+            Range(x) => Range(x.clone()),
+            Ref(x) => Ref(x.clone()),
+            Repeat(x) => Repeat(x.clone()),
+            Return(x) => Return(x.clone()),
+            Struct(x) => Struct(x.clone()),
+            Try(x) => Try(x.clone()),
+            TryBlock(x) => TryBlock(x.clone()),
+            Tuple(x) => Tuple(x.clone()),
+            Unary(x) => Unary(x.clone()),
+            Unsafe(x) => Unsafe(x.clone()),
+            Verbatim(x) => Verbatim(x.clone()),
+            While(x) => While(x.clone()),
+            Yield(x) => Yield(x.clone()),
         }
     }
 }
@@ -297,7 +299,7 @@ impl Clone for expr::Call {
         expr::Call {
             attrs: self.attrs.clone(),
             func: self.func.clone(),
-            paren: self.paren.clone(),
+            parenth: self.parenth.clone(),
             args: self.args.clone(),
         }
     }
@@ -464,16 +466,16 @@ impl Clone for expr::MethodCall {
             dot: self.dot.clone(),
             method: self.method.clone(),
             turbofish: self.turbofish.clone(),
-            paren: self.paren.clone(),
+            parenth: self.parenth.clone(),
             args: self.args.clone(),
         }
     }
 }
-impl Clone for expr::Paren {
+impl Clone for expr::Parenth {
     fn clone(&self) -> Self {
-        expr::Paren {
+        expr::Parenth {
             attrs: self.attrs.clone(),
-            paren: self.paren.clone(),
+            parenth: self.parenth.clone(),
             expr: self.expr.clone(),
         }
     }
@@ -562,7 +564,7 @@ impl Clone for expr::Tuple {
     fn clone(&self) -> Self {
         expr::Tuple {
             attrs: self.attrs.clone(),
-            paren: self.paren.clone(),
+            parenth: self.parenth.clone(),
             elems: self.elems.clone(),
         }
     }
@@ -647,8 +649,8 @@ impl Clone for FieldValue {
 impl Clone for data::Fields {
     fn clone(&self) -> Self {
         match self {
-            data::Fields::Named(v0) => data::Fields::Named(v0.clone()),
-            data::Fields::Unnamed(v0) => data::Fields::Unnamed(v0.clone()),
+            data::Fields::Named(x) => data::Fields::Named(x.clone()),
+            data::Fields::Unnamed(x) => data::Fields::Unnamed(x.clone()),
             data::Fields::Unit => data::Fields::Unit,
         }
     }
@@ -664,7 +666,7 @@ impl Clone for data::Named {
 impl Clone for data::Unnamed {
     fn clone(&self) -> Self {
         data::Unnamed {
-            paren: self.paren.clone(),
+            parenth: self.parenth.clone(),
             fields: self.fields.clone(),
         }
     }
@@ -681,19 +683,19 @@ impl Clone for item::File {
 impl Clone for item::FnArg {
     fn clone(&self) -> Self {
         match self {
-            item::FnArg::Receiver(v0) => item::FnArg::Receiver(v0.clone()),
-            item::FnArg::Type(v0) => item::FnArg::Type(v0.clone()),
+            item::FnArg::Receiver(x) => item::FnArg::Receiver(x.clone()),
+            item::FnArg::Type(x) => item::FnArg::Type(x.clone()),
         }
     }
 }
 impl Clone for item::foreign::Item {
     fn clone(&self) -> Self {
         match self {
-            item::foreign::Item::Fn(v0) => item::foreign::Item::Fn(v0.clone()),
-            item::foreign::Item::Static(v0) => item::foreign::Item::Static(v0.clone()),
-            item::foreign::Item::Type(v0) => item::foreign::Item::Type(v0.clone()),
-            item::foreign::Item::Macro(v0) => item::foreign::Item::Macro(v0.clone()),
-            item::foreign::Item::Verbatim(v0) => item::foreign::Item::Verbatim(v0.clone()),
+            item::foreign::Item::Fn(x) => item::foreign::Item::Fn(x.clone()),
+            item::foreign::Item::Static(x) => item::foreign::Item::Static(x.clone()),
+            item::foreign::Item::Type(x) => item::foreign::Item::Type(x.clone()),
+            item::foreign::Item::Macro(x) => item::foreign::Item::Macro(x.clone()),
+            item::foreign::Item::Verbatim(x) => item::foreign::Item::Verbatim(x.clone()),
         }
     }
 }
@@ -745,21 +747,21 @@ impl Clone for item::foreign::Type {
 impl Clone for Arg {
     fn clone(&self) -> Self {
         match self {
-            Arg::Life(v0) => Arg::Life(v0.clone()),
-            Arg::Type(v0) => Arg::Type(v0.clone()),
-            Arg::Const(v0) => Arg::Const(v0.clone()),
-            Arg::AssocType(v0) => Arg::AssocType(v0.clone()),
-            Arg::AssocConst(v0) => Arg::AssocConst(v0.clone()),
-            Arg::Constraint(v0) => Arg::Constraint(v0.clone()),
+            Arg::Life(x) => Arg::Life(x.clone()),
+            Arg::Type(x) => Arg::Type(x.clone()),
+            Arg::Const(x) => Arg::Const(x.clone()),
+            Arg::AssocType(x) => Arg::AssocType(x.clone()),
+            Arg::AssocConst(x) => Arg::AssocConst(x.clone()),
+            Arg::Constraint(x) => Arg::Constraint(x.clone()),
         }
     }
 }
 impl Clone for gen::Param {
     fn clone(&self) -> Self {
         match self {
-            gen::Param::Life(v0) => gen::Param::Life(v0.clone()),
-            gen::Param::Type(v0) => gen::Param::Type(v0.clone()),
-            gen::Param::Const(v0) => gen::Param::Const(v0.clone()),
+            gen::Param::Life(x) => gen::Param::Life(x.clone()),
+            gen::Param::Type(x) => gen::Param::Type(x.clone()),
+            gen::Param::Const(x) => gen::Param::Const(x.clone()),
         }
     }
 }
@@ -776,11 +778,11 @@ impl Clone for gen::Gens {
 impl Clone for item::impl_::Item {
     fn clone(&self) -> Self {
         match self {
-            item::impl_::Item::Const(v0) => item::impl_::Item::Const(v0.clone()),
-            item::impl_::Item::Fn(v0) => item::impl_::Item::Fn(v0.clone()),
-            item::impl_::Item::Type(v0) => item::impl_::Item::Type(v0.clone()),
-            item::impl_::Item::Macro(v0) => item::impl_::Item::Macro(v0.clone()),
-            item::impl_::Item::Verbatim(v0) => item::impl_::Item::Verbatim(v0.clone()),
+            item::impl_::Item::Const(x) => item::impl_::Item::Const(x.clone()),
+            item::impl_::Item::Fn(x) => item::impl_::Item::Fn(x.clone()),
+            item::impl_::Item::Type(x) => item::impl_::Item::Type(x.clone()),
+            item::impl_::Item::Macro(x) => item::impl_::Item::Macro(x.clone()),
+            item::impl_::Item::Verbatim(x) => item::impl_::Item::Verbatim(x.clone()),
         }
     }
 }
@@ -849,25 +851,26 @@ impl Clone for Index {
         }
     }
 }
-impl Clone for Item {
+impl Clone for item::Item {
     fn clone(&self) -> Self {
+        use item::Item::*;
         match self {
-            Item::Const(v0) => Item::Const(v0.clone()),
-            Item::Enum(v0) => Item::Enum(v0.clone()),
-            Item::Extern(v0) => Item::Extern(v0.clone()),
-            Item::Fn(v0) => Item::Fn(v0.clone()),
-            Item::Foreign(v0) => Item::Foreign(v0.clone()),
-            Item::Impl(v0) => Item::Impl(v0.clone()),
-            Item::Macro(v0) => Item::Macro(v0.clone()),
-            Item::Mod(v0) => Item::Mod(v0.clone()),
-            Item::Static(v0) => Item::Static(v0.clone()),
-            Item::Struct(v0) => Item::Struct(v0.clone()),
-            Item::Trait(v0) => Item::Trait(v0.clone()),
-            Item::TraitAlias(v0) => Item::TraitAlias(v0.clone()),
-            Item::Type(v0) => Item::Type(v0.clone()),
-            Item::Union(v0) => Item::Union(v0.clone()),
-            Item::Use(v0) => Item::Use(v0.clone()),
-            Item::Stream(v0) => Item::Stream(v0.clone()),
+            Item::Const(x) => Item::Const(x.clone()),
+            Item::Enum(x) => Item::Enum(x.clone()),
+            Item::Extern(x) => Item::Extern(x.clone()),
+            Item::Fn(x) => Item::Fn(x.clone()),
+            Item::Foreign(x) => Item::Foreign(x.clone()),
+            Item::Impl(x) => Item::Impl(x.clone()),
+            Item::Macro(x) => Item::Macro(x.clone()),
+            Item::Mod(x) => Item::Mod(x.clone()),
+            Item::Static(x) => Item::Static(x.clone()),
+            Item::Struct(x) => Item::Struct(x.clone()),
+            Item::Trait(x) => Item::Trait(x.clone()),
+            Item::TraitAlias(x) => Item::TraitAlias(x.clone()),
+            Item::Type(x) => Item::Type(x.clone()),
+            Item::Union(x) => Item::Union(x.clone()),
+            Item::Use(x) => Item::Use(x.clone()),
+            Item::Stream(x) => Item::Stream(x.clone()),
         }
     }
 }
@@ -1092,14 +1095,14 @@ impl Clone for gen::param::Life {
 impl Clone for Lit {
     fn clone(&self) -> Self {
         match self {
-            Lit::Str(v0) => Lit::Str(v0.clone()),
-            Lit::ByteStr(v0) => Lit::ByteStr(v0.clone()),
-            Lit::Byte(v0) => Lit::Byte(v0.clone()),
-            Lit::Char(v0) => Lit::Char(v0.clone()),
-            Lit::Int(v0) => Lit::Int(v0.clone()),
-            Lit::Float(v0) => Lit::Float(v0.clone()),
-            Lit::Bool(v0) => Lit::Bool(v0.clone()),
-            Lit::Stream(v0) => Lit::Stream(v0.clone()),
+            Lit::Str(x) => Lit::Str(x.clone()),
+            Lit::ByteStr(x) => Lit::ByteStr(x.clone()),
+            Lit::Byte(x) => Lit::Byte(x.clone()),
+            Lit::Char(x) => Lit::Char(x.clone()),
+            Lit::Int(x) => Lit::Int(x.clone()),
+            Lit::Float(x) => Lit::Float(x.clone()),
+            Lit::Bool(x) => Lit::Bool(x.clone()),
+            Lit::Stream(x) => Lit::Stream(x.clone()),
         }
     }
 }
@@ -1144,26 +1147,26 @@ impl Clone for Macro {
 impl Clone for tok::Delim {
     fn clone(&self) -> Self {
         match self {
-            tok::Delim::Paren(v0) => tok::Delim::Paren(v0.clone()),
-            tok::Delim::Brace(v0) => tok::Delim::Brace(v0.clone()),
-            tok::Delim::Bracket(v0) => tok::Delim::Bracket(v0.clone()),
+            tok::Delim::Parenth(x) => tok::Delim::Parenth(x.clone()),
+            tok::Delim::Brace(x) => tok::Delim::Brace(x.clone()),
+            tok::Delim::Bracket(x) => tok::Delim::Bracket(x.clone()),
         }
     }
 }
 impl Clone for Member {
     fn clone(&self) -> Self {
         match self {
-            Member::Named(v0) => Member::Named(v0.clone()),
-            Member::Unnamed(v0) => Member::Unnamed(v0.clone()),
+            Member::Named(x) => Member::Named(x.clone()),
+            Member::Unnamed(x) => Member::Unnamed(x.clone()),
         }
     }
 }
 impl Clone for attr::Meta {
     fn clone(&self) -> Self {
         match self {
-            attr::Meta::Path(v0) => attr::Meta::Path(v0.clone()),
-            attr::Meta::List(v0) => attr::Meta::List(v0.clone()),
-            attr::Meta::NameValue(v0) => attr::Meta::NameValue(v0.clone()),
+            attr::Meta::Path(x) => attr::Meta::Path(x.clone()),
+            attr::Meta::List(x) => attr::Meta::List(x.clone()),
+            attr::Meta::NameValue(x) => attr::Meta::NameValue(x.clone()),
         }
     }
 }
@@ -1185,35 +1188,35 @@ impl Clone for attr::NameValue {
         }
     }
 }
-impl Clone for ParenthesizedArgs {
+impl Clone for path::Parenthed {
     fn clone(&self) -> Self {
-        ParenthesizedArgs {
-            paren: self.paren.clone(),
-            ins: self.ins.clone(),
-            out: self.out.clone(),
+        path::Parenthed {
+            parenth: self.parenth.clone(),
+            args: self.args.clone(),
+            ret: self.ret.clone(),
         }
     }
 }
 impl Clone for pat::Pat {
     fn clone(&self) -> Self {
         match self {
-            pat::Pat::Const(v0) => pat::Pat::Const(v0.clone()),
-            pat::Pat::Ident(v0) => pat::Pat::Ident(v0.clone()),
-            pat::Pat::Lit(v0) => pat::Pat::Lit(v0.clone()),
-            pat::Pat::Mac(v0) => pat::Pat::Mac(v0.clone()),
-            pat::Pat::Or(v0) => pat::Pat::Or(v0.clone()),
-            pat::Pat::Paren(v0) => pat::Pat::Paren(v0.clone()),
-            pat::Pat::Path(v0) => pat::Pat::Path(v0.clone()),
-            pat::Pat::Range(v0) => pat::Pat::Range(v0.clone()),
-            pat::Pat::Ref(v0) => pat::Pat::Ref(v0.clone()),
-            pat::Pat::Rest(v0) => pat::Pat::Rest(v0.clone()),
-            pat::Pat::Slice(v0) => pat::Pat::Slice(v0.clone()),
-            pat::Pat::Struct(v0) => pat::Pat::Struct(v0.clone()),
-            pat::Pat::Tuple(v0) => pat::Pat::Tuple(v0.clone()),
-            pat::Pat::TupleStruct(v0) => pat::Pat::TupleStruct(v0.clone()),
-            pat::Pat::Type(v0) => pat::Pat::Type(v0.clone()),
-            pat::Pat::Verbatim(v0) => pat::Pat::Verbatim(v0.clone()),
-            pat::Pat::Wild(v0) => pat::Pat::Wild(v0.clone()),
+            pat::Pat::Const(x) => pat::Pat::Const(x.clone()),
+            pat::Pat::Ident(x) => pat::Pat::Ident(x.clone()),
+            pat::Pat::Lit(x) => pat::Pat::Lit(x.clone()),
+            pat::Pat::Mac(x) => pat::Pat::Mac(x.clone()),
+            pat::Pat::Or(x) => pat::Pat::Or(x.clone()),
+            pat::Pat::Parenth(x) => pat::Pat::Parenth(x.clone()),
+            pat::Pat::Path(x) => pat::Pat::Path(x.clone()),
+            pat::Pat::Range(x) => pat::Pat::Range(x.clone()),
+            pat::Pat::Ref(x) => pat::Pat::Ref(x.clone()),
+            pat::Pat::Rest(x) => pat::Pat::Rest(x.clone()),
+            pat::Pat::Slice(x) => pat::Pat::Slice(x.clone()),
+            pat::Pat::Struct(x) => pat::Pat::Struct(x.clone()),
+            pat::Pat::Tuple(x) => pat::Pat::Tuple(x.clone()),
+            pat::Pat::TupleStruct(x) => pat::Pat::TupleStruct(x.clone()),
+            pat::Pat::Type(x) => pat::Pat::Type(x.clone()),
+            pat::Pat::Verbatim(x) => pat::Pat::Verbatim(x.clone()),
+            pat::Pat::Wild(x) => pat::Pat::Wild(x.clone()),
         }
     }
 }
@@ -1237,11 +1240,11 @@ impl Clone for pat::Or {
         }
     }
 }
-impl Clone for pat::Paren {
+impl Clone for pat::Parenth {
     fn clone(&self) -> Self {
-        pat::Paren {
+        pat::Parenth {
             attrs: self.attrs.clone(),
-            paren: self.paren.clone(),
+            parenth: self.parenth.clone(),
             pat: self.pat.clone(),
         }
     }
@@ -1289,7 +1292,7 @@ impl Clone for pat::Tuple {
     fn clone(&self) -> Self {
         pat::Tuple {
             attrs: self.attrs.clone(),
-            paren: self.paren.clone(),
+            parenth: self.parenth.clone(),
             pats: self.pats.clone(),
         }
     }
@@ -1300,7 +1303,7 @@ impl Clone for pat::TupleStruct {
             attrs: self.attrs.clone(),
             qself: self.qself.clone(),
             path: self.path.clone(),
-            paren: self.paren.clone(),
+            parenth: self.parenth.clone(),
             pats: self.pats.clone(),
         }
     }
@@ -1331,12 +1334,13 @@ impl Clone for Path {
         }
     }
 }
-impl Clone for Args {
+impl Clone for path::Args {
     fn clone(&self) -> Self {
+        use path::Args::*;
         match self {
-            Args::None => Args::None,
-            Args::Angled(v0) => Args::Angled(v0.clone()),
-            Args::Parenthesized(v0) => Args::Parenthesized(v0.clone()),
+            None => None,
+            Angled(x) => Angled(x.clone()),
+            Parenthed(x) => Parenthed(x.clone()),
         }
     }
 }
@@ -1400,7 +1404,7 @@ impl Clone for typ::Ret {
     fn clone(&self) -> Self {
         match self {
             typ::Ret::Default => typ::Ret::Default,
-            typ::Ret::Type(v0, v1) => typ::Ret::Type(v0.clone(), v1.clone()),
+            typ::Ret::Type(x, v1) => typ::Ret::Type(x.clone(), v1.clone()),
         }
     }
 }
@@ -1414,7 +1418,7 @@ impl Clone for item::Sig {
             fn_: self.fn_.clone(),
             ident: self.ident.clone(),
             gens: self.gens.clone(),
-            paren: self.paren.clone(),
+            parenth: self.parenth.clone(),
             args: self.args.clone(),
             vari: self.vari.clone(),
             ret: self.ret.clone(),
@@ -1424,7 +1428,7 @@ impl Clone for item::Sig {
 impl Clone for StaticMut {
     fn clone(&self) -> Self {
         match self {
-            StaticMut::Mut(v0) => StaticMut::Mut(v0.clone()),
+            StaticMut::Mut(x) => StaticMut::Mut(x.clone()),
             StaticMut::None => StaticMut::None,
         }
     }
@@ -1432,10 +1436,10 @@ impl Clone for StaticMut {
 impl Clone for stmt::Stmt {
     fn clone(&self) -> Self {
         match self {
-            stmt::Stmt::stmt::Local(v0) => stmt::Stmt::stmt::Local(v0.clone()),
-            stmt::Stmt::Item(v0) => stmt::Stmt::Item(v0.clone()),
-            stmt::Stmt::Expr(v0, v1) => stmt::Stmt::Expr(v0.clone(), v1.clone()),
-            stmt::Stmt::Mac(v0) => stmt::Stmt::Mac(v0.clone()),
+            stmt::Stmt::stmt::Local(x) => stmt::Stmt::stmt::Local(x.clone()),
+            stmt::Stmt::Item(x) => stmt::Stmt::Item(x.clone()),
+            stmt::Stmt::Expr(x, v1) => stmt::Stmt::Expr(x.clone(), v1.clone()),
+            stmt::Stmt::Mac(x) => stmt::Stmt::Mac(x.clone()),
         }
     }
 }
@@ -1451,7 +1455,7 @@ impl Clone for stmt::Mac {
 impl Clone for gen::bound::Trait {
     fn clone(&self) -> Self {
         gen::bound::Trait {
-            paren: self.paren.clone(),
+            parenth: self.parenth.clone(),
             modif: self.modif.clone(),
             lifes: self.lifes.clone(),
             path: self.path.clone(),
@@ -1467,11 +1471,11 @@ impl Clone for gen::bound::Modifier {
 impl Clone for item::trait_::Item {
     fn clone(&self) -> Self {
         match self {
-            item::trait_::Item::Const(v0) => item::trait_::Item::Const(v0.clone()),
-            item::trait_::Item::Fn(v0) => item::trait_::Item::Fn(v0.clone()),
-            item::trait_::Item::Type(v0) => item::trait_::Item::Type(v0.clone()),
-            item::trait_::Item::Macro(v0) => item::trait_::Item::Macro(v0.clone()),
-            item::trait_::Item::Verbatim(v0) => item::trait_::Item::Verbatim(v0.clone()),
+            item::trait_::Item::Const(x) => item::trait_::Item::Const(x.clone()),
+            item::trait_::Item::Fn(x) => item::trait_::Item::Fn(x.clone()),
+            item::trait_::Item::Type(x) => item::trait_::Item::Type(x.clone()),
+            item::trait_::Item::Macro(x) => item::trait_::Item::Macro(x.clone()),
+            item::trait_::Item::Verbatim(x) => item::trait_::Item::Verbatim(x.clone()),
         }
     }
 }
@@ -1525,21 +1529,21 @@ impl Clone for item::trait_::Type {
 impl Clone for typ::Type {
     fn clone(&self) -> Self {
         match self {
-            typ::Type::Array(v0) => typ::Type::Array(v0.clone()),
-            typ::Type::Fn(v0) => typ::Type::Fn(v0.clone()),
-            typ::Type::Group(v0) => typ::Type::Group(v0.clone()),
-            typ::Type::Impl(v0) => typ::Type::Impl(v0.clone()),
-            typ::Type::Infer(v0) => typ::Type::Infer(v0.clone()),
-            typ::Type::Mac(v0) => typ::Type::Mac(v0.clone()),
-            typ::Type::Never(v0) => typ::Type::Never(v0.clone()),
-            typ::Type::Paren(v0) => typ::Type::Paren(v0.clone()),
-            typ::Type::Path(v0) => typ::Type::Path(v0.clone()),
-            typ::Type::Ptr(v0) => typ::Type::Ptr(v0.clone()),
-            typ::Type::Ref(v0) => typ::Type::Ref(v0.clone()),
-            typ::Type::Slice(v0) => typ::Type::Slice(v0.clone()),
-            typ::Type::Trait(v0) => typ::Type::Trait(v0.clone()),
-            typ::Type::Tuple(v0) => typ::Type::Tuple(v0.clone()),
-            typ::Type::Stream(v0) => typ::Type::Stream(v0.clone()),
+            typ::Type::Array(x) => typ::Type::Array(x.clone()),
+            typ::Type::Fn(x) => typ::Type::Fn(x.clone()),
+            typ::Type::Group(x) => typ::Type::Group(x.clone()),
+            typ::Type::Impl(x) => typ::Type::Impl(x.clone()),
+            typ::Type::Infer(x) => typ::Type::Infer(x.clone()),
+            typ::Type::Mac(x) => typ::Type::Mac(x.clone()),
+            typ::Type::Never(x) => typ::Type::Never(x.clone()),
+            typ::Type::Parenth(x) => typ::Type::Parenth(x.clone()),
+            typ::Type::Path(x) => typ::Type::Path(x.clone()),
+            typ::Type::Ptr(x) => typ::Type::Ptr(x.clone()),
+            typ::Type::Ref(x) => typ::Type::Ref(x.clone()),
+            typ::Type::Slice(x) => typ::Type::Slice(x.clone()),
+            typ::Type::Trait(x) => typ::Type::Trait(x.clone()),
+            typ::Type::Tuple(x) => typ::Type::Tuple(x.clone()),
+            typ::Type::Stream(x) => typ::Type::Stream(x.clone()),
         }
     }
 }
@@ -1560,7 +1564,7 @@ impl Clone for typ::Fn {
             unsafe_: self.unsafe_.clone(),
             abi: self.abi.clone(),
             fn_: self.fn_.clone(),
-            paren: self.paren.clone(),
+            parenth: self.parenth.clone(),
             args: self.args.clone(),
             vari: self.vari.clone(),
             ret: self.ret.clone(),
@@ -1617,16 +1621,16 @@ impl Clone for gen::param::Type {
 impl Clone for gen::bound::Type {
     fn clone(&self) -> Self {
         match self {
-            gen::bound::Type::Trait(v0) => gen::bound::Type::Trait(v0.clone()),
-            gen::bound::Type::Life(v0) => gen::bound::Type::Life(v0.clone()),
-            gen::bound::Type::Verbatim(v0) => gen::bound::Type::Verbatim(v0.clone()),
+            gen::bound::Type::Trait(x) => gen::bound::Type::Trait(x.clone()),
+            gen::bound::Type::Life(x) => gen::bound::Type::Life(x.clone()),
+            gen::bound::Type::Verbatim(x) => gen::bound::Type::Verbatim(x.clone()),
         }
     }
 }
-impl Clone for typ::Paren {
+impl Clone for typ::Parenth {
     fn clone(&self) -> Self {
-        typ::Paren {
-            paren: self.paren.clone(),
+        typ::Parenth {
+            parenth: self.parenth.clone(),
             elem: self.elem.clone(),
         }
     }
@@ -1678,7 +1682,7 @@ impl Clone for typ::Trait {
 impl Clone for typ::Tuple {
     fn clone(&self) -> Self {
         typ::Tuple {
-            paren: self.paren.clone(),
+            parenth: self.parenth.clone(),
             elems: self.elems.clone(),
         }
     }
@@ -1732,11 +1736,11 @@ impl Clone for item::use_::Rename {
 impl Clone for item::use_::Tree {
     fn clone(&self) -> Self {
         match self {
-            item::use_::Tree::Path(v0) => item::use_::Tree::Path(v0.clone()),
-            item::use_::Tree::Name(v0) => item::use_::Tree::Name(v0.clone()),
-            item::use_::Tree::Rename(v0) => item::use_::Tree::Rename(v0.clone()),
-            item::use_::Tree::Glob(v0) => item::use_::Tree::Glob(v0.clone()),
-            item::use_::Tree::Group(v0) => item::use_::Tree::Group(v0.clone()),
+            item::use_::Tree::Path(x) => item::use_::Tree::Path(x.clone()),
+            item::use_::Tree::Name(x) => item::use_::Tree::Name(x.clone()),
+            item::use_::Tree::Rename(x) => item::use_::Tree::Rename(x.clone()),
+            item::use_::Tree::Glob(x) => item::use_::Tree::Glob(x.clone()),
+            item::use_::Tree::Group(x) => item::use_::Tree::Group(x.clone()),
         }
     }
 }
@@ -1764,7 +1768,7 @@ impl Clone for data::Restricted {
     fn clone(&self) -> Self {
         data::Restricted {
             pub_: self.pub_.clone(),
-            paren: self.paren.clone(),
+            parenth: self.parenth.clone(),
             in_: self.in_.clone(),
             path: self.path.clone(),
         }
@@ -1773,8 +1777,8 @@ impl Clone for data::Restricted {
 impl Clone for data::Visibility {
     fn clone(&self) -> Self {
         match self {
-            data::Visibility::Public(v0) => data::Visibility::Public(v0.clone()),
-            data::Visibility::Restricted(v0) => data::Visibility::Restricted(v0.clone()),
+            data::Visibility::Public(x) => data::Visibility::Public(x.clone()),
+            data::Visibility::Restricted(x) => data::Visibility::Restricted(x.clone()),
             data::Visibility::Inherited => data::Visibility::Inherited,
         }
     }
@@ -1790,8 +1794,8 @@ impl Clone for gen::Where {
 impl Clone for gen::Where::Pred {
     fn clone(&self) -> Self {
         match self {
-            gen::Where::Pred::Life(v0) => gen::Where::Pred::Life(v0.clone()),
-            gen::Where::Pred::Type(v0) => gen::Where::Pred::Type(v0.clone()),
+            gen::Where::Pred::Life(x) => gen::Where::Pred::Life(x.clone()),
+            gen::Where::Pred::Type(x) => gen::Where::Pred::Type(x.clone()),
         }
     }
 }

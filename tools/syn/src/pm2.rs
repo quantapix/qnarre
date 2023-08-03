@@ -29,9 +29,9 @@ impl Deferred {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Delim {
-    Paren,
     Brace,
     Bracket,
+    Parenth,
     None,
 }
 
@@ -90,7 +90,7 @@ impl Group {
         match s {
             Stream::Compiler(y) => {
                 let x = match x {
-                    Delim::Paren => pm::Delimiter::Parenthesis,
+                    Delim::Parenth => pm::Delimiter::Parenthesis,
                     Delim::Bracket => pm::Delimiter::Bracket,
                     Delim::Brace => pm::Delimiter::Brace,
                     Delim::None => pm::Delimiter::None,
@@ -103,7 +103,7 @@ impl Group {
     pub fn delim(&self) -> Delim {
         match self {
             Group::Compiler(x) => match x.delimiter() {
-                pm::Delimiter::Parenthesis => Delim::Paren,
+                pm::Delimiter::Parenthesis => Delim::Parenth,
                 pm::Delimiter::Bracket => Delim::Bracket,
                 pm::Delimiter::Brace => Delim::Brace,
                 pm::Delimiter::None => Delim::None,
@@ -1728,7 +1728,7 @@ mod imp {
     impl Display for Group {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             let (open, close) = match self.delim {
-                Delim::Paren => ("(", ")"),
+                Delim::Parenth => ("(", ")"),
                 Delim::Brace => ("{ ", "}"),
                 Delim::Bracket => ("[", "]"),
                 Delim::None => ("", ""),
@@ -2541,7 +2541,7 @@ mod imp {
                 },
             };
             if let Some(open) = match first {
-                b'(' => Some(Delim::Paren),
+                b'(' => Some(Delim::Parenth),
                 b'[' => Some(Delim::Bracket),
                 b'{' => Some(Delim::Brace),
                 _ => None,
@@ -2552,7 +2552,7 @@ mod imp {
                 stack.push(frame);
                 trees = Builder::new();
             } else if let Some(close) = match first {
-                b')' => Some(Delim::Paren),
+                b')' => Some(Delim::Parenth),
                 b']' => Some(Delim::Bracket),
                 b'}' => Some(Delim::Brace),
                 _ => None,

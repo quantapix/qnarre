@@ -144,7 +144,7 @@ pub trait Visit<'ast> {
     fn visit_expr_method_call(&mut self, i: &'ast expr::MethodCall) {
         visit_expr_method_call(self, i);
     }
-    fn visit_expr_paren(&mut self, i: &'ast expr::Paren) {
+    fn visit_expr_paren(&mut self, i: &'ast expr::Parenth) {
         visit_expr_paren(self, i);
     }
     fn visit_expr_path(&mut self, i: &'ast expr::Path) {
@@ -366,7 +366,7 @@ pub trait Visit<'ast> {
     fn visit_meta_name_value(&mut self, i: &'ast attr::NameValue) {
         visit_meta_name_value(self, i);
     }
-    fn visit_parenthesized_generic_arguments(&mut self, i: &'ast ParenthesizedArgs) {
+    fn visit_parenthesized_generic_arguments(&mut self, i: &'ast path::Parenthed) {
         visit_parenthesized_generic_arguments(self, i);
     }
     fn visit_pat(&mut self, i: &'ast pat::Pat) {
@@ -378,7 +378,7 @@ pub trait Visit<'ast> {
     fn visit_pat_or(&mut self, i: &'ast pat::Or) {
         visit_pat_or(self, i);
     }
-    fn visit_pat_paren(&mut self, i: &'ast pat::Paren) {
+    fn visit_pat_paren(&mut self, i: &'ast pat::Parenth) {
         visit_pat_paren(self, i);
     }
     fn visit_pat_reference(&mut self, i: &'ast pat::Ref) {
@@ -498,7 +498,7 @@ pub trait Visit<'ast> {
     fn visit_type_param_bound(&mut self, i: &'ast gen::bound::Type) {
         visit_type_param_bound(self, i);
     }
-    fn visit_type_paren(&mut self, i: &'ast typ::Paren) {
+    fn visit_type_paren(&mut self, i: &'ast typ::Parenth) {
         visit_type_paren(self, i);
     }
     fn visit_type_path(&mut self, i: &'ast typ::Path) {
@@ -938,7 +938,7 @@ where
         Expr::MethodCall(_binding_0) => {
             full!(v.visit_expr_method_call(_binding_0));
         },
-        Expr::Paren(_binding_0) => {
+        Expr::Parenth(_binding_0) => {
             v.visit_expr_paren(_binding_0);
         },
         Expr::Path(_binding_0) => {
@@ -1077,7 +1077,7 @@ where
         v.visit_attribute(it);
     }
     v.visit_expr(&*node.func);
-    skip!(node.paren);
+    skip!(node.parenth);
     for el in Puncted::pairs(&node.args) {
         let it = el.value();
         v.visit_expr(it);
@@ -1281,20 +1281,20 @@ where
     if let Some(it) = &node.turbofish {
         v.visit_angle_bracketed_generic_arguments(it);
     }
-    skip!(node.paren);
+    skip!(node.parenth);
     for el in Puncted::pairs(&node.args) {
         let it = el.value();
         v.visit_expr(it);
     }
 }
-pub fn visit_expr_paren<'ast, V>(v: &mut V, node: &'ast expr::Paren)
+pub fn visit_expr_paren<'ast, V>(v: &mut V, node: &'ast expr::Parenth)
 where
     V: Visit<'ast> + ?Sized,
 {
     for it in &node.attrs {
         v.visit_attribute(it);
     }
-    skip!(node.paren);
+    skip!(node.parenth);
     v.visit_expr(&*node.expr);
 }
 pub fn visit_expr_path<'ast, V>(v: &mut V, node: &'ast expr::Path)
@@ -1407,7 +1407,7 @@ where
     for it in &node.attrs {
         v.visit_attribute(it);
     }
-    skip!(node.paren);
+    skip!(node.parenth);
     for el in Puncted::pairs(&node.elems) {
         let it = el.value();
         v.visit_expr(it);
@@ -1532,7 +1532,7 @@ pub fn visit_fields_unnamed<'ast, V>(v: &mut V, node: &'ast data::Unnamed)
 where
     V: Visit<'ast> + ?Sized,
 {
-    skip!(node.paren);
+    skip!(node.parenth);
     for el in Puncted::pairs(&node.fields) {
         let it = el.value();
         v.visit_field(it);
@@ -2222,7 +2222,7 @@ where
     V: Visit<'ast> + ?Sized,
 {
     match node {
-        tok::Delim::Paren(_binding_0) => {
+        tok::Delim::Parenth(_binding_0) => {
             skip!(_binding_0);
         },
         tok::Delim::Brace(_binding_0) => {
@@ -2282,7 +2282,7 @@ pub fn visit_parenthesized_generic_arguments<'ast, V>(v: &mut V, node: &'ast Par
 where
     V: Visit<'ast> + ?Sized,
 {
-    skip!(node.paren);
+    skip!(node.parenth);
     for el in Puncted::pairs(&node.ins) {
         let it = el.value();
         v.visit_type(it);
@@ -2309,7 +2309,7 @@ where
         pat::Pat::Or(_binding_0) => {
             v.visit_pat_or(_binding_0);
         },
-        pat::Pat::Paren(_binding_0) => {
+        pat::Pat::Parenth(_binding_0) => {
             v.visit_pat_paren(_binding_0);
         },
         pat::Pat::Path(_binding_0) => {
@@ -2375,14 +2375,14 @@ where
         v.visit_pat(it);
     }
 }
-pub fn visit_pat_paren<'ast, V>(v: &mut V, node: &'ast pat::Paren)
+pub fn visit_pat_paren<'ast, V>(v: &mut V, node: &'ast pat::Parenth)
 where
     V: Visit<'ast> + ?Sized,
 {
     for it in &node.attrs {
         v.visit_attribute(it);
     }
-    skip!(node.paren);
+    skip!(node.parenth);
     v.visit_pat(&*node.pat);
 }
 pub fn visit_pat_reference<'ast, V>(v: &mut V, node: &'ast pat::Ref)
@@ -2445,7 +2445,7 @@ where
     for it in &node.attrs {
         v.visit_attribute(it);
     }
-    skip!(node.paren);
+    skip!(node.parenth);
     for el in Puncted::pairs(&node.pats) {
         let it = el.value();
         v.visit_pat(it);
@@ -2462,7 +2462,7 @@ where
         v.visit_qself(it);
     }
     v.visit_path(&node.path);
-    skip!(node.paren);
+    skip!(node.parenth);
     for el in Puncted::pairs(&node.pats) {
         let it = el.value();
         v.visit_pat(it);
@@ -2610,7 +2610,7 @@ where
     skip!(node.fn_);
     v.visit_ident(&node.ident);
     v.visit_generics(&node.gens);
-    skip!(node.paren);
+    skip!(node.parenth);
     for el in Puncted::pairs(&node.args) {
         let it = el.value();
         v.visit_fn_arg(it);
@@ -2670,7 +2670,7 @@ pub fn visit_trait_bound<'ast, V>(v: &mut V, node: &'ast gen::bound::Trait)
 where
     V: Visit<'ast> + ?Sized,
 {
-    skip!(node.paren);
+    skip!(node.parenth);
     v.visit_trait_bound_modifier(&node.modif);
     if let Some(it) = &node.lifes {
         v.visit_bound_lifetimes(it);
@@ -2798,7 +2798,7 @@ where
         typ::Type::Never(_binding_0) => {
             v.visit_type_never(_binding_0);
         },
-        typ::Type::Paren(_binding_0) => {
+        typ::Type::Parenth(_binding_0) => {
             v.visit_type_paren(_binding_0);
         },
         typ::Type::Path(_binding_0) => {
@@ -2845,7 +2845,7 @@ where
         v.visit_abi(it);
     }
     skip!(node.fn_);
-    skip!(node.paren);
+    skip!(node.parenth);
     for el in Puncted::pairs(&node.args) {
         let it = el.value();
         v.visit_bare_fn_arg(it);
@@ -2924,11 +2924,11 @@ where
         },
     }
 }
-pub fn visit_type_paren<'ast, V>(v: &mut V, node: &'ast typ::Paren)
+pub fn visit_type_paren<'ast, V>(v: &mut V, node: &'ast typ::Parenth)
 where
     V: Visit<'ast> + ?Sized,
 {
-    skip!(node.paren);
+    skip!(node.parenth);
     v.visit_type(&*node.elem);
 }
 pub fn visit_type_path<'ast, V>(v: &mut V, node: &'ast typ::Path)
@@ -2981,7 +2981,7 @@ pub fn visit_type_tuple<'ast, V>(v: &mut V, node: &'ast typ::Tuple)
 where
     V: Visit<'ast> + ?Sized,
 {
-    skip!(node.paren);
+    skip!(node.parenth);
     for el in Puncted::pairs(&node.elems) {
         let it = el.value();
         v.visit_type(it);
@@ -3096,7 +3096,7 @@ where
     V: Visit<'ast> + ?Sized,
 {
     skip!(node.pub_);
-    skip!(node.paren);
+    skip!(node.parenth);
     skip!(node.in_);
     v.visit_path(&*node.path);
 }
