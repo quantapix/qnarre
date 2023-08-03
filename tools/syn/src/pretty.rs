@@ -10,18 +10,29 @@ use std::{
 };
 
 pub enum Args<'a> {
-    Kind(path::Kind),
     BegLine(bool),
+    BreaksSemi(bool, bool),
     IdentSemi(&'a Ident, bool),
+    Kind(path::Kind),
+    Tilde(bool),
 }
 impl<'a> Args<'a> {
-    pub fn beg_line(x: &Option<Args>) {
+    pub fn beg_line(x: &Option<Args>) -> bool {
         match x {
             Some(x) => match x {
                 Args::BegLine(x) => x,
                 _ => &false,
             },
             _ => &false,
+        }
+    }
+    pub fn breaks_semi(x: &Option<Args>) {
+        match x {
+            Some(x) => match x {
+                Args::BreaksSemi(x, semi) => Some((x, semi)),
+                _ => None,
+            },
+            _ => None,
         }
     }
     pub fn ident_semi(x: &Option<Args>) {
@@ -31,6 +42,24 @@ impl<'a> Args<'a> {
                 _ => None,
             },
             _ => None,
+        }
+    }
+    pub fn kind(x: &Option<Args>) {
+        match x {
+            Some(x) => match x {
+                Args::Kind(x) => Some(x),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+    pub fn tilde(x: &Option<Args>) -> bool {
+        match x {
+            Some(x) => match x {
+                Args::Tilde(x) => x,
+                _ => &false,
+            },
+            _ => &false,
         }
     }
 }

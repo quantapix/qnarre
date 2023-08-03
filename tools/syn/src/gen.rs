@@ -46,14 +46,14 @@ pub mod bound {
             } else {
                 (None, s)
             };
-            let is_tilde_const = y.peek(Token![~]) && y.peek2(Token![const]);
-            if is_tilde_const {
+            let tilde = y.peek(Token![~]) && y.peek2(Token![const]);
+            if tilde {
                 y.parse::<Token![~]>()?;
                 y.parse::<Token![const]>()?;
             }
             let mut y: Trait = y.parse()?;
             y.parenth = parenth;
-            if is_tilde_const {
+            if tilde {
                 Ok(Type::Verbatim(parse::parse_verbatim(&beg, s)))
             } else {
                 Ok(Type::Trait(y))
@@ -114,11 +114,11 @@ pub mod bound {
         }
     }
     impl Pretty for Trait {
-        fn pretty(&self, p: &mut Print, tilde: bool) {
+        fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
             if self.parenth.is_some() {
                 p.word("(");
             }
-            if tilde {
+            if pretty::Args::tilde(x) {
                 p.word("~const ");
             }
             &self.modif.pretty(p);
@@ -697,7 +697,8 @@ impl Lower for Where {
     }
 }
 impl Pretty for Where {
-    fn pretty(&self, p: &mut Print, breaks: bool, semi: bool) {
+    fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
+        let Some(breaks, semi) = pretty::Args::breaks_semi(x);
         if breaks {
             p.hardbreak();
             p.offset(-INDENT);
@@ -735,7 +736,7 @@ impl Pretty for Where {
     }
 }
 impl Pretty for Option<Where> {
-    fn pretty(&self, p: &mut Print, breaks: bool, semi: bool) {
+    fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
         let y = match self {
             Some(x) if !x.preds.is_empty() => x,
             _ => {
@@ -747,7 +748,7 @@ impl Pretty for Option<Where> {
                 return;
             },
         };
-        y.pretty_with_args(p, (breaks, semi));
+        y.pretty_with_args(p, x);
     }
 }
 

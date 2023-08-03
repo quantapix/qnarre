@@ -102,7 +102,7 @@ impl Path {
                 if !x.is_first || self.colon.is_some() {
                     p.word("::");
                 }
-                &x.pretty(p, Kind::Type);
+                &x.pretty_with_args(p, Kind::Type);
                 if x.is_last {
                     p.word(">");
                 }
@@ -141,7 +141,8 @@ impl Lower for Path {
     }
 }
 impl Pretty for Path {
-    fn pretty(&self, p: &mut Print, kind: Kind) {
+    fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
+        let Some(kind) = pretty::Args::kind(x);
         assert!(!self.segs.is_empty());
         for x in self.segs.iter().delimited() {
             if !x.is_first || self.colon.is_some() {
@@ -200,9 +201,9 @@ impl Lower for Segment {
     }
 }
 impl Pretty for Segment {
-    fn pretty(&self, p: &mut Print, kind: Kind) {
+    fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
         &self.ident.pretty(p);
-        &self.args.pretty_with_args(p, kind);
+        &self.args.pretty_with_args(p, x);
     }
 }
 
@@ -248,12 +249,12 @@ impl Lower for Args {
     }
 }
 impl Pretty for Args {
-    fn pretty(&self, p: &mut Print, kind: Kind) {
+    fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
         use Args::*;
         match self {
             None => {},
             Angled(x) => {
-                x.pretty_with_args(p, kind);
+                x.pretty_with_args(p, x);
             },
             Parenthed(x) => {
                 x.pretty(p);
@@ -463,7 +464,8 @@ impl Lower for Angled {
     }
 }
 impl Pretty for Angled {
-    fn pretty(&self, p: &mut Print, kind: Kind) {
+    fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
+        let Some(kind) = pretty::Args::kind(x);
         if self.args.is_empty() || kind == Kind::Simple {
             return;
         }
