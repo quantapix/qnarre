@@ -1,4 +1,5 @@
 use super::*;
+use std::iter;
 
 pub struct Mac {
     pub path: Path,
@@ -39,19 +40,19 @@ impl Lower for Mac {
 }
 impl Pretty for Mac {
     fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
-        let Some(ident, semi) = pretty::Args::ident_semi(x);
+        let Some(x, semi) = pretty::Args::ident_semi(x);
         if self.path.is_ident("macro_rules") {
-            if let Some(x) = ident {
+            if let Some(x) = x {
                 p.macro_rules(x, &self.toks);
                 return;
             }
         }
-        if ident.is_none() && p.standard_library_macro(self, semi) {
+        if x.is_none() && p.standard_library_macro(self, semi) {
             return;
         }
         &self.path.pretty_with_args(p, path::Kind::Simple);
         p.word("!");
-        if let Some(x) = ident {
+        if let Some(x) = x {
             p.nbsp();
             x.pretty(x);
         }
@@ -91,12 +92,12 @@ pub fn parse_delim(s: Stream) -> Res<(tok::Delim, pm2::Stream)> {
                 pm2::Delim::Brace => tok::Delim::Brace(tok::Brace(s)),
                 pm2::Delim::Bracket => tok::Delim::Bracket(tok::Bracket(s)),
                 pm2::Delim::None => {
-                    return Err(x.err("expected delimiter"));
+                    return Err(x.err("expected delim"));
                 },
             };
             Ok(((delim, x.stream()), rest))
         } else {
-            Err(x.err("expected delimiter"))
+            Err(x.err("expected delim"))
         }
     })
 }

@@ -13,13 +13,13 @@ use std::{
 macro_rules! format_ident {
     ($fmt:expr) => {
         $crate::format_ident_impl!([
-            $crate::Option::None,
+            Option::None,
             $fmt
         ])
     };
     ($fmt:expr, $($rest:tt)*) => {
         $crate::format_ident_impl!([
-            $crate::Option::None,
+            Option::None,
             $fmt
         ] $($rest)*)
     };
@@ -27,8 +27,8 @@ macro_rules! format_ident {
 #[macro_export]
 macro_rules! format_ident_impl {
     ([$span:expr, $($fmt:tt)*]) => {
-        $crate::mk_ident(
-            &$crate::format!($($fmt)*),
+        quote::mk_ident(
+            format!($($fmt)*),
             $span,
         )
     };
@@ -37,7 +37,7 @@ macro_rules! format_ident_impl {
     };
     ([$old:expr, $($fmt:tt)*] span = $span:expr, $($rest:tt)*) => {
         $crate::format_ident_impl!([
-            $crate::Option::Some::<$crate::Span>($span),
+            Option::Some::<$crate::Span>($span),
             $($fmt)*
         ] $($rest)*)
     };
