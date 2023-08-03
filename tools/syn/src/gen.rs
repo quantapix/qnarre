@@ -5,7 +5,7 @@ use super::{
 
 pub mod bound {
     use super::*;
-    ast_enum_of_structs! {
+    enum_of_structs! {
         pub enum Type {
             Life(Life),
             Trait(Trait),
@@ -290,7 +290,7 @@ pub mod bound {
 }
 pub mod param {
     use super::*;
-    ast_enum_of_structs! {
+    enum_of_structs! {
         pub enum Param {
             Const(Const),
             Life(Life),
@@ -776,7 +776,7 @@ impl Print {
 
 pub mod where_ {
     use super::*;
-    ast_enum_of_structs! {
+    enum_of_structs! {
         pub enum Pred {
             Life(Life),
             Type(Type),

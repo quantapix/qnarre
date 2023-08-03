@@ -453,7 +453,7 @@ mod parse {
                 member,
             })
         }
-        pub fn ast_enum_of_structs(s: parse::Stream) -> Result<AstItem> {
+        pub fn enum_of_structs(s: parse::Stream) -> Result<AstItem> {
             let attrs = s.call(attr::Attr::parse_outer)?;
             s.parse::<Token![pub]>()?;
             s.parse::<Token![enum]>()?;
@@ -628,8 +628,8 @@ mod parse {
                         Some(parsing::ast_struct.parse2(tts)?)
                     } else if item.mac.path.is_ident("ast_enum") {
                         parsing::ast_enum.parse2(tts)?
-                    } else if item.mac.path.is_ident("ast_enum_of_structs") {
-                        Some(parsing::ast_enum_of_structs.parse2(tts)?)
+                    } else if item.mac.path.is_ident("enum_of_structs") {
+                        Some(parsing::enum_of_structs.parse2(tts)?)
                     } else {
                         continue;
                     };

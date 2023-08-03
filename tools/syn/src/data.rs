@@ -311,7 +311,7 @@ impl Pretty for Variant {
     }
 }
 
-ast_enum_of_structs! {
+enum_of_structs! {
     pub enum Fields {
         Named(Named),
         Unnamed(Unnamed),

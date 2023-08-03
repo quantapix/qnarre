@@ -289,7 +289,7 @@ impl<'a> Display for DisplayStyle<'a> {
     }
 }
 
-ast_enum_of_structs! {
+enum_of_structs! {
     pub enum Meta {
         List(List),
         NameValue(NameValue),

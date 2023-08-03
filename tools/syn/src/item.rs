@@ -42,7 +42,7 @@ impl Pretty for File {
     }
 }
 
-ast_enum_of_structs! {
+enum_of_structs! {
     pub enum Item {
         Const(Const),
         Enum(Enum),
@@ -1626,7 +1626,7 @@ impl Pretty for Receiver {
     }
 }
 
-ast_enum_of_structs! {
+enum_of_structs! {
     pub enum FnArg {
         Receiver(Receiver),
         Type(pat::Type),
@@ -1827,7 +1827,7 @@ impl Pretty for StaticMut {
 
 pub mod foreign {
     use super::*;
-    ast_enum_of_structs! {
+    enum_of_structs! {
         pub enum Item {
             Fn(Fn),
             Mac(Mac),
@@ -2154,7 +2154,7 @@ pub mod foreign {
 }
 pub mod impl_ {
     use super::*;
-    ast_enum_of_structs! {
+    enum_of_structs! {
         pub enum Item {
             Const(Const),
             Fn(Fn),
@@ -2545,7 +2545,7 @@ pub mod impl_ {
 }
 pub mod trait_ {
     use super::*;
-    ast_enum_of_structs! {
+    enum_of_structs! {
         pub enum Item {
             Const(Const),
             Fn(Fn),
@@ -2952,7 +2952,7 @@ pub mod trait_ {
 }
 pub mod use_ {
     use super::*;
-    ast_enum_of_structs! {
+    enum_of_structs! {
         pub enum Tree {
             Glob(Glob),
             Group(Group),

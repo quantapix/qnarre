@@ -1,6 +1,6 @@
 use super::*;
 
-ast_enum_of_structs! {
+enum_of_structs! {
     pub enum Type {
         Array(Array),
         Fn(Fn),

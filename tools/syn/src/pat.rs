@@ -1,7 +1,7 @@
 use super::*;
 pub use expr::{Const, Lit, Mac, Member, Path, Range};
 
-ast_enum_of_structs! {
+enum_of_structs! {
     pub enum Pat {
         Const(Const),
         Ident(Ident),

@@ -56,6 +56,28 @@ macro_rules! parse_quote_spanned {
         parse::parse_quote(quote_spanned!($s => $($tt)*))
     };
 }
+#[macro_export]
+macro_rules! parse_mac_input {
+    ($n:ident as $ty:ty) => {
+        match parse::<$ty>($n) {
+            Ok(x) => x,
+            Err(x) => {
+                return pm2::Stream::from(x.to_compile_error());
+            },
+        }
+    };
+    ($n:ident with $p:path) => {
+        match Parser::parse($p, $n) {
+            Ok(x) => x,
+            Err(x) => {
+                return pm2::Stream::from(x.to_compile_error());
+            },
+        }
+    };
+    ($n:ident) => {
+        parse_mac_input!($n as _)
+    };
+}
 
 #[macro_export]
 macro_rules! Token {
@@ -261,78 +283,78 @@ pub fn parse_delim(s: Stream) -> Res<(tok::Delim, pm2::Stream)> {
     })
 }
 
-macro_rules! ast_enum_of_structs {
-    (
-        pub enum $n:ident $tt:tt
-        $($rest:tt)*
-    ) => {
-        pub enum $n $tt
-        ast_enum_of_structs_impl!($n $tt $($rest)*);
+macro_rules! enum_from {
+    ($n:ident::Verbatim, $($s:ident)::+) => {};
+    ($n:ident::$v:ident, $($s:ident)::+) => {
+        impl From<$($s)::+> for $n {
+            fn from(x: $($s)::+) -> $n {
+                $n::$v(x)
+            }
+        }
     };
 }
-macro_rules! ast_enum_of_structs_impl {
+macro_rules! lower_of {
+    (
+        ($($x:tt)*) $n:ident {
+            $v:ident,
+            $($rest:tt)*
+        }
+    ) => {
+        lower_of!(
+            ($($x)* $n::$v => {})
+            $n { $($rest)* }
+        );
+    };
+    (
+        ($($x:tt)*) $n:ident {
+            $v:ident $($s:ident)::+,
+            $($rest:tt)*
+        }
+    ) => {
+        lower_of!(
+            ($($x)* $n::$v(x) => x.lower(s),)
+            $n { $($rest)* }
+        );
+    };
+    (($($x:tt)*) $n:ident {}) => {
+        impl Lower for $n {
+            fn lower(&self, s: &mut pm2::Stream) {
+                match self {
+                    $($x)*
+                }
+            }
+        }
+    };
+}
+macro_rules! enum_of_impl {
     (
         $n:ident {
             $(
-                $variant:ident $( ($($m:ident)::+) )*,
+                $v:ident $( ($($s:ident)::+) )*,
             )*
         }
     ) => {
         $($(
-            ast_enum_from_struct!($n::$variant, $($m)::+);
+            enum_from!($n::$v, $($s)::+);
         )*)*
-        generate_lower! {
+        lower_of! {
             ()
-            tokens
             $n {
                 $(
-                    $variant $($($m)::+)*,
+                    $v $($s)::+,
                 )*
             }
         }
     };
 }
-macro_rules! ast_enum_from_struct {
-    ($n:ident::Stream, $m:ident) => {};
-    ($n:ident::$variant:ident, $m:ident) => {
-        impl From<$m> for $n {
-            fn from(e: $m) -> $n {
-                $n::$variant(e)
-            }
-        }
-    };
-}
-macro_rules! generate_lower {
+#[macro_export]
+macro_rules! enum_of_structs {
     (
-        ($($arms:tt)*) $ys:ident $n:ident {
-            $variant:ident,
-            $($next:tt)*
-        }
+        pub enum $n:ident $tt:tt
+        $($rest:tt)*
     ) => {
-        generate_lower!(
-            ($($arms)* $n::$variant => {})
-            $ys $n { $($next)* }
-        );
-    };
-    (
-        ($($arms:tt)*) $ys:ident $n:ident {
-            $variant:ident $m:ident,
-            $($next:tt)*
-        }
-    ) => {
-        generate_lower!(
-            ($($arms)* $n::$variant(_e) => _e.lower($ys),)
-            $ys $n { $($next)* }
-        );
-    };
-    (($($arms:tt)*) $s:ident $n:ident {}) => {
-        impl crate::Lower for $n {
-            fn lower(&self, $s: &mut crate::pm2::Stream) {
-                match self {
-                    $($arms)*
-                }
-            }
-        }
+        pub enum $n $tt
+        enum_of_impl!($n $tt $($rest)*);
     };
 }
 
@@ -636,85 +658,60 @@ macro_rules! custom_punct {
 }
 
 #[macro_export]
-macro_rules! parse_macro_input {
-    ($n:ident as $ty:ty) => {
-        match $crate::parse::<$ty>($n) {
-            Ok(x) => x,
-            Err(x) => {
-                return $crate::pm2::Stream::from(x.to_compile_error());
-            },
-        }
-    };
-    ($n:ident with $p:path) => {
-        match $crate::Parser::parse($p, $n) {
-            Ok(x) => x,
-            Err(x) => {
-                return $crate::pm2::Stream::from(x.to_compile_error());
-            },
-        }
-    };
-    ($n:ident) => {
-        $crate::parse_macro_input!($n as _)
-    };
-}
-
-#[macro_export]
 macro_rules! decl_derive {
-    ([$derives:ident $($derive_t:tt)*] => $(#[$($attrs:tt)*])* $inner:path) => {
-        #[proc_macro_derive($derives $($derive_t)*)]
+    ([$n:ident $($tt:tt)*] => $(#[$($attrs:tt)*])* $inner:path) => {
+        #[proc_macro_derive($n $(tt)*)]
         #[allow(non_snake_case)]
         $(#[$($attrs)*])*
-        pub fn $derives(
-            i: $crate::macros::TokenStream
-        ) -> $crate::macros::TokenStream {
-            match $crate::macros::parse::<$crate::macros::DeriveInput>(i) {
-                ::core::result::Result::Ok(p) => {
-                    match $crate::Structure::try_new(&p) {
-                        ::core::result::Result::Ok(s) => $crate::MacroResult::into_stream($inner(s)),
-                        ::core::result::Result::Err(e) => {
-                            ::core::convert::Into::into(e.to_compile_error())
+        pub fn $n(
+            s: Stream
+        ) -> Stream {
+            match parse::<data::Input>(s) {
+                Res::Ok(x) => {
+                    match Structure::try_new(&x) {
+                        Res::Ok(x) => MacroResult::into_stream($inner(x)),
+                        Res::Err(x) => {
+                            ::core::convert::Into::into(x.to_compile_error())
                         }
                     }
                 }
-                ::core::result::Result::Err(e) => {
-                    ::core::convert::Into::into(e.to_compile_error())
+                Err(x) => {
+                    ::core::convert::Into::into(x.to_compile_error())
                 }
             }
         }
     };
 }
-
 #[macro_export]
-macro_rules! decl_attribute {
+macro_rules! decl_attr {
     ([$attribute:ident] => $(#[$($attrs:tt)*])* $inner:path) => {
         #[proc_macro_attribute]
         $(#[$($attrs)*])*
         pub fn $attribute(
-            attr: $crate::macros::TokenStream,
-            i: $crate::macros::TokenStream,
-        ) -> $crate::macros::TokenStream {
-            match $crate::macros::parse::<$crate::macros::DeriveInput>(i) {
-                ::core::result::Result::Ok(p) => match $crate::Structure::try_new(&p) {
-                    ::core::result::Result::Ok(s) => {
-                        $crate::MacroResult::into_stream(
-                            $inner(::core::convert::Into::into(attr), s)
+            attr: Stream,
+            s: Stream,
+        ) -> Stream {
+            match parse::<data::Input>(s) {
+                Res::Ok(x) => match Structure::try_new(&x) {
+                    Res::Ok(x) => {
+                        MacroResult::into_stream(
+                            $inner(::core::convert::Into::into(attr), x)
                         )
                     }
-                    ::core::result::Result::Err(e) => {
-                        ::core::convert::Into::into(e.to_compile_error())
+                    Res::Err(x) => {
+                        ::core::convert::Into::into(x.to_compile_error())
                     }
                 },
-                ::core::result::Result::Err(e) => {
-                    ::core::convert::Into::into(e.to_compile_error())
+                Res::Err(x) => {
+                    ::core::convert::Into::into(x.to_compile_error())
                 }
             }
         }
     };
 }
-
 #[macro_export]
 macro_rules! test_derive {
-    ($name:path { $($i:tt)* } expands to { $($o:tt)* }) => {
+    ($n:path { $($i:tt)* } expands to { $($o:tt)* }) => {
         {
             #[allow(dead_code)]
             fn ensure_compiles() {
@@ -722,35 +719,33 @@ macro_rules! test_derive {
                 $($o)*
             }
 
-            $crate::test_derive!($name { $($i)* } expands to { $($o)* } no_build);
+            $crate::test_derive!($n { $($i)* } expands to { $($o)* } no_build);
         }
     };
 
-    ($name:path { $($i:tt)* } expands to { $($o:tt)* } no_build) => {
+    ($n:path { $($i:tt)* } expands to { $($o:tt)* } no_build) => {
         {
             let i = ::core::stringify!( $($i)* );
-            let parsed = $crate::macros::parse_str::<$crate::macros::DeriveInput>(i)
+            let y = parse_str::<data::Input>(i)
                 .expect(::core::concat!(
                     "Failed to parse input to `#[derive(",
-                    ::core::stringify!($name),
+                    ::core::stringify!($n),
                     ")]`",
                 ));
-
-            let raw_res = $name($crate::Structure::new(&parsed));
-            let res = $crate::MacroResult::into_result(raw_res)
+            let y = $n(Structure::new(&y));
+            let y = $MacroResult::into_result(y)
                 .expect(::core::concat!(
                     "Procedural macro failed for `#[derive(",
-                    ::core::stringify!($name),
+                    ::core::stringify!($n),
                     ")]`",
                 ));
-
-            let expected = ::core::stringify!( $($o)* )
-                .parse::<$crate::macros::pm2::Stream>()
+            let ys = ::core::stringify!( $($o)* )
+                .parse::<pm2::Stream>()
                 .expect("output should be a valid TokenStream");
-            let mut expected_toks = <$crate::macros::pm2::Stream
-                as ::core::convert::From<$crate::macros::pm2::Stream>>::from(expected);
-            if <$crate::macros::pm2::Stream as ::std::string::ToString>::to_string(&res)
-                != <$crate::macros::pm2::Stream as ::std::string::ToString>::to_string(&expected_toks)
+            let mut ys = <pm2::Stream
+                as ::core::convert::From<pm2::Stream>>::from(ys);
+            if <pm2::Stream as ::std::string::ToString>::to_string(&y)
+                != <pm2::Stream as ::std::string::ToString>::to_string(&ys)
             {
                 panic!("\
 test_derive failed:
@@ -763,8 +758,8 @@ got:
 ```
 {}
 ```\n",
-                    $crate::unpretty_print(&expected_toks),
-                    $crate::unpretty_print(&res),
+                    $crate::unpretty_print(&ys),
+                    $crate::unpretty_print(&y),
                 );
             }
         }

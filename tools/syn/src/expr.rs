@@ -1,7 +1,7 @@
 use super::*;
 use quote::Fragment;
 
-ast_enum_of_structs! {
+enum_of_structs! {
     pub enum Expr {
         Array(Array),
         Assign(Assign),

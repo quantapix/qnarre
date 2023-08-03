@@ -5,7 +5,7 @@ use std::{
     str::{self, FromStr},
 };
 
-ast_enum_of_structs! {
+enum_of_structs! {
     pub enum Lit {
         Bool(Bool),
         Byte(Byte),
