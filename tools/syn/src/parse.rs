@@ -4,17 +4,6 @@ use super::{
 };
 use std::{cell::Cell, rc::Rc};
 
-pub struct Parenths<'a> {
-    pub tok: tok::Parenth,
-    pub buf: Buffer<'a>,
-}
-pub fn parse_parenths<'a>(x: &Buffer<'a>) -> Res<Parenths<'a>> {
-    parse_delimited(x, Delim::Parenth).map(|(x, buf)| Parenths {
-        tok: tok::Parenth(x),
-        buf,
-    })
-}
-
 pub struct Braces<'a> {
     pub tok: tok::Brace,
     pub buf: Buffer<'a>,
@@ -25,7 +14,6 @@ pub fn parse_braces<'a>(x: &Buffer<'a>) -> Res<Braces<'a>> {
         buf,
     })
 }
-
 pub struct Brackets<'a> {
     pub tok: tok::Bracket,
     pub buf: Buffer<'a>,
@@ -36,7 +24,16 @@ pub fn parse_brackets<'a>(x: &Buffer<'a>) -> Res<Brackets<'a>> {
         buf,
     })
 }
-
+pub struct Parenths<'a> {
+    pub tok: tok::Parenth,
+    pub buf: Buffer<'a>,
+}
+pub fn parse_parenths<'a>(x: &Buffer<'a>) -> Res<Parenths<'a>> {
+    parse_delimited(x, Delim::Parenth).map(|(x, buf)| Parenths {
+        tok: tok::Parenth(x),
+        buf,
+    })
+}
 pub struct Group<'a> {
     pub tok: tok::Group,
     pub buf: Buffer<'a>,
@@ -57,9 +54,9 @@ fn parse_delimited<'a>(b: &Buffer<'a>, d: Delim) -> Res<(DelimSpan, Buffer<'a>)>
             Ok(((span, y), rest))
         } else {
             let y = match d {
-                Delim::Parenth => "expected parentheses",
                 Delim::Brace => "expected braces",
                 Delim::Bracket => "expected brackets",
+                Delim::Parenth => "expected parentheses",
                 Delim::None => "expected group",
             };
             Err(x.err(y))
@@ -264,7 +261,7 @@ impl Quote for Vec<stmt::Stmt> {
         stmt::Block::parse_within(s)
     }
 }
-pub fn parse_quote_fn<T: Quote>(s: Stream) -> T {
+pub fn parse_quote<T: Quote>(s: Stream) -> T {
     let y = T::parse;
     match y.parse2(s) {
         Ok(x) => x,

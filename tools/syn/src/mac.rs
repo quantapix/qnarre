@@ -2,6 +2,62 @@ use super::*;
 use std::iter;
 
 #[macro_export]
+macro_rules! braced {
+    ($n:ident in $s:expr) => {
+        match parse::parse_braces(&$s) {
+            Ok(x) => {
+                $n = x.buf;
+                x.tok
+            },
+            Err(x) => {
+                return Err(x);
+            },
+        }
+    };
+}
+#[macro_export]
+macro_rules! bracketed {
+    ($n:ident in $s:expr) => {
+        match parse::parse_brackets(&$s) {
+            Ok(x) => {
+                $n = x.buf;
+                x.tok
+            },
+            Err(x) => {
+                return Err(x);
+            },
+        }
+    };
+}
+#[macro_export]
+macro_rules! parenthed {
+    ($n:ident in $s:expr) => {
+        match parse::parse_parenths(&$s) {
+            Ok(x) => {
+                $n = x.buf;
+                x.tok
+            },
+            Err(x) => {
+                return Err(x);
+            },
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! parse_quote {
+    ($($tt:tt)*) => {
+        parse::parse_quote(quote!($($tt)*))
+    };
+}
+#[macro_export]
+macro_rules! parse_quote_spanned {
+    ($s:expr=> $($tt:tt)*) => {
+        parse::parse_quote(quote_spanned!($s => $($tt)*))
+    };
+}
+
+#[macro_export]
 macro_rules! Token {
     [abstract]    => { tok::Abstract };
     [as]          => { tok::As };
@@ -580,19 +636,6 @@ macro_rules! custom_punct {
 }
 
 #[macro_export]
-macro_rules! parse_quote {
-    ($($tt:tt)*) => {
-        parse::parse_quote_fn(quote!($($tt)*))
-    };
-}
-#[macro_export]
-macro_rules! parse_quote_spanned {
-    ($s:expr=> $($tt:tt)*) => {
-        parse::parse_quote_fn(quote_spanned!($s => $($tt)*))
-    };
-}
-
-#[macro_export]
 macro_rules! parse_macro_input {
     ($n:ident as $ty:ty) => {
         match $crate::parse::<$ty>($n) {
@@ -612,50 +655,6 @@ macro_rules! parse_macro_input {
     };
     ($n:ident) => {
         $crate::parse_macro_input!($n as _)
-    };
-}
-
-#[macro_export]
-macro_rules! parenthed {
-    ($n:ident in $s:expr) => {
-        match parse::parse_parenths(&$s) {
-            Ok(x) => {
-                $n = x.buf;
-                x.tok
-            },
-            Err(x) => {
-                return Err(x);
-            },
-        }
-    };
-}
-#[macro_export]
-macro_rules! braced {
-    ($n:ident in $s:expr) => {
-        match parse::parse_braces(&$s) {
-            Ok(x) => {
-                $n = x.buf;
-                x.tok
-            },
-            Err(x) => {
-                return Err(x);
-            },
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! bracketed {
-    ($n:ident in $s:expr) => {
-        match parse::parse_brackets(&$s) {
-            Ok(x) => {
-                $n = x.buf;
-                x.tok
-            },
-            Err(x) => {
-                return Err(x);
-            },
-        }
     };
 }
 

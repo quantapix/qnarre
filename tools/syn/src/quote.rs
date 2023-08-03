@@ -423,21 +423,21 @@ pub fn get_span<T>(x: T) -> GetSpan<T> {
     GetSpan(GetSpanInner(GetSpanBase(x)))
 }
 
-pub fn push_group(tokens: &mut Stream, delimiter: Delim, inner: Stream) {
-    tokens.append(Group::new(delimiter, inner));
+pub fn push_group(s: &mut Stream, delim: Delim, inner: Stream) {
+    s.append(Group::new(delim, inner));
 }
-pub fn push_group_spanned(tokens: &mut Stream, span: Span, delimiter: Delim, inner: Stream) {
-    let mut g = Group::new(delimiter, inner);
-    g.set_span(span);
-    tokens.append(g);
+pub fn push_group_spanned(s: &mut Stream, span: Span, delim: Delim, inner: Stream) {
+    let mut y = Group::new(delim, inner);
+    y.set_span(span);
+    s.append(y);
 }
-pub fn parse(tokens: &mut Stream, s: &str) {
-    let s: Stream = s.parse().expect("invalid token stream");
-    tokens.extend(iter::once(s));
+pub fn parse(s: &mut Stream, x: &str) {
+    let y: Stream = x.parse().expect("invalid token stream");
+    s.extend(iter::once(y));
 }
-pub fn parse_spanned(tokens: &mut Stream, span: Span, s: &str) {
-    let s: Stream = s.parse().expect("invalid token stream");
-    tokens.extend(s.into_iter().map(|t| respan_token_tree(t, span)));
+pub fn parse_spanned(s: &mut Stream, span: Span, x: &str) {
+    let y: Stream = x.parse().expect("invalid token stream");
+    s.extend(y.into_iter().map(|x| respan_token_tree(x, span)));
 }
 fn respan_token_tree(mut token: Tree, span: Span) -> Tree {
     match &mut token {
@@ -454,19 +454,19 @@ fn respan_token_tree(mut token: Tree, span: Span) -> Tree {
     }
     token
 }
-pub fn push_ident(tokens: &mut Stream, s: &str) {
+pub fn push_ident(s: &mut Stream, x: &str) {
     let span = Span::call_site();
-    push_ident_spanned(tokens, span, s);
+    push_ident_spanned(s, span, x);
 }
-pub fn push_ident_spanned(tokens: &mut Stream, span: Span, s: &str) {
-    tokens.append(ident_maybe_raw(s, span));
+pub fn push_ident_spanned(s: &mut Stream, span: Span, x: &str) {
+    s.append(ident_maybe_raw(x, span));
 }
-pub fn push_lifetime(tokens: &mut Stream, lifetime: &str) {
-    struct Lifetime<'a> {
+pub fn push_life(s: &mut Stream, x: &str) {
+    struct Life<'a> {
         name: &'a str,
         state: u8,
     }
-    impl<'a> Iterator for Lifetime<'a> {
+    impl<'a> Iterator for Life<'a> {
         type Item = Tree;
         fn next(&mut self) -> Option<Self::Item> {
             match self.state {
@@ -482,26 +482,26 @@ pub fn push_lifetime(tokens: &mut Stream, lifetime: &str) {
             }
         }
     }
-    tokens.extend(Lifetime {
-        name: &lifetime[1..],
+    s.extend(Life {
+        name: &x[1..],
         state: 0,
     });
 }
-pub fn push_lifetime_spanned(tokens: &mut Stream, span: Span, lifetime: &str) {
-    struct Lifetime<'a> {
+pub fn push_life_spanned(s: &mut Stream, span: Span, x: &str) {
+    struct Life<'a> {
         name: &'a str,
         span: Span,
         state: u8,
     }
-    impl<'a> Iterator for Lifetime<'a> {
+    impl<'a> Iterator for Life<'a> {
         type Item = Tree;
         fn next(&mut self) -> Option<Self::Item> {
             match self.state {
                 0 => {
                     self.state = 1;
-                    let mut apostrophe = Punct::new('\'', Spacing::Joint);
-                    apostrophe.set_span(self.span);
-                    Some(Tree::Punct(apostrophe))
+                    let mut y = Punct::new('\'', Spacing::Joint);
+                    y.set_span(self.span);
+                    Some(Tree::Punct(y))
                 },
                 1 => {
                     self.state = 2;
@@ -511,8 +511,8 @@ pub fn push_lifetime_spanned(tokens: &mut Stream, span: Span, lifetime: &str) {
             }
         }
     }
-    tokens.extend(Lifetime {
-        name: &lifetime[1..],
+    s.extend(Life {
+        name: &x[1..],
         span,
         state: 0,
     });
@@ -606,11 +606,12 @@ push_punct!(push_shr_eq push_shr_eq_spanned '>' '>' '=');
 push_punct!(push_star push_star_spanned '*');
 push_punct!(push_sub push_sub_spanned '-');
 push_punct!(push_sub_eq push_sub_eq_spanned '-' '=');
-pub fn push_underscore(tokens: &mut Stream) {
-    push_underscore_spanned(tokens, Span::call_site());
+
+pub fn push_underscore(s: &mut Stream) {
+    push_underscore_spanned(s, Span::call_site());
 }
-pub fn push_underscore_spanned(tokens: &mut Stream, span: Span) {
-    tokens.append(Ident::new("_", span));
+pub fn push_underscore_spanned(s: &mut Stream, span: Span) {
+    s.append(Ident::new("_", span));
 }
 pub fn mk_ident(id: &str, span: Option<Span>) -> Ident {
     let span = span.unwrap_or_else(Span::call_site);
