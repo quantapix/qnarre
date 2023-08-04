@@ -1,10 +1,15 @@
 use super::*;
 use std::{
-    iter,
     mem::ManuallyDrop,
     ops::{Deref, DerefMut, Index, IndexMut},
     option, slice, vec,
 };
+
+mod iter {
+    pub trait Trait<'a, T: 'a>: Iterator<Item = &'a T> + DoubleEndedIterator + ExactSizeIterator {
+        fn clone_box(&self) -> Box<NoDrop<dyn Trait<'a, T> + 'a>>;
+    }
+}
 
 pub struct Puncted<T, P> {
     inner: Vec<(T, P)>,
@@ -501,7 +506,7 @@ where
 }
 
 pub struct Iter<'a, T: 'a> {
-    inner: Box<NoDrop<dyn IterTrait<'a, T> + 'a>>,
+    inner: Box<NoDrop<dyn iter::Trait<'a, T> + 'a>>,
 }
 impl<'a, T> Clone for Iter<'a, T> {
     fn clone(&self) -> Self {
@@ -528,10 +533,6 @@ impl<'a, T> ExactSizeIterator for Iter<'a, T> {
     fn len(&self) -> usize {
         self.inner.len()
     }
-}
-
-trait IterTrait<'a, T: 'a>: Iterator<Item = &'a T> + DoubleEndedIterator + ExactSizeIterator {
-    fn clone_box(&self) -> Box<NoDrop<dyn IterTrait<'a, T> + 'a>>;
 }
 
 struct PrivateIter<'a, T: 'a, P: 'a> {
@@ -568,19 +569,19 @@ impl<'a, T, P> Clone for PrivateIter<'a, T, P> {
         }
     }
 }
-impl<'a, T, I> IterTrait<'a, T> for I
+impl<'a, T, I> iter::Trait<'a, T> for I
 where
     T: 'a,
     I: DoubleEndedIterator<Item = &'a T> + ExactSizeIterator<Item = &'a T> + Clone + TrivialDrop + 'a,
 {
-    fn clone_box(&self) -> Box<NoDrop<dyn IterTrait<'a, T> + 'a>> {
+    fn clone_box(&self) -> Box<NoDrop<dyn iter::Trait<'a, T> + 'a>> {
         Box::new(NoDrop::new(self.clone()))
     }
 }
 
 pub fn empty_punctuated_iter<'a, T>() -> Iter<'a, T> {
     Iter {
-        inner: Box::new(NoDrop::new(iter::empty())),
+        inner: Box::new(NoDrop::new(std::iter::empty())),
     }
 }
 
@@ -645,7 +646,7 @@ where
 
 pub fn empty_punctuated_iter_mut<'a, T>() -> IterMut<'a, T> {
     IterMut {
-        inner: Box::new(NoDrop::new(iter::empty())),
+        inner: Box::new(NoDrop::new(std::iter::empty())),
     }
 }
 
@@ -743,11 +744,11 @@ where
 #[repr(transparent)]
 pub struct NoDrop<T: ?Sized>(ManuallyDrop<T>);
 impl<T> NoDrop<T> {
-    pub fn new(value: T) -> Self
+    pub fn new(x: T) -> Self
     where
         T: TrivialDrop,
     {
-        NoDrop(ManuallyDrop::new(value))
+        NoDrop(ManuallyDrop::new(x))
     }
 }
 impl<T: ?Sized> Deref for NoDrop<T> {
@@ -763,7 +764,7 @@ impl<T: ?Sized> DerefMut for NoDrop<T> {
 }
 
 pub trait TrivialDrop {}
-impl<T> TrivialDrop for iter::Empty<T> {}
+impl<T> TrivialDrop for std::iter::Empty<T> {}
 impl<'a, T> TrivialDrop for slice::Iter<'a, T> {}
 impl<'a, T> TrivialDrop for slice::IterMut<'a, T> {}
 impl<'a, T> TrivialDrop for option::IntoIter<&'a T> {}
@@ -777,7 +778,7 @@ fn test_needs_drop() {
         fn drop(&mut self) {}
     }
     assert!(needs_drop::<NeedsDrop>());
-    assert!(!needs_drop::<iter::Empty<NeedsDrop>>());
+    assert!(!needs_drop::<std::iter::Empty<NeedsDrop>>());
     assert!(!needs_drop::<slice::Iter<NeedsDrop>>());
     assert!(!needs_drop::<slice::IterMut<NeedsDrop>>());
     assert!(!needs_drop::<option::IntoIter<&NeedsDrop>>());
