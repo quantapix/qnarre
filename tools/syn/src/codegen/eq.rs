@@ -279,7 +279,7 @@ impl PartialEq for expr::Closure {
             && self.static_ == x.static_
             && self.async_ == x.async_
             && self.move_ == x.move_
-            && self.inputs == x.inputs
+            && self.ins == x.ins
             && self.ret == x.ret
             && self.body == x.body
     }
@@ -406,7 +406,7 @@ impl PartialEq for expr::Repeat {
         self.attrs == x.attrs && self.expr == x.expr && self.len == x.len
     }
 }
-impl Eq for expr::Retur {}
+impl Eq for expr::Return {}
 impl PartialEq for expr::Return {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.expr == x.expr
@@ -456,7 +456,7 @@ impl PartialEq for expr::Unsafe {
 impl Eq for expr::While {}
 impl PartialEq for expr::While {
     fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs && self.label == x.label && self.cond == x.cond && self.body == x.body
+        self.attrs == x.attrs && self.label == x.label && self.cond == x.cond && self.block == x.block
     }
 }
 impl Eq for expr::Yield {}
@@ -490,19 +490,20 @@ impl PartialEq for pat::Field {
         self.attrs == x.attrs && self.memb == x.memb && self.colon == x.colon && self.pat == x.pat
     }
 }
-impl Eq for FieldValue {}
-impl PartialEq for FieldValue {
+impl Eq for expr::FieldValue {}
+impl PartialEq for expr::FieldValue {
     fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs && self.member == x.member && self.colon == x.colon && self.expr == x.expr
+        self.attrs == x.attrs && self.memb == x.memb && self.colon == x.colon && self.expr == x.expr
     }
 }
 impl Eq for data::Fields {}
 impl PartialEq for data::Fields {
     fn eq(&self, x: &Self) -> bool {
+        use data::Fields::*;
         match (self, x) {
-            (data::Fields::Named(x), data::Fields::Named(y)) => x == y,
-            (data::Fields::Unnamed(x), data::Fields::Unnamed(y)) => x == y,
-            (data::Fields::Unit, data::Fields::Unit) => true,
+            (Named(x), Named(y)) => x == y,
+            (Unit, Unit) => true,
+            (Unnamed(x), Unnamed(y)) => x == y,
             _ => false,
         }
     }
@@ -528,9 +529,10 @@ impl PartialEq for item::File {
 impl Eq for item::FnArg {}
 impl PartialEq for item::FnArg {
     fn eq(&self, x: &Self) -> bool {
+        use item::FnArg::*;
         match (self, x) {
-            (item::FnArg::Receiver(x), item::FnArg::Receiver(y)) => x == y,
-            (item::FnArg::Type(x), item::FnArg::Type(y)) => x == y,
+            (Receiver(x), Receiver(y)) => x == y,
+            (Type(x), Type(y)) => x == y,
             _ => false,
         }
     }
@@ -538,12 +540,13 @@ impl PartialEq for item::FnArg {
 impl Eq for item::foreign::Item {}
 impl PartialEq for item::foreign::Item {
     fn eq(&self, x: &Self) -> bool {
+        use item::foreign::Item::*;
         match (self, x) {
-            (item::foreign::Item::Fn(x), item::foreign::Item::Fn(y)) => x == y,
-            (item::foreign::Item::Static(x), item::foreign::Item::Static(y)) => x == y,
-            (item::foreign::Item::Type(x), item::foreign::Item::Type(y)) => x == y,
-            (item::foreign::Item::Macro(x), item::foreign::Item::Macro(y)) => x == y,
-            (item::foreign::Item::Verbatim(x), item::foreign::Item::Verbatim(y)) => StreamHelper(x) == StreamHelper(y),
+            (Fn(x), Fn(y)) => x == y,
+            (Mac(x), Mac(y)) => x == y,
+            (Static(x), Static(y)) => x == y,
+            (Type(x), Type(y)) => x == y,
+            (Verbatim(x), Verbatim(y)) => StreamHelper(x) == StreamHelper(y),
             _ => false,
         }
     }
@@ -572,16 +575,17 @@ impl PartialEq for item::foreign::Type {
         self.attrs == x.attrs && self.vis == x.vis && self.ident == x.ident && self.gens == x.gens
     }
 }
-impl Eq for Arg {}
-impl PartialEq for Arg {
+impl Eq for path::Arg {}
+impl PartialEq for path::Arg {
     fn eq(&self, x: &Self) -> bool {
+        use path::Arg::*;
         match (self, x) {
-            (Arg::Life(x), Arg::Life(y)) => x == y,
-            (Arg::Type(x), Arg::Type(y)) => x == y,
-            (Arg::Const(x), Arg::Const(y)) => x == y,
-            (Arg::AssocType(x), Arg::AssocType(y)) => x == y,
-            (Arg::AssocConst(x), Arg::AssocConst(y)) => x == y,
-            (Arg::Constraint(x), Arg::Constraint(y)) => x == y,
+            (AssocConst(x), AssocConst(y)) => x == y,
+            (AssocType(x), AssocType(y)) => x == y,
+            (Const(x), Const(y)) => x == y,
+            (Constraint(x), Constraint(y)) => x == y,
+            (Life(x), Life(y)) => x == y,
+            (Type(x), Type(y)) => x == y,
             _ => false,
         }
     }
@@ -589,10 +593,11 @@ impl PartialEq for Arg {
 impl Eq for gen::Param {}
 impl PartialEq for gen::Param {
     fn eq(&self, x: &Self) -> bool {
+        use gen::Param::*;
         match (self, x) {
-            (gen::Param::Life(x), gen::Param::Life(y)) => x == y,
-            (gen::Param::Type(x), gen::Param::Type(y)) => x == y,
-            (gen::Param::Const(x), gen::Param::Const(y)) => x == y,
+            (Const(x), Const(y)) => x == y,
+            (Life(x), Life(y)) => x == y,
+            (Type(x), Type(y)) => x == y,
             _ => false,
         }
     }
@@ -606,12 +611,13 @@ impl PartialEq for gen::Gens {
 impl Eq for item::impl_::Item {}
 impl PartialEq for item::impl_::Item {
     fn eq(&self, x: &Self) -> bool {
+        use item::impl_::Item::*;
         match (self, x) {
-            (item::impl_::Item::Const(x), item::impl_::Item::Const(y)) => x == y,
-            (item::impl_::Item::Fn(x), item::impl_::Item::Fn(y)) => x == y,
-            (item::impl_::Item::Type(x), item::impl_::Item::Type(y)) => x == y,
-            (item::impl_::Item::Macro(x), item::impl_::Item::Macro(y)) => x == y,
-            (item::impl_::Item::Verbatim(x), item::impl_::Item::Verbatim(y)) => StreamHelper(x) == StreamHelper(y),
+            (Const(x), Const(y)) => x == y,
+            (Fn(x), Fn(y)) => x == y,
+            (Mac(x), Mac(y)) => x == y,
+            (Type(x), Type(y)) => x == y,
+            (Verbatim(x), Verbatim(y)) => StreamHelper(x) == StreamHelper(y),
             _ => false,
         }
     }
@@ -823,8 +829,8 @@ impl PartialEq for item::Use {
         self.attrs == x.attrs && self.vis == x.vis && self.colon == x.colon && self.tree == x.tree
     }
 }
-impl Eq for Label {}
-impl PartialEq for Label {
+impl Eq for expr::Label {}
+impl PartialEq for expr::Label {
     fn eq(&self, x: &Self) -> bool {
         self.name == x.name
     }
@@ -885,10 +891,11 @@ impl PartialEq for mac::Mac {
 impl Eq for tok::Delim {}
 impl PartialEq for tok::Delim {
     fn eq(&self, x: &Self) -> bool {
+        use tok::Delim::*;
         match (self, x) {
-            (tok::Delim::Parenth(_), tok::Delim::Parenth(_)) => true,
-            (tok::Delim::Brace(_), tok::Delim::Brace(_)) => true,
-            (tok::Delim::Bracket(_), tok::Delim::Bracket(_)) => true,
+            (Brace(_), Brace(_)) => true,
+            (Bracket(_), Bracket(_)) => true,
+            (Parenth(_), Parenth(_)) => true,
             _ => false,
         }
     }
@@ -896,10 +903,11 @@ impl PartialEq for tok::Delim {
 impl Eq for attr::Meta {}
 impl PartialEq for attr::Meta {
     fn eq(&self, x: &Self) -> bool {
+        use attr::Meta::*;
         match (self, x) {
-            (attr::Meta::Path(x), attr::Meta::Path(y)) => x == y,
-            (attr::Meta::List(x), attr::Meta::List(y)) => x == y,
-            (attr::Meta::NameValue(x), attr::Meta::NameValue(y)) => x == y,
+            (List(x), List(y)) => x == y,
+            (NameValue(x), NameValue(y)) => x == y,
+            (Path(x), Path(y)) => x == y,
             _ => false,
         }
     }
@@ -925,24 +933,25 @@ impl PartialEq for path::Parenthed {
 impl Eq for pat::Pat {}
 impl PartialEq for pat::Pat {
     fn eq(&self, x: &Self) -> bool {
+        use pat::Pat::*;
         match (self, x) {
-            (pat::Pat::Const(x), pat::Pat::Const(y)) => x == y,
-            (pat::Pat::Ident(x), pat::Pat::Ident(y)) => x == y,
-            (pat::Pat::Lit(x), pat::Pat::Lit(y)) => x == y,
-            (pat::Pat::Mac(x), pat::Pat::Mac(y)) => x == y,
-            (pat::Pat::Or(x), pat::Pat::Or(y)) => x == y,
-            (pat::Pat::Parenth(x), pat::Pat::Parenth(y)) => x == y,
-            (pat::Pat::Path(x), pat::Pat::Path(y)) => x == y,
-            (pat::Pat::Range(x), pat::Pat::Range(y)) => x == y,
-            (pat::Pat::Ref(x), pat::Pat::Ref(y)) => x == y,
-            (pat::Pat::Rest(x), pat::Pat::Rest(y)) => x == y,
-            (pat::Pat::Slice(x), pat::Pat::Slice(y)) => x == y,
-            (pat::Pat::Struct(x), pat::Pat::Struct(y)) => x == y,
-            (pat::Pat::Tuple(x), pat::Pat::Tuple(y)) => x == y,
-            (pat::Pat::TupleStruct(x), pat::Pat::TupleStruct(y)) => x == y,
-            (pat::Pat::Type(x), pat::Pat::Type(y)) => x == y,
-            (pat::Pat::Verbatim(x), pat::Pat::Verbatim(y)) => StreamHelper(x) == StreamHelper(y),
-            (pat::Pat::Wild(x), pat::Pat::Wild(y)) => x == y,
+            (Const(x), Const(y)) => x == y,
+            (Ident(x), Ident(y)) => x == y,
+            (Lit(x), Lit(y)) => x == y,
+            (Mac(x), Mac(y)) => x == y,
+            (Or(x), Or(y)) => x == y,
+            (Parenth(x), Parenth(y)) => x == y,
+            (Path(x), Path(y)) => x == y,
+            (Range(x), Range(y)) => x == y,
+            (Ref(x), Ref(y)) => x == y,
+            (Rest(x), Rest(y)) => x == y,
+            (Slice(x), Slice(y)) => x == y,
+            (Struct(x), Struct(y)) => x == y,
+            (Tuple(x), Tuple(y)) => x == y,
+            (TupleStruct(x), TupleStruct(y)) => x == y,
+            (Type(x), Type(y)) => x == y,
+            (Verbatim(x), Verbatim(y)) => StreamHelper(x) == StreamHelper(y),
+            (Wild(x), Wild(y)) => x == y,
             _ => false,
         }
     }
@@ -1039,26 +1048,26 @@ impl PartialEq for path::Args {
         }
     }
 }
-impl Eq for Segment {}
-impl PartialEq for Segment {
+impl Eq for path::Segment {}
+impl PartialEq for path::Segment {
     fn eq(&self, x: &Self) -> bool {
         self.ident == x.ident && self.args == x.args
     }
 }
-impl Eq for gen::Where::Life {}
-impl PartialEq for gen::Where::Life {
+impl Eq for gen::where_::Life {}
+impl PartialEq for gen::where_::Life {
     fn eq(&self, x: &Self) -> bool {
         self.life == x.life && self.bounds == x.bounds
     }
 }
-impl Eq for gen::Where::Type {}
-impl PartialEq for gen::Where::Type {
+impl Eq for gen::where_::Type {}
+impl PartialEq for gen::where_::Type {
     fn eq(&self, x: &Self) -> bool {
-        self.lifes == x.lifes && self.bounded == x.bounded && self.bounds == x.bounds
+        self.lifes == x.lifes && self.typ == x.typ && self.bounds == x.bounds
     }
 }
-impl Eq for QSelf {}
-impl PartialEq for QSelf {
+impl Eq for path::QSelf {}
+impl PartialEq for path::QSelf {
     fn eq(&self, x: &Self) -> bool {
         self.ty == x.ty && self.pos == x.pos && self.as_ == x.as_
     }
@@ -1066,9 +1075,10 @@ impl PartialEq for QSelf {
 impl Eq for expr::Limits {}
 impl PartialEq for expr::Limits {
     fn eq(&self, x: &Self) -> bool {
+        use expr::Limits::*;
         match (self, x) {
-            (expr::Limits::HalfOpen(_), expr::Limits::HalfOpen(_)) => true,
-            (expr::Limits::Closed(_), expr::Limits::Closed(_)) => true,
+            (Closed(_), Closed(_)) => true,
+            (HalfOpen(_), HalfOpen(_)) => true,
             _ => false,
         }
     }
@@ -1086,9 +1096,10 @@ impl PartialEq for item::Receiver {
 impl Eq for typ::Ret {}
 impl PartialEq for typ::Ret {
     fn eq(&self, x: &Self) -> bool {
+        use typ::Ret::*;
         match (self, x) {
-            (typ::Ret::Default, typ::Ret::Default) => true,
-            (typ::Ret::Type(_, self1), typ::Ret::Type(_, other1)) => self1 == other1,
+            (Default, Default) => true,
+            (Type(_, x), Type(_, y)) => x == y,
             _ => false,
         }
     }
@@ -1107,12 +1118,13 @@ impl PartialEq for item::Sig {
             && self.ret == x.ret
     }
 }
-impl Eq for StaticMut {}
-impl PartialEq for StaticMut {
+impl Eq for item::StaticMut {}
+impl PartialEq for item::StaticMut {
     fn eq(&self, x: &Self) -> bool {
+        use item::StaticMut::*;
         match (self, x) {
-            (StaticMut::Mut(_), StaticMut::Mut(_)) => true,
-            (StaticMut::None, StaticMut::None) => true,
+            (Mut(_), Mut(_)) => true,
+            (None, None) => true,
             _ => false,
         }
     }
@@ -1120,11 +1132,12 @@ impl PartialEq for StaticMut {
 impl Eq for stmt::Stmt {}
 impl PartialEq for stmt::Stmt {
     fn eq(&self, x: &Self) -> bool {
+        use stmt::Stmt::*;
         match (self, x) {
-            (stmt::Stmt::stmt::Local(x), stmt::Stmt::stmt::Local(y)) => x == y,
-            (stmt::Stmt::Item(x), stmt::Stmt::Item(y)) => x == y,
-            (stmt::Stmt::Expr(x, self1), stmt::Stmt::Expr(y, other1)) => x == y && self1 == other1,
-            (stmt::Stmt::Mac(x), stmt::Stmt::Mac(y)) => x == y,
+            (Expr(x, self1), Expr(y, other1)) => x == y && self1 == other1,
+            (Item(x), Item(y)) => x == y,
+            (Local(x), Local(y)) => x == y,
+            (Mac(x), Mac(y)) => x == y,
             _ => false,
         }
     }
@@ -1144,9 +1157,10 @@ impl PartialEq for gen::bound::Trait {
 impl Eq for gen::bound::Modifier {}
 impl PartialEq for gen::bound::Modifier {
     fn eq(&self, x: &Self) -> bool {
+        use gen::bound::Modifier::*;
         match (self, x) {
-            (gen::bound::Modifier::None, gen::bound::Modifier::None) => true,
-            (gen::bound::Modifier::Maybe(_), gen::bound::Modifier::Maybe(_)) => true,
+            (Maybe(_), Maybe(_)) => true,
+            (None, None) => true,
             _ => false,
         }
     }
@@ -1154,12 +1168,13 @@ impl PartialEq for gen::bound::Modifier {
 impl Eq for item::trait_::Item {}
 impl PartialEq for item::trait_::Item {
     fn eq(&self, x: &Self) -> bool {
+        use item::trait_::Item::*;
         match (self, x) {
-            (item::trait_::Item::Const(x), item::trait_::Item::Const(y)) => x == y,
-            (item::trait_::Item::Fn(x), item::trait_::Item::Fn(y)) => x == y,
-            (item::trait_::Item::Type(x), item::trait_::Item::Type(y)) => x == y,
-            (item::trait_::Item::Macro(x), item::trait_::Item::Macro(y)) => x == y,
-            (item::trait_::Item::Verbatim(x), item::trait_::Item::Verbatim(y)) => StreamHelper(x) == StreamHelper(y),
+            (Const(x), Const(y)) => x == y,
+            (Fn(x), Fn(y)) => x == y,
+            (Mac(x), Mac(y)) => x == y,
+            (Type(x), Type(y)) => x == y,
+            (Verbatim(x), Verbatim(y)) => StreamHelper(x) == StreamHelper(y),
             _ => false,
         }
     }
@@ -1200,22 +1215,23 @@ impl PartialEq for item::trait_::Type {
 impl Eq for typ::Type {}
 impl PartialEq for typ::Type {
     fn eq(&self, x: &Self) -> bool {
+        use typ::Type::*;
         match (self, x) {
-            (typ::Type::Array(x), typ::Type::Array(y)) => x == y,
-            (typ::Type::Fn(x), typ::Type::Fn(y)) => x == y,
-            (typ::Type::Group(x), typ::Type::Group(y)) => x == y,
-            (typ::Type::Impl(x), typ::Type::Impl(y)) => x == y,
-            (typ::Type::Infer(x), typ::Type::Infer(y)) => x == y,
-            (typ::Type::Mac(x), typ::Type::Mac(y)) => x == y,
-            (typ::Type::Never(x), typ::Type::Never(y)) => x == y,
-            (typ::Type::Parenth(x), typ::Type::Parenth(y)) => x == y,
-            (typ::Type::Path(x), typ::Type::Path(y)) => x == y,
-            (typ::Type::Ptr(x), typ::Type::Ptr(y)) => x == y,
-            (typ::Type::Ref(x), typ::Type::Ref(y)) => x == y,
-            (typ::Type::Slice(x), typ::Type::Slice(y)) => x == y,
-            (typ::Type::Trait(x), typ::Type::Trait(y)) => x == y,
-            (typ::Type::Tuple(x), typ::Type::Tuple(y)) => x == y,
-            (typ::Type::Stream(x), typ::Type::Stream(y)) => StreamHelper(x) == StreamHelper(y),
+            (Array(x), Array(y)) => x == y,
+            (Fn(x), Fn(y)) => x == y,
+            (Group(x), Group(y)) => x == y,
+            (Impl(x), Impl(y)) => x == y,
+            (Infer(x), Infer(y)) => x == y,
+            (Mac(x), Mac(y)) => x == y,
+            (Never(x), Never(y)) => x == y,
+            (Parenth(x), Parenth(y)) => x == y,
+            (Path(x), Path(y)) => x == y,
+            (Ptr(x), Ptr(y)) => x == y,
+            (Ref(x), Ref(y)) => x == y,
+            (Slice(x), Slice(y)) => x == y,
+            (Trait(x), Trait(y)) => x == y,
+            (Tuple(x), Tuple(y)) => x == y,
+            (Verbatim(x), Verbatim(y)) => StreamHelper(x) == StreamHelper(y),
             _ => false,
         }
     }
@@ -1281,10 +1297,11 @@ impl PartialEq for gen::param::Type {
 impl Eq for gen::bound::Type {}
 impl PartialEq for gen::bound::Type {
     fn eq(&self, x: &Self) -> bool {
+        use gen::bound::Type::*;
         match (self, x) {
-            (gen::bound::Type::Trait(x), gen::bound::Type::Trait(y)) => x == y,
-            (gen::bound::Type::Life(x), gen::bound::Type::Life(y)) => x == y,
-            (gen::bound::Type::Verbatim(x), gen::bound::Type::Verbatim(y)) => StreamHelper(x) == StreamHelper(y),
+            (Life(x), Life(y)) => x == y,
+            (Trait(x), Trait(y)) => x == y,
+            (Verbatim(x), Verbatim(y)) => StreamHelper(x) == StreamHelper(y),
             _ => false,
         }
     }
@@ -1331,13 +1348,14 @@ impl PartialEq for typ::Tuple {
         self.elems == x.elems
     }
 }
-impl Eq for UnOp {}
-impl PartialEq for UnOp {
+impl Eq for expr::UnOp {}
+impl PartialEq for expr::UnOp {
     fn eq(&self, x: &Self) -> bool {
+        use expr::UnOp::*;
         match (self, x) {
-            (UnOp::Deref(_), UnOp::Deref(_)) => true,
-            (UnOp::Not(_), UnOp::Not(_)) => true,
-            (UnOp::Neg(_), UnOp::Neg(_)) => true,
+            (Deref(_), Deref(_)) => true,
+            (Neg(_), Neg(_)) => true,
+            (Not(_), Not(_)) => true,
             _ => false,
         }
     }
@@ -1375,12 +1393,13 @@ impl PartialEq for item::use_::Rename {
 impl Eq for item::use_::Tree {}
 impl PartialEq for item::use_::Tree {
     fn eq(&self, x: &Self) -> bool {
+        use item::use_::Tree::*;
         match (self, x) {
-            (item::use_::Tree::Path(x), item::use_::Tree::Path(y)) => x == y,
-            (item::use_::Tree::Name(x), item::use_::Tree::Name(y)) => x == y,
-            (item::use_::Tree::Rename(x), item::use_::Tree::Rename(y)) => x == y,
-            (item::use_::Tree::Glob(x), item::use_::Tree::Glob(y)) => x == y,
-            (item::use_::Tree::Group(x), item::use_::Tree::Group(y)) => x == y,
+            (Glob(x), Glob(y)) => x == y,
+            (Group(x), Group(y)) => x == y,
+            (Name(x), Name(y)) => x == y,
+            (Path(x), Path(y)) => x == y,
+            (Rename(x), Rename(y)) => x == y,
             _ => false,
         }
     }
@@ -1406,10 +1425,11 @@ impl PartialEq for data::Restricted {
 impl Eq for data::Visibility {}
 impl PartialEq for data::Visibility {
     fn eq(&self, x: &Self) -> bool {
+        use data::Visibility::*;
         match (self, x) {
-            (data::Visibility::Public(_), data::Visibility::Public(_)) => true,
-            (data::Visibility::Restricted(x), data::Visibility::Restricted(y)) => x == y,
-            (data::Visibility::Inherited, data::Visibility::Inherited) => true,
+            (Inherited, Inherited) => true,
+            (Public(_), Public(_)) => true,
+            (Restricted(x), Restricted(y)) => x == y,
             _ => false,
         }
     }
@@ -1420,12 +1440,13 @@ impl PartialEq for gen::Where {
         self.preds == x.preds
     }
 }
-impl Eq for gen::Where::Pred {}
-impl PartialEq for gen::Where::Pred {
+impl Eq for gen::where_::Pred {}
+impl PartialEq for gen::where_::Pred {
     fn eq(&self, x: &Self) -> bool {
+        use gen::where_::Pred::*;
         match (self, x) {
-            (gen::Where::Pred::Life(x), gen::Where::Pred::Life(y)) => x == y,
-            (gen::Where::Pred::Type(x), gen::Where::Pred::Type(y)) => x == y,
+            (Life(x), Life(y)) => x == y,
+            (Type(x), Type(y)) => x == y,
             _ => false,
         }
     }
