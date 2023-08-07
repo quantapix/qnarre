@@ -377,7 +377,7 @@ impl Hash for expr::Expr {
                 h.write_u8(20u8);
                 x.hash(h);
             },
-            Macro(x) => {
+            Mac(x) => {
                 h.write_u8(21u8);
                 x.hash(h);
             },
@@ -401,7 +401,7 @@ impl Hash for expr::Expr {
                 h.write_u8(26u8);
                 x.hash(h);
             },
-            Reference(x) => {
+            Ref(x) => {
                 h.write_u8(27u8);
                 x.hash(h);
             },
@@ -453,1491 +453,1506 @@ impl Hash for expr::Expr {
     }
 }
 impl Hash for expr::Array {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.elems.hash(state);
+        self.attrs.hash(h);
+        self.elems.hash(h);
     }
 }
 impl Hash for expr::Assign {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.left.hash(state);
-        self.right.hash(state);
+        self.attrs.hash(h);
+        self.left.hash(h);
+        self.right.hash(h);
     }
 }
 impl Hash for expr::Async {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.move_.hash(state);
-        self.block.hash(state);
+        self.attrs.hash(h);
+        self.move_.hash(h);
+        self.block.hash(h);
     }
 }
 impl Hash for expr::Await {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.expr.hash(state);
+        self.attrs.hash(h);
+        self.expr.hash(h);
     }
 }
 impl Hash for expr::Binary {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.left.hash(state);
-        self.op.hash(state);
-        self.right.hash(state);
+        self.attrs.hash(h);
+        self.left.hash(h);
+        self.op.hash(h);
+        self.right.hash(h);
     }
 }
 impl Hash for expr::Block {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.label.hash(state);
-        self.block.hash(state);
+        self.attrs.hash(h);
+        self.label.hash(h);
+        self.block.hash(h);
     }
 }
 impl Hash for expr::Break {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.life.hash(state);
-        self.val.hash(state);
+        self.attrs.hash(h);
+        self.life.hash(h);
+        self.val.hash(h);
     }
 }
 impl Hash for expr::Call {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.func.hash(state);
-        self.args.hash(state);
+        self.attrs.hash(h);
+        self.func.hash(h);
+        self.args.hash(h);
     }
 }
 impl Hash for expr::Cast {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.expr.hash(state);
-        self.typ.hash(state);
+        self.attrs.hash(h);
+        self.expr.hash(h);
+        self.typ.hash(h);
     }
 }
 impl Hash for expr::Closure {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.lifes.hash(state);
-        self.const_.hash(state);
-        self.static_.hash(state);
-        self.async_.hash(state);
-        self.move_.hash(state);
-        self.inputs.hash(state);
-        self.ret.hash(state);
-        self.body.hash(state);
+        self.attrs.hash(h);
+        self.lifes.hash(h);
+        self.const_.hash(h);
+        self.static_.hash(h);
+        self.async_.hash(h);
+        self.move_.hash(h);
+        self.ins.hash(h);
+        self.ret.hash(h);
+        self.body.hash(h);
     }
 }
 impl Hash for expr::Const {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.block.hash(state);
+        self.attrs.hash(h);
+        self.block.hash(h);
     }
 }
 impl Hash for expr::Continue {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.life.hash(state);
+        self.attrs.hash(h);
+        self.life.hash(h);
     }
 }
 impl Hash for expr::Field {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.expr.hash(state);
-        self.memb.hash(state);
+        self.attrs.hash(h);
+        self.expr.hash(h);
+        self.memb.hash(h);
     }
 }
 impl Hash for expr::ForLoop {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.label.hash(state);
-        self.pat.hash(state);
-        self.expr.hash(state);
-        self.body.hash(state);
+        self.attrs.hash(h);
+        self.label.hash(h);
+        self.pat.hash(h);
+        self.expr.hash(h);
+        self.body.hash(h);
     }
 }
 impl Hash for expr::Group {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.expr.hash(state);
+        self.attrs.hash(h);
+        self.expr.hash(h);
     }
 }
 impl Hash for expr::If {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.cond.hash(state);
-        self.then_branch.hash(state);
-        self.else_branch.hash(state);
+        self.attrs.hash(h);
+        self.cond.hash(h);
+        self.then_.hash(h);
+        self.else_.hash(h);
     }
 }
 impl Hash for expr::Index {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.expr.hash(state);
-        self.index.hash(state);
+        self.attrs.hash(h);
+        self.expr.hash(h);
+        self.idx.hash(h);
     }
 }
 impl Hash for expr::Infer {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
+        self.attrs.hash(h);
     }
 }
 impl Hash for expr::Let {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.pat.hash(state);
-        self.expr.hash(state);
+        self.attrs.hash(h);
+        self.pat.hash(h);
+        self.expr.hash(h);
     }
 }
 impl Hash for expr::Lit {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.lit.hash(state);
+        self.attrs.hash(h);
+        self.lit.hash(h);
     }
 }
 impl Hash for expr::Loop {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.label.hash(state);
-        self.body.hash(state);
+        self.attrs.hash(h);
+        self.label.hash(h);
+        self.body.hash(h);
     }
 }
 impl Hash for expr::Mac {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.mac.hash(state);
+        self.attrs.hash(h);
+        self.mac.hash(h);
     }
 }
 impl Hash for expr::Match {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.expr.hash(state);
-        self.arms.hash(state);
+        self.attrs.hash(h);
+        self.expr.hash(h);
+        self.arms.hash(h);
     }
 }
 impl Hash for expr::MethodCall {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.expr.hash(state);
-        self.method.hash(state);
-        self.turbofish.hash(state);
-        self.args.hash(state);
+        self.attrs.hash(h);
+        self.expr.hash(h);
+        self.method.hash(h);
+        self.turbofish.hash(h);
+        self.args.hash(h);
     }
 }
 impl Hash for expr::Parenth {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.expr.hash(state);
+        self.attrs.hash(h);
+        self.expr.hash(h);
     }
 }
 impl Hash for expr::Path {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.qself.hash(state);
-        self.path.hash(state);
+        self.attrs.hash(h);
+        self.qself.hash(h);
+        self.path.hash(h);
     }
 }
 impl Hash for expr::Range {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.beg.hash(state);
-        self.limits.hash(state);
-        self.end.hash(state);
+        self.attrs.hash(h);
+        self.beg.hash(h);
+        self.limits.hash(h);
+        self.end.hash(h);
     }
 }
 impl Hash for expr::Ref {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.mut_.hash(state);
-        self.expr.hash(state);
+        self.attrs.hash(h);
+        self.mut_.hash(h);
+        self.expr.hash(h);
     }
 }
 impl Hash for expr::Repeat {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.expr.hash(state);
-        self.len.hash(state);
+        self.attrs.hash(h);
+        self.expr.hash(h);
+        self.len.hash(h);
     }
 }
 impl Hash for expr::Return {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.expr.hash(state);
+        self.attrs.hash(h);
+        self.expr.hash(h);
     }
 }
 impl Hash for expr::Struct {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.qself.hash(state);
-        self.path.hash(state);
-        self.fields.hash(state);
-        self.dot2.hash(state);
-        self.rest.hash(state);
+        self.attrs.hash(h);
+        self.qself.hash(h);
+        self.path.hash(h);
+        self.fields.hash(h);
+        self.dot2.hash(h);
+        self.rest.hash(h);
     }
 }
 impl Hash for expr::Try {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.expr.hash(state);
+        self.attrs.hash(h);
+        self.expr.hash(h);
     }
 }
 impl Hash for expr::TryBlock {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.block.hash(state);
+        self.attrs.hash(h);
+        self.block.hash(h);
     }
 }
 impl Hash for expr::Tuple {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.elems.hash(state);
+        self.attrs.hash(h);
+        self.elems.hash(h);
     }
 }
 impl Hash for expr::Unary {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.op.hash(state);
-        self.expr.hash(state);
+        self.attrs.hash(h);
+        self.op.hash(h);
+        self.expr.hash(h);
     }
 }
 impl Hash for expr::Unsafe {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.block.hash(state);
+        self.attrs.hash(h);
+        self.block.hash(h);
     }
 }
 impl Hash for expr::While {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.label.hash(state);
-        self.cond.hash(state);
-        self.body.hash(state);
+        self.attrs.hash(h);
+        self.label.hash(h);
+        self.cond.hash(h);
+        self.block.hash(h);
     }
 }
 impl Hash for expr::Yield {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.expr.hash(state);
+        self.attrs.hash(h);
+        self.expr.hash(h);
     }
 }
 impl Hash for data::Field {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.vis.hash(state);
-        self.mut_.hash(state);
-        self.ident.hash(state);
-        self.colon.hash(state);
-        self.typ.hash(state);
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.mut_.hash(h);
+        self.ident.hash(h);
+        self.colon.hash(h);
+        self.typ.hash(h);
     }
 }
 impl Hash for data::Mut {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
         match self {
             data::Mut::None => {
-                state.write_u8(0u8);
+                h.write_u8(0u8);
             },
         }
     }
 }
 impl Hash for pat::Field {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.memb.hash(state);
-        self.colon.hash(state);
-        self.pat.hash(state);
+        self.attrs.hash(h);
+        self.memb.hash(h);
+        self.colon.hash(h);
+        self.pat.hash(h);
     }
 }
-impl Hash for FieldValue {
-    fn hash<H>(&self, state: &mut H)
+impl Hash for expr::FieldValue {
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.member.hash(state);
-        self.colon.hash(state);
-        self.expr.hash(state);
+        self.attrs.hash(h);
+        self.memb.hash(h);
+        self.colon.hash(h);
+        self.expr.hash(h);
     }
 }
 impl Hash for data::Fields {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
+        use data::Fields::*;
         match self {
-            data::Fields::Named(x) => {
-                state.write_u8(0u8);
-                x.hash(state);
+            Named(x) => {
+                h.write_u8(0u8);
+                x.hash(h);
             },
-            data::Fields::Unnamed(x) => {
-                state.write_u8(1u8);
-                x.hash(state);
+            Unnamed(x) => {
+                h.write_u8(1u8);
+                x.hash(h);
             },
-            data::Fields::Unit => {
-                state.write_u8(2u8);
+            Unit => {
+                h.write_u8(2u8);
             },
         }
     }
 }
 impl Hash for data::Named {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.fields.hash(state);
+        self.fields.hash(h);
     }
 }
 impl Hash for data::Unnamed {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.fields.hash(state);
+        self.fields.hash(h);
     }
 }
 impl Hash for item::File {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.shebang.hash(state);
-        self.attrs.hash(state);
-        self.items.hash(state);
+        self.shebang.hash(h);
+        self.attrs.hash(h);
+        self.items.hash(h);
     }
 }
 impl Hash for item::FnArg {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
+        use item::FnArg::*;
         match self {
-            item::FnArg::Receiver(x) => {
-                state.write_u8(0u8);
-                x.hash(state);
+            Receiver(x) => {
+                h.write_u8(0u8);
+                x.hash(h);
             },
-            item::FnArg::Type(x) => {
-                state.write_u8(1u8);
-                x.hash(state);
+            Type(x) => {
+                h.write_u8(1u8);
+                x.hash(h);
             },
         }
     }
 }
 impl Hash for item::foreign::Item {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
+        use item::foreign::Item::*;
         match self {
-            item::foreign::Item::Fn(x) => {
-                state.write_u8(0u8);
-                x.hash(state);
+            Fn(x) => {
+                h.write_u8(0u8);
+                x.hash(h);
             },
-            item::foreign::Item::Static(x) => {
-                state.write_u8(1u8);
-                x.hash(state);
+            Static(x) => {
+                h.write_u8(1u8);
+                x.hash(h);
             },
-            item::foreign::Item::Type(x) => {
-                state.write_u8(2u8);
-                x.hash(state);
+            Type(x) => {
+                h.write_u8(2u8);
+                x.hash(h);
             },
-            item::foreign::Item::Macro(x) => {
-                state.write_u8(3u8);
-                x.hash(state);
+            Mac(x) => {
+                h.write_u8(3u8);
+                x.hash(h);
             },
-            item::foreign::Item::Verbatim(x) => {
-                state.write_u8(4u8);
-                StreamHelper(x).hash(state);
+            Verbatim(x) => {
+                h.write_u8(4u8);
+                StreamHelper(x).hash(h);
             },
         }
     }
 }
 impl Hash for item::foreign::Fn {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.vis.hash(state);
-        self.sig.hash(state);
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.sig.hash(h);
     }
 }
 impl Hash for item::foreign::Mac {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.mac.hash(state);
-        self.semi.hash(state);
+        self.attrs.hash(h);
+        self.mac.hash(h);
+        self.semi.hash(h);
     }
 }
 impl Hash for item::foreign::Static {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.vis.hash(state);
-        self.mut_.hash(state);
-        self.ident.hash(state);
-        self.typ.hash(state);
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.mut_.hash(h);
+        self.ident.hash(h);
+        self.typ.hash(h);
     }
 }
 impl Hash for item::foreign::Type {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.vis.hash(state);
-        self.ident.hash(state);
-        self.gens.hash(state);
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.ident.hash(h);
+        self.gens.hash(h);
     }
 }
-impl Hash for Arg {
-    fn hash<H>(&self, state: &mut H)
+impl Hash for path::Arg {
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
+        use path::Arg::*;
         match self {
-            Arg::Life(x) => {
-                state.write_u8(0u8);
-                x.hash(state);
+            Life(x) => {
+                h.write_u8(0u8);
+                x.hash(h);
             },
-            Arg::Type(x) => {
-                state.write_u8(1u8);
-                x.hash(state);
+            Type(x) => {
+                h.write_u8(1u8);
+                x.hash(h);
             },
-            Arg::Const(x) => {
-                state.write_u8(2u8);
-                x.hash(state);
+            Const(x) => {
+                h.write_u8(2u8);
+                x.hash(h);
             },
-            Arg::AssocType(x) => {
-                state.write_u8(3u8);
-                x.hash(state);
+            AssocType(x) => {
+                h.write_u8(3u8);
+                x.hash(h);
             },
-            Arg::AssocConst(x) => {
-                state.write_u8(4u8);
-                x.hash(state);
+            AssocConst(x) => {
+                h.write_u8(4u8);
+                x.hash(h);
             },
-            Arg::Constraint(x) => {
-                state.write_u8(5u8);
-                x.hash(state);
+            Constraint(x) => {
+                h.write_u8(5u8);
+                x.hash(h);
             },
         }
     }
 }
 impl Hash for gen::Param {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
+        use gen::Param::*;
         match self {
-            gen::Param::Life(x) => {
-                state.write_u8(0u8);
-                x.hash(state);
+            Life(x) => {
+                h.write_u8(0u8);
+                x.hash(h);
             },
-            gen::Param::Type(x) => {
-                state.write_u8(1u8);
-                x.hash(state);
+            Type(x) => {
+                h.write_u8(1u8);
+                x.hash(h);
             },
-            gen::Param::Const(x) => {
-                state.write_u8(2u8);
-                x.hash(state);
+            Const(x) => {
+                h.write_u8(2u8);
+                x.hash(h);
             },
         }
     }
 }
 impl Hash for gen::Gens {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.lt.hash(state);
-        self.params.hash(state);
-        self.gt.hash(state);
-        self.where_.hash(state);
+        self.lt.hash(h);
+        self.params.hash(h);
+        self.gt.hash(h);
+        self.where_.hash(h);
     }
 }
 impl Hash for item::impl_::Item {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
+        use item::impl_::Item::*;
         match self {
-            item::impl_::Item::Const(x) => {
-                state.write_u8(0u8);
-                x.hash(state);
+            Const(x) => {
+                h.write_u8(0u8);
+                x.hash(h);
             },
-            item::impl_::Item::Fn(x) => {
-                state.write_u8(1u8);
-                x.hash(state);
+            Fn(x) => {
+                h.write_u8(1u8);
+                x.hash(h);
             },
-            item::impl_::Item::Type(x) => {
-                state.write_u8(2u8);
-                x.hash(state);
+            Type(x) => {
+                h.write_u8(2u8);
+                x.hash(h);
             },
-            item::impl_::Item::Macro(x) => {
-                state.write_u8(3u8);
-                x.hash(state);
+            Mac(x) => {
+                h.write_u8(3u8);
+                x.hash(h);
             },
-            item::impl_::Item::Verbatim(x) => {
-                state.write_u8(4u8);
-                StreamHelper(x).hash(state);
+            Verbatim(x) => {
+                h.write_u8(4u8);
+                StreamHelper(x).hash(h);
             },
         }
     }
 }
 impl Hash for item::impl_::Const {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.vis.hash(state);
-        self.default_.hash(state);
-        self.ident.hash(state);
-        self.gens.hash(state);
-        self.typ.hash(state);
-        self.expr.hash(state);
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.default.hash(h);
+        self.ident.hash(h);
+        self.gens.hash(h);
+        self.typ.hash(h);
+        self.expr.hash(h);
     }
 }
 impl Hash for item::impl_::Fn {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.vis.hash(state);
-        self.default_.hash(state);
-        self.sig.hash(state);
-        self.block.hash(state);
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.default.hash(h);
+        self.sig.hash(h);
+        self.block.hash(h);
     }
 }
 impl Hash for item::impl_::Mac {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.mac.hash(state);
-        self.semi.hash(state);
+        self.attrs.hash(h);
+        self.mac.hash(h);
+        self.semi.hash(h);
     }
 }
 impl Hash for item::impl_::Type {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.vis.hash(state);
-        self.default_.hash(state);
-        self.ident.hash(state);
-        self.gens.hash(state);
-        self.typ.hash(state);
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.default.hash(h);
+        self.ident.hash(h);
+        self.gens.hash(h);
+        self.typ.hash(h);
     }
 }
 impl Hash for item::impl_::Restriction {
-    fn hash<H>(&self, _state: &mut H)
+    fn hash<H>(&self, _h: &mut H)
     where
         H: Hasher,
     {
         match *self {}
     }
 }
-impl Hash for Item {
-    fn hash<H>(&self, state: &mut H)
+impl Hash for item::Item {
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
+        use item::Item::*;
         match self {
-            Item::Const(x) => {
-                state.write_u8(0u8);
-                x.hash(state);
+            Const(x) => {
+                h.write_u8(0u8);
+                x.hash(h);
             },
-            Item::Enum(x) => {
-                state.write_u8(1u8);
-                x.hash(state);
+            Enum(x) => {
+                h.write_u8(1u8);
+                x.hash(h);
             },
-            Item::Extern(x) => {
-                state.write_u8(2u8);
-                x.hash(state);
+            Extern(x) => {
+                h.write_u8(2u8);
+                x.hash(h);
             },
-            Item::Fn(x) => {
-                state.write_u8(3u8);
-                x.hash(state);
+            Fn(x) => {
+                h.write_u8(3u8);
+                x.hash(h);
             },
-            Item::Foreign(x) => {
-                state.write_u8(4u8);
-                x.hash(state);
+            Foreign(x) => {
+                h.write_u8(4u8);
+                x.hash(h);
             },
-            Item::Impl(x) => {
-                state.write_u8(5u8);
-                x.hash(state);
+            Impl(x) => {
+                h.write_u8(5u8);
+                x.hash(h);
             },
-            Item::Macro(x) => {
-                state.write_u8(6u8);
-                x.hash(state);
+            Mac(x) => {
+                h.write_u8(6u8);
+                x.hash(h);
             },
-            Item::Mod(x) => {
-                state.write_u8(7u8);
-                x.hash(state);
+            Mod(x) => {
+                h.write_u8(7u8);
+                x.hash(h);
             },
-            Item::Static(x) => {
-                state.write_u8(8u8);
-                x.hash(state);
+            Static(x) => {
+                h.write_u8(8u8);
+                x.hash(h);
             },
-            Item::Struct(x) => {
-                state.write_u8(9u8);
-                x.hash(state);
+            Struct(x) => {
+                h.write_u8(9u8);
+                x.hash(h);
             },
-            Item::Trait(x) => {
-                state.write_u8(10u8);
-                x.hash(state);
+            Trait(x) => {
+                h.write_u8(10u8);
+                x.hash(h);
             },
-            Item::TraitAlias(x) => {
-                state.write_u8(11u8);
-                x.hash(state);
+            TraitAlias(x) => {
+                h.write_u8(11u8);
+                x.hash(h);
             },
-            Item::Type(x) => {
-                state.write_u8(12u8);
-                x.hash(state);
+            Type(x) => {
+                h.write_u8(12u8);
+                x.hash(h);
             },
-            Item::Union(x) => {
-                state.write_u8(13u8);
-                x.hash(state);
+            Union(x) => {
+                h.write_u8(13u8);
+                x.hash(h);
             },
-            Item::Use(x) => {
-                state.write_u8(14u8);
-                x.hash(state);
+            Use(x) => {
+                h.write_u8(14u8);
+                x.hash(h);
             },
-            Item::Stream(x) => {
-                state.write_u8(15u8);
-                StreamHelper(x).hash(state);
+            Verbatim(x) => {
+                h.write_u8(15u8);
+                StreamHelper(x).hash(h);
             },
         }
     }
 }
 impl Hash for item::Const {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.vis.hash(state);
-        self.ident.hash(state);
-        self.gens.hash(state);
-        self.typ.hash(state);
-        self.expr.hash(state);
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.ident.hash(h);
+        self.gens.hash(h);
+        self.typ.hash(h);
+        self.expr.hash(h);
     }
 }
 impl Hash for item::Enum {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.vis.hash(state);
-        self.ident.hash(state);
-        self.gens.hash(state);
-        self.variants.hash(state);
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.ident.hash(h);
+        self.gens.hash(h);
+        self.variants.hash(h);
     }
 }
 impl Hash for item::Extern {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.vis.hash(state);
-        self.ident.hash(state);
-        self.rename.hash(state);
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.ident.hash(h);
+        self.rename.hash(h);
     }
 }
 impl Hash for item::Fn {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.vis.hash(state);
-        self.sig.hash(state);
-        self.block.hash(state);
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.sig.hash(h);
+        self.block.hash(h);
     }
 }
 impl Hash for item::Foreign {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.unsafe_.hash(state);
-        self.abi.hash(state);
-        self.items.hash(state);
+        self.attrs.hash(h);
+        self.unsafe_.hash(h);
+        self.abi.hash(h);
+        self.items.hash(h);
     }
 }
 impl Hash for item::Impl {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.default.hash(state);
-        self.unsafe_.hash(state);
-        self.gens.hash(state);
-        self.trait_.hash(state);
-        self.typ.hash(state);
-        self.items.hash(state);
+        self.attrs.hash(h);
+        self.default.hash(h);
+        self.unsafe_.hash(h);
+        self.gens.hash(h);
+        self.trait_.hash(h);
+        self.typ.hash(h);
+        self.items.hash(h);
     }
 }
 impl Hash for item::Mac {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.ident.hash(state);
-        self.mac.hash(state);
-        self.semi.hash(state);
+        self.attrs.hash(h);
+        self.ident.hash(h);
+        self.mac.hash(h);
+        self.semi.hash(h);
     }
 }
 impl Hash for item::Mod {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.vis.hash(state);
-        self.unsafe_.hash(state);
-        self.ident.hash(state);
-        self.items.hash(state);
-        self.semi.hash(state);
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.unsafe_.hash(h);
+        self.ident.hash(h);
+        self.items.hash(h);
+        self.semi.hash(h);
     }
 }
 impl Hash for item::Static {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.vis.hash(state);
-        self.mut_.hash(state);
-        self.ident.hash(state);
-        self.typ.hash(state);
-        self.expr.hash(state);
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.mut_.hash(h);
+        self.ident.hash(h);
+        self.typ.hash(h);
+        self.expr.hash(h);
     }
 }
 impl Hash for item::Struct {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.vis.hash(state);
-        self.ident.hash(state);
-        self.gens.hash(state);
-        self.fields.hash(state);
-        self.semi.hash(state);
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.ident.hash(h);
+        self.gens.hash(h);
+        self.fields.hash(h);
+        self.semi.hash(h);
     }
 }
 impl Hash for item::Trait {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.vis.hash(state);
-        self.unsafe_.hash(state);
-        self.auto.hash(state);
-        self.restriction.hash(state);
-        self.ident.hash(state);
-        self.gens.hash(state);
-        self.colon.hash(state);
-        self.supers.hash(state);
-        self.items.hash(state);
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.unsafe_.hash(h);
+        self.auto.hash(h);
+        self.restriction.hash(h);
+        self.ident.hash(h);
+        self.gens.hash(h);
+        self.colon.hash(h);
+        self.supers.hash(h);
+        self.items.hash(h);
     }
 }
 impl Hash for item::TraitAlias {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.vis.hash(state);
-        self.ident.hash(state);
-        self.gens.hash(state);
-        self.bounds.hash(state);
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.ident.hash(h);
+        self.gens.hash(h);
+        self.bounds.hash(h);
     }
 }
 impl Hash for item::Type {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.vis.hash(state);
-        self.ident.hash(state);
-        self.gens.hash(state);
-        self.typ.hash(state);
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.ident.hash(h);
+        self.gens.hash(h);
+        self.typ.hash(h);
     }
 }
 impl Hash for item::Union {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.vis.hash(state);
-        self.ident.hash(state);
-        self.gens.hash(state);
-        self.fields.hash(state);
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.ident.hash(h);
+        self.gens.hash(h);
+        self.fields.hash(h);
     }
 }
 impl Hash for item::Use {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.vis.hash(state);
-        self.colon.hash(state);
-        self.tree.hash(state);
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.colon.hash(h);
+        self.tree.hash(h);
     }
 }
-impl Hash for Label {
-    fn hash<H>(&self, state: &mut H)
+impl Hash for expr::Label {
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.name.hash(state);
+        self.name.hash(h);
     }
 }
 impl Hash for gen::param::Life {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.life.hash(state);
-        self.colon.hash(state);
-        self.bounds.hash(state);
+        self.attrs.hash(h);
+        self.life.hash(h);
+        self.colon.hash(h);
+        self.bounds.hash(h);
     }
 }
-impl Hash for Lit {
-    fn hash<H>(&self, state: &mut H)
+impl Hash for lit::Lit {
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
+        use lit::Lit::*;
         match self {
-            Lit::Str(x) => {
-                state.write_u8(0u8);
-                x.hash(state);
+            Str(x) => {
+                h.write_u8(0u8);
+                x.hash(h);
             },
-            Lit::ByteStr(x) => {
-                state.write_u8(1u8);
-                x.hash(state);
+            ByteStr(x) => {
+                h.write_u8(1u8);
+                x.hash(h);
             },
-            Lit::Byte(x) => {
-                state.write_u8(2u8);
-                x.hash(state);
+            Byte(x) => {
+                h.write_u8(2u8);
+                x.hash(h);
             },
-            Lit::Char(x) => {
-                state.write_u8(3u8);
-                x.hash(state);
+            Char(x) => {
+                h.write_u8(3u8);
+                x.hash(h);
             },
-            Lit::Int(x) => {
-                state.write_u8(4u8);
-                x.hash(state);
+            Int(x) => {
+                h.write_u8(4u8);
+                x.hash(h);
             },
-            Lit::Float(x) => {
-                state.write_u8(5u8);
-                x.hash(state);
+            Float(x) => {
+                h.write_u8(5u8);
+                x.hash(h);
             },
-            Lit::Bool(x) => {
-                state.write_u8(6u8);
-                x.hash(state);
+            Bool(x) => {
+                h.write_u8(6u8);
+                x.hash(h);
             },
-            Lit::Stream(x) => {
-                state.write_u8(7u8);
-                x.to_string().hash(state);
+            Verbatim(x) => {
+                h.write_u8(7u8);
+                x.to_string().hash(h);
             },
         }
     }
 }
 impl Hash for lit::Bool {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.val.hash(state);
+        self.val.hash(h);
     }
 }
 impl Hash for stmt::Local {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.pat.hash(state);
-        self.init.hash(state);
+        self.attrs.hash(h);
+        self.pat.hash(h);
+        self.init.hash(h);
     }
 }
 impl Hash for stmt::Init {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.expr.hash(state);
-        self.diverge.hash(state);
+        self.expr.hash(h);
+        self.diverge.hash(h);
     }
 }
-impl Hash for Macro {
-    fn hash<H>(&self, state: &mut H)
+impl Hash for mac::Mac {
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.path.hash(state);
-        self.delim.hash(state);
-        StreamHelper(&self.toks).hash(state);
+        self.path.hash(h);
+        self.delim.hash(h);
+        StreamHelper(&self.toks).hash(h);
     }
 }
 impl Hash for tok::Delim {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
+        use tok::Delim::*;
         match self {
-            tok::Delim::Parenth(_) => {
-                state.write_u8(0u8);
+            Parenth(_) => {
+                h.write_u8(0u8);
             },
-            tok::Delim::Brace(_) => {
-                state.write_u8(1u8);
+            Brace(_) => {
+                h.write_u8(1u8);
             },
-            tok::Delim::Bracket(_) => {
-                state.write_u8(2u8);
+            Bracket(_) => {
+                h.write_u8(2u8);
             },
         }
     }
 }
 impl Hash for attr::Meta {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
+        use attr::Meta::*;
         match self {
-            attr::Meta::Path(x) => {
-                state.write_u8(0u8);
-                x.hash(state);
+            Path(x) => {
+                h.write_u8(0u8);
+                x.hash(h);
             },
-            attr::Meta::List(x) => {
-                state.write_u8(1u8);
-                x.hash(state);
+            List(x) => {
+                h.write_u8(1u8);
+                x.hash(h);
             },
-            attr::Meta::NameValue(x) => {
-                state.write_u8(2u8);
-                x.hash(state);
+            NameValue(x) => {
+                h.write_u8(2u8);
+                x.hash(h);
             },
         }
     }
 }
 impl Hash for attr::List {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.path.hash(state);
-        self.delim.hash(state);
-        StreamHelper(&self.toks).hash(state);
+        self.path.hash(h);
+        self.delim.hash(h);
+        StreamHelper(&self.toks).hash(h);
     }
 }
 impl Hash for attr::NameValue {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.name.hash(state);
-        self.val.hash(state);
+        self.name.hash(h);
+        self.val.hash(h);
     }
 }
 impl Hash for path::Parenthed {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.args.hash(state);
-        self.ret.hash(state);
+        self.args.hash(h);
+        self.ret.hash(h);
     }
 }
 impl Hash for pat::Pat {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
+        use pat::Pat::*;
         match self {
-            pat::Pat::Const(x) => {
-                state.write_u8(0u8);
-                x.hash(state);
+            Const(x) => {
+                h.write_u8(0u8);
+                x.hash(h);
             },
-            pat::Pat::Ident(x) => {
-                state.write_u8(1u8);
-                x.hash(state);
+            Ident(x) => {
+                h.write_u8(1u8);
+                x.hash(h);
             },
-            pat::Pat::Lit(x) => {
-                state.write_u8(2u8);
-                x.hash(state);
+            Lit(x) => {
+                h.write_u8(2u8);
+                x.hash(h);
             },
-            pat::Pat::Mac(x) => {
-                state.write_u8(3u8);
-                x.hash(state);
+            Mac(x) => {
+                h.write_u8(3u8);
+                x.hash(h);
             },
-            pat::Pat::Or(x) => {
-                state.write_u8(4u8);
-                x.hash(state);
+            Or(x) => {
+                h.write_u8(4u8);
+                x.hash(h);
             },
-            pat::Pat::Parenth(x) => {
-                state.write_u8(5u8);
-                x.hash(state);
+            Parenth(x) => {
+                h.write_u8(5u8);
+                x.hash(h);
             },
-            pat::Pat::Path(x) => {
-                state.write_u8(6u8);
-                x.hash(state);
+            Path(x) => {
+                h.write_u8(6u8);
+                x.hash(h);
             },
-            pat::Pat::Range(x) => {
-                state.write_u8(7u8);
-                x.hash(state);
+            Range(x) => {
+                h.write_u8(7u8);
+                x.hash(h);
             },
-            pat::Pat::Ref(x) => {
-                state.write_u8(8u8);
-                x.hash(state);
+            Ref(x) => {
+                h.write_u8(8u8);
+                x.hash(h);
             },
-            pat::Pat::Rest(x) => {
-                state.write_u8(9u8);
-                x.hash(state);
+            Rest(x) => {
+                h.write_u8(9u8);
+                x.hash(h);
             },
-            pat::Pat::Slice(x) => {
-                state.write_u8(10u8);
-                x.hash(state);
+            Slice(x) => {
+                h.write_u8(10u8);
+                x.hash(h);
             },
-            pat::Pat::Struct(x) => {
-                state.write_u8(11u8);
-                x.hash(state);
+            Struct(x) => {
+                h.write_u8(11u8);
+                x.hash(h);
             },
-            pat::Pat::Tuple(x) => {
-                state.write_u8(12u8);
-                x.hash(state);
+            Tuple(x) => {
+                h.write_u8(12u8);
+                x.hash(h);
             },
-            pat::Pat::TupleStruct(x) => {
-                state.write_u8(13u8);
-                x.hash(state);
+            TupleStruct(x) => {
+                h.write_u8(13u8);
+                x.hash(h);
             },
-            pat::Pat::Type(x) => {
-                state.write_u8(14u8);
-                x.hash(state);
+            Type(x) => {
+                h.write_u8(14u8);
+                x.hash(h);
             },
-            pat::Pat::Verbatim(x) => {
-                state.write_u8(15u8);
-                StreamHelper(x).hash(state);
+            Verbatim(x) => {
+                h.write_u8(15u8);
+                StreamHelper(x).hash(h);
             },
-            pat::Pat::Wild(x) => {
-                state.write_u8(16u8);
-                x.hash(state);
+            Wild(x) => {
+                h.write_u8(16u8);
+                x.hash(h);
             },
         }
     }
 }
 impl Hash for pat::Ident {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.ref_.hash(state);
-        self.mut_.hash(state);
-        self.ident.hash(state);
-        self.sub.hash(state);
+        self.attrs.hash(h);
+        self.ref_.hash(h);
+        self.mut_.hash(h);
+        self.ident.hash(h);
+        self.sub.hash(h);
     }
 }
 impl Hash for pat::Or {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.vert.hash(state);
-        self.cases.hash(state);
+        self.attrs.hash(h);
+        self.vert.hash(h);
+        self.cases.hash(h);
     }
 }
 impl Hash for pat::Parenth {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.pat.hash(state);
+        self.attrs.hash(h);
+        self.pat.hash(h);
     }
 }
 impl Hash for pat::Ref {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.mut_.hash(state);
-        self.pat.hash(state);
+        self.attrs.hash(h);
+        self.mut_.hash(h);
+        self.pat.hash(h);
     }
 }
 impl Hash for pat::Rest {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
+        self.attrs.hash(h);
     }
 }
 impl Hash for pat::Slice {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.pats.hash(state);
+        self.attrs.hash(h);
+        self.pats.hash(h);
     }
 }
 impl Hash for pat::Struct {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.qself.hash(state);
-        self.path.hash(state);
-        self.fields.hash(state);
-        self.rest.hash(state);
+        self.attrs.hash(h);
+        self.qself.hash(h);
+        self.path.hash(h);
+        self.fields.hash(h);
+        self.rest.hash(h);
     }
 }
 impl Hash for pat::Tuple {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.pats.hash(state);
+        self.attrs.hash(h);
+        self.pats.hash(h);
     }
 }
 impl Hash for pat::TupleStruct {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.qself.hash(state);
-        self.path.hash(state);
-        self.pats.hash(state);
+        self.attrs.hash(h);
+        self.qself.hash(h);
+        self.path.hash(h);
+        self.pats.hash(h);
     }
 }
 impl Hash for pat::Type {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.pat.hash(state);
-        self.typ.hash(state);
+        self.attrs.hash(h);
+        self.pat.hash(h);
+        self.typ.hash(h);
     }
 }
 impl Hash for pat::Wild {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
+        self.attrs.hash(h);
     }
 }
 impl Hash for Path {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.colon.hash(state);
-        self.segs.hash(state);
+        self.colon.hash(h);
+        self.segs.hash(h);
     }
 }
 impl Hash for path::Args {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
         use path::Args::*;
         match self {
             None => {
-                state.write_u8(0u8);
+                h.write_u8(0u8);
             },
             Angled(x) => {
-                state.write_u8(1u8);
-                x.hash(state);
+                h.write_u8(1u8);
+                x.hash(h);
             },
             Parenthed(x) => {
-                state.write_u8(2u8);
-                x.hash(state);
+                h.write_u8(2u8);
+                x.hash(h);
             },
         }
     }
 }
-impl Hash for Segment {
-    fn hash<H>(&self, state: &mut H)
+impl Hash for path::Segment {
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.ident.hash(state);
-        self.args.hash(state);
+        self.ident.hash(h);
+        self.args.hash(h);
     }
 }
-impl Hash for gen::Where::Life {
-    fn hash<H>(&self, state: &mut H)
+impl Hash for gen::where_::Life {
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.life.hash(state);
-        self.bounds.hash(state);
+        self.life.hash(h);
+        self.bounds.hash(h);
     }
 }
-impl Hash for gen::Where::Type {
-    fn hash<H>(&self, state: &mut H)
+impl Hash for gen::where_::Type {
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.lifes.hash(state);
-        self.bounded.hash(state);
-        self.bounds.hash(state);
+        self.lifes.hash(h);
+        self.typ.hash(h);
+        self.bounds.hash(h);
     }
 }
-impl Hash for QSelf {
-    fn hash<H>(&self, state: &mut H)
+impl Hash for path::QSelf {
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.ty.hash(state);
-        self.pos.hash(state);
-        self.as_.hash(state);
+        self.typ.hash(h);
+        self.pos.hash(h);
+        self.as_.hash(h);
     }
 }
 impl Hash for expr::Limits {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
+        use expr::Limits::*;
         match self {
-            expr::Limits::HalfOpen(_) => {
-                state.write_u8(0u8);
+            HalfOpen(_) => {
+                h.write_u8(0u8);
             },
-            expr::Limits::Closed(_) => {
-                state.write_u8(1u8);
+            Closed(_) => {
+                h.write_u8(1u8);
             },
         }
     }
 }
 impl Hash for item::Receiver {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.attrs.hash(state);
-        self.ref_.hash(state);
-        self.mut_.hash(state);
-        self.colon.hash(state);
-        self.typ.hash(state);
+        self.attrs.hash(h);
+        self.ref_.hash(h);
+        self.mut_.hash(h);
+        self.colon.hash(h);
+        self.typ.hash(h);
     }
 }
 impl Hash for typ::Ret {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
+        use typ::Ret::*;
         match self {
-            typ::Ret::Default => {
-                state.write_u8(0u8);
+            Default => {
+                h.write_u8(0u8);
             },
-            typ::Ret::Type(_, v1) => {
-                state.write_u8(1u8);
-                v1.hash(state);
+            Type(_, v1) => {
+                h.write_u8(1u8);
+                v1.hash(h);
             },
         }
     }
 }
 impl Hash for item::Sig {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
-        self.const_.hash(state);
-        self.async_.hash(state);
-        self.unsafe_.hash(state);
-        self.abi.hash(state);
-        self.ident.hash(state);
-        self.gens.hash(state);
-        self.args.hash(state);
-        self.vari.hash(state);
-        self.ret.hash(state);
+        self.const_.hash(h);
+        self.async_.hash(h);
+        self.unsafe_.hash(h);
+        self.abi.hash(h);
+        self.ident.hash(h);
+        self.gens.hash(h);
+        self.args.hash(h);
+        self.vari.hash(h);
+        self.ret.hash(h);
     }
 }
-impl Hash for StaticMut {
-    fn hash<H>(&self, state: &mut H)
+impl Hash for item::StaticMut {
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
+        use item::StaticMut::*;
         match self {
-            StaticMut::Mut(_) => {
-                state.write_u8(0u8);
+            Mut(_) => {
+                h.write_u8(0u8);
             },
-            StaticMut::None => {
-                state.write_u8(1u8);
+            None => {
+                h.write_u8(1u8);
             },
         }
     }
 }
 impl Hash for stmt::Stmt {
-    fn hash<H>(&self, state: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: Hasher,
     {
+        use stmt::Stmt::*;
         match self {
-            stmt::Stmt::stmt::Local(x) => {
-                state.write_u8(0u8);
-                x.hash(state);
+            Local(x) => {
+                h.write_u8(0u8);
+                x.hash(h);
             },
-            stmt::Stmt::Item(x) => {
-                state.write_u8(1u8);
-                x.hash(state);
+            Item(x) => {
+                h.write_u8(1u8);
+                x.hash(h);
             },
-            stmt::Stmt::Expr(x, v1) => {
-                state.write_u8(2u8);
-                x.hash(state);
-                v1.hash(state);
+            Expr(x, v1) => {
+                h.write_u8(2u8);
+                x.hash(h);
+                v1.hash(h);
             },
-            stmt::Stmt::Mac(x) => {
-                state.write_u8(3u8);
-                x.hash(state);
+            Mac(x) => {
+                h.write_u8(3u8);
+                x.hash(h);
             },
         }
     }
@@ -1998,7 +2013,7 @@ impl Hash for item::trait_::Item {
                 h.write_u8(2u8);
                 x.hash(h);
             },
-            Macro(x) => {
+            Mac(x) => {
                 h.write_u8(3u8);
                 x.hash(h);
             },
@@ -2118,7 +2133,7 @@ impl Hash for typ::Type {
                 h.write_u8(13u8);
                 x.hash(h);
             },
-            Stream(x) => {
+            Verbatim(x) => {
                 h.write_u8(14u8);
                 StreamHelper(x).hash(h);
             },
@@ -2203,16 +2218,17 @@ impl Hash for gen::bound::Type {
     where
         H: Hasher,
     {
+        use gen::bound::Type::*;
         match self {
-            gen::bound::Type::Trait(x) => {
+            Trait(x) => {
                 h.write_u8(0u8);
                 x.hash(h);
             },
-            gen::bound::Type::Life(x) => {
+            Life(x) => {
                 h.write_u8(1u8);
                 x.hash(h);
             },
-            gen::bound::Type::Verbatim(x) => {
+            Verbatim(x) => {
                 h.write_u8(2u8);
                 StreamHelper(x).hash(h);
             },
