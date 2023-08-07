@@ -847,7 +847,7 @@ impl PartialEq for lit::Lit {
             (Int(x), Int(y)) => x == y,
             (Float(x), Float(y)) => x == y,
             (Bool(x), Bool(y)) => x == y,
-            (Stream(x), Stream(y)) => x.to_string() == y.to_string(),
+            (Verbatim(x), Verbatim(y)) => x.to_string() == y.to_string(),
             _ => false,
         }
     }

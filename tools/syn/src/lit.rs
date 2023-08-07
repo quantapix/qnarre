@@ -14,7 +14,7 @@ enum_of_structs! {
         Float(Float),
         Int(Int),
         Str(Str),
-        Stream(pm2::Lit),
+        Verbatim(pm2::Lit),
     }
 }
 impl Lit {
@@ -68,7 +68,7 @@ impl Lit {
                     });
                 }
             },
-            b'c' => return Lit::Stream(tok),
+            b'c' => return Lit::Verbatim(tok),
             _ => {},
         }
         panic!("Unrecognized literal: `{}`", repr);
@@ -82,7 +82,7 @@ impl Lit {
             Char(x) => x.suffix(),
             Int(x) => x.suffix(),
             Float(x) => x.suffix(),
-            Bool(_) | Stream(_) => "",
+            Bool(_) | Verbatim(_) => "",
         }
     }
     pub fn span(&self) -> pm2::Span {
@@ -95,7 +95,7 @@ impl Lit {
             Int(x) => x.span(),
             Float(x) => x.span(),
             Bool(x) => x.span,
-            Stream(x) => x.span(),
+            Verbatim(x) => x.span(),
         }
     }
     pub fn set_span(&mut self, s: pm2::Span) {
@@ -108,7 +108,7 @@ impl Lit {
             Int(x) => x.set_span(s),
             Float(x) => x.set_span(s),
             Bool(x) => x.span = s,
-            Stream(x) => x.set_span(s),
+            Verbatim(x) => x.set_span(s),
         }
     }
 }
@@ -147,7 +147,7 @@ impl Pretty for Lit {
             Int(x) => x.pretty(p),
             Float(x) => x.pretty(p),
             Bool(x) => x.pretty(p),
-            Stream(x) => x.pretty(p),
+            Verbatim(x) => x.pretty(p),
         }
     }
 }
