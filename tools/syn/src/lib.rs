@@ -297,6 +297,10 @@ pub fn parse2<T: parse::Parse>(s: Stream) -> Res<T> {
 
 trait Visitor {}
 
+trait Visit {
+    fn visit<'a, V>(&'a self, v: &mut V);
+}
+
 trait VisitMut {
     fn visit_mut<V>(&mut self, v: &mut V);
 }
