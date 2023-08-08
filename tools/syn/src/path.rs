@@ -501,6 +501,17 @@ impl Pretty for Angled {
         p.word(">");
     }
 }
+impl VisitMut for Angled {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for mut y in Puncted::pairs_mut(&mut self.args) {
+            let x = y.value_mut();
+            x.visit_mut(v);
+        }
+    }
+}
 
 pub struct AssocType {
     pub ident: Ident,
@@ -526,6 +537,18 @@ impl Pretty for AssocType {
         &self.typ.pretty(p);
     }
 }
+impl VisitMut for AssocType {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &mut self.ident.visit_mut(v);
+        if let Some(x) = &mut self.args {
+            x.visit_mut(v);
+        }
+        &mut self.typ.visit_mut(v);
+    }
+}
 
 pub struct AssocConst {
     pub ident: Ident,
@@ -549,6 +572,18 @@ impl Pretty for AssocConst {
         }
         p.word(" = ");
         &self.val.pretty(p);
+    }
+}
+impl VisitMut for AssocConst {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &mut self.ident.visit_mut(v);
+        if let Some(x) = &mut self.args {
+            x.visit_mut(v);
+        }
+        &mut self.val.visit_mut(v);
     }
 }
 
@@ -583,6 +618,21 @@ impl Pretty for Constraint {
             &x.pretty(p);
         }
         p.end();
+    }
+}
+impl VisitMut for Constraint {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &mut self.ident.visit_mut(v);
+        if let Some(x) = &mut self.args {
+            x.visit_mut(v);
+        }
+        for mut y in Puncted::pairs_mut(&mut self.bounds) {
+            let x = y.value_mut();
+            x.visit_mut(v);
+        }
     }
 }
 

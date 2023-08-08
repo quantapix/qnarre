@@ -375,6 +375,131 @@ impl Pretty for Expr {
         }
     }
 }
+impl VisitMut for Expr {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        use Expr::*;
+        match self {
+            Array(x) => {
+                x.visit_mut(v);
+            },
+            Assign(x) => {
+                x.visit_mut(v);
+            },
+            Async(x) => {
+                x.visit_mut(v);
+            },
+            Await(x) => {
+                x.visit_mut(v);
+            },
+            Binary(x) => {
+                x.visit_mut(v);
+            },
+            Block(x) => {
+                x.visit_mut(v);
+            },
+            Break(x) => {
+                x.visit_mut(v);
+            },
+            Call(x) => {
+                x.visit_mut(v);
+            },
+            Cast(x) => {
+                x.visit_mut(v);
+            },
+            Closure(x) => {
+                x.visit_mut(v);
+            },
+            Const(x) => {
+                x.visit_mut(v);
+            },
+            Continue(x) => {
+                x.visit_mut(v);
+            },
+            Field(x) => {
+                x.visit_mut(v);
+            },
+            ForLoop(x) => {
+                x.visit_mut(v);
+            },
+            Group(x) => {
+                x.visit_mut(v);
+            },
+            If(x) => {
+                x.visit_mut(v);
+            },
+            Index(x) => {
+                x.visit_mut(v);
+            },
+            Infer(x) => {
+                x.visit_mut(v);
+            },
+            Let(x) => {
+                x.visit_mut(v);
+            },
+            Lit(x) => {
+                x.visit_mut(v);
+            },
+            Loop(x) => {
+                x.visit_mut(v);
+            },
+            Mac(x) => {
+                x.visit_mut(v);
+            },
+            Match(x) => {
+                x.visit_mut(v);
+            },
+            MethodCall(x) => {
+                x.visit_mut(v);
+            },
+            Parenth(x) => {
+                x.visit_mut(v);
+            },
+            Path(x) => {
+                x.visit_mut(v);
+            },
+            Range(x) => {
+                x.visit_mut(v);
+            },
+            Ref(x) => {
+                x.visit_mut(v);
+            },
+            Repeat(x) => {
+                x.visit_mut(v);
+            },
+            Return(x) => {
+                x.visit_mut(v);
+            },
+            Struct(x) => {
+                x.visit_mut(v);
+            },
+            Try(x) => {
+                x.visit_mut(v);
+            },
+            TryBlock(x) => {
+                x.visit_mut(v);
+            },
+            Tuple(x) => {
+                x.visit_mut(v);
+            },
+            Unary(x) => {
+                x.visit_mut(v);
+            },
+            Unsafe(x) => {
+                x.visit_mut(v);
+            },
+            Verbatim(x) => {},
+            While(x) => {
+                x.visit_mut(v);
+            },
+            Yield(x) => {
+                x.visit_mut(v);
+            },
+        }
+    }
+}
 
 macro_rules! impl_by_parsing_expr {
     (
@@ -461,6 +586,20 @@ impl Pretty for Array {
         p.word("]");
     }
 }
+impl VisitMut for Array {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &mut self.attrs {
+            x.visit_mut(v);
+        }
+        for mut y in Puncted::pairs_mut(&mut self.elems) {
+            let x = y.value_mut();
+            x.visit_mut(v);
+        }
+    }
+}
 
 pub struct Assign {
     pub attrs: Vec<attr::Attr>,
@@ -484,6 +623,18 @@ impl Pretty for Assign {
         p.word(" = ");
         &self.right.pretty(p);
         p.end();
+    }
+}
+impl VisitMut for Assign {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &mut self.attrs {
+            x.visit_mut(v);
+        }
+        &mut *self.left.visit_mut(v);
+        &mut *self.right.visit_mut(v);
     }
 }
 
@@ -523,6 +674,17 @@ impl Pretty for Async {
         p.end();
     }
 }
+impl VisitMut for Async {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &mut self.attrs {
+            x.visit_mut(v);
+        }
+        &mut self.block.visit_mut(v);
+    }
+}
 
 pub struct Await {
     pub attrs: Vec<attr::Attr>,
@@ -551,6 +713,17 @@ impl Pretty for Await {
         p.cbox(INDENT);
         self.pretty_sub(p, pretty::Args::beg_line(x));
         p.end();
+    }
+}
+impl VisitMut for Await {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &mut self.attrs {
+            x.visit_mut(v);
+        }
+        &mut *self.expr.visit_mut(v);
     }
 }
 
@@ -2321,6 +2494,44 @@ impl Pretty for BinOp {
         });
     }
 }
+impl VisitMut for BinOp {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        use BinOp::*;
+        match self {
+            Add(x) => {},
+            Sub(x) => {},
+            Mul(x) => {},
+            Div(x) => {},
+            Rem(x) => {},
+            And(x) => {},
+            Or(x) => {},
+            BitXor(x) => {},
+            BitAnd(x) => {},
+            BitOr(x) => {},
+            Shl(x) => {},
+            Shr(x) => {},
+            Eq(x) => {},
+            Lt(x) => {},
+            Le(x) => {},
+            Ne(x) => {},
+            Ge(x) => {},
+            Gt(x) => {},
+            AddAssign(x) => {},
+            SubAssign(x) => {},
+            MulAssign(x) => {},
+            DivAssign(x) => {},
+            RemAssign(x) => {},
+            BitXorAssign(x) => {},
+            BitAndAssign(x) => {},
+            BitOrAssign(x) => {},
+            ShlAssign(x) => {},
+            ShrAssign(x) => {},
+        }
+    }
+}
 
 pub enum UnOp {
     Deref(Token![*]),
@@ -2577,6 +2788,21 @@ impl Pretty for Arm {
             p.end();
             p.end();
         }
+    }
+}
+impl VisitMut for Arm {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &mut self.attrs {
+            x.visit_mut(v);
+        }
+        &mut self.pat.visit_mut(v);
+        if let Some(x) = &mut self.guard {
+            &mut *(x).1.visit_mut(v);
+        }
+        &mut *self.body.visit_mut(v);
     }
 }
 

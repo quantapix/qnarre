@@ -5,6 +5,18 @@ pub enum Style {
     Outer,
     Inner(Token![!]),
 }
+impl VisitMut for Style {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        use Style::*;
+        match self {
+            Inner(_) => {},
+            Outer => {},
+        }
+    }
+}
 
 pub struct Attr {
     pub pound: Token![#],
@@ -141,6 +153,15 @@ impl Pretty for Attr {
         &self.meta.pretty(p);
         p.word("]");
         p.space();
+    }
+}
+impl VisitMut for Attr {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &mut self.style.visit_mut(v);
+        &mut self.meta.visit_mut(v);
     }
 }
 fn trim_trailing(x: &mut String) {
@@ -352,6 +373,25 @@ impl Pretty for Meta {
             List(x) => x.pretty(p),
             NameValue(x) => x.pretty(p),
             Path(x) => p.path(x, path::Kind::Simple),
+        }
+    }
+}
+impl VisitMut for Meta {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        use Meta::*;
+        match self {
+            Path(x) => {
+                x.visit_mut(v);
+            },
+            List(x) => {
+                x.visit_mut(v);
+            },
+            NameValue(x) => {
+                x.visit_mut(v);
+            },
         }
     }
 }

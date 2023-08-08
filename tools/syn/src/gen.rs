@@ -241,6 +241,17 @@ pub mod bound {
             p.word("> ");
         }
     }
+    impl VisitMut for Lifes {
+        fn visit_mut<V>(&mut self, v: &mut V)
+        where
+            V: Visitor + ?Sized,
+        {
+            for mut y in Puncted::pairs_mut(&mut self.lifes) {
+                let x = y.value_mut();
+                x.visit_mut(v);
+            }
+        }
+    }
 
     pub struct Verbatim(pub pm2::Stream);
     impl Pretty for Verbatim {
@@ -609,6 +620,21 @@ pub mod param {
             if let Some(x) = &self.default {
                 p.word(" = ");
                 x.pretty(p);
+            }
+        }
+    }
+    impl VisitMut for Const {
+        fn visit_mut<V>(&mut self, v: &mut V)
+        where
+            V: Visitor + ?Sized,
+        {
+            for x in &mut self.attrs {
+                x.visit_mut(v);
+            }
+            &mut self.ident.visit_mut(v);
+            &mut self.typ.visit_mut(v);
+            if let Some(x) = &mut self.default {
+                x.visit_mut(v);
             }
         }
     }

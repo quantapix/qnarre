@@ -666,6 +666,16 @@ impl Pretty for Abi {
         }
     }
 }
+impl VisitMut for Abi {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        if let Some(x) = &mut self.name {
+            x.visit_mut(v);
+        }
+    }
+}
 
 pub struct FnArg {
     pub attrs: Vec<attr::Attr>,
@@ -698,6 +708,20 @@ impl Pretty for FnArg {
         &self.typ.pretty(p);
     }
 }
+impl VisitMut for FnArg {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &mut self.attrs {
+            x.visit_mut(v);
+        }
+        if let Some(x) = &mut self.name {
+            &mut (x).0.visit_mut(v);
+        }
+        &mut self.typ.visit_mut(v);
+    }
+}
 
 pub struct Variadic {
     pub attrs: Vec<attr::Attr>,
@@ -724,6 +748,19 @@ impl Pretty for Variadic {
             p.word(": ");
         }
         p.word("...");
+    }
+}
+impl VisitMut for Variadic {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &mut self.attrs {
+            x.visit_mut(v);
+        }
+        if let Some(x) = &mut self.name {
+            &mut (x).0.visit_mut(v);
+        }
     }
 }
 

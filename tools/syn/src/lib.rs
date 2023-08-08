@@ -295,6 +295,12 @@ pub fn parse2<T: parse::Parse>(s: Stream) -> Res<T> {
     Parser::parse2(T::parse, s)
 }
 
+trait Visitor {}
+
+trait VisitMut {
+    fn visit_mut<V>(&mut self, v: &mut V);
+}
+
 pub const MARGIN: isize = 89;
 pub const INDENT: isize = 4;
 pub const MIN_SPACE: isize = 60;

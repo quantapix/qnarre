@@ -182,6 +182,20 @@ impl Pretty for Visibility {
         }
     }
 }
+impl VisitMut for Input {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &mut self.attrs {
+            x.visit_mut(v);
+        }
+        &mut self.vis.visit_mut(v);
+        &mut self.ident.visit_mut(v);
+        &mut self.gens.visit_mut(v);
+        &mut self.data.visit_mut(v);
+    }
+}
 
 pub struct Restricted {
     pub pub_: Token![pub],
@@ -218,20 +232,68 @@ pub enum Data {
     Struct(Struct),
     Union(Union),
 }
+impl VisitMut for Data {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        use Data::*;
+        match self {
+            Struct(x) => {
+                x.visit_mut(v);
+            },
+            Enum(x) => {
+                x.visit_mut(v);
+            },
+            Union(x) => {
+                x.visit_mut(v);
+            },
+        }
+    }
+}
 
 pub struct Enum {
     pub enum_: Token![enum],
     pub brace: tok::Brace,
     pub variants: Puncted<Variant, Token![,]>,
 }
+impl VisitMut for Enum {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for mut y in Puncted::pairs_mut(&mut self.variants) {
+            let x = y.value_mut();
+            x.visit_mut(v);
+        }
+    }
+}
+
 pub struct Struct {
     pub struct_: Token![struct],
     pub fields: Fields,
     pub semi: Option<Token![;]>,
 }
+impl VisitMut for Struct {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &mut self.fields.visit_mut(v);
+    }
+}
+
 pub struct Union {
     pub union_: Token![union],
     pub fields: Named,
+}
+impl VisitMut for Union {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &mut self.fields.visit_mut(v);
+    }
 }
 
 pub struct Variant {

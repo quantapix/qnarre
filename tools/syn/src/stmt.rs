@@ -49,6 +49,16 @@ impl Lower for Block {
         });
     }
 }
+impl VisitMut for Block {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &mut self.stmts {
+            x.visit_mut(v);
+        }
+    }
+}
 
 pub enum Stmt {
     Expr(Expr, Option<Token![;]>),
