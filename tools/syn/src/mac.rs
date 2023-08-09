@@ -263,6 +263,15 @@ impl Pretty for Mac {
         }
     }
 }
+impl Visit for Mac {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &self.path.visit(v);
+        &self.delim.visit(v);
+    }
+}
 
 pub fn parse_delim(s: Stream) -> Res<(tok::Delim, pm2::Stream)> {
     s.step(|x| {

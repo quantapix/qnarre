@@ -60,7 +60,7 @@ impl VisitMut for item::foreign::Item {
             item::foreign::Item::Macro(x) => {
                 x.visit_mut(v);
             },
-            item::foreign::Item::Verbatim(x) => {},
+            item::foreign::Item::Verbatim(_) => {},
         }
     }
 }
@@ -142,7 +142,7 @@ impl VisitMut for item::impl_::Item {
             item::impl_::Item::Macro(x) => {
                 x.visit_mut(v);
             },
-            item::impl_::Item::Verbatim(x) => {},
+            item::impl_::Item::Verbatim(_) => {},
         }
     }
 }
@@ -258,7 +258,7 @@ impl VisitMut for Item {
             Item::Use(x) => {
                 x.visit_mut(v);
             },
-            Item::Stream(x) => {},
+            Item::Verbatim(_) => {},
         }
     }
 }
@@ -518,9 +518,9 @@ impl VisitMut for tok::Delim {
         V: Visitor + ?Sized,
     {
         match self {
-            tok::Delim::Parenth(x) => {},
-            tok::Delim::Brace(x) => {},
-            tok::Delim::Bracket(x) => {},
+            tok::Delim::Parenth(_) => {},
+            tok::Delim::Brace(_) => {},
+            tok::Delim::Bracket(_) => {},
         }
     }
 }
@@ -573,7 +573,7 @@ impl VisitMut for StaticMut {
         V: Visitor + ?Sized,
     {
         match self {
-            StaticMut::Mut(x) => {},
+            StaticMut::Mut(_) => {},
             StaticMut::None => {},
         }
     }
@@ -596,7 +596,7 @@ impl VisitMut for item::trait_::Item {
             item::trait_::Item::Macro(x) => {
                 x.visit_mut(v);
             },
-            item::trait_::Item::Verbatim(x) => {},
+            item::trait_::Item::Verbatim(_) => {},
         }
     }
 }

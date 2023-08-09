@@ -179,7 +179,7 @@ impl Visit for Lit {
             Bool(x) => {
                 x.visit(v);
             },
-            Verbatim(x) => {},
+            Verbatim(_) => {},
         }
     }
 }
@@ -211,7 +211,7 @@ impl VisitMut for Lit {
             Bool(x) => {
                 x.visit_mut(v);
             },
-            Stream(x) => {},
+            Verbatim(_) => {},
         }
     }
 }

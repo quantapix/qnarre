@@ -104,7 +104,7 @@ impl Visit for Type {
             Tuple(x) => {
                 x.visit(v);
             },
-            Verbatim(x) => {},
+            Verbatim(_) => {},
         }
     }
 }
@@ -157,7 +157,7 @@ impl VisitMut for Type {
             Tuple(x) => {
                 x.visit_mut(v);
             },
-            Stream(x) => {},
+            Verbatim(_) => {},
         }
     }
 }

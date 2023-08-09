@@ -4,15 +4,19 @@ pub trait Tok {
     fn peek(x: Cursor) -> bool;
     fn display() -> &'static str;
 }
-
-fn peek_impl(x: Cursor, f: fn(Stream) -> bool) -> bool {
-    use crate::parse::Unexpected;
-    use std::{cell::Cell, rc::Rc};
-    let scope = pm2::Span::call_site();
-    let unexpected = Rc::new(Cell::new(Unexpected::None));
-    let y = crate::parse::new_parse_buffer(scope, x, unexpected);
-    f(&y)
+impl Tok for Ident {
+    fn peek(c: Cursor) -> bool {
+        if let Some((x, _)) = c.ident() {
+            accept_as_ident(&x)
+        } else {
+            false
+        }
+    }
+    fn display() -> &'static str {
+        "identifier"
+    }
 }
+
 macro_rules! impl_tok {
     ($d:literal $n:ty) => {
         impl Tok for $n {
@@ -55,17 +59,13 @@ impl_low_level!("punct token" punct Punct);
 impl_low_level!("literal" literal pm2::Lit);
 impl_low_level!("token" token_tree pm2::Tree);
 
-impl Tok for Ident {
-    fn peek(c: Cursor) -> bool {
-        if let Some((x, _)) = c.ident() {
-            accept_as_ident(&x)
-        } else {
-            false
-        }
-    }
-    fn display() -> &'static str {
-        "identifier"
-    }
+fn peek_impl(x: Cursor, f: fn(Stream) -> bool) -> bool {
+    use parse::Unexpected;
+    use std::{cell::Cell, rc::Rc};
+    let scope = pm2::Span::call_site();
+    let unexpected = Rc::new(Cell::new(Unexpected::None));
+    let y = crate::parse::new_parse_buffer(scope, x, unexpected);
+    f(&y)
 }
 
 pub trait Custom {
@@ -526,6 +526,19 @@ impl Delim {
             Parenth(_) => ")",
             None => return,
         });
+    }
+}
+impl Visit for Delim {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        use Delim::*;
+        match self {
+            Brace(_) => {},
+            Bracket(_) => {},
+            Parenth(_) => {},
+        }
     }
 }
 

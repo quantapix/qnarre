@@ -146,7 +146,7 @@ impl Visit for Pat {
             Type(x) => {
                 x.visit(v);
             },
-            Verbatim(x) => {},
+            Verbatim(_) => {},
             Wild(x) => {
                 x.visit(v);
             },
@@ -205,7 +205,7 @@ impl VisitMut for Pat {
             Type(x) => {
                 x.visit_mut(v);
             },
-            Verbatim(x) => {},
+            Verbatim(_) => {},
             Wild(x) => {
                 x.visit_mut(v);
             },

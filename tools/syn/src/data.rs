@@ -218,7 +218,7 @@ impl Visit for Visibility {
         use Visibility::*;
         match self {
             Inherited => {},
-            Public(x) => {},
+            Public(_) => {},
             Restricted(x) => {
                 x.visit(v);
             },
@@ -233,7 +233,7 @@ impl VisitMut for Visibility {
         use Visibility::*;
         match self {
             Inherited => {},
-            Public(x) => {},
+            Public(_) => {},
             Restricted(x) => {
                 x.visit_mut(v);
             },

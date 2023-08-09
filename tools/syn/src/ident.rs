@@ -15,6 +15,14 @@ impl Parse for Ident {
         })
     }
 }
+impl Visit for Ident {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &self.span().visit(v);
+    }
+}
 
 macro_rules! ident_from_tok {
     ($x:ident) => {
@@ -129,6 +137,15 @@ impl Pretty for Life {
     fn pretty(&self, p: &mut Print) {
         p.word("'");
         p.ident(&self.ident);
+    }
+}
+impl Visit for Life {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &self.apos.visit(v);
+        &self.ident.visit(v);
     }
 }
 

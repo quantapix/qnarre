@@ -233,7 +233,7 @@ pub mod bound {
         {
             use Modifier::*;
             match self {
-                Maybe(x) => {},
+                Maybe(_) => {},
                 None => {},
             }
         }
@@ -245,7 +245,7 @@ pub mod bound {
         {
             use Modifier::*;
             match self {
-                Maybe(x) => {},
+                Maybe(_) => {},
                 None => {},
             }
         }
@@ -431,7 +431,7 @@ pub mod param {
         where
             V: Visitor + ?Sized,
         {
-            use gen::Param::*;
+            use Param::*;
             match self {
                 Const(x) => {
                     x.visit(v);

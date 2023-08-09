@@ -490,7 +490,7 @@ impl Visit for Expr {
             Unsafe(x) => {
                 x.visit(v);
             },
-            Verbatim(x) => {},
+            Verbatim(_) => {},
             While(x) => {
                 x.visit(v);
             },
@@ -615,7 +615,7 @@ impl VisitMut for Expr {
             Unsafe(x) => {
                 x.visit_mut(v);
             },
-            Verbatim(x) => {},
+            Verbatim(_) => {},
             While(x) => {
                 x.visit_mut(v);
             },
@@ -3634,34 +3634,34 @@ impl Visit for BinOp {
     {
         use BinOp::*;
         match self {
-            Add(x) => {},
-            AddAssign(x) => {},
-            And(x) => {},
-            BitAnd(x) => {},
-            BitAndAssign(x) => {},
-            BitOr(x) => {},
-            BitOrAssign(x) => {},
-            BitXor(x) => {},
-            BitXorAssign(x) => {},
-            Div(x) => {},
-            DivAssign(x) => {},
-            Eq(x) => {},
-            Ge(x) => {},
-            Gt(x) => {},
-            Le(x) => {},
-            Lt(x) => {},
-            Mul(x) => {},
-            MulAssign(x) => {},
-            Ne(x) => {},
-            Or(x) => {},
-            Rem(x) => {},
-            RemAssign(x) => {},
-            Shl(x) => {},
-            ShlAssign(x) => {},
-            Shr(x) => {},
-            ShrAssign(x) => {},
-            Sub(x) => {},
-            SubAssign(x) => {},
+            Add(_) => {},
+            AddAssign(_) => {},
+            And(_) => {},
+            BitAnd(_) => {},
+            BitAndAssign(_) => {},
+            BitOr(_) => {},
+            BitOrAssign(_) => {},
+            BitXor(_) => {},
+            BitXorAssign(_) => {},
+            Div(_) => {},
+            DivAssign(_) => {},
+            Eq(_) => {},
+            Ge(_) => {},
+            Gt(_) => {},
+            Le(_) => {},
+            Lt(_) => {},
+            Mul(_) => {},
+            MulAssign(_) => {},
+            Ne(_) => {},
+            Or(_) => {},
+            Rem(_) => {},
+            RemAssign(_) => {},
+            Shl(_) => {},
+            ShlAssign(_) => {},
+            Shr(_) => {},
+            ShrAssign(_) => {},
+            Sub(_) => {},
+            SubAssign(_) => {},
         }
     }
 }
@@ -3672,34 +3672,34 @@ impl VisitMut for BinOp {
     {
         use BinOp::*;
         match self {
-            Add(x) => {},
-            AddAssign(x) => {},
-            And(x) => {},
-            BitAnd(x) => {},
-            BitAndAssign(x) => {},
-            BitOr(x) => {},
-            BitOrAssign(x) => {},
-            BitXor(x) => {},
-            BitXorAssign(x) => {},
-            Div(x) => {},
-            DivAssign(x) => {},
-            Eq(x) => {},
-            Ge(x) => {},
-            Gt(x) => {},
-            Le(x) => {},
-            Lt(x) => {},
-            Mul(x) => {},
-            MulAssign(x) => {},
-            Ne(x) => {},
-            Or(x) => {},
-            Rem(x) => {},
-            RemAssign(x) => {},
-            Shl(x) => {},
-            ShlAssign(x) => {},
-            Shr(x) => {},
-            ShrAssign(x) => {},
-            Sub(x) => {},
-            SubAssign(x) => {},
+            Add(_) => {},
+            AddAssign(_) => {},
+            And(_) => {},
+            BitAnd(_) => {},
+            BitAndAssign(_) => {},
+            BitOr(_) => {},
+            BitOrAssign(_) => {},
+            BitXor(_) => {},
+            BitXorAssign(_) => {},
+            Div(_) => {},
+            DivAssign(_) => {},
+            Eq(_) => {},
+            Ge(_) => {},
+            Gt(_) => {},
+            Le(_) => {},
+            Lt(_) => {},
+            Mul(_) => {},
+            MulAssign(_) => {},
+            Ne(_) => {},
+            Or(_) => {},
+            Rem(_) => {},
+            RemAssign(_) => {},
+            Shl(_) => {},
+            ShlAssign(_) => {},
+            Shr(_) => {},
+            ShrAssign(_) => {},
+            Sub(_) => {},
+            SubAssign(_) => {},
         }
     }
 }
@@ -3753,9 +3753,9 @@ impl Visit for UnOp {
     {
         use UnOp::*;
         match self {
-            Deref(x) => {},
-            Neg(x) => {},
-            Not(x) => {},
+            Deref(_) => {},
+            Neg(_) => {},
+            Not(_) => {},
         }
     }
 }
@@ -3766,9 +3766,9 @@ impl VisitMut for UnOp {
     {
         use UnOp::*;
         match self {
-            Deref(x) => {},
-            Neg(x) => {},
-            Not(x) => {},
+            Deref(_) => {},
+            Neg(_) => {},
+            Not(_) => {},
         }
     }
 }
@@ -4110,8 +4110,8 @@ impl Visit for Limits {
     {
         use Limits::*;
         match self {
-            Closed(x) => {},
-            HalfOpen(x) => {},
+            Closed(_) => {},
+            HalfOpen(_) => {},
         }
     }
 }
@@ -4122,8 +4122,8 @@ impl VisitMut for Limits {
     {
         use Limits::*;
         match self {
-            Closed(x) => {},
-            HalfOpen(x) => {},
+            Closed(_) => {},
+            HalfOpen(_) => {},
         }
     }
 }
