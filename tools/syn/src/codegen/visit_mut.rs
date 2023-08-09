@@ -14,471 +14,22 @@ trait VisitMut {
     fn visit_mut<V>(&mut self, v: &mut V);
 }
 
-pub fn visit_expr_binary_mut<V>(v: &mut V, node: &mut expr::Binary)
+impl VisitMut for pat::Field {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-    &mut *node.left.visit_mut(v);
-    &mut self.op.visit_mut(v);
-    &mut *node.right.visit_mut(v);
-}
-pub fn visit_expr_block_mut<V>(v: &mut V, node: &mut expr::Block)
-where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-    if let Some(x) = &mut self.label {
-        x.visit_mut(v);
-    }
-    &mut self.block.visit_mut(v);
-}
-pub fn visit_expr_break_mut<V>(v: &mut V, node: &mut expr::Break)
-where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-    if let Some(x) = &mut self.life {
-        x.visit_mut(v);
-    }
-    if let Some(x) = &mut self.val {
-        &mut **it.visit_mut(v);
-    }
-}
-pub fn visit_expr_call_mut<V>(v: &mut V, node: &mut expr::Call)
-where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-    &mut *node.func.visit_mut(v);
-    for mut el in Puncted::pairs_mut(&mut self.args) {
-        let x = el.value_mut();
-        x.visit_mut(v);
-    }
-}
-pub fn visit_expr_cast_mut<V>(v: &mut V, node: &mut expr::Cast)
-where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-    &mut *node.expr.visit_mut(v);
-    &mut *node.typ.visit_mut(v);
-}
-pub fn visit_expr_closure_mut<V>(v: &mut V, node: &mut expr::Closurere)
-where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-    if let Some(x) = &mut self.lifes {
-        x.visit_mut(v);
-    }
-    for mut el in Puncted::pairs_mut(&mut self.inputs) {
-        let x = el.value_mut();
-        x.visit_mut(v);
-    }
-    &mut self.ret.visit_mut(v);
-    &mut *node.body.visit_mut(v);
-}
-pub fn visit_expr_const_mut<V>(v: &mut V, node: &mut expr::Constst)
-where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-    &mut self.block.visit_mut(v);
-}
-pub fn visit_expr_continue_mut<V>(v: &mut V, node: &mut expr::Continue)
-where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-    if let Some(x) = &mut self.life {
-        x.visit_mut(v);
-    }
-}
-pub fn visit_expr_field_mut<V>(v: &mut V, node: &mut expr::Field)
-where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-    &mut *node.expr.visit_mut(v);
-    &mut self.memb.visit_mut(v);
-}
-pub fn visit_expr_for_loop_mut<V>(v: &mut V, node: &mut expr::ForLoop)
-where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-    if let Some(x) = &mut self.label {
-        x.visit_mut(v);
-    }
-    &mut *node.pat.visit_mut(v);
-    &mut *node.expr.visit_mut(v);
-    &mut self.body.visit_mut(v);
-}
-pub fn visit_expr_group_mut<V>(v: &mut V, node: &mut expr::Group)
-where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-    &mut *node.expr.visit_mut(v);
-}
-pub fn visit_expr_if_mut<V>(v: &mut V, node: &mut expr::If)
-where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-    &mut *node.cond.visit_mut(v);
-    &mut self.then_branch.visit_mut(v);
-    if let Some(x) = &mut self.else_branch {
-        &mut *(x).1.visit_mut(v);
-    }
-}
-pub fn visit_expr_index_mut<V>(v: &mut V, node: &mut expr::Index)
-where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-    &mut *node.expr.visit_mut(v);
-    &mut *node.index.visit_mut(v);
-}
-pub fn visit_expr_infer_mut<V>(v: &mut V, node: &mut expr::Infer)
-where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-}
-pub fn visit_expr_let_mut<V>(v: &mut V, node: &mut expr::Let)
-where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-    &mut *node.pat.visit_mut(v);
-    &mut *node.expr.visit_mut(v);
-}
-pub fn visit_expr_lit_mut<V>(v: &mut V, node: &mut expr::Lit)
-where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-    &mut self.lit.visit_mut(v);
-}
-pub fn visit_expr_loop_mut<V>(v: &mut V, node: &mut expr::Loop)
-where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-    if let Some(x) = &mut self.label {
-        x.visit_mut(v);
-    }
-    &mut self.body.visit_mut(v);
-}
-pub fn visit_expr_macro_mut<V>(v: &mut V, node: &mut expr::Mac)
-where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-    &mut self.mac.visit_mut(v);
-}
-pub fn visit_expr_match_mut<V>(v: &mut V, node: &mut expr::Match)
-where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-    &mut *node.expr.visit_mut(v);
-    for x in &mut self.arms {
-        x.visit_mut(v);
-    }
-}
-pub fn visit_expr_method_call_mut<V>(v: &mut V, node: &mut expr::MethodCall)
-where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-    &mut *node.expr.visit_mut(v);
-    &mut self.method.visit_mut(v);
-    if let Some(x) = &mut self.turbofish {
-        x.visit_mut(v);
-    }
-    for mut el in Puncted::pairs_mut(&mut self.args) {
-        let x = el.value_mut();
-        x.visit_mut(v);
-    }
-}
-pub fn visit_expr_paren_mut<V>(v: &mut V, node: &mut expr::Parenth)
-where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-    &mut *node.expr.visit_mut(v);
-}
-pub fn visit_expr_path_mut<V>(v: &mut V, node: &mut expr::Path)
-where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-    if let Some(x) = &mut self.qself {
-        x.visit_mut(v);
-    }
-    &mut self.path.visit_mut(v);
-}
-pub fn visit_expr_range_mut<V>(v: &mut V, node: &mut expr::Range)
-where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-    if let Some(x) = &mut self.beg {
-        &mut **it.visit_mut(v);
-    }
-    &mut self.limits.visit_mut(v);
-    if let Some(x) = &mut self.end {
-        &mut **it.visit_mut(v);
-    }
-}
-pub fn visit_expr_reference_mut<V>(v: &mut V, node: &mut expr::Ref)
-where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-    &mut *node.expr.visit_mut(v);
-}
-pub fn visit_expr_repeat_mut<V>(v: &mut V, node: &mut expr::Repeat)
-where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-    &mut *node.expr.visit_mut(v);
-    &mut *node.len.visit_mut(v);
-}
-pub fn visit_expr_return_mut<V>(v: &mut V, node: &mut expr::Return)
-where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-    if let Some(x) = &mut self.expr {
-        &mut **it.visit_mut(v);
-    }
-}
-pub fn visit_expr_struct_mut<V>(v: &mut V, node: &mut expr::Struct)
-where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-    if let Some(x) = &mut self.qself {
-        x.visit_mut(v);
-    }
-    &mut self.path.visit_mut(v);
-    for mut el in Puncted::pairs_mut(&mut self.fields) {
-        let x = el.value_mut();
-        x.visit_mut(v);
-    }
-    if let Some(x) = &mut self.rest {
-        &mut **it.visit_mut(v);
-    }
-}
-pub fn visit_expr_try_mut<V>(v: &mut V, node: &mut expr::Tryry)
-where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-    &mut *node.expr.visit_mut(v);
-}
-pub fn visit_expr_try_block_mut<V>(v: &mut V, node: &mut expr::TryBlock)
-where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-    &mut self.block.visit_mut(v);
-}
-pub fn visit_expr_tuple_mut<V>(v: &mut V, node: &mut expr::Tuple)
-where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-    for mut el in Puncted::pairs_mut(&mut self.elems) {
-        let x = el.value_mut();
-        x.visit_mut(v);
-    }
-}
-pub fn visit_expr_unary_mut<V>(v: &mut V, node: &mut expr::Unary)
-where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-    &mut self.op.visit_mut(v);
-    &mut *node.expr.visit_mut(v);
-}
-pub fn visit_expr_unsafe_mut<V>(v: &mut V, node: &mut expr::Unsafe)
-where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-    &mut self.block.visit_mut(v);
-}
-pub fn visit_expr_while_mut<V>(v: &mut V, node: &mut expr::While)
-where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-    if let Some(x) = &mut self.label {
-        x.visit_mut(v);
-    }
-    &mut *node.cond.visit_mut(v);
-    &mut self.body.visit_mut(v);
-}
-pub fn visit_expr_yield_mut<V>(v: &mut V, node: &mut expr::Yield)
-where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-    if let Some(x) = &mut self.expr {
-        &mut **it.visit_mut(v);
-    }
-}
-pub fn visit_field_mut<V>(v: &mut V, node: &mut data::Field)
-where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-    &mut self.vis.visit_mut(v);
-    &mut self.mut_.visit_mut(v);
-    if let Some(x) = &mut self.ident {
-        x.visit_mut(v);
-    }
-    &mut self.typ.visit_mut(v);
-}
-pub fn visit_field_mutability_mut<V>(v: &mut V, node: &mut data::Mut)
-where
-    V: VisitMut + ?Sized,
-{
-    match node {
-        data::Mut::None => {},
-    }
-}
-pub fn visit_field_pat_mut<V>(v: &mut V, node: &mut pat::Field)
-where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
     }
     &mut self.memb.visit_mut(v);
-    &mut *node.pat.visit_mut(v);
+    &mut *self.pat.visit_mut(v);
 }
-pub fn visit_field_value_mut<V>(v: &mut V, node: &mut FieldValue)
-where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-    &mut self.member.visit_mut(v);
-    &mut self.expr.visit_mut(v);
 }
-pub fn visit_fields_mut<V>(v: &mut V, node: &mut data::Fields)
+impl VisitMut for item::File {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
-{
-    match node {
-        data::Fields::Named(x) => {
-            x.visit_mut(v);
-        },
-        data::Fields::Unnamed(x) => {
-            x.visit_mut(v);
-        },
-        data::Fields::Unit => {},
-    }
-}
-pub fn visit_fields_named_mut<V>(v: &mut V, node: &mut data::Named)
-where
-    V: VisitMut + ?Sized,
-{
-    for mut el in Puncted::pairs_mut(&mut self.fields) {
-        let x = el.value_mut();
-        x.visit_mut(v);
-    }
-}
-pub fn visit_fields_unnamed_mut<V>(v: &mut V, node: &mut data::Unnamed)
-where
-    V: VisitMut + ?Sized,
-{
-    for mut el in Puncted::pairs_mut(&mut self.fields) {
-        let x = el.value_mut();
-        x.visit_mut(v);
-    }
-}
-pub fn visit_file_mut<V>(v: &mut V, node: &mut item::File)
-where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
@@ -487,11 +38,13 @@ where
         x.visit_mut(v);
     }
 }
-pub fn visit_fn_arg_mut<V>(v: &mut V, node: &mut item::FnArg)
+}
+impl VisitMut for item::FnArg {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
-    match node {
+    match self {
         item::FnArg::Receiver(x) => {
             x.visit_mut(v);
         },
@@ -500,11 +53,13 @@ where
         },
     }
 }
-pub fn visit_foreign_item_mut<V>(v: &mut V, node: &mut item::foreign::Item)
+}
+impl VisitMut for item::foreign::Item {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
-    match node {
+    match self {
         item::foreign::Item::Fn(x) => {
             x.visit_mut(v);
         },
@@ -520,9 +75,11 @@ where
         item::foreign::Item::Verbatim(x) => {},
     }
 }
-pub fn visit_foreign_item_fn_mut<V>(v: &mut V, node: &mut item::foreign::Fn)
+}
+impl VisitMut for item::foreign::Fn {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
@@ -530,18 +87,22 @@ where
     &mut self.vis.visit_mut(v);
     &mut self.sig.visit_mut(v);
 }
-pub fn visit_foreign_item_macro_mut<V>(v: &mut V, node: &mut item::foreign::Mac)
+}
+impl VisitMut for item::foreign::Mac {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
     }
     &mut self.mac.visit_mut(v);
 }
-pub fn visit_foreign_item_static_mut<V>(v: &mut V, node: &mut item::foreign::Static)
+}
+impl VisitMut for item::foreign::Static {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
@@ -549,11 +110,13 @@ where
     &mut self.vis.visit_mut(v);
     &mut self.mut_.visit_mut(v);
     &mut self.ident.visit_mut(v);
-    &mut *node.typ.visit_mut(v);
+    &mut *self.typ.visit_mut(v);
 }
-pub fn visit_foreign_item_type_mut<V>(v: &mut V, node: &mut item::foreign::Type)
+}
+impl VisitMut for item::foreign::Type {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
@@ -562,11 +125,13 @@ where
     &mut self.ident.visit_mut(v);
     &mut self.gens.visit_mut(v);
 }
-pub fn visit_generic_argument_mut<V>(v: &mut V, node: &mut Arg)
+}
+impl VisitMut for Arg {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
-    match node {
+    match self {
         Arg::Life(x) => {
             x.visit_mut(v);
         },
@@ -587,11 +152,13 @@ where
         },
     }
 }
-pub fn visit_generic_param_mut<V>(v: &mut V, node: &mut gen::Param)
+}
+impl VisitMut for gen::Param {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
-    match node {
+    match self {
         gen::Param::Life(x) => {
             x.visit_mut(v);
         },
@@ -603,9 +170,11 @@ where
         },
     }
 }
-pub fn visit_generics_mut<V>(v: &mut V, node: &mut gen::Gens)
+}
+impl VisitMut for gen::Gens {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for mut el in Puncted::pairs_mut(&mut self.params) {
         let x = el.value_mut();
@@ -615,19 +184,23 @@ where
         x.visit_mut(v);
     }
 }
-pub fn visit_ident_mut<V>(v: &mut V, node: &mut Ident)
-where
-    V: VisitMut + ?Sized,
-{
-    let mut span = node.span();
-    &mut span.visit_mut(v);
-    node.set_span(span);
 }
-pub fn visit_impl_item_mut<V>(v: &mut V, node: &mut item::impl_::Item)
+impl VisitMut for Ident {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
-    match node {
+    let mut span = self.span();
+    &mut span.visit_mut(v);
+    self.set_span(span);
+}
+}
+impl VisitMut for item::impl_::Item {
+    fn visit_mut<V>(&mut self, v: &mut V)
+where
+    V: Visitor + ?Sized,
+{
+    match self {
         item::impl_::Item::Const(x) => {
             x.visit_mut(v);
         },
@@ -643,9 +216,11 @@ where
         item::impl_::Item::Verbatim(x) => {},
     }
 }
-pub fn visit_impl_item_const_mut<V>(v: &mut V, node: &mut item::impl_::Const)
+}
+impl VisitMut for item::impl_::Const {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
@@ -656,9 +231,11 @@ where
     &mut self.typ.visit_mut(v);
     &mut self.expr.visit_mut(v);
 }
-pub fn visit_impl_item_fn_mut<V>(v: &mut V, node: &mut item::impl_::Fn)
+}
+impl VisitMut for item::impl_::Fn {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
@@ -667,18 +244,22 @@ where
     &mut self.sig.visit_mut(v);
     &mut self.block.visit_mut(v);
 }
-pub fn visit_impl_item_macro_mut<V>(v: &mut V, node: &mut item::impl_::Mac)
+}
+impl VisitMut for item::impl_::Mac {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
     }
     &mut self.mac.visit_mut(v);
 }
-pub fn visit_impl_item_type_mut<V>(v: &mut V, node: &mut item::impl_::Type)
+}
+impl VisitMut for item::impl_::Type {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
@@ -688,23 +269,29 @@ where
     &mut self.gens.visit_mut(v);
     &mut self.typ.visit_mut(v);
 }
-pub fn visit_impl_restriction_mut<V>(v: &mut V, node: &mut item::impl_::Restriction)
-where
-    V: VisitMut + ?Sized,
-{
-    match *node {}
 }
-pub fn visit_index_mut<V>(v: &mut V, node: &mut Index)
+impl VisitMut for item::impl_::Restriction {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
+{
+    match *self {}
+}
+}
+impl VisitMut for Index {
+    fn visit_mut<V>(&mut self, v: &mut V)
+where
+    V: Visitor + ?Sized,
 {
     &mut self.span.visit_mut(v);
 }
-pub fn visit_item_mut<V>(v: &mut V, node: &mut Item)
+}
+impl VisitMut for Item {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
-    match node {
+    match self {
         Item::Const(x) => {
             x.visit_mut(v);
         },
@@ -753,9 +340,11 @@ where
         Item::Stream(x) => {},
     }
 }
-pub fn visit_item_const_mut<V>(v: &mut V, node: &mut item::Const)
+}
+impl VisitMut for item::Const {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
@@ -763,12 +352,14 @@ where
     &mut self.vis.visit_mut(v);
     &mut self.ident.visit_mut(v);
     &mut self.gens.visit_mut(v);
-    &mut *node.typ.visit_mut(v);
-    &mut *node.expr.visit_mut(v);
+    &mut *self.typ.visit_mut(v);
+    &mut *self.expr.visit_mut(v);
 }
-pub fn visit_item_enum_mut<V>(v: &mut V, node: &mut item::Enum)
+}
+impl VisitMut for item::Enum {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
@@ -781,9 +372,11 @@ where
         x.visit_mut(v);
     }
 }
-pub fn visit_item_extern_crate_mut<V>(v: &mut V, node: &mut item::Extern)
+}
+impl VisitMut for item::Extern {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
@@ -794,20 +387,24 @@ where
         &mut (x).1.visit_mut(v);
     }
 }
-pub fn visit_item_fn_mut<V>(v: &mut V, node: &mut item::Fn)
+}
+impl VisitMut for item::Fn {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
     }
     &mut self.vis.visit_mut(v);
     &mut self.sig.visit_mut(v);
-    &mut *node.block.visit_mut(v);
+    &mut *self.block.visit_mut(v);
 }
-pub fn visit_item_foreign_mod_mut<V>(v: &mut V, node: &mut item::Foreign)
+}
+impl VisitMut for item::Foreign {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
@@ -817,9 +414,11 @@ where
         x.visit_mut(v);
     }
 }
-pub fn visit_item_impl_mut<V>(v: &mut V, node: &mut item::Impl)
+}
+impl VisitMut for item::Impl {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
@@ -828,14 +427,16 @@ where
     if let Some(x) = &mut self.trait_ {
         &mut (x).1.visit_mut(v);
     }
-    &mut *node.typ.visit_mut(v);
+    &mut *self.typ.visit_mut(v);
     for x in &mut self.items {
         x.visit_mut(v);
     }
 }
-pub fn visit_item_macro_mut<V>(v: &mut V, node: &mut item::Mac)
+}
+impl VisitMut for item::Mac {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
@@ -845,9 +446,11 @@ where
     }
     &mut self.mac.visit_mut(v);
 }
-pub fn visit_item_mod_mut<V>(v: &mut V, node: &mut item::Mod)
+}
+impl VisitMut for item::Mod {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
@@ -860,9 +463,11 @@ where
         }
     }
 }
-pub fn visit_item_static_mut<V>(v: &mut V, node: &mut item::Static)
+}
+impl VisitMut for item::Static {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
@@ -870,12 +475,14 @@ where
     &mut self.vis.visit_mut(v);
     &mut self.mut_.visit_mut(v);
     &mut self.ident.visit_mut(v);
-    &mut *node.typ.visit_mut(v);
-    &mut *node.expr.visit_mut(v);
+    &mut *self.typ.visit_mut(v);
+    &mut *self.expr.visit_mut(v);
 }
-pub fn visit_item_struct_mut<V>(v: &mut V, node: &mut item::Struct)
+}
+impl VisitMut for item::Struct {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
@@ -885,9 +492,11 @@ where
     &mut self.gens.visit_mut(v);
     &mut self.fields.visit_mut(v);
 }
-pub fn visit_item_trait_mut<V>(v: &mut V, node: &mut item::Trait)
+}
+impl VisitMut for item::Trait {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
@@ -906,9 +515,11 @@ where
         x.visit_mut(v);
     }
 }
-pub fn visit_item_trait_alias_mut<V>(v: &mut V, node: &mut item::TraitAlias)
+}
+impl VisitMut for item::TraitAlias {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
@@ -921,9 +532,11 @@ where
         x.visit_mut(v);
     }
 }
-pub fn visit_item_type_mut<V>(v: &mut V, node: &mut item::Type)
+}
+impl VisitMut for item::Type {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
@@ -931,11 +544,13 @@ where
     &mut self.vis.visit_mut(v);
     &mut self.ident.visit_mut(v);
     &mut self.gens.visit_mut(v);
-    &mut *node.typ.visit_mut(v);
+    &mut *self.typ.visit_mut(v);
 }
-pub fn visit_item_union_mut<V>(v: &mut V, node: &mut item::Union)
+}
+impl VisitMut for item::Union {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
@@ -945,9 +560,11 @@ where
     &mut self.gens.visit_mut(v);
     &mut self.fields.visit_mut(v);
 }
-pub fn visit_item_use_mut<V>(v: &mut V, node: &mut item::Use)
+}
+impl VisitMut for item::Use {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
@@ -955,22 +572,28 @@ where
     &mut self.vis.visit_mut(v);
     &mut self.tree.visit_mut(v);
 }
-pub fn visit_label_mut<V>(v: &mut V, node: &mut Label)
+}
+impl VisitMut for Label {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     &mut self.name.visit_mut(v);
 }
-pub fn visit_lifetime_mut<V>(v: &mut V, node: &mut Life)
+}
+impl VisitMut for Life {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     &mut self.apos.visit_mut(v);
     &mut self.ident.visit_mut(v);
 }
-pub fn visit_lifetime_param_mut<V>(v: &mut V, node: &mut gen::param::Life)
+}
+impl VisitMut for gen::param::Life {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
@@ -981,11 +604,13 @@ where
         x.visit_mut(v);
     }
 }
-pub fn visit_lit_mut<V>(v: &mut V, node: &mut Lit)
+}
+impl VisitMut for Lit {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
-    match node {
+    match self {
         Lit::Str(x) => {
             x.visit_mut(v);
         },
@@ -1010,45 +635,61 @@ where
         Lit::Stream(x) => {},
     }
 }
-pub fn visit_lit_bool_mut<V>(v: &mut V, node: &mut lit::Bool)
+}
+impl VisitMut for lit::Bool {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     &mut self.span.visit_mut(v);
 }
-pub fn visit_lit_byte_mut<V>(v: &mut V, node: &mut lit::Byte)
+}
+impl VisitMut for lit::Byte {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
 }
-pub fn visit_lit_byte_str_mut<V>(v: &mut V, node: &mut lit::ByteStr)
+}
+impl VisitMut for lit::ByteStr {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
 }
-pub fn visit_lit_char_mut<V>(v: &mut V, node: &mut lit::Char)
+}
+impl VisitMut for lit::Char {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
 }
-pub fn visit_lit_float_mut<V>(v: &mut V, node: &mut lit::Float)
+}
+impl VisitMut for lit::Float {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
 }
-pub fn visit_lit_int_mut<V>(v: &mut V, node: &mut lit::Int)
+}
+impl VisitMut for lit::Int {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
 }
-pub fn visit_lit_str_mut<V>(v: &mut V, node: &mut lit::Str)
+}
+impl VisitMut for lit::Str {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
 }
-pub fn visit_local_mut<V>(v: &mut V, node: &mut stmt::Local)
+}
+impl VisitMut for stmt::Local {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
@@ -1058,37 +699,45 @@ where
         x.visit_mut(v);
     }
 }
-pub fn visit_local_init_mut<V>(v: &mut V, node: &mut stmt::Init)
+}
+impl VisitMut for stmt::Init {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
-    &mut *node.expr.visit_mut(v);
+    &mut *self.expr.visit_mut(v);
     if let Some(x) = &mut self.diverge {
         &mut *(x).1.visit_mut(v);
     }
 }
-pub fn visit_macro_mut<V>(v: &mut V, node: &mut Macro)
+}
+impl VisitMut for Macro {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     &mut self.path.visit_mut(v);
     &mut self.delim.visit_mut(v);
 }
-pub fn visit_macro_delimiter_mut<V>(v: &mut V, node: &mut tok::Delim)
+}
+impl VisitMut for tok::Delim {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
-    match node {
+    match self {
         tok::Delim::Parenth(x) => {},
         tok::Delim::Brace(x) => {},
         tok::Delim::Bracket(x) => {},
     }
 }
-pub fn visit_member_mut<V>(v: &mut V, node: &mut Member)
+}
+impl VisitMut for Member {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
-    match node {
+    match self {
         Member::Named(x) => {
             x.visit_mut(v);
         },
@@ -1097,23 +746,29 @@ where
         },
     }
 }
-pub fn visit_meta_list_mut<V>(v: &mut V, node: &mut attr::List)
+}
+impl VisitMut for attr::List {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     &mut self.path.visit_mut(v);
     &mut self.delim.visit_mut(v);
 }
-pub fn visit_meta_name_value_mut<V>(v: &mut V, node: &mut attr::NameValue)
+}
+impl VisitMut for attr::NameValue {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     &mut self.name.visit_mut(v);
     &mut self.val.visit_mut(v);
 }
-pub fn visit_parenthesized_generic_arguments_mut<V>(v: &mut V, node: &mut path::Parenthed)
+}
+impl VisitMut for path::Parenthed {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for mut el in Puncted::pairs_mut(&mut self.ins) {
         let x = el.value_mut();
@@ -1121,11 +776,13 @@ where
     }
     &mut self.out.visit_mut(v);
 }
-pub fn visit_pat_mut<V>(v: &mut V, node: &mut pat::Pat)
+}
+impl VisitMut for pat::Pat {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
-    match node {
+    match self {
         pat::Pat::Const(x) => {
             x.visit_mut(v);
         },
@@ -1177,9 +834,11 @@ where
         },
     }
 }
-pub fn visit_pat_ident_mut<V>(v: &mut V, node: &mut pat::Ident)
+}
+impl VisitMut for pat::Ident {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
@@ -1189,9 +848,11 @@ where
         &mut *(x).1.visit_mut(v);
     }
 }
-pub fn visit_pat_or_mut<V>(v: &mut V, node: &mut pat::Or)
+}
+impl VisitMut for pat::Or {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
@@ -1201,35 +862,43 @@ where
         x.visit_mut(v);
     }
 }
-pub fn visit_pat_paren_mut<V>(v: &mut V, node: &mut pat::Parenth)
+}
+impl VisitMut for pat::Parenth {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
     }
-    &mut *node.pat.visit_mut(v);
+    &mut *self.pat.visit_mut(v);
 }
-pub fn visit_pat_reference_mut<V>(v: &mut V, node: &mut pat::Ref)
+}
+impl VisitMut for pat::Ref {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
     }
-    &mut *node.pat.visit_mut(v);
+    &mut *self.pat.visit_mut(v);
 }
-pub fn visit_pat_rest_mut<V>(v: &mut V, node: &mut pat::Rest)
+}
+impl VisitMut for pat::Rest {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
     }
 }
-pub fn visit_pat_slice_mut<V>(v: &mut V, node: &mut pat::Slice)
+}
+impl VisitMut for pat::Slice {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
@@ -1239,9 +908,11 @@ where
         x.visit_mut(v);
     }
 }
-pub fn visit_pat_struct_mut<V>(v: &mut V, node: &mut pat::Struct)
+}
+impl VisitMut for pat::Struct {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
@@ -1258,9 +929,11 @@ where
         x.visit_mut(v);
     }
 }
-pub fn visit_pat_tuple_mut<V>(v: &mut V, node: &mut pat::Tuple)
+}
+impl VisitMut for pat::Tuple {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
@@ -1270,9 +943,11 @@ where
         x.visit_mut(v);
     }
 }
-pub fn visit_pat_tuple_struct_mut<V>(v: &mut V, node: &mut pat::TupleStruct)
+}
+impl VisitMut for pat::TupleStruct {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
@@ -1286,39 +961,47 @@ where
         x.visit_mut(v);
     }
 }
-pub fn visit_pat_type_mut<V>(v: &mut V, node: &mut pat::Type)
+}
+impl VisitMut for pat::Type {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
     }
-    &mut *node.pat.visit_mut(v);
-    &mut *node.typ.visit_mut(v);
+    &mut *self.pat.visit_mut(v);
+    &mut *self.typ.visit_mut(v);
 }
-pub fn visit_pat_wild_mut<V>(v: &mut V, node: &mut pat::Wild)
+}
+impl VisitMut for pat::Wild {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
     }
 }
-pub fn visit_path_mut<V>(v: &mut V, node: &mut Path)
+}
+impl VisitMut for Path {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for mut el in Puncted::pairs_mut(&mut self.segs) {
         let x = el.value_mut();
         x.visit_mut(v);
     }
 }
-pub fn visit_path_arguments_mut<V>(v: &mut V, node: &mut path::Args)
+}
+impl VisitMut for path::Args {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     use path::Args::*;
-    match node {
+    match self {
         None => {},
         Angled(x) => {
             x.visit_mut(v);
@@ -1328,16 +1011,20 @@ where
         },
     }
 }
-pub fn visit_path_segment_mut<V>(v: &mut V, node: &mut Segment)
+}
+impl VisitMut for Segment {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     &mut self.ident.visit_mut(v);
     &mut self.args.visit_mut(v);
 }
-pub fn visit_predicate_lifetime_mut<V>(v: &mut V, node: &mut gen::Where::Life)
+}
+impl VisitMut for gen::Where::Life {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     &mut self.life.visit_mut(v);
     for mut el in Puncted::pairs_mut(&mut self.bounds) {
@@ -1345,9 +1032,11 @@ where
         x.visit_mut(v);
     }
 }
-pub fn visit_predicate_type_mut<V>(v: &mut V, node: &mut gen::Where::Type)
+}
+impl VisitMut for gen::Where::Type {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     if let Some(x) = &mut self.lifes {
         x.visit_mut(v);
@@ -1358,24 +1047,19 @@ where
         x.visit_mut(v);
     }
 }
-pub fn visit_qself_mut<V>(v: &mut V, node: &mut QSelf)
-where
-    V: VisitMut + ?Sized,
-{
-    &mut *node.ty.visit_mut(v);
 }
-pub fn visit_range_limits_mut<V>(v: &mut V, node: &mut expr::Limits)
+impl VisitMut for QSelf {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
-    match node {
-        expr::Limits::HalfOpen(x) => {},
-        expr::Limits::Closed(x) => {},
-    }
+    &mut *self.typ.visit_mut(v);
 }
-pub fn visit_receiver_mut<V>(v: &mut V, node: &mut item::Receiver)
+}
+impl VisitMut for item::Receiver {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
@@ -1385,22 +1069,26 @@ where
             x.visit_mut(v);
         }
     }
-    &mut *node.typ.visit_mut(v);
+    &mut *self.typ.visit_mut(v);
 }
-pub fn visit_return_type_mut<V>(v: &mut V, node: &mut typ::Ret)
+}
+impl VisitMut for typ::Ret {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
-    match node {
+    match self {
         typ::Ret::Default => {},
         typ::Ret::Type(_binding_0, _binding_1) => {
             &mut **_binding_1.visit_mut(v);
         },
     }
 }
-pub fn visit_signature_mut<V>(v: &mut V, node: &mut item::Sig)
+}
+impl VisitMut for item::Sig {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     if let Some(x) = &mut self.abi {
         x.visit_mut(v);
@@ -1416,25 +1104,31 @@ where
     }
     &mut self.ret.visit_mut(v);
 }
-pub fn visit_span_mut<V>(v: &mut V, node: &mut pm2::Span)
+}
+impl VisitMut for pm2::Span {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
 }
-pub fn visit_static_mutability_mut<V>(v: &mut V, node: &mut StaticMut)
+}
+impl VisitMut for StaticMut {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
-    match node {
+    match self {
         StaticMut::Mut(x) => {},
         StaticMut::None => {},
     }
 }
-pub fn visit_stmt_mut<V>(v: &mut V, node: &mut stmt::Stmt)
+}
+impl VisitMut for stmt::Stmt {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
-    match node {
+    match self {
         stmt::Stmt::stmt::Local(x) => {
             x.visit_mut(v);
         },
@@ -1449,18 +1143,22 @@ where
         },
     }
 }
-pub fn visit_stmt_macro_mut<V>(v: &mut V, node: &mut stmt::Mac)
+}
+impl VisitMut for stmt::Mac {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
     }
     &mut self.mac.visit_mut(v);
 }
-pub fn visit_trait_bound_mut<V>(v: &mut V, node: &mut gen::bound::Trait)
+}
+impl VisitMut for gen::bound::Trait {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     &mut self.modif.visit_mut(v);
     if let Some(x) = &mut self.lifes {
@@ -1468,20 +1166,24 @@ where
     }
     &mut self.path.visit_mut(v);
 }
-pub fn visit_trait_bound_modifier_mut<V>(v: &mut V, node: &mut gen::bound::Modifier)
+}
+impl VisitMut for gen::bound::Modifier {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
-    match node {
+    match self {
         gen::bound::Modifier::None => {},
         gen::bound::Modifier::Maybe(x) => {},
     }
 }
-pub fn visit_trait_item_mut<V>(v: &mut V, node: &mut item::trait_::Item)
+}
+impl VisitMut for item::trait_::Item {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
-    match node {
+    match self {
         item::trait_::Item::Const(x) => {
             x.visit_mut(v);
         },
@@ -1497,9 +1199,11 @@ where
         item::trait_::Item::Verbatim(x) => {},
     }
 }
-pub fn visit_trait_item_const_mut<V>(v: &mut V, node: &mut item::trait_::Const)
+}
+impl VisitMut for item::trait_::Const {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
@@ -1511,9 +1215,11 @@ where
         &mut (x).1.visit_mut(v);
     }
 }
-pub fn visit_trait_item_fn_mut<V>(v: &mut V, node: &mut item::trait_::Fn)
+}
+impl VisitMut for item::trait_::Fn {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
@@ -1523,18 +1229,22 @@ where
         x.visit_mut(v);
     }
 }
-pub fn visit_trait_item_macro_mut<V>(v: &mut V, node: &mut item::trait_::Mac)
+}
+impl VisitMut for item::trait_::Mac {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
     }
     &mut self.mac.visit_mut(v);
 }
-pub fn visit_trait_item_type_mut<V>(v: &mut V, node: &mut item::trait_::Type)
+}
+impl VisitMut for item::trait_::Type {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
@@ -1549,11 +1259,13 @@ where
         &mut (x).1.visit_mut(v);
     }
 }
-pub fn visit_type_mut<V>(v: &mut V, node: &mut typ::Type)
+}
+impl VisitMut for typ::Type {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
-    match node {
+    match self {
         typ::Type::Array(x) => {
             x.visit_mut(v);
         },
@@ -1599,16 +1311,20 @@ where
         typ::Type::Stream(x) => {},
     }
 }
-pub fn visit_type_array_mut<V>(v: &mut V, node: &mut typ::Array)
+}
+impl VisitMut for typ::Array {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
-    &mut *node.elem.visit_mut(v);
+    &mut *self.elem.visit_mut(v);
     &mut self.len.visit_mut(v);
 }
-pub fn visit_type_bare_fn_mut<V>(v: &mut V, node: &mut typ::Fn)
+}
+impl VisitMut for typ::Fn {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     if let Some(x) = &mut self.lifes {
         x.visit_mut(v);
@@ -1625,40 +1341,52 @@ where
     }
     &mut self.ret.visit_mut(v);
 }
-pub fn visit_type_group_mut<V>(v: &mut V, node: &mut typ::Group)
-where
-    V: VisitMut + ?Sized,
-{
-    &mut *node.elem.visit_mut(v);
 }
-pub fn visit_type_impl_trait_mut<V>(v: &mut V, node: &mut typ::Impl)
+impl VisitMut for typ::Group {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
+{
+    &mut *self.elem.visit_mut(v);
+}
+}
+impl VisitMut for typ::Impl {
+    fn visit_mut<V>(&mut self, v: &mut V)
+where
+    V: Visitor + ?Sized,
 {
     for mut el in Puncted::pairs_mut(&mut self.bounds) {
         let x = el.value_mut();
         x.visit_mut(v);
     }
 }
-pub fn visit_type_infer_mut<V>(v: &mut V, node: &mut typ::Infer)
+}
+impl VisitMut for typ::Infer {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
 }
-pub fn visit_type_macro_mut<V>(v: &mut V, node: &mut typ::Mac)
+}
+impl VisitMut for typ::Mac {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     &mut self.mac.visit_mut(v);
 }
-pub fn visit_type_never_mut<V>(v: &mut V, node: &mut typ::Never)
+}
+impl VisitMut for typ::Never {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
 }
-pub fn visit_type_param_mut<V>(v: &mut V, node: &mut gen::param::Type)
+}
+impl VisitMut for gen::param::Type {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
@@ -1672,11 +1400,13 @@ where
         x.visit_mut(v);
     }
 }
-pub fn visit_type_param_bound_mut<V>(v: &mut V, node: &mut gen::bound::Type)
+}
+impl VisitMut for gen::bound::Type {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
-    match node {
+    match self {
         gen::bound::Type::Trait(x) => {
             x.visit_mut(v);
         },
@@ -1686,109 +1416,137 @@ where
         gen::bound::Type::Verbatim(x) => {},
     }
 }
-pub fn visit_type_paren_mut<V>(v: &mut V, node: &mut typ::Parenth)
-where
-    V: VisitMut + ?Sized,
-{
-    &mut *node.elem.visit_mut(v);
 }
-pub fn visit_type_path_mut<V>(v: &mut V, node: &mut typ::Path)
+impl VisitMut for typ::Parenth {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
+{
+    &mut *self.elem.visit_mut(v);
+}
+}
+impl VisitMut for typ::Path {
+    fn visit_mut<V>(&mut self, v: &mut V)
+where
+    V: Visitor + ?Sized,
 {
     if let Some(x) = &mut self.qself {
         x.visit_mut(v);
     }
     &mut self.path.visit_mut(v);
 }
-pub fn visit_type_ptr_mut<V>(v: &mut V, node: &mut typ::Ptr)
-where
-    V: VisitMut + ?Sized,
-{
-    &mut *node.elem.visit_mut(v);
 }
-pub fn visit_type_reference_mut<V>(v: &mut V, node: &mut typ::Ref)
+impl VisitMut for typ::Ptr {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
+{
+    &mut *self.elem.visit_mut(v);
+}
+}
+impl VisitMut for typ::Ref {
+    fn visit_mut<V>(&mut self, v: &mut V)
+where
+    V: Visitor + ?Sized,
 {
     if let Some(x) = &mut self.life {
         x.visit_mut(v);
     }
-    &mut *node.elem.visit_mut(v);
+    &mut *self.elem.visit_mut(v);
 }
-pub fn visit_type_slice_mut<V>(v: &mut V, node: &mut typ::Slice)
+}
+impl VisitMut for typ::Slice {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
-    &mut *node.elem.visit_mut(v);
+    &mut *self.elem.visit_mut(v);
 }
-pub fn visit_type_trait_object_mut<V>(v: &mut V, node: &mut typ::Trait)
+}
+impl VisitMut for typ::Trait {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for mut el in Puncted::pairs_mut(&mut self.bounds) {
         let x = el.value_mut();
         x.visit_mut(v);
     }
 }
-pub fn visit_type_tuple_mut<V>(v: &mut V, node: &mut typ::Tuple)
+}
+impl VisitMut for typ::Tuple {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for mut el in Puncted::pairs_mut(&mut self.elems) {
         let x = el.value_mut();
         x.visit_mut(v);
     }
 }
-pub fn visit_un_op_mut<V>(v: &mut V, node: &mut UnOp)
+}
+impl VisitMut for UnOp {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
-    match node {
+    match self {
         UnOp::Deref(x) => {},
         UnOp::Not(x) => {},
         UnOp::Neg(x) => {},
     }
 }
-pub fn visit_use_glob_mut<V>(v: &mut V, node: &mut item::use_::Glob)
+}
+impl VisitMut for item::use_::Glob {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
 }
-pub fn visit_use_group_mut<V>(v: &mut V, node: &mut item::use_::Group)
+}
+impl VisitMut for item::use_::Group {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for mut el in Puncted::pairs_mut(&mut self.trees) {
         let x = el.value_mut();
         x.visit_mut(v);
     }
 }
-pub fn visit_use_name_mut<V>(v: &mut V, node: &mut item::use_::Name)
+}
+impl VisitMut for item::use_::Name {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     &mut self.ident.visit_mut(v);
 }
-pub fn visit_use_path_mut<V>(v: &mut V, node: &mut item::use_::Path)
+}
+impl VisitMut for item::use_::Path {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     &mut self.ident.visit_mut(v);
-    &mut *node.tree.visit_mut(v);
+    &mut *self.tree.visit_mut(v);
 }
-pub fn visit_use_rename_mut<V>(v: &mut V, node: &mut item::use_::Rename)
+}
+impl VisitMut for item::use_::Rename {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     &mut self.ident.visit_mut(v);
     &mut self.rename.visit_mut(v);
 }
-pub fn visit_use_tree_mut<V>(v: &mut V, node: &mut item::use_::Tree)
+}
+impl VisitMut for item::use_::Tree {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
-    match node {
+    match self {
         item::use_::Tree::Path(x) => {
             x.visit_mut(v);
         },
@@ -1806,9 +1564,11 @@ where
         },
     }
 }
-pub fn visit_variadic_mut<V>(v: &mut V, node: &mut item::Variadic)
+}
+impl VisitMut for item::Variadic {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for x in &mut self.attrs {
         x.visit_mut(v);
@@ -1817,51 +1577,24 @@ where
         &mut *(x).0.visit_mut(v);
     }
 }
-pub fn visit_variant_mut<V>(v: &mut V, node: &mut data::Variant)
-where
-    V: VisitMut + ?Sized,
-{
-    for x in &mut self.attrs {
-        x.visit_mut(v);
-    }
-    &mut self.ident.visit_mut(v);
-    &mut self.fields.visit_mut(v);
-    if let Some(x) = &mut self.discrim {
-        &mut (x).1.visit_mut(v);
-    }
 }
-pub fn visit_vis_restricted_mut<V>(v: &mut V, node: &mut data::Restricted)
+impl VisitMut for gen::Where {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
-{
-    &mut *node.path.visit_mut(v);
-}
-pub fn visit_visibility_mut<V>(v: &mut V, node: &mut data::Visibility)
-where
-    V: VisitMut + ?Sized,
-{
-    match node {
-        data::Visibility::Public(x) => {},
-        data::Visibility::Restricted(x) => {
-            x.visit_mut(v);
-        },
-        data::Visibility::Inherited => {},
-    }
-}
-pub fn visit_where_clause_mut<V>(v: &mut V, node: &mut gen::Where)
-where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
     for mut el in Puncted::pairs_mut(&mut self.preds) {
         let x = el.value_mut();
         x.visit_mut(v);
     }
 }
-pub fn visit_where_predicate_mut<V>(v: &mut V, node: &mut gen::Where::Pred)
+}
+impl VisitMut for gen::Where::Pred {
+    fn visit_mut<V>(&mut self, v: &mut V)
 where
-    V: VisitMut + ?Sized,
+    V: Visitor + ?Sized,
 {
-    match node {
+    match self {
         gen::Where::Pred::Life(x) => {
             x.visit_mut(v);
         },

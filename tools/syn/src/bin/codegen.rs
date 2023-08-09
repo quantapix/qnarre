@@ -2129,7 +2129,7 @@ mod visit_mut {
         impls.extend(quote! {
             pub fn #visit_mut_fn<V>(v: &mut V, node: &mut #ty)
             where
-                V: VisitMut + ?Sized,
+                V: Visitor + ?Sized,
             {
                 #visit_mut_impl
             }

@@ -217,11 +217,26 @@ impl Visit for Visibility {
     {
         use Visibility::*;
         match self {
+            Inherited => {},
             Public(x) => {},
             Restricted(x) => {
                 x.visit(v);
             },
+        }
+    }
+}
+impl VisitMut for Visibility {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        use Visibility::*;
+        match self {
             Inherited => {},
+            Public(x) => {},
+            Restricted(x) => {
+                x.visit_mut(v);
+            },
         }
     }
 }
@@ -261,6 +276,14 @@ impl Visit for Restricted {
         V: Visitor + ?Sized,
     {
         &*self.path.visit(v);
+    }
+}
+impl VisitMut for Restricted {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &mut *self.path.visit_mut(v);
     }
 }
 
@@ -470,6 +493,21 @@ impl Visit for Variant {
         }
     }
 }
+impl VisitMut for Variant {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &mut self.attrs {
+            x.visit_mut(v);
+        }
+        &mut self.ident.visit_mut(v);
+        &mut self.fields.visit_mut(v);
+        if let Some(x) = &mut self.discrim {
+            &mut (x).1.visit_mut(v);
+        }
+    }
+}
 
 enum_of_structs! {
     pub enum Fields {
@@ -555,6 +593,23 @@ impl Visit for Fields {
         }
     }
 }
+impl VisitMut for Fields {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        use Fields::*;
+        match self {
+            Named(x) => {
+                x.visit_mut(v);
+            },
+            Unnamed(x) => {
+                x.visit_mut(v);
+            },
+            Unit => {},
+        }
+    }
+}
 
 pub struct Named {
     pub brace: tok::Brace,
@@ -584,6 +639,17 @@ impl Visit for Named {
         for y in Puncted::pairs(&self.fields) {
             let x = y.value();
             x.visit(v);
+        }
+    }
+}
+impl VisitMut for Named {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for mut y in Puncted::pairs_mut(&mut self.fields) {
+            let x = y.value_mut();
+            x.visit_mut(v);
         }
     }
 }
@@ -628,6 +694,17 @@ impl Visit for Unnamed {
         for y in Puncted::pairs(&self.fields) {
             let x = y.value();
             x.visit(v);
+        }
+    }
+}
+impl VisitMut for Unnamed {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for mut y in Puncted::pairs_mut(&mut self.fields) {
+            let x = y.value_mut();
+            x.visit_mut(v);
         }
     }
 }
@@ -704,12 +781,38 @@ impl Visit for Field {
         &self.typ.visit(v);
     }
 }
+impl VisitMut for Field {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &mut self.attrs {
+            x.visit_mut(v);
+        }
+        &mut self.vis.visit_mut(v);
+        &mut self.mut_.visit_mut(v);
+        if let Some(x) = &mut self.ident {
+            x.visit_mut(v);
+        }
+        &mut self.typ.visit_mut(v);
+    }
+}
 
 pub enum Mut {
     None,
 }
 impl Visit for Mut {
     fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        match self {
+            Mut::None => {},
+        }
+    }
+}
+impl VisitMut for Mut {
+    fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
     {
