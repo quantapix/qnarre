@@ -72,6 +72,40 @@ pub mod bound {
             }
         }
     }
+    impl Visit for Type {
+        fn visit<V>(&self, v: &mut V)
+        where
+            V: Visitor + ?Sized,
+        {
+            use Type::*;
+            match self {
+                Life(x) => {
+                    x.visit(v);
+                },
+                Trait(x) => {
+                    x.visit(v);
+                },
+                Verbatim(_) => {},
+            }
+        }
+    }
+    impl VisitMut for Type {
+        fn visit_mut<V>(&mut self, v: &mut V)
+        where
+            V: Visitor + ?Sized,
+        {
+            use Type::*;
+            match self {
+                Life(x) => {
+                    x.visit_mut(v);
+                },
+                Trait(x) => {
+                    x.visit_mut(v);
+                },
+                Verbatim(_) => {},
+            }
+        }
+    }
 
     pub struct Trait {
         pub parenth: Option<tok::Parenth>,
@@ -136,6 +170,30 @@ pub mod bound {
             }
         }
     }
+    impl Visit for Trait {
+        fn visit<V>(&self, v: &mut V)
+        where
+            V: Visitor + ?Sized,
+        {
+            &self.modif.visit(v);
+            if let Some(x) = &self.lifes {
+                x.visit(v);
+            }
+            &self.path.visit(v);
+        }
+    }
+    impl VisitMut for Trait {
+        fn visit_mut<V>(&mut self, v: &mut V)
+        where
+            V: Visitor + ?Sized,
+        {
+            &mut self.modif.visit_mut(v);
+            if let Some(x) = &mut self.lifes {
+                x.visit_mut(v);
+            }
+            &mut self.path.visit_mut(v);
+        }
+    }
 
     pub enum Modifier {
         Maybe(Token![?]),
@@ -164,6 +222,30 @@ pub mod bound {
             use Modifier::*;
             match self {
                 Maybe(_) => p.word("?"),
+                None => {},
+            }
+        }
+    }
+    impl Visit for Modifier {
+        fn visit<V>(&self, v: &mut V)
+        where
+            V: Visitor + ?Sized,
+        {
+            use Modifier::*;
+            match self {
+                Maybe(x) => {},
+                None => {},
+            }
+        }
+    }
+    impl VisitMut for Modifier {
+        fn visit_mut<V>(&mut self, v: &mut V)
+        where
+            V: Visitor + ?Sized,
+        {
+            use Modifier::*;
+            match self {
+                Maybe(x) => {},
                 None => {},
             }
         }
@@ -239,6 +321,17 @@ pub mod bound {
                 }
             }
             p.word("> ");
+        }
+    }
+    impl Visit for Lifes {
+        fn visit<V>(&self, v: &mut V)
+        where
+            V: Visitor + ?Sized,
+        {
+            for y in Puncted::pairs(&self.lifes) {
+                let x = y.value();
+                x.visit(v);
+            }
         }
     }
     impl VisitMut for Lifes {
@@ -333,6 +426,44 @@ pub mod param {
             }
         }
     }
+    impl Visit for Param {
+        fn visit<V>(&self, v: &mut V)
+        where
+            V: Visitor + ?Sized,
+        {
+            use gen::Param::*;
+            match self {
+                Const(x) => {
+                    x.visit(v);
+                },
+                Life(x) => {
+                    x.visit(v);
+                },
+                Type(x) => {
+                    x.visit(v);
+                },
+            }
+        }
+    }
+    impl VisitMut for Param {
+        fn visit_mut<V>(&mut self, v: &mut V)
+        where
+            V: Visitor + ?Sized,
+        {
+            use Param::*;
+            match self {
+                Const(x) => {
+                    x.visit_mut(v);
+                },
+                Life(x) => {
+                    x.visit_mut(v);
+                },
+                Type(x) => {
+                    x.visit_mut(v);
+                },
+            }
+        }
+    }
 
     pub struct Life {
         pub attrs: Vec<attr::Attr>,
@@ -410,6 +541,36 @@ pub mod param {
             }
         }
     }
+    impl Visit for Life {
+        fn visit<V>(&self, v: &mut V)
+        where
+            V: Visitor + ?Sized,
+        {
+            for x in &self.attrs {
+                x.visit(v);
+            }
+            &self.life.visit(v);
+            for y in Puncted::pairs(&self.bounds) {
+                let x = y.value();
+                x.visit(v);
+            }
+        }
+    }
+    impl VisitMut for Life {
+        fn visit_mut<V>(&mut self, v: &mut V)
+        where
+            V: Visitor + ?Sized,
+        {
+            for x in &mut self.attrs {
+                x.visit_mut(v);
+            }
+            &mut self.life.visit_mut(v);
+            for mut y in Puncted::pairs_mut(&mut self.bounds) {
+                let x = y.value_mut();
+                x.visit_mut(v);
+            }
+        }
+    }
 
     pub struct Lifes<'a>(pub Iter<'a, Param>);
     impl<'a> Iterator for Lifes<'a> {
@@ -426,6 +587,7 @@ pub mod param {
             }
         }
     }
+
     pub struct LifesMut<'a>(pub IterMut<'a, Param>);
     impl<'a> Iterator for LifesMut<'a> {
         type Item = &'a mut Life;
@@ -534,6 +696,42 @@ pub mod param {
             p.end();
         }
     }
+    impl Visit for Type {
+        fn visit<V>(&self, v: &mut V)
+        where
+            V: Visitor + ?Sized,
+        {
+            for x in &self.attrs {
+                x.visit(v);
+            }
+            &self.ident.visit(v);
+            for y in Puncted::pairs(&self.bounds) {
+                let x = y.value();
+                x.visit(v);
+            }
+            if let Some(x) = &self.default {
+                x.visit(v);
+            }
+        }
+    }
+    impl VisitMut for Type {
+        fn visit_mut<V>(&mut self, v: &mut V)
+        where
+            V: Visitor + ?Sized,
+        {
+            for x in &mut self.attrs {
+                x.visit_mut(v);
+            }
+            &mut self.ident.visit_mut(v);
+            for mut y in Puncted::pairs_mut(&mut self.bounds) {
+                let x = y.value_mut();
+                x.visit_mut(v);
+            }
+            if let Some(x) = &mut self.default {
+                x.visit_mut(v);
+            }
+        }
+    }
 
     pub struct Types<'a>(pub Iter<'a, Param>);
     impl<'a> Iterator for Types<'a> {
@@ -550,6 +748,7 @@ pub mod param {
             }
         }
     }
+
     pub struct TypesMut<'a>(pub IterMut<'a, Param>);
     impl<'a> Iterator for TypesMut<'a> {
         type Item = &'a mut Type;
@@ -623,6 +822,21 @@ pub mod param {
             }
         }
     }
+    impl Visit for Const {
+        fn visit<V>(&self, v: &mut V)
+        where
+            V: Visitor + ?Sized,
+        {
+            for x in &self.attrs {
+                x.visit(v);
+            }
+            &self.ident.visit(v);
+            &self.typ.visit(v);
+            if let Some(x) = &self.default {
+                x.visit(v);
+            }
+        }
+    }
     impl VisitMut for Const {
         fn visit_mut<V>(&mut self, v: &mut V)
         where
@@ -654,6 +868,7 @@ pub mod param {
             }
         }
     }
+
     pub struct ConstsMut<'a>(pub IterMut<'a, Param>);
     impl<'a> Iterator for ConstsMut<'a> {
         type Item = &'a mut Const;
@@ -705,15 +920,6 @@ impl Parse for Where {
         })
     }
 }
-impl Parse for Option<Where> {
-    fn parse(s: Stream) -> Res<Self> {
-        if s.peek(Token![where]) {
-            s.parse().map(Some)
-        } else {
-            Ok(None)
-        }
-    }
-}
 impl Lower for Where {
     fn lower(&self, s: &mut Stream) {
         if !self.preds.is_empty() {
@@ -758,6 +964,38 @@ impl Pretty for Where {
             if !semi {
                 p.offset(-INDENT);
             }
+        }
+    }
+}
+impl Visit for Where {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for y in Puncted::pairs(&self.preds) {
+            let x = y.value();
+            x.visit(v);
+        }
+    }
+}
+impl VisitMut for Where {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for mut y in Puncted::pairs_mut(&mut self.preds) {
+            let x = y.value_mut();
+            x.visit_mut(v);
+        }
+    }
+}
+
+impl Parse for Option<Where> {
+    fn parse(s: Stream) -> Res<Self> {
+        if s.peek(Token![where]) {
+            s.parse().map(Some)
+        } else {
+            Ok(None)
         }
     }
 }
@@ -878,6 +1116,38 @@ pub mod where_ {
             }
         }
     }
+    impl Visit for Pred {
+        fn visit<V>(&self, v: &mut V)
+        where
+            V: Visitor + ?Sized,
+        {
+            use Pred::*;
+            match self {
+                Life(x) => {
+                    x.visit(v);
+                },
+                Type(x) => {
+                    x.visit(v);
+                },
+            }
+        }
+    }
+    impl VisitMut for Pred {
+        fn visit_mut<V>(&mut self, v: &mut V)
+        where
+            V: Visitor + ?Sized,
+        {
+            use Pred::*;
+            match self {
+                Life(x) => {
+                    x.visit_mut(v);
+                },
+                Type(x) => {
+                    x.visit_mut(v);
+                },
+            }
+        }
+    }
 
     pub struct Life {
         pub life: Life,
@@ -906,6 +1176,30 @@ pub mod where_ {
                 &x.pretty(p);
             }
             p.end();
+        }
+    }
+    impl Visit for Life {
+        fn visit<V>(&self, v: &mut V)
+        where
+            V: Visitor + ?Sized,
+        {
+            &self.life.visit(v);
+            for y in Puncted::pairs(&self.bounds) {
+                let x = y.value();
+                x.visit(v);
+            }
+        }
+    }
+    impl VisitMut for Life {
+        fn visit_mut<V>(&mut self, v: &mut V)
+        where
+            V: Visitor + ?Sized,
+        {
+            &mut self.life.visit_mut(v);
+            for mut y in Puncted::pairs_mut(&mut self.bounds) {
+                let x = y.value_mut();
+                x.visit_mut(v);
+            }
         }
     }
 
@@ -945,6 +1239,36 @@ pub mod where_ {
                 &x.pretty(p);
             }
             p.end();
+        }
+    }
+    impl Visit for Type {
+        fn visit<V>(&self, v: &mut V)
+        where
+            V: Visitor + ?Sized,
+        {
+            if let Some(x) = &self.lifes {
+                x.visit(v);
+            }
+            &self.typ.visit(v);
+            for y in Puncted::pairs(&self.bounds) {
+                let x = y.value();
+                x.visit(v);
+            }
+        }
+    }
+    impl VisitMut for Type {
+        fn visit_mut<V>(&mut self, v: &mut V)
+        where
+            V: Visitor + ?Sized,
+        {
+            if let Some(x) = &mut self.lifes {
+                x.visit_mut(v);
+            }
+            &mut self.typ.visit_mut(v);
+            for mut y in Puncted::pairs_mut(&mut self.bounds) {
+                let x = y.value_mut();
+                x.visit_mut(v);
+            }
         }
     }
 }
@@ -1100,6 +1424,34 @@ impl Pretty for Gens {
         p.offset(-INDENT);
         p.end();
         p.word(">");
+    }
+}
+impl Visit for Gens {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for y in Puncted::pairs(&self.params) {
+            let x = y.value();
+            x.visit(v);
+        }
+        if let Some(x) = &self.where_ {
+            x.visit(v);
+        }
+    }
+}
+impl VisitMut for Gens {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for mut y in Puncted::pairs_mut(&mut self.params) {
+            let x = y.value_mut();
+            x.visit_mut(v);
+        }
+        if let Some(x) = &mut self.where_ {
+            x.visit_mut(v);
+        }
     }
 }
 

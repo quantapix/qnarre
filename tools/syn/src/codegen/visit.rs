@@ -3,32 +3,6 @@
 use crate::*;
 
 
-impl Visit for gen::bound::Lifes {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    for y in Puncted::pairs(&self.lifes) {
-        let x = y.value();
-        x.visit(v);
-    }
-}
-}
-impl Visit for gen::param::Const {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    for x in &self.attrs {
-        x.visit(v);
-    }
-    &self.ident.visit(v);
-    &self.typ.visit(v);
-    if let Some(x) = &self.default {
-        x.visit(v);
-    }
-}
-}
 impl Visit for item::File {
 fn visit<V>(&self, v: &mut V)
 where
@@ -131,39 +105,6 @@ where
     &self.vis.visit(v);
     &self.ident.visit(v);
     &self.gens.visit(v);
-}
-}
-impl Visit for gen::Param {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    use gen::Param::*;
-    match self {
-        Life(x) => {
-            x.visit(v);
-        },
-        Type(x) => {
-            x.visit(v);
-        },
-        Const(x) => {
-            x.visit(v);
-        },
-    }
-}
-}
-impl Visit for gen::Gens {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    for y in Puncted::pairs(&self.params) {
-        let x = y.value();
-        x.visit(v);
-    }
-    if let Some(x) = &self.where_ {
-        x.visit(v);
-    }
 }
 }
 impl Visit for Ident {
@@ -563,21 +504,6 @@ where
     &self.ident.visit(v);
 }
 }
-impl Visit for gen::param::Life {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    for x in &self.attrs {
-        x.visit(v);
-    }
-    &self.life.visit(v);
-    for y in Puncted::pairs(&self.bounds) {
-        let x = y.value();
-        x.visit(v);
-    }
-}
-}
 impl Visit for mac::Mac {
 fn visit<V>(&self, v: &mut V)
 where
@@ -603,33 +529,6 @@ where
         Bracket(x) => {
             
         },
-    }
-}
-}
-impl Visit for gen::where_::Life {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    &self.life.visit(v);
-    for y in Puncted::pairs(&self.bounds) {
-        let x = y.value();
-        x.visit(v);
-    }
-}
-}
-impl Visit for gen::where_::Type {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    if let Some(x) = &self.lifes {
-        x.visit(v);
-    }
-    &self.bounded.visit(v);
-    for y in Puncted::pairs(&self.bounds) {
-        let x = y.value();
-        x.visit(v);
     }
 }
 }
@@ -686,32 +585,6 @@ where
             
         },
         None => {},
-    }
-}
-}
-impl Visit for gen::bound::Trait {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    &self.modif.visit(v);
-    if let Some(x) = &self.lifes {
-        x.visit(v);
-    }
-    &self.path.visit(v);
-}
-}
-impl Visit for gen::bound::Modifier {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    use gen::bound::Modifier::*;
-    match self {
-        None => {},
-        Maybe(x) => {
-            
-        },
     }
 }
 }
@@ -802,43 +675,6 @@ where
     }
 }
 }
-impl Visit for gen::param::Type {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    for x in &self.attrs {
-        x.visit(v);
-    }
-    &self.ident.visit(v);
-    for y in Puncted::pairs(&self.bounds) {
-        let x = y.value();
-        x.visit(v);
-    }
-    if let Some(x) = &self.default {
-        x.visit(v);
-    }
-}
-}
-impl Visit for gen::bound::Type {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    use gen::bound::Type::*;
-    match self {
-        Trait(x) => {
-            x.visit(v);
-        },
-        Life(x) => {
-            x.visit(v);
-        },
-        Verbatim(x) => {
-            
-        },
-    }
-}
-}
 impl Visit for item::use_::Glob {
 fn visit<V>(&self, v: &mut V)
 where
@@ -921,30 +757,4 @@ where
         
     }
 }
-}
-impl Visit for gen::Where {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    for y in Puncted::pairs(&self.preds) {
-        let x = y.value();
-        x.visit(v);
-    }
-}
-}
-impl Visit for gen::where_::Pred {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    use gen::where_::Pred::*;
-    match self {
-        Life(x) => {
-            x.visit(v);
-        },
-        Type(x) => {
-            x.visit(v);
-        },
-    }
 }
