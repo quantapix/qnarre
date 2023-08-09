@@ -375,6 +375,131 @@ impl Pretty for Expr {
         }
     }
 }
+impl Visit for Expr {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        use Expr::*;
+        match self {
+            Array(x) => {
+                x.visit(v);
+            },
+            Assign(x) => {
+                x.visit(v);
+            },
+            Async(x) => {
+                x.visit(v);
+            },
+            Await(x) => {
+                x.visit(v);
+            },
+            Binary(x) => {
+                x.visit(v);
+            },
+            Block(x) => {
+                x.visit(v);
+            },
+            Break(x) => {
+                x.visit(v);
+            },
+            Call(x) => {
+                x.visit(v);
+            },
+            Cast(x) => {
+                x.visit(v);
+            },
+            Closure(x) => {
+                x.visit(v);
+            },
+            Const(x) => {
+                x.visit(v);
+            },
+            Continue(x) => {
+                x.visit(v);
+            },
+            Field(x) => {
+                x.visit(v);
+            },
+            ForLoop(x) => {
+                x.visit(v);
+            },
+            Group(x) => {
+                x.visit(v);
+            },
+            If(x) => {
+                x.visit(v);
+            },
+            Index(x) => {
+                x.visit(v);
+            },
+            Infer(x) => {
+                x.visit(v);
+            },
+            Let(x) => {
+                x.visit(v);
+            },
+            Lit(x) => {
+                x.visit(v);
+            },
+            Loop(x) => {
+                x.visit(v);
+            },
+            Mac(x) => {
+                x.visit(v);
+            },
+            Match(x) => {
+                x.visit(v);
+            },
+            MethodCall(x) => {
+                x.visit(v);
+            },
+            Parenth(x) => {
+                x.visit(v);
+            },
+            Path(x) => {
+                x.visit(v);
+            },
+            Range(x) => {
+                x.visit(v);
+            },
+            Ref(x) => {
+                x.visit(v);
+            },
+            Repeat(x) => {
+                x.visit(v);
+            },
+            Return(x) => {
+                x.visit(v);
+            },
+            Struct(x) => {
+                x.visit(v);
+            },
+            Try(x) => {
+                x.visit(v);
+            },
+            TryBlock(x) => {
+                x.visit(v);
+            },
+            Tuple(x) => {
+                x.visit(v);
+            },
+            Unary(x) => {
+                x.visit(v);
+            },
+            Unsafe(x) => {
+                x.visit(v);
+            },
+            Verbatim(x) => {},
+            While(x) => {
+                x.visit(v);
+            },
+            Yield(x) => {
+                x.visit(v);
+            },
+        }
+    }
+}
 impl VisitMut for Expr {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
@@ -586,6 +711,20 @@ impl Pretty for Array {
         p.word("]");
     }
 }
+impl Visit for Array {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        for y in Puncted::pairs(&self.elems) {
+            let x = y.value();
+            x.visit(v);
+        }
+    }
+}
 impl VisitMut for Array {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
@@ -623,6 +762,18 @@ impl Pretty for Assign {
         p.word(" = ");
         &self.right.pretty(p);
         p.end();
+    }
+}
+impl Visit for Assign {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        &*self.left.visit(v);
+        &*self.right.visit(v);
     }
 }
 impl VisitMut for Assign {
@@ -674,6 +825,17 @@ impl Pretty for Async {
         p.end();
     }
 }
+impl Visit for Async {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        &self.block.visit(v);
+    }
+}
 impl VisitMut for Async {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
@@ -715,6 +877,17 @@ impl Pretty for Await {
         p.end();
     }
 }
+impl Visit for Await {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        &*self.expr.visit(v);
+    }
+}
 impl VisitMut for Await {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
@@ -753,6 +926,19 @@ impl Pretty for Binary {
         p.nbsp();
         &self.right.pretty(p);
         p.end();
+    }
+}
+impl Visit for Binary {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        &*self.left.visit(v);
+        &self.op.visit(v);
+        &*self.right.visit(v);
     }
 }
 
@@ -797,6 +983,20 @@ impl Pretty for Block {
         p.end();
     }
 }
+impl Visit for Block {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        if let Some(x) = &self.label {
+            x.visit(v);
+        }
+        &self.block.visit(v);
+    }
+}
 
 pub struct Break {
     pub attrs: Vec<attr::Attr>,
@@ -829,6 +1029,22 @@ impl Pretty for Break {
         if let Some(x) = &self.val {
             p.nbsp();
             p.value(x);
+        }
+    }
+}
+impl Visit for Break {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        if let Some(x) = &self.life {
+            x.visit(v);
+        }
+        if let Some(x) = &self.val {
+            &**x.visit(v);
         }
     }
 }
@@ -865,6 +1081,21 @@ impl Pretty for Call {
         p.word(")");
     }
 }
+impl Visit for Call {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        &*self.func.visit(v);
+        for y in Puncted::pairs(&self.args) {
+            let x = y.value();
+            x.visit(v);
+        }
+    }
+}
 
 pub struct Cast {
     pub attrs: Vec<attr::Attr>,
@@ -891,6 +1122,18 @@ impl Pretty for Cast {
         p.word("as ");
         p.ty(&self.typ);
         p.end();
+    }
+}
+impl Visit for Cast {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        &*self.expr.visit(v);
+        &*self.typ.visit(v);
     }
 }
 
@@ -1006,6 +1249,25 @@ impl Pretty for Closure {
         p.end();
     }
 }
+impl Visit for Closure {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        if let Some(x) = &self.lifes {
+            x.visit(v);
+        }
+        for y in Puncted::pairs(&self.ins) {
+            let x = y.value();
+            x.visit(v);
+        }
+        &self.ret.visit(v);
+        &*self.body.visit(v);
+    }
+}
 
 pub struct Const {
     pub attrs: Vec<attr::Attr>,
@@ -1045,6 +1307,17 @@ impl Pretty for Const {
         p.end();
     }
 }
+impl Visit for Const {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        &self.block.visit(v);
+    }
+}
 
 pub struct Continue {
     pub attrs: Vec<attr::Attr>,
@@ -1077,6 +1350,19 @@ impl Pretty for Continue {
         }
     }
 }
+impl Visit for Continue {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        if let Some(x) = &self.life {
+            x.visit(v);
+        }
+    }
+}
 
 pub struct Field {
     pub attrs: Vec<attr::Attr>,
@@ -1106,6 +1392,18 @@ impl Pretty for Field {
         p.cbox(INDENT);
         self.pretty_sub(p, pretty::Args::beg_line(x));
         p.end();
+    }
+}
+impl Visit for Field {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        &*self.expr.visit(v);
+        &self.memb.visit(v);
     }
 }
 
@@ -1181,6 +1479,22 @@ impl Pretty for ForLoop {
         p.end();
     }
 }
+impl Visit for ForLoop {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        if let Some(x) = &self.label {
+            x.visit(v);
+        }
+        &*self.pat.visit(v);
+        &*self.expr.visit(v);
+        &self.body.visit(v);
+    }
+}
 
 pub struct Group {
     pub attrs: Vec<attr::Attr>,
@@ -1199,6 +1513,17 @@ impl Pretty for Group {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
         &self.expr.pretty(p);
+    }
+}
+impl Visit for Group {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        &*self.expr.visit(v);
     }
 }
 
@@ -1297,6 +1622,21 @@ impl Pretty for If {
         p.end();
     }
 }
+impl Visit for If {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        &*self.cond.visit(v);
+        &self.then_.visit(v);
+        if let Some(x) = &self.else_ {
+            &*(x).1.visit(v);
+        }
+    }
+}
 
 pub struct Index {
     pub attrs: Vec<attr::Attr>,
@@ -1343,6 +1683,18 @@ impl Pretty for Index {
         p.word("]");
     }
 }
+impl Visit for Index {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        &*self.expr.visit(v);
+        &*self.idx.visit(v);
+    }
+}
 
 pub struct Infer {
     pub attrs: Vec<attr::Attr>,
@@ -1366,6 +1718,16 @@ impl Pretty for Infer {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
         p.word("_");
+    }
+}
+impl Visit for Infer {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
     }
 }
 
@@ -1421,6 +1783,18 @@ impl Pretty for Let {
         p.end();
     }
 }
+impl Visit for Let {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        &*self.pat.visit(v);
+        &*self.expr.visit(v);
+    }
+}
 
 pub struct Lit {
     pub attrs: Vec<attr::Attr>,
@@ -1444,6 +1818,17 @@ impl Pretty for Lit {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
         p.lit(&self.lit);
+    }
+}
+impl Visit for Lit {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        &self.lit.visit(v);
     }
 }
 
@@ -1499,6 +1884,20 @@ impl Pretty for Loop {
         p.word("}");
     }
 }
+impl Visit for Loop {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        if let Some(x) = &self.label {
+            x.visit(v);
+        }
+        &self.body.visit(v);
+    }
+}
 
 pub struct Mac {
     pub attrs: Vec<attr::Attr>,
@@ -1523,6 +1922,17 @@ impl Pretty for Mac {
         p.outer_attrs(&self.attrs);
         let semi = false;
         p.mac(&self.mac, None, semi);
+    }
+}
+impl Visit for Mac {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        &self.mac.visit(v);
     }
 }
 
@@ -1592,6 +2002,20 @@ impl Pretty for Match {
         p.end();
     }
 }
+impl Visit for Match {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        &*self.expr.visit(v);
+        for x in &self.arms {
+            x.visit(v);
+        }
+    }
+}
 
 pub struct MethodCall {
     pub attrs: Vec<attr::Attr>,
@@ -1640,6 +2064,25 @@ impl Pretty for MethodCall {
         p.end();
     }
 }
+impl Visit for MethodCall {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        &*self.expr.visit(v);
+        &self.method.visit(v);
+        if let Some(x) = &self.turbofish {
+            x.visit(v);
+        }
+        for y in Puncted::pairs(&self.args) {
+            let x = y.value();
+            x.visit(v);
+        }
+    }
+}
 
 pub struct Parenth {
     pub attrs: Vec<attr::Attr>,
@@ -1667,6 +2110,17 @@ impl Pretty for Parenth {
         p.word(")");
     }
 }
+impl Visit for Parenth {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        &*self.expr.visit(v);
+    }
+}
 
 pub struct Path {
     pub attrs: Vec<attr::Attr>,
@@ -1690,6 +2144,20 @@ impl Pretty for Path {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
         &self.path.pretty_qpath(p, &self.qself, path::Kind::Expr);
+    }
+}
+impl Visit for Path {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        if let Some(x) = &self.qself {
+            x.visit(v);
+        }
+        &self.path.visit(v);
     }
 }
 
@@ -1719,6 +2187,23 @@ impl Pretty for Range {
         });
         if let Some(x) = &self.end {
             x.pretty(p);
+        }
+    }
+}
+impl Visit for Range {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        if let Some(x) = &self.beg {
+            &**x.visit(v);
+        }
+        &self.limits.visit(v);
+        if let Some(x) = &self.end {
+            &**x.visit(v);
         }
     }
 }
@@ -1756,6 +2241,17 @@ impl Pretty for Ref {
             p.word("mut ");
         }
         &self.expr.pretty(p);
+    }
+}
+impl Visit for Ref {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        &*self.expr.visit(v);
     }
 }
 
@@ -1798,6 +2294,18 @@ impl Pretty for Repeat {
         p.word("]");
     }
 }
+impl Visit for Repeat {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        &*self.expr.visit(v);
+        &*self.len.visit(v);
+    }
+}
 
 pub struct Return {
     pub attrs: Vec<attr::Attr>,
@@ -1824,6 +2332,19 @@ impl Pretty for Return {
         if let Some(x) = &self.expr {
             p.nbsp();
             x.pretty(p);
+        }
+    }
+}
+impl Visit for Return {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        if let Some(x) = &self.expr {
+            &**x.visit(v);
         }
     }
 }
@@ -1881,6 +2402,27 @@ impl Pretty for Struct {
         p.word("}");
     }
 }
+impl Visit for Struct {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        if let Some(x) = &self.qself {
+            x.visit(v);
+        }
+        &self.path.visit(v);
+        for y in Puncted::pairs(&self.fields) {
+            let x = y.value();
+            x.visit(v);
+        }
+        if let Some(x) = &self.rest {
+            &**x.visit(v);
+        }
+    }
+}
 
 pub struct Try {
     pub attrs: Vec<attr::Attr>,
@@ -1905,6 +2447,17 @@ impl Pretty for Try {
         p.outer_attrs(&self.attrs);
         &self.expr.pretty_beg_line(p, pretty::Args::beg_line(x));
         p.word("?");
+    }
+}
+impl Visit for Try {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        &*self.expr.visit(v);
     }
 }
 
@@ -1936,6 +2489,17 @@ impl Pretty for TryBlock {
         p.cbox(INDENT);
         p.small_block(&self.block, &self.attrs);
         p.end();
+    }
+}
+impl Visit for TryBlock {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        &self.block.visit(v);
     }
 }
 
@@ -1975,6 +2539,20 @@ impl Pretty for Tuple {
         p.word(")");
     }
 }
+impl Visit for Tuple {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        for y in Puncted::pairs(&self.elems) {
+            let x = y.value();
+            x.visit(v);
+        }
+    }
+}
 
 pub struct Unary {
     pub attrs: Vec<attr::Attr>,
@@ -2000,6 +2578,18 @@ impl Pretty for Unary {
         p.outer_attrs(&self.attrs);
         p.unary_operator(&self.op);
         &self.expr.pretty(p);
+    }
+}
+impl Visit for Unary {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        &self.op.visit(v);
+        &*self.expr.visit(v);
     }
 }
 
@@ -2039,6 +2629,17 @@ impl Pretty for Unsafe {
         p.cbox(INDENT);
         p.small_block(&self.block, &self.attrs);
         p.end();
+    }
+}
+impl Visit for Unsafe {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        &self.block.visit(v);
     }
 }
 
@@ -2101,6 +2702,21 @@ impl Pretty for While {
         p.word("}");
     }
 }
+impl Visit for While {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        if let Some(x) = &self.label {
+            x.visit(v);
+        }
+        &*self.cond.visit(v);
+        &self.body.visit(v);
+    }
+}
 
 pub struct Yield {
     pub attrs: Vec<attr::Attr>,
@@ -2136,6 +2752,19 @@ impl Pretty for Yield {
         if let Some(x) = &self.expr {
             p.nbsp();
             x.pretty(p);
+        }
+    }
+}
+impl Visit for Yield {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        if let Some(x) = &self.expr {
+            &**x.visit(v);
         }
     }
 }
@@ -2320,6 +2949,22 @@ impl Pretty for Member {
         }
     }
 }
+impl Visit for Member {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        use expr::Member::*;
+        match self {
+            Named(x) => {
+                x.visit(v);
+            },
+            Unnamed(x) => {
+                x.visit(v);
+            },
+        }
+    }
+}
 
 pub struct Idx {
     pub idx: u32,
@@ -2363,6 +3008,14 @@ impl Lower for Idx {
 impl Pretty for Idx {
     fn pretty(&self, p: &mut Print) {
         p.word(self.idx.to_string());
+    }
+}
+impl Visit for Idx {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &self.span.visit(v);
     }
 }
 
@@ -2613,6 +3266,19 @@ impl Pretty for UnOp {
         });
     }
 }
+impl Visit for UnOp {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        use expr::UnOp::*;
+        match self {
+            Deref(x) => {},
+            Not(x) => {},
+            Neg(x) => {},
+        }
+    }
+}
 
 pub struct FieldValue {
     pub attrs: Vec<attr::Attr>,
@@ -2668,6 +3334,18 @@ impl Pretty for FieldValue {
         }
     }
 }
+impl Visit for FieldValue {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        &self.memb.visit(v);
+        &self.expr.visit(v);
+    }
+}
 
 pub struct Label {
     pub name: Life,
@@ -2700,6 +3378,14 @@ impl Pretty for Label {
     fn pretty(&self, p: &mut Print) {
         p.lifetime(&self.name);
         p.word(": ");
+    }
+}
+impl Visit for Label {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &self.name.visit(v);
     }
 }
 
@@ -2901,6 +3587,18 @@ impl Lower for Limits {
         match self {
             Limits::HalfOpen(x) => x.lower(s),
             Limits::Closed(x) => x.lower(s),
+        }
+    }
+}
+impl Visit for Limits {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        use expr::Limits::*;
+        match self {
+            HalfOpen(x) => {},
+            Closed(x) => {},
         }
     }
 }

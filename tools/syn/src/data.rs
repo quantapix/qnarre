@@ -109,6 +109,20 @@ impl Visit for Input {
         &self.data.visit(v);
     }
 }
+impl VisitMut for Input {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &mut self.attrs {
+            x.visit_mut(v);
+        }
+        &mut self.vis.visit_mut(v);
+        &mut self.ident.visit_mut(v);
+        &mut self.gens.visit_mut(v);
+        &mut self.data.visit_mut(v);
+    }
+}
 
 pub enum Visibility {
     Public(Token![pub]),
@@ -196,18 +210,19 @@ impl Pretty for Visibility {
         }
     }
 }
-impl VisitMut for Input {
-    fn visit_mut<V>(&mut self, v: &mut V)
+impl Visit for Visibility {
+    fn visit<V>(&self, v: &mut V)
     where
         V: Visitor + ?Sized,
     {
-        for x in &mut self.attrs {
-            x.visit_mut(v);
+        use Visibility::*;
+        match self {
+            Public(x) => {},
+            Restricted(x) => {
+                x.visit(v);
+            },
+            Inherited => {},
         }
-        &mut self.vis.visit_mut(v);
-        &mut self.ident.visit_mut(v);
-        &mut self.gens.visit_mut(v);
-        &mut self.data.visit_mut(v);
     }
 }
 
@@ -238,6 +253,14 @@ impl Pretty for Restricted {
         }
         p.path(&self.path, path::Kind::Simple);
         p.word(") ");
+    }
+}
+impl Visit for Restricted {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &*self.path.visit(v);
     }
 }
 
@@ -432,6 +455,21 @@ impl Pretty for Variant {
         }
     }
 }
+impl Visit for Variant {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        &self.ident.visit(v);
+        &self.fields.visit(v);
+        if let Some(x) = &self.discrim {
+            &(x).1.visit(v);
+        }
+    }
+}
 
 enum_of_structs! {
     pub enum Fields {
@@ -500,6 +538,23 @@ impl<'a> IntoIterator for &'a mut Fields {
         self.iter_mut()
     }
 }
+impl Visit for Fields {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        use Fields::*;
+        match self {
+            Named(x) => {
+                x.visit(v);
+            },
+            Unnamed(x) => {
+                x.visit(v);
+            },
+            Unit => {},
+        }
+    }
+}
 
 pub struct Named {
     pub brace: tok::Brace,
@@ -519,6 +574,17 @@ impl Lower for Named {
         self.brace.surround(s, |s| {
             self.fields.lower(s);
         });
+    }
+}
+impl Visit for Named {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for y in Puncted::pairs(&self.fields) {
+            let x = y.value();
+            x.visit(v);
+        }
     }
 }
 
@@ -552,6 +618,17 @@ impl Pretty for Unnamed {
         }
         p.offset(-INDENT);
         p.word(")");
+    }
+}
+impl Visit for Unnamed {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for y in Puncted::pairs(&self.fields) {
+            let x = y.value();
+            x.visit(v);
+        }
     }
 }
 
@@ -611,9 +688,35 @@ impl Pretty for Field {
         p.ty(&self.typ);
     }
 }
+impl Visit for Field {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        &self.vis.visit(v);
+        &self.mut_.visit(v);
+        if let Some(x) = &self.ident {
+            x.visit(v);
+        }
+        &self.typ.visit(v);
+    }
+}
 
 pub enum Mut {
     None,
+}
+impl Visit for Mut {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        match self {
+            Mut::None => {},
+        }
+    }
 }
 
 pub fn parse_struct(s: Stream) -> Res<(Option<gen::Where>, Fields, Option<Token![;]>)> {
