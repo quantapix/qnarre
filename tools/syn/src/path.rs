@@ -501,6 +501,17 @@ impl Pretty for Angled {
         p.word(">");
     }
 }
+impl Visit for Angled {
+    fn visit<'a, V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for y in Puncted::pairs(&self.args) {
+            let x = y.value();
+            x.visit(v);
+        }
+    }
+}
 impl VisitMut for Angled {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
@@ -535,6 +546,18 @@ impl Pretty for AssocType {
         }
         p.word(" = ");
         &self.typ.pretty(p);
+    }
+}
+impl Visit for AssocType {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &self.ident.visit(v);
+        if let Some(x) = &self.args {
+            x.visit(v);
+        }
+        &self.ty.visit(v);
     }
 }
 impl VisitMut for AssocType {
@@ -572,6 +595,18 @@ impl Pretty for AssocConst {
         }
         p.word(" = ");
         &self.val.pretty(p);
+    }
+}
+impl Visit for AssocConst {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &self.ident.visit(v);
+        if let Some(x) = &self.args {
+            x.visit(v);
+        }
+        &self.val.visit(v);
     }
 }
 impl VisitMut for AssocConst {
@@ -618,6 +653,21 @@ impl Pretty for Constraint {
             &x.pretty(p);
         }
         p.end();
+    }
+}
+impl Visit for Constraint {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &self.ident.visit(v);
+        if let Some(x) = &self.args {
+            x.visit(v);
+        }
+        for y in Puncted::pairs(&self.bounds) {
+            let x = y.value();
+            x.visit(v);
+        }
     }
 }
 impl VisitMut for Constraint {

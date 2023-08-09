@@ -35,7 +35,7 @@ impl Parse for Type {
 }
 impl Pretty for Type {
     fn pretty(&self, p: &mut Print) {
-        use typ::Type::*;
+        use Type::*;
         match self {
             Array(x) => x.pretty(p),
             Fn(x) => x.pretty(p),
@@ -666,6 +666,16 @@ impl Pretty for Abi {
         }
     }
 }
+impl Visit for Abi {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        if let Some(x) = &self.name {
+            x.visit(v);
+        }
+    }
+}
 impl VisitMut for Abi {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
@@ -708,6 +718,20 @@ impl Pretty for FnArg {
         &self.typ.pretty(p);
     }
 }
+impl Visit for FnArg {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        if let Some(x) = &self.name {
+            &(x).0.visit(v);
+        }
+        &self.typ.visit(v);
+    }
+}
 impl VisitMut for FnArg {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
@@ -748,6 +772,19 @@ impl Pretty for Variadic {
             p.word(": ");
         }
         p.word("...");
+    }
+}
+impl Visit for Variadic {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        if let Some(x) = &self.name {
+            &(x).0.visit(v);
+        }
     }
 }
 impl VisitMut for Variadic {

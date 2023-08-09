@@ -5,6 +5,18 @@ pub enum Style {
     Outer,
     Inner(Token![!]),
 }
+impl Visit for Style {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        use Style::*;
+        match self {
+            Inner(_) => {},
+            Outer => {},
+        }
+    }
+}
 impl VisitMut for Style {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
@@ -153,6 +165,15 @@ impl Pretty for Attr {
         &self.meta.pretty(p);
         p.word("]");
         p.space();
+    }
+}
+impl Visit for Attr {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &self.style.visit(v);
+        &self.meta.visit(v);
     }
 }
 impl VisitMut for Attr {

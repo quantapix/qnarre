@@ -2494,6 +2494,44 @@ impl Pretty for BinOp {
         });
     }
 }
+impl Visit for BinOp {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        use BinOp::*;
+        match self {
+            Add(x) => {},
+            AddAssign(x) => {},
+            And(x) => {},
+            BitAnd(x) => {},
+            BitAndAssign(x) => {},
+            BitOr(x) => {},
+            BitOrAssign(x) => {},
+            BitXor(x) => {},
+            BitXorAssign(x) => {},
+            Div(x) => {},
+            DivAssign(x) => {},
+            Eq(x) => {},
+            Ge(x) => {},
+            Gt(x) => {},
+            Le(x) => {},
+            Lt(x) => {},
+            Mul(x) => {},
+            MulAssign(x) => {},
+            Ne(x) => {},
+            Or(x) => {},
+            Rem(x) => {},
+            RemAssign(x) => {},
+            Shl(x) => {},
+            ShlAssign(x) => {},
+            Shr(x) => {},
+            ShrAssign(x) => {},
+            Sub(x) => {},
+            SubAssign(x) => {},
+        }
+    }
+}
 impl VisitMut for BinOp {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
@@ -2502,33 +2540,33 @@ impl VisitMut for BinOp {
         use BinOp::*;
         match self {
             Add(x) => {},
-            Sub(x) => {},
-            Mul(x) => {},
-            Div(x) => {},
-            Rem(x) => {},
+            AddAssign(x) => {},
             And(x) => {},
-            Or(x) => {},
-            BitXor(x) => {},
             BitAnd(x) => {},
+            BitAndAssign(x) => {},
             BitOr(x) => {},
-            Shl(x) => {},
-            Shr(x) => {},
+            BitOrAssign(x) => {},
+            BitXor(x) => {},
+            BitXorAssign(x) => {},
+            Div(x) => {},
+            DivAssign(x) => {},
             Eq(x) => {},
-            Lt(x) => {},
-            Le(x) => {},
-            Ne(x) => {},
             Ge(x) => {},
             Gt(x) => {},
-            AddAssign(x) => {},
-            SubAssign(x) => {},
+            Le(x) => {},
+            Lt(x) => {},
+            Mul(x) => {},
             MulAssign(x) => {},
-            DivAssign(x) => {},
+            Ne(x) => {},
+            Or(x) => {},
+            Rem(x) => {},
             RemAssign(x) => {},
-            BitXorAssign(x) => {},
-            BitAndAssign(x) => {},
-            BitOrAssign(x) => {},
+            Shl(x) => {},
             ShlAssign(x) => {},
+            Shr(x) => {},
             ShrAssign(x) => {},
+            Sub(x) => {},
+            SubAssign(x) => {},
         }
     }
 }
@@ -2591,7 +2629,7 @@ impl Parse for FieldValue {
             let y: Expr = s.parse()?;
             (Some(colon), y)
         } else if let Member::Named(x) = &memb {
-            let y = Expr::Path(expr::Path {
+            let y = Expr::Path(Path {
                 attrs: Vec::new(),
                 qself: None,
                 path: Path::from(x.clone()),
@@ -2788,6 +2826,21 @@ impl Pretty for Arm {
             p.end();
             p.end();
         }
+    }
+}
+impl Visit for Arm {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        &self.pat.visit(v);
+        if let Some(x) = &self.guard {
+            &*(x).1.visit(v);
+        }
+        &*self.body.visit(v);
     }
 }
 impl VisitMut for Arm {
@@ -3280,7 +3333,7 @@ fn path_or_macro_or_struct(x: Stream, allow: AllowStruct) -> Res<Expr> {
     if allow.0 && x.peek(tok::Brace) {
         return expr_struct(x, qself, path).map(Expr::Struct);
     }
-    Ok(Expr::Path(expr::Path {
+    Ok(Expr::Path(Path {
         attrs: Vec::new(),
         qself,
         path,

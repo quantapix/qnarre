@@ -49,6 +49,16 @@ impl Lower for Block {
         });
     }
 }
+impl Visit for Block {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.stmts {
+            x.visit(v);
+        }
+    }
+}
 impl VisitMut for Block {
     fn visit_mut<V>(&mut self, v: &mut V)
     where

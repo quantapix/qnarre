@@ -95,6 +95,20 @@ impl Lower for Input {
         }
     }
 }
+impl Visit for Input {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        &self.vis.visit(v);
+        &self.ident.visit(v);
+        &self.gens.visit(v);
+        &self.data.visit(v);
+    }
+}
 
 pub enum Visibility {
     Public(Token![pub]),
@@ -232,6 +246,25 @@ pub enum Data {
     Struct(Struct),
     Union(Union),
 }
+impl Visit for Data {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        use Data::*;
+        match self {
+            Enum(x) => {
+                x.visit(v);
+            },
+            Struct(x) => {
+                x.visit(v);
+            },
+            Union(x) => {
+                x.visit(v);
+            },
+        }
+    }
+}
 impl VisitMut for Data {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
@@ -239,10 +272,10 @@ impl VisitMut for Data {
     {
         use Data::*;
         match self {
-            Struct(x) => {
+            Enum(x) => {
                 x.visit_mut(v);
             },
-            Enum(x) => {
+            Struct(x) => {
                 x.visit_mut(v);
             },
             Union(x) => {
@@ -256,6 +289,17 @@ pub struct Enum {
     pub enum_: Token![enum],
     pub brace: tok::Brace,
     pub variants: Puncted<Variant, Token![,]>,
+}
+impl Visit for Enum {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for y in Puncted::pairs(&self.variants) {
+            let x = y.value();
+            x.visit(v);
+        }
+    }
 }
 impl VisitMut for Enum {
     fn visit_mut<V>(&mut self, v: &mut V)
@@ -274,6 +318,14 @@ pub struct Struct {
     pub fields: Fields,
     pub semi: Option<Token![;]>,
 }
+impl Visit for Struct {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &self.fields.visit(v);
+    }
+}
 impl VisitMut for Struct {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
@@ -286,6 +338,14 @@ impl VisitMut for Struct {
 pub struct Union {
     pub union_: Token![union],
     pub fields: Named,
+}
+impl Visit for Union {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &self.fields.visit(v);
+    }
 }
 impl VisitMut for Union {
     fn visit_mut<V>(&mut self, v: &mut V)
