@@ -2,74 +2,6 @@ use super::*;
 
 struct NoSemi(bool);
 
-pub struct Block {
-    pub brace: tok::Brace,
-    pub stmts: Vec<Stmt>,
-}
-impl Block {
-    pub fn parse_within(s: Stream) -> Res<Vec<Stmt>> {
-        let mut ys = Vec::new();
-        loop {
-            use Stmt::*;
-            while let semi @ Some(_) = s.parse()? {
-                ys.push(Expr(expr::Expr::Verbatim(pm2::Stream::new()), semi));
-            }
-            if s.is_empty() {
-                break;
-            }
-            let y = parse_stmt(s, NoSemi(true))?;
-            let semi = match &y {
-                Expr(x, None) => x.needs_term(),
-                Mac(x) => x.semi.is_none() && !x.mac.delim.is_brace(),
-                Local(_) | Item(_) | Expr(_, Some(_)) => false,
-            };
-            ys.push(y);
-            if s.is_empty() {
-                break;
-            } else if semi {
-                return Err(s.error("unexpected token, expected `;`"));
-            }
-        }
-        Ok(ys)
-    }
-}
-impl Parse for Block {
-    fn parse(s: Stream) -> Res<Self> {
-        let y;
-        Ok(Block {
-            brace: braced!(y in s),
-            stmts: y.call(stmt::Block::parse_within)?,
-        })
-    }
-}
-impl Lower for Block {
-    fn lower(&self, s: &mut Stream) {
-        self.brace.surround(s, |s| {
-            s.append_all(&self.stmts);
-        });
-    }
-}
-impl Visit for Block {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
-        for x in &self.stmts {
-            x.visit(v);
-        }
-    }
-}
-impl VisitMut for Block {
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
-        for x in &mut self.stmts {
-            x.visit_mut(v);
-        }
-    }
-}
-
 pub enum Stmt {
     Expr(Expr, Option<Token![;]>),
     Item(Item),
@@ -166,6 +98,50 @@ impl Pretty for Stmt {
         }
     }
 }
+impl Visit for Stmt {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        use Stmt::*;
+        match self {
+            Local(x) => {
+                x.visit(v);
+            },
+            Item(x) => {
+                x.visit(v);
+            },
+            Expr(x, y) => {
+                x.visit(v);
+            },
+            Mac(x) => {
+                x.visit(v);
+            },
+        }
+    }
+}
+impl VisitMut for Stmt {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        use Stmt::*;
+        match self {
+            Local(x) => {
+                x.visit_mut(v);
+            },
+            Item(x) => {
+                x.visit_mut(v);
+            },
+            Expr(_binding_0, _binding_1) => {
+                x.visit_mut(v);
+            },
+            Mac(x) => {
+                x.visit_mut(v);
+            },
+        }
+    }
+}
 
 pub use expr::Expr;
 pub use item::Item;
@@ -193,11 +169,33 @@ impl Lower for Local {
         self.semi.lower(s);
     }
 }
-
-pub struct Init {
-    pub eq: Token![=],
-    pub expr: Box<Expr>,
-    pub diverge: Option<(Token![else], Box<Expr>)>,
+impl Visit for Local {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        &self.pat.visit(v);
+        if let Some(x) = &self.init {
+            x.visit(v);
+        }
+    }
+}
+impl VisitMut for Local {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &mut self.attrs {
+            x.visit_mut(v);
+        }
+        &mut self.pat.visit_mut(v);
+        if let Some(x) = &mut self.init {
+            x.visit_mut(v);
+        }
+    }
 }
 
 pub struct Mac {
@@ -210,6 +208,124 @@ impl Lower for Mac {
         attr::lower_outers(&self.attrs, s);
         self.mac.lower(s);
         self.semi.lower(s);
+    }
+}
+impl Visit for Mac {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.attrs {
+            x.visit(v);
+        }
+        &self.mac.visit(v);
+    }
+}
+impl VisitMut for Mac {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &mut self.attrs {
+            x.visit_mut(v);
+        }
+        &mut self.mac.visit_mut(v);
+    }
+}
+
+pub struct Block {
+    pub brace: tok::Brace,
+    pub stmts: Vec<Stmt>,
+}
+impl Block {
+    pub fn parse_within(s: Stream) -> Res<Vec<Stmt>> {
+        let mut ys = Vec::new();
+        loop {
+            use Stmt::*;
+            while let semi @ Some(_) = s.parse()? {
+                ys.push(Expr(expr::Expr::Verbatim(pm2::Stream::new()), semi));
+            }
+            if s.is_empty() {
+                break;
+            }
+            let y = parse_stmt(s, NoSemi(true))?;
+            let semi = match &y {
+                Expr(x, None) => x.needs_term(),
+                Mac(x) => x.semi.is_none() && !x.mac.delim.is_brace(),
+                Local(_) | Item(_) | Expr(_, Some(_)) => false,
+            };
+            ys.push(y);
+            if s.is_empty() {
+                break;
+            } else if semi {
+                return Err(s.error("unexpected token, expected `;`"));
+            }
+        }
+        Ok(ys)
+    }
+}
+impl Parse for Block {
+    fn parse(s: Stream) -> Res<Self> {
+        let y;
+        Ok(Block {
+            brace: braced!(y in s),
+            stmts: y.call(Block::parse_within)?,
+        })
+    }
+}
+impl Lower for Block {
+    fn lower(&self, s: &mut Stream) {
+        self.brace.surround(s, |s| {
+            s.append_all(&self.stmts);
+        });
+    }
+}
+impl Visit for Block {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &self.stmts {
+            x.visit(v);
+        }
+    }
+}
+impl VisitMut for Block {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for x in &mut self.stmts {
+            x.visit_mut(v);
+        }
+    }
+}
+
+pub struct Init {
+    pub eq: Token![=],
+    pub expr: Box<Expr>,
+    pub diverge: Option<(Token![else], Box<Expr>)>,
+}
+impl Visit for Init {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &*self.expr.visit(v);
+        if let Some(x) = &self.diverge {
+            &*(x).1.visit(v);
+        }
+    }
+}
+impl VisitMut for Init {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &mut *self.expr.visit_mut(v);
+        if let Some(x) = &mut self.diverge {
+            &mut *(x).1.visit_mut(v);
+        }
     }
 }
 

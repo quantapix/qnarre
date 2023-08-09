@@ -55,6 +55,112 @@ impl Pretty for Type {
         }
     }
 }
+impl Visit for Type {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        use Type::*;
+        match self {
+            Array(x) => {
+                x.visit(v);
+            },
+            Fn(x) => {
+                x.visit(v);
+            },
+            Group(x) => {
+                x.visit(v);
+            },
+            Impl(x) => {
+                x.visit(v);
+            },
+            Infer(x) => {
+                x.visit(v);
+            },
+            Mac(x) => {
+                x.visit(v);
+            },
+            Never(x) => {
+                x.visit(v);
+            },
+            Parenth(x) => {
+                x.visit(v);
+            },
+            Path(x) => {
+                x.visit(v);
+            },
+            Ptr(x) => {
+                x.visit(v);
+            },
+            Ref(x) => {
+                x.visit(v);
+            },
+            Slice(x) => {
+                x.visit(v);
+            },
+            Trait(x) => {
+                x.visit(v);
+            },
+            Tuple(x) => {
+                x.visit(v);
+            },
+            Verbatim(x) => {},
+        }
+    }
+}
+impl VisitMut for Type {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        use Type::*;
+        match self {
+            Array(x) => {
+                x.visit_mut(v);
+            },
+            Fn(x) => {
+                x.visit_mut(v);
+            },
+            Group(x) => {
+                x.visit_mut(v);
+            },
+            Impl(x) => {
+                x.visit_mut(v);
+            },
+            Infer(x) => {
+                x.visit_mut(v);
+            },
+            Mac(x) => {
+                x.visit_mut(v);
+            },
+            Never(x) => {
+                x.visit_mut(v);
+            },
+            Parenth(x) => {
+                x.visit_mut(v);
+            },
+            Path(x) => {
+                x.visit_mut(v);
+            },
+            Ptr(x) => {
+                x.visit_mut(v);
+            },
+            Ref(x) => {
+                x.visit_mut(v);
+            },
+            Slice(x) => {
+                x.visit_mut(v);
+            },
+            Trait(x) => {
+                x.visit_mut(v);
+            },
+            Tuple(x) => {
+                x.visit_mut(v);
+            },
+            Stream(x) => {},
+        }
+    }
+}
 
 pub struct Array {
     pub bracket: tok::Bracket,
@@ -89,6 +195,24 @@ impl Pretty for Array {
         p.word("; ");
         &self.len.pretty(p);
         p.word("]");
+    }
+}
+impl Visit for Array {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &*self.elem.visit(v);
+        &self.len.visit(v);
+    }
+}
+impl VisitMut for Array {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &mut *self.elem.visit_mut(v);
+        &mut self.len.visit_mut(v);
     }
 }
 
@@ -186,6 +310,48 @@ impl Pretty for Fn {
         &self.ret.pretty(p)
     }
 }
+impl Visit for Fn {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        if let Some(x) = &self.lifes {
+            x.visit(v);
+        }
+        if let Some(x) = &self.abi {
+            x.visit(v);
+        }
+        for y in Puncted::pairs(&self.args) {
+            let x = y.value();
+            x.visit(v);
+        }
+        if let Some(x) = &self.vari {
+            x.visit(v);
+        }
+        &self.ret.visit(v);
+    }
+}
+impl VisitMut for Fn {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        if let Some(x) = &mut self.lifes {
+            x.visit_mut(v);
+        }
+        if let Some(x) = &mut self.abi {
+            x.visit_mut(v);
+        }
+        for mut y in Puncted::pairs_mut(&mut self.args) {
+            let x = y.value_mut();
+            x.visit_mut(v);
+        }
+        if let Some(x) = &mut self.vari {
+            x.visit_mut(v);
+        }
+        &mut self.ret.visit_mut(v);
+    }
+}
 
 pub struct Group {
     pub group: tok::Group,
@@ -210,6 +376,22 @@ impl Lower for Group {
 impl Pretty for Group {
     fn pretty(&self, p: &mut Print) {
         &self.elem.pretty(p);
+    }
+}
+impl Visit for Group {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &*self.elem.visit(v);
+    }
+}
+impl VisitMut for Group {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &mut *self.elem.visit_mut(v);
     }
 }
 
@@ -268,6 +450,28 @@ impl Pretty for Impl {
         }
     }
 }
+impl Visit for Impl {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for y in Puncted::pairs(&self.bounds) {
+            let x = y.value();
+            x.visit(v);
+        }
+    }
+}
+impl VisitMut for Impl {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for mut y in Puncted::pairs_mut(&mut self.bounds) {
+            let x = y.value_mut();
+            x.visit_mut(v);
+        }
+    }
+}
 
 pub struct Infer {
     pub underscore: Token![_],
@@ -286,6 +490,20 @@ impl Pretty for Infer {
     fn pretty(&self, p: &mut Print) {
         let _ = self;
         p.word("_");
+    }
+}
+impl Visit for Infer {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+    }
+}
+impl VisitMut for Infer {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
     }
 }
 
@@ -308,6 +526,22 @@ impl Pretty for Mac {
         &self.mac.pretty_with_args(p, (None, semi));
     }
 }
+impl Visit for Mac {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &self.mac.visit(v);
+    }
+}
+impl VisitMut for Mac {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &mut self.mac.visit_mut(v);
+    }
+}
 
 pub struct Never {
     pub bang: Token![!],
@@ -326,6 +560,20 @@ impl Pretty for Never {
     fn pretty(&self, p: &mut Print) {
         let _ = self;
         p.word("!");
+    }
+}
+impl Visit for Never {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+    }
+}
+impl VisitMut for Never {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
     }
 }
 
@@ -365,6 +613,22 @@ impl Pretty for Parenth {
         p.word(")");
     }
 }
+impl Visit for Parenth {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &*self.elem.visit(v);
+    }
+}
+impl VisitMut for Parenth {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &mut *self.elem.visit_mut(v);
+    }
+}
 
 pub struct Path {
     pub qself: Option<path::QSelf>,
@@ -385,6 +649,28 @@ impl Lower for Path {
 impl Pretty for Path {
     fn pretty(&self, p: &mut Print) {
         &self.path.pretty_qpath(p, &self.qself, path::Kind::Type);
+    }
+}
+impl Visit for Path {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        if let Some(x) = &self.qself {
+            x.visit(v);
+        }
+        &self.path.visit(v);
+    }
+}
+impl VisitMut for Path {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        if let Some(x) = &mut self.qself {
+            x.visit_mut(v);
+        }
+        &mut self.path.visit_mut(v);
     }
 }
 
@@ -436,6 +722,22 @@ impl Pretty for Ptr {
         &self.elem.pretty(p);
     }
 }
+impl Visit for Ptr {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &*self.elem.visit(v);
+    }
+}
+impl VisitMut for Ptr {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &mut *self.elem.visit_mut(v);
+    }
+}
 
 pub struct Ref {
     pub and: Token![&],
@@ -474,6 +776,28 @@ impl Pretty for Ref {
         &self.elem.pretty(p);
     }
 }
+impl Visit for Ref {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        if let Some(x) = &self.life {
+            x.visit(v);
+        }
+        &*self.elem.visit(v);
+    }
+}
+impl VisitMut for Ref {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        if let Some(x) = &mut self.life {
+            x.visit_mut(v);
+        }
+        &mut *self.elem.visit_mut(v);
+    }
+}
 
 pub struct Slice {
     pub bracket: tok::Bracket,
@@ -500,6 +824,22 @@ impl Pretty for Slice {
         p.word("[");
         &self.elem.pretty(p);
         p.word("]");
+    }
+}
+impl Visit for Slice {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &*self.elem.visit(v);
+    }
+}
+impl VisitMut for Slice {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &mut *self.elem.visit_mut(v);
     }
 }
 
@@ -566,6 +906,28 @@ impl Pretty for Trait {
         }
     }
 }
+impl Visit for Trait {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for y in Puncted::pairs(&self.bounds) {
+            let x = y.value();
+            x.visit(v);
+        }
+    }
+}
+impl VisitMut for Trait {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for mut y in Puncted::pairs_mut(&mut self.bounds) {
+            let x = y.value_mut();
+            x.visit_mut(v);
+        }
+    }
+}
 
 pub struct Tuple {
     pub parenth: tok::Parenth,
@@ -627,6 +989,28 @@ impl Pretty for Tuple {
         p.offset(-INDENT);
         p.end();
         p.word(")");
+    }
+}
+impl Visit for Tuple {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for y in Puncted::pairs(&self.elems) {
+            let x = y.value();
+            x.visit(v);
+        }
+    }
+}
+impl VisitMut for Tuple {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for mut y in Puncted::pairs_mut(&mut self.elems) {
+            let x = y.value_mut();
+            x.visit_mut(v);
+        }
     }
 }
 
@@ -846,6 +1230,34 @@ impl Pretty for Ret {
             Type(_, x) => {
                 p.word(" -> ");
                 x.pretty(p);
+            },
+        }
+    }
+}
+impl Visit for Ret {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        use Ret::*;
+        match self {
+            Default => {},
+            Type(_, x) => {
+                &**x.visit(v);
+            },
+        }
+    }
+}
+impl VisitMut for Ret {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        use Ret::*;
+        match self {
+            Default => {},
+            Type(_, x) => {
+                &mut **x.visit_mut(v);
             },
         }
     }

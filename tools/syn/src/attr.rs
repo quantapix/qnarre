@@ -185,6 +185,7 @@ impl VisitMut for Attr {
         &mut self.meta.visit_mut(v);
     }
 }
+
 fn trim_trailing(x: &mut String) {
     x.truncate(x.trim_end_matches(' ').len());
 }
@@ -227,16 +228,16 @@ fn is_blocklike(x: &str) -> bool {
 }
 
 impl Print {
-    pub fn outer_attrs(&mut self, xs: &[attr::Attr]) {
+    pub fn outer_attrs(&mut self, xs: &[Attr]) {
         for x in xs {
-            if let attr::Style::Outer = x.style {
+            if let Style::Outer = x.style {
                 x.pretty(self);
             }
         }
     }
-    pub fn inner_attrs(&mut self, xs: &[attr::Attr]) {
+    pub fn inner_attrs(&mut self, xs: &[Attr]) {
         for x in xs {
-            if let attr::Style::Inner(_) = x.style {
+            if let Style::Inner(_) = x.style {
                 x.pretty(self);
             }
         }
@@ -394,6 +395,25 @@ impl Pretty for Meta {
             List(x) => x.pretty(p),
             NameValue(x) => x.pretty(p),
             Path(x) => p.path(x, path::Kind::Simple),
+        }
+    }
+}
+impl Visit for Meta {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        use Meta::*;
+        match self {
+            Path(x) => {
+                x.visit(v);
+            },
+            List(x) => {
+                x.visit(v);
+            },
+            NameValue(x) => {
+                x.visit(v);
+            },
         }
     }
 }
@@ -560,6 +580,24 @@ impl Pretty for List {
         }
     }
 }
+impl Visit for List {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &self.path.visit(v);
+        &self.delim.visit(v);
+    }
+}
+impl VisitMut for List {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &mut self.path.visit_mut(v);
+        &mut self.delim.visit_mut(v);
+    }
+}
 
 pub struct NameValue {
     pub name: Path,
@@ -584,6 +622,24 @@ impl Pretty for NameValue {
         p.path(&self.name, path::Kind::Simple);
         p.word(" = ");
         p.expr(&self.val);
+    }
+}
+impl Visit for NameValue {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &self.name.visit(v);
+        &self.val.visit(v);
+    }
+}
+impl VisitMut for NameValue {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &mut self.name.visit_mut(v);
+        &mut self.val.visit_mut(v);
     }
 }
 

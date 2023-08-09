@@ -152,6 +152,28 @@ impl Pretty for Path {
         }
     }
 }
+impl Visit for Path {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for y in Puncted::pairs(&self.segs) {
+            let x = y.value();
+            x.visit(v);
+        }
+    }
+}
+impl VisitMut for Path {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for mut y in Puncted::pairs_mut(&mut self.segs) {
+            let x = y.value_mut();
+            x.visit_mut(v);
+        }
+    }
+}
 
 pub struct Segment {
     pub ident: Ident,
@@ -206,6 +228,24 @@ impl Pretty for Segment {
         &self.args.pretty_with_args(p, x);
     }
 }
+impl Visit for Segment {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &self.ident.visit(v);
+        &self.args.visit(v);
+    }
+}
+impl VisitMut for Segment {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &mut self.ident.visit_mut(v);
+        &mut self.args.visit_mut(v);
+    }
+}
 
 pub enum Args {
     None,
@@ -258,6 +298,40 @@ impl Pretty for Args {
             },
             Parenthed(x) => {
                 x.pretty(p);
+            },
+        }
+    }
+}
+impl Visit for Args {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        use Args::*;
+        match self {
+            None => {},
+            Angled(x) => {
+                x.visit(v);
+            },
+            Parenthed(x) => {
+                x.visit(v);
+            },
+        }
+    }
+}
+impl VisitMut for Args {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        use Args::*;
+        match self {
+            None => {},
+            Angled(x) => {
+                x.visit_mut(v);
+            },
+            Parenthed(x) => {
+                x.visit_mut(v);
             },
         }
     }
@@ -390,6 +464,62 @@ impl Pretty for Arg {
         }
     }
 }
+impl Visit for Arg {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        use Arg::*;
+        match self {
+            Life(x) => {
+                x.visit(v);
+            },
+            Type(x) => {
+                x.visit(v);
+            },
+            Const(x) => {
+                x.visit(v);
+            },
+            AssocType(x) => {
+                x.visit(v);
+            },
+            AssocConst(x) => {
+                x.visit(v);
+            },
+            Constraint(x) => {
+                x.visit(v);
+            },
+        }
+    }
+}
+impl VisitMut for Arg {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        use Arg::*;
+        match self {
+            Life(x) => {
+                x.visit_mut(v);
+            },
+            Type(x) => {
+                x.visit_mut(v);
+            },
+            Const(x) => {
+                x.visit_mut(v);
+            },
+            AssocType(x) => {
+                x.visit_mut(v);
+            },
+            AssocConst(x) => {
+                x.visit_mut(v);
+            },
+            Constraint(x) => {
+                x.visit_mut(v);
+            },
+        }
+    }
+}
 
 pub use expr::Expr;
 
@@ -440,24 +570,26 @@ impl Lower for Angled {
         self.lt.lower(s);
         let mut trailing_or_empty = true;
         for x in self.args.pairs() {
+            use Arg::*;
             match x.value() {
-                Arg::Life(_) => {
+                Life(_) => {
                     x.lower(s);
                     trailing_or_empty = x.punct().is_some();
                 },
-                Arg::Type(_) | Arg::Const(_) | Arg::AssocType(_) | Arg::AssocConst(_) | Arg::Constraint(_) => {},
+                Type(_) | Const(_) | AssocType(_) | AssocConst(_) | Constraint(_) => {},
             }
         }
         for x in self.args.pairs() {
+            use Arg::*;
             match x.value() {
-                Arg::Type(_) | Arg::Const(_) | Arg::AssocType(_) | Arg::AssocConst(_) | Arg::Constraint(_) => {
+                Type(_) | Const(_) | AssocType(_) | AssocConst(_) | Constraint(_) => {
                     if !trailing_or_empty {
                         <Token![,]>::default().lower(s);
                     }
                     x.lower(s);
                     trailing_or_empty = x.punct().is_some();
                 },
-                Arg::Life(_) => {},
+                Life(_) => {},
             }
         }
         self.gt.lower(s);
@@ -521,6 +653,69 @@ impl VisitMut for Angled {
             let x = y.value_mut();
             x.visit_mut(v);
         }
+    }
+}
+
+pub struct Parenthed {
+    pub parenth: tok::Parenth,
+    pub args: Puncted<typ::Type, Token![,]>,
+    pub ret: typ::Ret,
+}
+impl Parse for Parenthed {
+    fn parse(s: Stream) -> Res<Self> {
+        let y;
+        Ok(Parenthed {
+            parenth: parenthed!(y in s),
+            args: y.parse_terminated(typ::Type::parse, Token![,])?,
+            ret: s.call(typ::Ret::without_plus)?,
+        })
+    }
+}
+impl Lower for Parenthed {
+    fn lower(&self, s: &mut Stream) {
+        self.parenth.surround(s, |s| {
+            self.args.lower(s);
+        });
+        self.ret.lower(s);
+    }
+}
+impl Pretty for Parenthed {
+    fn pretty(&self, p: &mut Print) {
+        p.cbox(INDENT);
+        p.word("(");
+        p.zerobreak();
+        for x in self.args.iter().delimited() {
+            &x.pretty(p);
+            p.trailing_comma(x.is_last);
+        }
+        p.offset(-INDENT);
+        p.word(")");
+        &self.ret.pretty(p);
+        p.end();
+    }
+}
+impl Visit for Parenthed {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for y in Puncted::pairs(&self.ins) {
+            let x = y.value();
+            x.visit(v);
+        }
+        &self.out.visit(v);
+    }
+}
+impl VisitMut for Parenthed {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        for mut y in Puncted::pairs_mut(&mut self.ins) {
+            let x = y.value_mut();
+            x.visit_mut(v);
+        }
+        &mut self.out.visit_mut(v);
     }
 }
 
@@ -686,51 +881,28 @@ impl VisitMut for Constraint {
     }
 }
 
-pub struct Parenthed {
-    pub parenth: tok::Parenth,
-    pub args: Puncted<typ::Type, Token![,]>,
-    pub ret: typ::Ret,
-}
-impl Parse for Parenthed {
-    fn parse(s: Stream) -> Res<Self> {
-        let y;
-        Ok(Parenthed {
-            parenth: parenthed!(y in s),
-            args: y.parse_terminated(typ::Type::parse, Token![,])?,
-            ret: s.call(typ::Ret::without_plus)?,
-        })
-    }
-}
-impl Lower for Parenthed {
-    fn lower(&self, s: &mut Stream) {
-        self.parenth.surround(s, |s| {
-            self.args.lower(s);
-        });
-        self.ret.lower(s);
-    }
-}
-impl Pretty for Parenthed {
-    fn pretty(&self, p: &mut Print) {
-        p.cbox(INDENT);
-        p.word("(");
-        p.zerobreak();
-        for x in self.args.iter().delimited() {
-            &x.pretty(p);
-            p.trailing_comma(x.is_last);
-        }
-        p.offset(-INDENT);
-        p.word(")");
-        &self.ret.pretty(p);
-        p.end();
-    }
-}
-
 pub struct QSelf {
     pub lt: Token![<],
     pub typ: Box<typ::Type>,
     pub pos: usize,
     pub as_: Option<Token![as]>,
     pub gt: Token![>],
+}
+impl Visit for QSelf {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &*self.typ.visit(v);
+    }
+}
+impl VisitMut for QSelf {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &mut *self.typ.visit_mut(v);
+    }
 }
 
 pub struct DisplayPath<'a>(pub &'a Path);

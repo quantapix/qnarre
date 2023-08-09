@@ -8,8 +8,8 @@ fn visit<V>(&self, v: &mut V)
 where
     V: Visitor + ?Sized,
 {
-    for el in Puncted::pairs(&self.lifes) {
-        let x = el.value();
+    for y in Puncted::pairs(&self.lifes) {
+        let x = y.value();
         x.visit(v);
     }
 }
@@ -27,18 +27,6 @@ where
     if let Some(x) = &self.default {
         x.visit(v);
     }
-}
-}
-impl Visit for pat::Field {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    for x in &self.attrs {
-        x.visit(v);
-    }
-    &self.memb.visit(v);
-    &*self.pat.visit(v);
 }
 }
 impl Visit for item::File {
@@ -145,34 +133,6 @@ where
     &self.gens.visit(v);
 }
 }
-impl Visit for path::Arg {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    use path::Arg::*;
-    match self {
-        Life(x) => {
-            x.visit(v);
-        },
-        Type(x) => {
-            x.visit(v);
-        },
-        Const(x) => {
-            x.visit(v);
-        },
-        AssocType(x) => {
-            x.visit(v);
-        },
-        AssocConst(x) => {
-            x.visit(v);
-        },
-        Constraint(x) => {
-            x.visit(v);
-        },
-    }
-}
-}
 impl Visit for gen::Param {
 fn visit<V>(&self, v: &mut V)
 where
@@ -197,8 +157,8 @@ fn visit<V>(&self, v: &mut V)
 where
     V: Visitor + ?Sized,
 {
-    for el in Puncted::pairs(&self.params) {
-        let x = el.value();
+    for y in Puncted::pairs(&self.params) {
+        let x = y.value();
         x.visit(v);
     }
     if let Some(x) = &self.where_ {
@@ -384,8 +344,8 @@ where
     &self.vis.visit(v);
     &self.ident.visit(v);
     &self.gens.visit(v);
-    for el in Puncted::pairs(&self.variants) {
-        let x = el.value();
+    for y in Puncted::pairs(&self.variants) {
+        let x = y.value();
         x.visit(v);
     }
 }
@@ -528,8 +488,8 @@ where
     }
     &self.ident.visit(v);
     &self.gens.visit(v);
-    for el in Puncted::pairs(&self.supers) {
-        let x = el.value();
+    for y in Puncted::pairs(&self.supers) {
+        let x = y.value();
         x.visit(v);
     }
     for x in &self.items {
@@ -548,8 +508,8 @@ where
     &self.vis.visit(v);
     &self.ident.visit(v);
     &self.gens.visit(v);
-    for el in Puncted::pairs(&self.bounds) {
-        let x = el.value();
+    for y in Puncted::pairs(&self.bounds) {
+        let x = y.value();
         x.visit(v);
     }
 }
@@ -612,119 +572,9 @@ where
         x.visit(v);
     }
     &self.life.visit(v);
-    for el in Puncted::pairs(&self.bounds) {
-        let x = el.value();
+    for y in Puncted::pairs(&self.bounds) {
+        let x = y.value();
         x.visit(v);
-    }
-}
-}
-impl Visit for lit::Lit {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    use lit::Lit::*;
-    match self {
-        Str(x) => {
-            x.visit(v);
-        },
-        ByteStr(x) => {
-            x.visit(v);
-        },
-        Byte(x) => {
-            x.visit(v);
-        },
-        Char(x) => {
-            x.visit(v);
-        },
-        Int(x) => {
-            x.visit(v);
-        },
-        Float(x) => {
-            x.visit(v);
-        },
-        Bool(x) => {
-            x.visit(v);
-        },
-        Verbatim(x) => {
-            
-        },
-    }
-}
-}
-impl Visit for lit::Bool {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    &self.span.visit(v);
-}
-}
-impl Visit for lit::Byte {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-}
-}
-impl Visit for lit::ByteStr {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-}
-}
-impl Visit for lit::Char {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-}
-}
-impl Visit for lit::Float {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-}
-}
-impl Visit for lit::Int {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-}
-}
-impl Visit for lit::Str {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-}
-}
-impl Visit for stmt::Local {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    for x in &self.attrs {
-        x.visit(v);
-    }
-    &self.pat.visit(v);
-    if let Some(x) = &self.init {
-        x.visit(v);
-    }
-}
-}
-impl Visit for stmt::Init {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    &*self.expr.visit(v);
-    if let Some(x) = &self.diverge {
-        
-        &*(x).1.visit(v);
     }
 }
 }
@@ -756,311 +606,14 @@ where
     }
 }
 }
-impl Visit for attr::Meta {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    use attr::Meta::*;
-    match self {
-        Path(x) => {
-            x.visit(v);
-        },
-        List(x) => {
-            x.visit(v);
-        },
-        NameValue(x) => {
-            x.visit(v);
-        },
-    }
-}
-}
-impl Visit for attr::List {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    &self.path.visit(v);
-    &self.delim.visit(v);
-}
-}
-impl Visit for attr::NameValue {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    &self.name.visit(v);
-    &self.val.visit(v);
-}
-}
-impl Visit for path::Parenthed {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    for el in Puncted::pairs(&self.ins) {
-        let x = el.value();
-        x.visit(v);
-    }
-    &self.out.visit(v);
-}
-}
-impl Visit for pat::Pat {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    use pat::Pat::*;
-    match self {
-        Const(x) => {
-            x.visit(v);
-        },
-        Ident(x) => {
-            x.visit(v);
-        },
-        Lit(x) => {
-            x.visit(v);
-        },
-        Mac(x) => {
-            x.visit(v);
-        },
-        Or(x) => {
-            x.visit(v);
-        },
-        Parenth(x) => {
-            x.visit(v);
-        },
-        Path(x) => {
-            x.visit(v);
-        },
-        Range(x) => {
-            x.visit(v);
-        },
-        Ref(x) => {
-            x.visit(v);
-        },
-        Rest(x) => {
-            x.visit(v);
-        },
-        Slice(x) => {
-            x.visit(v);
-        },
-        Struct(x) => {
-            x.visit(v);
-        },
-        Tuple(x) => {
-            x.visit(v);
-        },
-        TupleStruct(x) => {
-            x.visit(v);
-        },
-        Type(x) => {
-            x.visit(v);
-        },
-        Verbatim(x) => {
-            
-        },
-        Wild(x) => {
-            x.visit(v);
-        },
-    }
-}
-}
-impl Visit for pat::Ident {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    for x in &self.attrs {
-        x.visit(v);
-    }
-    &self.ident.visit(v);
-    if let Some(x) = &self.sub {
-        
-        &*(x).1.visit(v);
-    }
-}
-}
-impl Visit for pat::Or {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    for x in &self.attrs {
-        x.visit(v);
-    }
-    for el in Puncted::pairs(&self.cases) {
-        let x = el.value();
-        x.visit(v);
-    }
-}
-}
-impl Visit for pat::Parenth {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    for x in &self.attrs {
-        x.visit(v);
-    }
-    &*self.pat.visit(v);
-}
-}
-impl Visit for pat::Ref {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    for x in &self.attrs {
-        x.visit(v);
-    }
-    &*self.pat.visit(v);
-}
-}
-impl Visit for pat::Rest {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    for x in &self.attrs {
-        x.visit(v);
-    }
-}
-}
-impl Visit for pat::Slice {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    for x in &self.attrs {
-        x.visit(v);
-    }
-    for el in Puncted::pairs(&self.pats) {
-        let x = el.value();
-        x.visit(v);
-    }
-}
-}
-impl Visit for pat::Struct {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    for x in &self.attrs {
-        x.visit(v);
-    }
-    if let Some(x) = &self.qself {
-        x.visit(v);
-    }
-    &self.path.visit(v);
-    for el in Puncted::pairs(&self.fields) {
-        let x = el.value();
-        x.visit(v);
-    }
-    if let Some(x) = &self.rest {
-        x.visit(v);
-    }
-}
-}
-impl Visit for pat::Tuple {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    for x in &self.attrs {
-        x.visit(v);
-    }
-    for el in Puncted::pairs(&self.pats) {
-        let x = el.value();
-        x.visit(v);
-    }
-}
-}
-impl Visit for pat::TupleStruct {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    for x in &self.attrs {
-        x.visit(v);
-    }
-    if let Some(x) = &self.qself {
-        x.visit(v);
-    }
-    &self.path.visit(v);
-    for el in Puncted::pairs(&self.pats) {
-        let x = el.value();
-        x.visit(v);
-    }
-}
-}
-impl Visit for pat::Type {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    for x in &self.attrs {
-        x.visit(v);
-    }
-    &*self.pat.visit(v);
-    &*self.typ.visit(v);
-}
-}
-impl Visit for pat::Wild {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    for x in &self.attrs {
-        x.visit(v);
-    }
-}
-}
-impl Visit for Path {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    for el in Puncted::pairs(&self.segs) {
-        let x = el.value();
-        x.visit(v);
-    }
-}
-}
-impl Visit for path::Args {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    use path::Args::*;
-    match self {
-        None => {},
-        Angled(x) => {
-            x.visit(v);
-        },
-        Parenthed(x) => {
-            x.visit(v);
-        },
-    }
-}
-}
-impl Visit for path::Segment {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    &self.ident.visit(v);
-    &self.args.visit(v);
-}
-}
 impl Visit for gen::where_::Life {
 fn visit<V>(&self, v: &mut V)
 where
     V: Visitor + ?Sized,
 {
     &self.life.visit(v);
-    for el in Puncted::pairs(&self.bounds) {
-        let x = el.value();
+    for y in Puncted::pairs(&self.bounds) {
+        let x = y.value();
         x.visit(v);
     }
 }
@@ -1074,18 +627,10 @@ where
         x.visit(v);
     }
     &self.bounded.visit(v);
-    for el in Puncted::pairs(&self.bounds) {
-        let x = el.value();
+    for y in Puncted::pairs(&self.bounds) {
+        let x = y.value();
         x.visit(v);
     }
-}
-}
-impl Visit for path::QSelf {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    &*self.ty.visit(v);
 }
 }
 impl Visit for item::Receiver {
@@ -1105,21 +650,6 @@ where
     &*self.typ.visit(v);
 }
 }
-impl Visit for typ::Ret {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    use typ::Ret::*;
-    match self {
-        Default => {},
-        Type(_binding_0, _binding_1) => {
-            
-            &**_binding_1.visit(v);
-        },
-    }
-}
-}
 impl Visit for item::Sig {
 fn visit<V>(&self, v: &mut V)
 where
@@ -1130,8 +660,8 @@ where
     }
     &self.ident.visit(v);
     &self.gens.visit(v);
-    for el in Puncted::pairs(&self.args) {
-        let x = el.value();
+    for y in Puncted::pairs(&self.args) {
+        let x = y.value();
         x.visit(v);
     }
     if let Some(x) = &self.vari {
@@ -1157,40 +687,6 @@ where
         },
         None => {},
     }
-}
-}
-impl Visit for stmt::Stmt {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    use stmt::Stmt::*;
-    match self {
-        Local(x) => {
-            x.visit(v);
-        },
-        Item(x) => {
-            x.visit(v);
-        },
-        Expr(x, y) => {
-            x.visit(v);
-            
-        },
-        Mac(x) => {
-            x.visit(v);
-        },
-    }
-}
-}
-impl Visit for stmt::Mac {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    for x in &self.attrs {
-        x.visit(v);
-    }
-    &self.mac.visit(v);
 }
 }
 impl Visit for gen::bound::Trait {
@@ -1296,140 +792,14 @@ where
     }
     &self.ident.visit(v);
     &self.gens.visit(v);
-    for el in Puncted::pairs(&self.bounds) {
-        let x = el.value();
+    for y in Puncted::pairs(&self.bounds) {
+        let x = y.value();
         x.visit(v);
     }
     if let Some(x) = &self.default {
         
         &(x).1.visit(v);
     }
-}
-}
-impl Visit for typ::Type {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    use typ::Type::*;
-    match self {
-        Array(x) => {
-            x.visit(v);
-        },
-        Fn(x) => {
-            x.visit(v);
-        },
-        Group(x) => {
-            x.visit(v);
-        },
-        Impl(x) => {
-            x.visit(v);
-        },
-        Infer(x) => {
-            x.visit(v);
-        },
-        Mac(x) => {
-            x.visit(v);
-        },
-        Never(x) => {
-            x.visit(v);
-        },
-        Parenth(x) => {
-            x.visit(v);
-        },
-        Path(x) => {
-            x.visit(v);
-        },
-        Ptr(x) => {
-            x.visit(v);
-        },
-        Ref(x) => {
-            x.visit(v);
-        },
-        Slice(x) => {
-            x.visit(v);
-        },
-        Trait(x) => {
-            x.visit(v);
-        },
-        Tuple(x) => {
-            x.visit(v);
-        },
-        Verbatim(x) => {
-            
-        },
-    }
-}
-}
-impl Visit for typ::Array {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    &*self.elem.visit(v);
-    &self.len.visit(v);
-}
-}
-impl Visit for typ::Fn {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    if let Some(x) = &self.lifes {
-        x.visit(v);
-    }
-    if let Some(x) = &self.abi {
-        x.visit(v);
-    }
-    for el in Puncted::pairs(&self.args) {
-        let x = el.value();
-        x.visit(v);
-    }
-    if let Some(x) = &self.vari {
-        x.visit(v);
-    }
-    &self.ret.visit(v);
-}
-}
-impl Visit for typ::Group {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    &*self.elem.visit(v);
-}
-}
-impl Visit for typ::Impl {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    for el in Puncted::pairs(&self.bounds) {
-        let x = el.value();
-        x.visit(v);
-    }
-}
-}
-impl Visit for typ::Infer {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-}
-}
-impl Visit for typ::Mac {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    &self.mac.visit(v);
-}
-}
-impl Visit for typ::Never {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
 }
 }
 impl Visit for gen::param::Type {
@@ -1441,8 +811,8 @@ where
         x.visit(v);
     }
     &self.ident.visit(v);
-    for el in Puncted::pairs(&self.bounds) {
-        let x = el.value();
+    for y in Puncted::pairs(&self.bounds) {
+        let x = y.value();
         x.visit(v);
     }
     if let Some(x) = &self.default {
@@ -1469,74 +839,6 @@ where
     }
 }
 }
-impl Visit for typ::Parenth {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    &*self.elem.visit(v);
-}
-}
-impl Visit for typ::Path {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    if let Some(x) = &self.qself {
-        x.visit(v);
-    }
-    &self.path.visit(v);
-}
-}
-impl Visit for typ::Ptr {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    &*self.elem.visit(v);
-}
-}
-impl Visit for typ::Ref {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    if let Some(x) = &self.life {
-        x.visit(v);
-    }
-    &*self.elem.visit(v);
-}
-}
-impl Visit for typ::Slice {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    &*self.elem.visit(v);
-}
-}
-impl Visit for typ::Trait {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    for el in Puncted::pairs(&self.bounds) {
-        let x = el.value();
-        x.visit(v);
-    }
-}
-}
-impl Visit for typ::Tuple {
-fn visit<V>(&self, v: &mut V)
-where
-    V: Visitor + ?Sized,
-{
-    for el in Puncted::pairs(&self.elems) {
-        let x = el.value();
-        x.visit(v);
-    }
-}
-}
 impl Visit for item::use_::Glob {
 fn visit<V>(&self, v: &mut V)
 where
@@ -1549,8 +851,8 @@ fn visit<V>(&self, v: &mut V)
 where
     V: Visitor + ?Sized,
 {
-    for el in Puncted::pairs(&self.trees) {
-        let x = el.value();
+    for y in Puncted::pairs(&self.trees) {
+        let x = y.value();
         x.visit(v);
     }
 }
@@ -1625,8 +927,8 @@ fn visit<V>(&self, v: &mut V)
 where
     V: Visitor + ?Sized,
 {
-    for el in Puncted::pairs(&self.preds) {
-        let x = el.value();
+    for y in Puncted::pairs(&self.preds) {
+        let x = y.value();
         x.visit(v);
     }
 }

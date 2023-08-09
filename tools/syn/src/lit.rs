@@ -151,21 +151,577 @@ impl Pretty for Lit {
         }
     }
 }
-#[allow(non_snake_case)]
-pub fn Lit(x: look::Marker) -> Lit {
-    match x {}
+impl Visit for Lit {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        use Lit::*;
+        match self {
+            Str(x) => {
+                x.visit(v);
+            },
+            ByteStr(x) => {
+                x.visit(v);
+            },
+            Byte(x) => {
+                x.visit(v);
+            },
+            Char(x) => {
+                x.visit(v);
+            },
+            Int(x) => {
+                x.visit(v);
+            },
+            Float(x) => {
+                x.visit(v);
+            },
+            Bool(x) => {
+                x.visit(v);
+            },
+            Verbatim(x) => {},
+        }
+    }
+}
+impl VisitMut for Lit {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        use Lit::*;
+        match self {
+            Str(x) => {
+                x.visit_mut(v);
+            },
+            ByteStr(x) => {
+                x.visit_mut(v);
+            },
+            Byte(x) => {
+                x.visit_mut(v);
+            },
+            Char(x) => {
+                x.visit_mut(v);
+            },
+            Int(x) => {
+                x.visit_mut(v);
+            },
+            Float(x) => {
+                x.visit_mut(v);
+            },
+            Bool(x) => {
+                x.visit_mut(v);
+            },
+            Stream(x) => {},
+        }
+    }
 }
 
-struct Repr {
-    pub tok: pm2::Lit,
-    suff: Box<str>,
+pub struct Bool {
+    pub val: bool,
+    pub span: pm2::Span,
 }
-impl Clone for Repr {
-    fn clone(&self) -> Self {
-        Repr {
-            tok: self.tok.clone(),
-            suff: self.suff.clone(),
+impl Bool {
+    pub fn new(val: bool, span: pm2::Span) -> Self {
+        Bool { val, span }
+    }
+    pub fn value(&self) -> bool {
+        self.val
+    }
+    pub fn span(&self) -> pm2::Span {
+        self.span
+    }
+    pub fn set_span(&mut self, s: pm2::Span) {
+        self.span = s;
+    }
+    pub fn token(&self) -> Ident {
+        let s = if self.val { "true" } else { "false" };
+        Ident::new(s, self.span)
+    }
+}
+impl Debug for Bool {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Bool {
+            pub fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+                f.debug_struct(name).field("value", &self.val).finish()
+            }
         }
+        self.debug(f, "lit::Bool")
+    }
+}
+impl Parse for Bool {
+    fn parse(s: Stream) -> Res<Self> {
+        let x = s.fork();
+        match s.parse() {
+            Ok(Lit::Bool(x)) => Ok(x),
+            _ => Err(x.error("expected boolean literal")),
+        }
+    }
+}
+impl Lower for Bool {
+    fn lower(&self, s: &mut Stream) {
+        s.append(self.token());
+    }
+}
+impl Pretty for Bool {
+    fn pretty(&self, p: &mut Print) {
+        p.word(if self.val { "true" } else { "false" });
+    }
+}
+impl Visit for Bool {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &self.span.visit(v);
+    }
+}
+impl VisitMut for Bool {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &mut self.span.visit_mut(v);
+    }
+}
+
+pub struct Byte {
+    pub repr: Box<Repr>,
+}
+impl Byte {
+    pub fn new(x: u8, s: pm2::Span) -> Self {
+        let mut tok = pm2::Lit::u8_suffixed(x);
+        tok.set_span(s);
+        Byte {
+            repr: Box::new(Repr {
+                tok,
+                suff: Box::<str>::default(),
+            }),
+        }
+    }
+    pub fn value(&self) -> u8 {
+        let repr = self.repr.tok.to_string();
+        let (value, _) = parse_byte(&repr);
+        value
+    }
+    pub fn span(&self) -> pm2::Span {
+        self.repr.tok.span()
+    }
+    pub fn set_span(&mut self, x: pm2::Span) {
+        self.repr.tok.set_span(x);
+    }
+    pub fn suffix(&self) -> &str {
+        &self.repr.suff
+    }
+    pub fn token(&self) -> pm2::Lit {
+        self.repr.tok.clone()
+    }
+}
+impl Debug for Byte {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Byte {
+            pub fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+                f.debug_struct(name)
+                    .field("token", &format_args!("{}", self.repr.tok))
+                    .finish()
+            }
+        }
+        self.debug(f, "LitByte")
+    }
+}
+extra_traits!(Byte);
+impl Parse for Byte {
+    fn parse(s: Stream) -> Res<Self> {
+        let x = s.fork();
+        match s.parse() {
+            Ok(Lit::Byte(x)) => Ok(x),
+            _ => Err(x.error("expected byte literal")),
+        }
+    }
+}
+impl Lower for Byte {
+    fn lower(&self, s: &mut Stream) {
+        self.repr.tok.lower(s);
+    }
+}
+impl Pretty for Byte {
+    fn pretty(&self, p: &mut Print) {
+        p.word(self.token().to_string());
+    }
+}
+impl Visit for Byte {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+    }
+}
+impl VisitMut for Byte {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+    }
+}
+
+pub struct ByteStr {
+    pub repr: Box<Repr>,
+}
+impl ByteStr {
+    pub fn new(x: &[u8], s: pm2::Span) -> Self {
+        let mut tok = pm2::Lit::byte_string(x);
+        tok.set_span(s);
+        ByteStr {
+            repr: Box::new(Repr {
+                tok,
+                suff: Box::<str>::default(),
+            }),
+        }
+    }
+    pub fn value(&self) -> Vec<u8> {
+        let repr = self.repr.tok.to_string();
+        let (value, _) = parse_byte_str(&repr);
+        value
+    }
+    pub fn span(&self) -> pm2::Span {
+        self.repr.tok.span()
+    }
+    pub fn set_span(&mut self, s: pm2::Span) {
+        self.repr.tok.set_span(s);
+    }
+    pub fn suffix(&self) -> &str {
+        &self.repr.suff
+    }
+    pub fn token(&self) -> pm2::Lit {
+        self.repr.tok.clone()
+    }
+}
+impl Debug for ByteStr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl ByteStr {
+            pub fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+                f.debug_struct(name)
+                    .field("token", &format_args!("{}", self.repr.tok))
+                    .finish()
+            }
+        }
+        self.debug(f, "lit::ByteStr")
+    }
+}
+extra_traits!(ByteStr);
+impl Parse for ByteStr {
+    fn parse(s: Stream) -> Res<Self> {
+        let x = s.fork();
+        match s.parse() {
+            Ok(Lit::ByteStr(x)) => Ok(x),
+            _ => Err(x.error("expected byte string literal")),
+        }
+    }
+}
+impl Lower for ByteStr {
+    fn lower(&self, s: &mut Stream) {
+        self.repr.tok.lower(s);
+    }
+}
+impl Pretty for ByteStr {
+    fn pretty(&self, p: &mut Print) {
+        p.word(self.token().to_string());
+    }
+}
+impl Visit for ByteStr {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+    }
+}
+impl VisitMut for ByteStr {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+    }
+}
+
+pub struct Char {
+    pub repr: Box<Repr>,
+}
+impl Char {
+    pub fn new(x: char, s: pm2::Span) -> Self {
+        let mut tok = pm2::Lit::char(x);
+        tok.set_span(s);
+        Char {
+            repr: Box::new(Repr {
+                tok,
+                suff: Box::<str>::default(),
+            }),
+        }
+    }
+    pub fn value(&self) -> char {
+        let repr = self.repr.tok.to_string();
+        let (value, _) = parse_char(&repr);
+        value
+    }
+    pub fn span(&self) -> pm2::Span {
+        self.repr.tok.span()
+    }
+    pub fn set_span(&mut self, s: pm2::Span) {
+        self.repr.tok.set_span(s);
+    }
+    pub fn suffix(&self) -> &str {
+        &self.repr.suff
+    }
+    pub fn token(&self) -> pm2::Lit {
+        self.repr.tok.clone()
+    }
+}
+impl Debug for Char {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Char {
+            pub fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+                f.debug_struct(name)
+                    .field("token", &format_args!("{}", self.repr.tok))
+                    .finish()
+            }
+        }
+        self.debug(f, "lit::Char")
+    }
+}
+extra_traits!(Char);
+impl Parse for Char {
+    fn parse(s: Stream) -> Res<Self> {
+        let x = s.fork();
+        match s.parse() {
+            Ok(Lit::Char(x)) => Ok(x),
+            _ => Err(x.error("expected character literal")),
+        }
+    }
+}
+impl Lower for Char {
+    fn lower(&self, s: &mut Stream) {
+        self.repr.tok.lower(s);
+    }
+}
+impl Pretty for Char {
+    fn pretty(&self, p: &mut Print) {
+        p.word(self.token().to_string());
+    }
+}
+impl Visit for Char {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+    }
+}
+impl VisitMut for Char {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+    }
+}
+
+pub struct Float {
+    pub repr: Box<FloatRepr>,
+}
+impl Float {
+    pub fn new(x: &str, s: pm2::Span) -> Self {
+        let (digits, suff) = match parse_float(x) {
+            Some(x) => x,
+            None => panic!("Not a float literal: `{}`", x),
+        };
+        let mut tok: pm2::Lit = x.parse().unwrap();
+        tok.set_span(s);
+        Float {
+            repr: Box::new(FloatRepr { tok, digits, suff }),
+        }
+    }
+    pub fn base10_digits(&self) -> &str {
+        &self.repr.digits
+    }
+    pub fn base10_parse<N>(&self) -> Res<N>
+    where
+        N: FromStr,
+        N::Err: Display,
+    {
+        self.base10_digits().parse().map_err(|err| Err::new(self.span(), err))
+    }
+    pub fn suffix(&self) -> &str {
+        &self.repr.suff
+    }
+    pub fn span(&self) -> pm2::Span {
+        self.repr.tok.span()
+    }
+    pub fn set_span(&mut self, s: pm2::Span) {
+        self.repr.tok.set_span(s);
+    }
+    pub fn token(&self) -> pm2::Lit {
+        self.repr.tok.clone()
+    }
+}
+impl From<pm2::Lit> for Float {
+    fn from(tok: pm2::Lit) -> Self {
+        let repr = tok.to_string();
+        if let Some((digits, suff)) = parse_float(&repr) {
+            Float {
+                repr: Box::new(FloatRepr { tok, digits, suff }),
+            }
+        } else {
+            panic!("Not a float literal: `{}`", repr);
+        }
+    }
+}
+impl Display for Float {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.repr.tok.fmt(f)
+    }
+}
+impl Debug for Float {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Float {
+            pub fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+                f.debug_struct(name)
+                    .field("token", &format_args!("{}", self.repr.tok))
+                    .finish()
+            }
+        }
+        self.debug(f, "lit::Float")
+    }
+}
+extra_traits!(Float);
+impl Parse for Float {
+    fn parse(s: Stream) -> Res<Self> {
+        let x = s.fork();
+        match s.parse() {
+            Ok(Lit::Float(x)) => Ok(x),
+            _ => Err(x.error("expected floating point literal")),
+        }
+    }
+}
+impl Lower for Float {
+    fn lower(&self, s: &mut Stream) {
+        self.repr.tok.lower(s);
+    }
+}
+impl Pretty for Float {
+    fn pretty(&self, p: &mut Print) {
+        p.word(self.token().to_string());
+    }
+}
+impl Visit for Float {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+    }
+}
+impl VisitMut for Float {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+    }
+}
+
+pub struct Int {
+    pub repr: Box<IntRepr>,
+}
+impl Int {
+    pub fn new(x: &str, s: pm2::Span) -> Self {
+        let (digits, suff) = match parse_int(x) {
+            Some(x) => x,
+            None => panic!("Not an integer literal: `{}`", x),
+        };
+        let mut tok: pm2::Lit = x.parse().unwrap();
+        tok.set_span(s);
+        Int {
+            repr: Box::new(IntRepr { tok, digits, suff }),
+        }
+    }
+    pub fn base10_digits(&self) -> &str {
+        &self.repr.digits
+    }
+    pub fn base10_parse<N>(&self) -> Res<N>
+    where
+        N: FromStr,
+        N::Err: Display,
+    {
+        self.base10_digits().parse().map_err(|x| Err::new(self.span(), x))
+    }
+    pub fn suffix(&self) -> &str {
+        &self.repr.suff
+    }
+    pub fn span(&self) -> pm2::Span {
+        self.repr.tok.span()
+    }
+    pub fn set_span(&mut self, s: pm2::Span) {
+        self.repr.tok.set_span(s);
+    }
+    pub fn token(&self) -> pm2::Lit {
+        self.repr.tok.clone()
+    }
+}
+impl From<pm2::Lit> for Int {
+    fn from(tok: pm2::Lit) -> Self {
+        let repr = tok.to_string();
+        if let Some((digits, suff)) = parse_int(&repr) {
+            Int {
+                repr: Box::new(IntRepr { tok, digits, suff }),
+            }
+        } else {
+            panic!("Not an integer literal: `{}`", repr);
+        }
+    }
+}
+impl Display for Int {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.repr.tok.fmt(f)
+    }
+}
+impl Debug for Int {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Int {
+            pub fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+                f.debug_struct(name)
+                    .field("token", &format_args!("{}", self.repr.tok))
+                    .finish()
+            }
+        }
+        self.debug(f, "LitInt")
+    }
+}
+extra_traits!(Int);
+impl Parse for Int {
+    fn parse(s: Stream) -> Res<Self> {
+        let x = s.fork();
+        match s.parse() {
+            Ok(Lit::Int(x)) => Ok(x),
+            _ => Err(x.error("expected integer literal")),
+        }
+    }
+}
+impl Lower for Int {
+    fn lower(&self, s: &mut Stream) {
+        self.repr.tok.lower(s);
+    }
+}
+impl Pretty for Int {
+    fn pretty(&self, p: &mut Print) {
+        p.word(self.token().to_string());
+    }
+}
+impl Visit for Int {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+    }
+}
+impl VisitMut for Int {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
     }
 }
 
@@ -284,199 +840,31 @@ impl Pretty for Str {
         p.word(self.token().to_string());
     }
 }
-
-pub struct ByteStr {
-    pub repr: Box<Repr>,
-}
-impl ByteStr {
-    pub fn new(x: &[u8], s: pm2::Span) -> Self {
-        let mut tok = pm2::Lit::byte_string(x);
-        tok.set_span(s);
-        ByteStr {
-            repr: Box::new(Repr {
-                tok,
-                suff: Box::<str>::default(),
-            }),
-        }
-    }
-    pub fn value(&self) -> Vec<u8> {
-        let repr = self.repr.tok.to_string();
-        let (value, _) = parse_byte_str(&repr);
-        value
-    }
-    pub fn span(&self) -> pm2::Span {
-        self.repr.tok.span()
-    }
-    pub fn set_span(&mut self, s: pm2::Span) {
-        self.repr.tok.set_span(s);
-    }
-    pub fn suffix(&self) -> &str {
-        &self.repr.suff
-    }
-    pub fn token(&self) -> pm2::Lit {
-        self.repr.tok.clone()
+impl Visit for Str {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
     }
 }
-impl Debug for ByteStr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl ByteStr {
-            pub fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                f.debug_struct(name)
-                    .field("token", &format_args!("{}", self.repr.tok))
-                    .finish()
-            }
-        }
-        self.debug(f, "lit::ByteStr")
-    }
-}
-extra_traits!(ByteStr);
-impl Parse for ByteStr {
-    fn parse(s: Stream) -> Res<Self> {
-        let x = s.fork();
-        match s.parse() {
-            Ok(Lit::ByteStr(x)) => Ok(x),
-            _ => Err(x.error("expected byte string literal")),
-        }
-    }
-}
-impl Lower for ByteStr {
-    fn lower(&self, s: &mut Stream) {
-        self.repr.tok.lower(s);
-    }
-}
-impl Pretty for ByteStr {
-    fn pretty(&self, p: &mut Print) {
-        p.word(self.token().to_string());
+impl VisitMut for Str {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
     }
 }
 
-pub struct Byte {
-    pub repr: Box<Repr>,
+struct Repr {
+    pub tok: pm2::Lit,
+    suff: Box<str>,
 }
-impl Byte {
-    pub fn new(x: u8, s: pm2::Span) -> Self {
-        let mut tok = pm2::Lit::u8_suffixed(x);
-        tok.set_span(s);
-        Byte {
-            repr: Box::new(Repr {
-                tok,
-                suff: Box::<str>::default(),
-            }),
+impl Clone for Repr {
+    fn clone(&self) -> Self {
+        Repr {
+            tok: self.tok.clone(),
+            suff: self.suff.clone(),
         }
-    }
-    pub fn value(&self) -> u8 {
-        let repr = self.repr.tok.to_string();
-        let (value, _) = parse_byte(&repr);
-        value
-    }
-    pub fn span(&self) -> pm2::Span {
-        self.repr.tok.span()
-    }
-    pub fn set_span(&mut self, x: pm2::Span) {
-        self.repr.tok.set_span(x);
-    }
-    pub fn suffix(&self) -> &str {
-        &self.repr.suff
-    }
-    pub fn token(&self) -> pm2::Lit {
-        self.repr.tok.clone()
-    }
-}
-impl Debug for Byte {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Byte {
-            pub fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                f.debug_struct(name)
-                    .field("token", &format_args!("{}", self.repr.tok))
-                    .finish()
-            }
-        }
-        self.debug(f, "LitByte")
-    }
-}
-extra_traits!(Byte);
-impl Parse for Byte {
-    fn parse(s: Stream) -> Res<Self> {
-        let x = s.fork();
-        match s.parse() {
-            Ok(Lit::Byte(x)) => Ok(x),
-            _ => Err(x.error("expected byte literal")),
-        }
-    }
-}
-impl Lower for Byte {
-    fn lower(&self, s: &mut Stream) {
-        self.repr.tok.lower(s);
-    }
-}
-impl Pretty for Byte {
-    fn pretty(&self, p: &mut Print) {
-        p.word(self.token().to_string());
-    }
-}
-
-pub struct Char {
-    pub repr: Box<Repr>,
-}
-impl Char {
-    pub fn new(x: char, s: pm2::Span) -> Self {
-        let mut tok = pm2::Lit::char(x);
-        tok.set_span(s);
-        Char {
-            repr: Box::new(Repr {
-                tok,
-                suff: Box::<str>::default(),
-            }),
-        }
-    }
-    pub fn value(&self) -> char {
-        let repr = self.repr.tok.to_string();
-        let (value, _) = parse_char(&repr);
-        value
-    }
-    pub fn span(&self) -> pm2::Span {
-        self.repr.tok.span()
-    }
-    pub fn set_span(&mut self, s: pm2::Span) {
-        self.repr.tok.set_span(s);
-    }
-    pub fn suffix(&self) -> &str {
-        &self.repr.suff
-    }
-    pub fn token(&self) -> pm2::Lit {
-        self.repr.tok.clone()
-    }
-}
-impl Debug for Char {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Char {
-            pub fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                f.debug_struct(name)
-                    .field("token", &format_args!("{}", self.repr.tok))
-                    .finish()
-            }
-        }
-        self.debug(f, "lit::Char")
-    }
-}
-extra_traits!(Char);
-impl Parse for Char {
-    fn parse(s: Stream) -> Res<Self> {
-        let x = s.fork();
-        match s.parse() {
-            Ok(Lit::Char(x)) => Ok(x),
-            _ => Err(x.error("expected character literal")),
-        }
-    }
-}
-impl Lower for Char {
-    fn lower(&self, s: &mut Stream) {
-        self.repr.tok.lower(s);
-    }
-}
-impl Pretty for Char {
-    fn pretty(&self, p: &mut Print) {
-        p.word(self.token().to_string());
     }
 }
 
@@ -495,94 +883,6 @@ impl Clone for IntRepr {
     }
 }
 
-pub struct Int {
-    pub repr: Box<IntRepr>,
-}
-impl Int {
-    pub fn new(x: &str, s: pm2::Span) -> Self {
-        let (digits, suff) = match parse_int(x) {
-            Some(x) => x,
-            None => panic!("Not an integer literal: `{}`", x),
-        };
-        let mut tok: pm2::Lit = x.parse().unwrap();
-        tok.set_span(s);
-        Int {
-            repr: Box::new(IntRepr { tok, digits, suff }),
-        }
-    }
-    pub fn base10_digits(&self) -> &str {
-        &self.repr.digits
-    }
-    pub fn base10_parse<N>(&self) -> Res<N>
-    where
-        N: FromStr,
-        N::Err: Display,
-    {
-        self.base10_digits().parse().map_err(|x| Err::new(self.span(), x))
-    }
-    pub fn suffix(&self) -> &str {
-        &self.repr.suff
-    }
-    pub fn span(&self) -> pm2::Span {
-        self.repr.tok.span()
-    }
-    pub fn set_span(&mut self, s: pm2::Span) {
-        self.repr.tok.set_span(s);
-    }
-    pub fn token(&self) -> pm2::Lit {
-        self.repr.tok.clone()
-    }
-}
-impl From<pm2::Lit> for Int {
-    fn from(tok: pm2::Lit) -> Self {
-        let repr = tok.to_string();
-        if let Some((digits, suff)) = parse_int(&repr) {
-            Int {
-                repr: Box::new(IntRepr { tok, digits, suff }),
-            }
-        } else {
-            panic!("Not an integer literal: `{}`", repr);
-        }
-    }
-}
-impl Display for Int {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.repr.tok.fmt(f)
-    }
-}
-impl Debug for Int {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Int {
-            pub fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                f.debug_struct(name)
-                    .field("token", &format_args!("{}", self.repr.tok))
-                    .finish()
-            }
-        }
-        self.debug(f, "LitInt")
-    }
-}
-extra_traits!(Int);
-impl Parse for Int {
-    fn parse(s: Stream) -> Res<Self> {
-        let x = s.fork();
-        match s.parse() {
-            Ok(Lit::Int(x)) => Ok(x),
-            _ => Err(x.error("expected integer literal")),
-        }
-    }
-}
-impl Lower for Int {
-    fn lower(&self, s: &mut Stream) {
-        self.repr.tok.lower(s);
-    }
-}
-impl Pretty for Int {
-    fn pretty(&self, p: &mut Print) {
-        p.word(self.token().to_string());
-    }
-}
-
 struct FloatRepr {
     pub tok: pm2::Lit,
     digits: Box<str>,
@@ -596,151 +896,6 @@ impl Clone for FloatRepr {
             suff: self.suff.clone(),
         }
     }
-}
-
-pub struct Float {
-    pub repr: Box<FloatRepr>,
-}
-impl Float {
-    pub fn new(x: &str, s: pm2::Span) -> Self {
-        let (digits, suff) = match parse_float(x) {
-            Some(x) => x,
-            None => panic!("Not a float literal: `{}`", x),
-        };
-        let mut tok: pm2::Lit = x.parse().unwrap();
-        tok.set_span(s);
-        Float {
-            repr: Box::new(FloatRepr { tok, digits, suff }),
-        }
-    }
-    pub fn base10_digits(&self) -> &str {
-        &self.repr.digits
-    }
-    pub fn base10_parse<N>(&self) -> Res<N>
-    where
-        N: FromStr,
-        N::Err: Display,
-    {
-        self.base10_digits().parse().map_err(|err| Err::new(self.span(), err))
-    }
-    pub fn suffix(&self) -> &str {
-        &self.repr.suff
-    }
-    pub fn span(&self) -> pm2::Span {
-        self.repr.tok.span()
-    }
-    pub fn set_span(&mut self, s: pm2::Span) {
-        self.repr.tok.set_span(s);
-    }
-    pub fn token(&self) -> pm2::Lit {
-        self.repr.tok.clone()
-    }
-}
-impl From<pm2::Lit> for Float {
-    fn from(tok: pm2::Lit) -> Self {
-        let repr = tok.to_string();
-        if let Some((digits, suff)) = parse_float(&repr) {
-            Float {
-                repr: Box::new(FloatRepr { tok, digits, suff }),
-            }
-        } else {
-            panic!("Not a float literal: `{}`", repr);
-        }
-    }
-}
-impl Display for Float {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.repr.tok.fmt(f)
-    }
-}
-impl Debug for Float {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Float {
-            pub fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                f.debug_struct(name)
-                    .field("token", &format_args!("{}", self.repr.tok))
-                    .finish()
-            }
-        }
-        self.debug(f, "lit::Float")
-    }
-}
-extra_traits!(Float);
-impl Parse for Float {
-    fn parse(s: Stream) -> Res<Self> {
-        let x = s.fork();
-        match s.parse() {
-            Ok(Lit::Float(x)) => Ok(x),
-            _ => Err(x.error("expected floating point literal")),
-        }
-    }
-}
-impl Lower for Float {
-    fn lower(&self, s: &mut Stream) {
-        self.repr.tok.lower(s);
-    }
-}
-impl Pretty for Float {
-    fn pretty(&self, p: &mut Print) {
-        p.word(self.token().to_string());
-    }
-}
-
-pub struct Bool {
-    pub val: bool,
-    pub span: pm2::Span,
-}
-impl Bool {
-    pub fn new(val: bool, span: pm2::Span) -> Self {
-        Bool { val, span }
-    }
-    pub fn value(&self) -> bool {
-        self.val
-    }
-    pub fn span(&self) -> pm2::Span {
-        self.span
-    }
-    pub fn set_span(&mut self, s: pm2::Span) {
-        self.span = s;
-    }
-    pub fn token(&self) -> Ident {
-        let s = if self.val { "true" } else { "false" };
-        Ident::new(s, self.span)
-    }
-}
-impl Debug for Bool {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Bool {
-            pub fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                f.debug_struct(name).field("value", &self.val).finish()
-            }
-        }
-        self.debug(f, "lit::Bool")
-    }
-}
-impl Parse for Bool {
-    fn parse(s: Stream) -> Res<Self> {
-        let x = s.fork();
-        match s.parse() {
-            Ok(Lit::Bool(x)) => Ok(x),
-            _ => Err(x.error("expected boolean literal")),
-        }
-    }
-}
-impl Lower for Bool {
-    fn lower(&self, s: &mut Stream) {
-        s.append(self.token());
-    }
-}
-impl Pretty for Bool {
-    fn pretty(&self, p: &mut Print) {
-        p.word(if self.val { "true" } else { "false" });
-    }
-}
-
-#[allow(non_snake_case)]
-pub fn Bool(x: look::Marker) -> Bool {
-    match x {}
 }
 
 pub struct BigInt {
@@ -792,6 +947,16 @@ impl ops::MulAssign<u8> for BigInt {
             carry = y / 10;
         }
     }
+}
+
+#[allow(non_snake_case)]
+pub fn Lit(x: look::Marker) -> Lit {
+    match x {}
+}
+
+#[allow(non_snake_case)]
+pub fn Bool(x: look::Marker) -> Bool {
+    match x {}
 }
 
 pub fn parse_str(x: &str) -> (Box<str>, Box<str>) {

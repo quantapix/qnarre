@@ -2783,8 +2783,8 @@ impl VisitMut for Struct {
             x.visit_mut(v);
         }
         &mut self.path.visit_mut(v);
-        for mut el in Puncted::pairs_mut(&mut self.fields) {
-            let x = el.value_mut();
+        for mut y in Puncted::pairs_mut(&mut self.fields) {
+            let x = y.value_mut();
             x.visit_mut(v);
         }
         if let Some(x) = &mut self.rest {
@@ -3421,6 +3421,22 @@ impl Visit for Member {
         }
     }
 }
+impl VisitMut for Member {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        use Member::*;
+        match self {
+            Named(x) => {
+                x.visit_mut(v);
+            },
+            Unnamed(x) => {
+                x.visit_mut(v);
+            },
+        }
+    }
+}
 
 pub struct Idx {
     pub idx: u32,
@@ -3472,6 +3488,14 @@ impl Visit for Idx {
         V: Visitor + ?Sized,
     {
         &self.span.visit(v);
+    }
+}
+impl VisitMut for Idx {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &mut self.span.visit_mut(v);
     }
 }
 
@@ -3730,8 +3754,21 @@ impl Visit for UnOp {
         use UnOp::*;
         match self {
             Deref(x) => {},
-            Not(x) => {},
             Neg(x) => {},
+            Not(x) => {},
+        }
+    }
+}
+impl VisitMut for UnOp {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        use UnOp::*;
+        match self {
+            Deref(x) => {},
+            Neg(x) => {},
+            Not(x) => {},
         }
     }
 }
@@ -3854,6 +3891,14 @@ impl Visit for Label {
         V: Visitor + ?Sized,
     {
         &self.name.visit(v);
+    }
+}
+impl VisitMut for Label {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &mut self.name.visit_mut(v);
     }
 }
 

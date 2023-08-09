@@ -1096,9 +1096,9 @@ mod standard_library {
                     self.word("(");
                     self.cbox(INDENT);
                     self.zerobreak();
-                    for elem in exprs.iter().delimited() {
-                        self.expr(&elem);
-                        self.trailing_comma(elem.is_last);
+                    for x in exprs.iter().delimited() {
+                        self.expr(&x);
+                        self.trailing_comma(x.is_last);
                     }
                     self.offset(-INDENT);
                     self.end();
@@ -1155,9 +1155,9 @@ mod standard_library {
                     self.word("[");
                     self.cbox(INDENT);
                     self.zerobreak();
-                    for elem in vec.iter().delimited() {
-                        self.expr(&elem);
-                        self.trailing_comma(elem.is_last);
+                    for x in vec.iter().delimited() {
+                        self.expr(&x);
+                        self.trailing_comma(x.is_last);
                     }
                     self.offset(-INDENT);
                     self.end();
