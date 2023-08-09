@@ -23,6 +23,16 @@ impl Visit for Ident {
         &self.span().visit(v);
     }
 }
+impl VisitMut for Ident {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        let mut x = self.span();
+        &mut x.visit_mut(v);
+        self.set_span(x);
+    }
+}
 
 macro_rules! ident_from_tok {
     ($x:ident) => {
@@ -146,6 +156,15 @@ impl Visit for Life {
     {
         &self.apos.visit(v);
         &self.ident.visit(v);
+    }
+}
+impl VisitMut for Life {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &mut self.apos.visit_mut(v);
+        &mut self.ident.visit_mut(v);
     }
 }
 

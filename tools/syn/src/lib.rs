@@ -242,10 +242,6 @@ mod codegen {
     #[rustfmt::skip]
     pub mod fold;
     #[rustfmt::skip]
-    pub mod visit;
-    #[rustfmt::skip]
-    pub mod visit_mut;
-    #[rustfmt::skip]
     mod clone;
     #[rustfmt::skip]
     mod debug;
@@ -298,7 +294,7 @@ pub fn parse2<T: parse::Parse>(s: Stream) -> Res<T> {
 trait Visitor {}
 
 trait Visit {
-    fn visit<'a, V>(&'a self, v: &mut V);
+    fn visit<V>(&self, v: &mut V);
 }
 
 trait VisitMut {

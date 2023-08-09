@@ -284,6 +284,35 @@ impl VisitMut for Bool {
     }
 }
 
+macro_rules! extra_traits {
+    ($ty:ident) => {
+        impl Clone for $ty {
+            fn clone(&self) -> Self {
+                $ty {
+                    repr: self.repr.clone(),
+                }
+            }
+        }
+        impl PartialEq for $ty {
+            fn eq(&self, x: &Self) -> bool {
+                self.repr.tok.to_string() == x.repr.tok.to_string()
+            }
+        }
+        impl Hash for $ty {
+            fn hash<H>(&self, x: &mut H)
+            where
+                H: Hasher,
+            {
+                self.repr.tok.to_string().hash(x);
+            }
+        }
+        #[allow(non_snake_case)]
+        pub fn $ty(x: look::Marker) -> $ty {
+            match x {}
+        }
+    };
+}
+
 pub struct Byte {
     pub repr: Box<Repr>,
 }
@@ -791,34 +820,6 @@ impl Debug for Str {
         }
         self.debug(f, "lit::Str")
     }
-}
-macro_rules! extra_traits {
-    ($ty:ident) => {
-        impl Clone for $ty {
-            fn clone(&self) -> Self {
-                $ty {
-                    repr: self.repr.clone(),
-                }
-            }
-        }
-        impl PartialEq for $ty {
-            fn eq(&self, x: &Self) -> bool {
-                self.repr.tok.to_string() == x.repr.tok.to_string()
-            }
-        }
-        impl Hash for $ty {
-            fn hash<H>(&self, x: &mut H)
-            where
-                H: Hasher,
-            {
-                self.repr.tok.to_string().hash(x);
-            }
-        }
-        #[allow(non_snake_case)]
-        pub fn $ty(x: look::Marker) -> $ty {
-            match x {}
-        }
-    };
 }
 extra_traits!(Str);
 impl Parse for Str {

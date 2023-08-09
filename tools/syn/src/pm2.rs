@@ -658,6 +658,20 @@ impl Debug for Span {
         }
     }
 }
+impl Visit for Span {
+    fn visit<V>(&self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+    }
+}
+impl VisitMut for Span {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+    }
+}
 
 #[derive(Clone)]
 pub enum Stream {

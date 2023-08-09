@@ -6,6 +6,7 @@ use std::{
 };
 
 mod iter {
+    use super::*;
     pub trait Trait<'a, T: 'a>: Iterator<Item = &'a T> + DoubleEndedIterator + ExactSizeIterator {
         fn clone_box(&self) -> Box<NoDrop<dyn Trait<'a, T> + 'a>>;
     }

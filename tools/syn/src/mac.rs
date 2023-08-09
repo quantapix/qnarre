@@ -272,6 +272,15 @@ impl Visit for Mac {
         &self.delim.visit(v);
     }
 }
+impl VisitMut for Mac {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        &mut self.path.visit_mut(v);
+        &mut self.delim.visit_mut(v);
+    }
+}
 
 pub fn parse_delim(s: Stream) -> Res<(tok::Delim, pm2::Stream)> {
     s.step(|x| {

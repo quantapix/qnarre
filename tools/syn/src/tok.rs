@@ -541,6 +541,19 @@ impl Visit for Delim {
         }
     }
 }
+impl VisitMut for Delim {
+    fn visit_mut<V>(&mut self, v: &mut V)
+    where
+        V: Visitor + ?Sized,
+    {
+        use Delim::*;
+        match self {
+            Brace(_) => {},
+            Bracket(_) => {},
+            Parenth(_) => {},
+        }
+    }
+}
 
 pub struct Group {
     pub span: pm2::Span,
@@ -590,6 +603,7 @@ impl Tok for Group {
         "invisible group"
     }
 }
+
 #[allow(non_snake_case)]
 pub fn Group<S: pm2::IntoSpans<pm2::Span>>(s: S) -> Group {
     Group { span: s.into_spans() }

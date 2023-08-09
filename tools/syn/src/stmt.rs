@@ -111,7 +111,7 @@ impl Visit for Stmt {
             Item(x) => {
                 x.visit(v);
             },
-            Expr(x, y) => {
+            Expr(x, _) => {
                 x.visit(v);
             },
             Mac(x) => {
@@ -133,7 +133,7 @@ impl VisitMut for Stmt {
             Item(x) => {
                 x.visit_mut(v);
             },
-            Expr(_binding_0, _binding_1) => {
+            Expr(x, _) => {
                 x.visit_mut(v);
             },
             Mac(x) => {
