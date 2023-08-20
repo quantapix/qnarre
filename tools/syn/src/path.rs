@@ -162,8 +162,6 @@ impl Visit for Path {
             x.visit(v);
         }
     }
-}
-impl VisitMut for Path {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -236,8 +234,6 @@ impl Visit for Segment {
         &self.ident.visit(v);
         &self.args.visit(v);
     }
-}
-impl VisitMut for Segment {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -318,8 +314,6 @@ impl Visit for Args {
             },
         }
     }
-}
-impl VisitMut for Args {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -491,8 +485,6 @@ impl Visit for Arg {
             },
         }
     }
-}
-impl VisitMut for Arg {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -643,8 +635,6 @@ impl Visit for Angled {
             x.visit(v);
         }
     }
-}
-impl VisitMut for Angled {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -705,8 +695,6 @@ impl Visit for Parenthed {
         }
         &self.out.visit(v);
     }
-}
-impl VisitMut for Parenthed {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -754,8 +742,6 @@ impl Visit for AssocType {
         }
         &self.ty.visit(v);
     }
-}
-impl VisitMut for AssocType {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -803,8 +789,6 @@ impl Visit for AssocConst {
         }
         &self.val.visit(v);
     }
-}
-impl VisitMut for AssocConst {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -864,8 +848,6 @@ impl Visit for Constraint {
             x.visit(v);
         }
     }
-}
-impl VisitMut for Constraint {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -895,8 +877,6 @@ impl Visit for QSelf {
     {
         &*self.typ.visit(v);
     }
-}
-impl VisitMut for QSelf {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,

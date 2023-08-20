@@ -540,8 +540,6 @@ impl Visit for Delim {
             Parenth(_) => {},
         }
     }
-}
-impl VisitMut for Delim {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,

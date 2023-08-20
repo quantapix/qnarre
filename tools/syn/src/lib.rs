@@ -295,9 +295,6 @@ trait Visitor {}
 
 trait Visit {
     fn visit<V>(&self, v: &mut V);
-}
-
-trait VisitMut {
     fn visit_mut<V>(&mut self, v: &mut V);
 }
 

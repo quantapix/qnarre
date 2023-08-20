@@ -16,8 +16,6 @@ impl Visit for Style {
             Outer => {},
         }
     }
-}
-impl VisitMut for Style {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -175,8 +173,6 @@ impl Visit for Attr {
         &self.style.visit(v);
         &self.meta.visit(v);
     }
-}
-impl VisitMut for Attr {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -416,8 +412,6 @@ impl Visit for Meta {
             },
         }
     }
-}
-impl VisitMut for Meta {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -588,8 +582,6 @@ impl Visit for List {
         &self.path.visit(v);
         &self.delim.visit(v);
     }
-}
-impl VisitMut for List {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -632,8 +624,6 @@ impl Visit for NameValue {
         &self.name.visit(v);
         &self.val.visit(v);
     }
-}
-impl VisitMut for NameValue {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,

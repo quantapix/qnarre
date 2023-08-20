@@ -22,8 +22,6 @@ impl Visit for Ident {
     {
         &self.span().visit(v);
     }
-}
-impl VisitMut for Ident {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -157,8 +155,6 @@ impl Visit for Life {
         &self.apos.visit(v);
         &self.ident.visit(v);
     }
-}
-impl VisitMut for Life {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,

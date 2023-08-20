@@ -664,8 +664,6 @@ impl Visit for Span {
         V: Visitor + ?Sized,
     {
     }
-}
-impl VisitMut for Span {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,

@@ -499,8 +499,6 @@ impl Visit for Expr {
             },
         }
     }
-}
-impl VisitMut for Expr {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -724,8 +722,6 @@ impl Visit for Array {
             x.visit(v);
         }
     }
-}
-impl VisitMut for Array {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -775,8 +771,6 @@ impl Visit for Assign {
         &*self.left.visit(v);
         &*self.right.visit(v);
     }
-}
-impl VisitMut for Assign {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -835,8 +829,6 @@ impl Visit for Async {
         }
         &self.block.visit(v);
     }
-}
-impl VisitMut for Async {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -887,8 +879,6 @@ impl Visit for Await {
         }
         &*self.expr.visit(v);
     }
-}
-impl VisitMut for Await {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -940,8 +930,6 @@ impl Visit for Binary {
         &self.op.visit(v);
         &*self.right.visit(v);
     }
-}
-impl VisitMut for Binary {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -1009,8 +997,6 @@ impl Visit for Block {
         }
         &self.block.visit(v);
     }
-}
-impl VisitMut for Block {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -1074,8 +1060,6 @@ impl Visit for Break {
             &**x.visit(v);
         }
     }
-}
-impl VisitMut for Break {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -1138,8 +1122,6 @@ impl Visit for Call {
             x.visit(v);
         }
     }
-}
-impl VisitMut for Call {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -1193,8 +1175,6 @@ impl Visit for Cast {
         &*self.expr.visit(v);
         &*self.typ.visit(v);
     }
-}
-impl VisitMut for Cast {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -1337,8 +1317,6 @@ impl Visit for Closure {
         &self.ret.visit(v);
         &*self.body.visit(v);
     }
-}
-impl VisitMut for Closure {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -1406,8 +1384,6 @@ impl Visit for Const {
         }
         &self.block.visit(v);
     }
-}
-impl VisitMut for Const {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -1462,8 +1438,6 @@ impl Visit for Continue {
             x.visit(v);
         }
     }
-}
-impl VisitMut for Continue {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -1518,8 +1492,6 @@ impl Visit for Field {
         &*self.expr.visit(v);
         &self.memb.visit(v);
     }
-}
-impl VisitMut for Field {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -1619,8 +1591,6 @@ impl Visit for ForLoop {
         &*self.expr.visit(v);
         &self.body.visit(v);
     }
-}
-impl VisitMut for ForLoop {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -1666,8 +1636,6 @@ impl Visit for Group {
         }
         &*self.expr.visit(v);
     }
-}
-impl VisitMut for Group {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -1788,8 +1756,6 @@ impl Visit for If {
             &*(x).1.visit(v);
         }
     }
-}
-impl VisitMut for If {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -1861,8 +1827,6 @@ impl Visit for Index {
         &*self.expr.visit(v);
         &*self.idx.visit(v);
     }
-}
-impl VisitMut for Index {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -1908,8 +1872,6 @@ impl Visit for Infer {
             x.visit(v);
         }
     }
-}
-impl VisitMut for Infer {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -1983,8 +1945,6 @@ impl Visit for Let {
         &*self.pat.visit(v);
         &*self.expr.visit(v);
     }
-}
-impl VisitMut for Let {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -2031,8 +1991,6 @@ impl Visit for Lit {
         }
         &self.lit.visit(v);
     }
-}
-impl VisitMut for Lit {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -2109,8 +2067,6 @@ impl Visit for Loop {
         }
         &self.body.visit(v);
     }
-}
-impl VisitMut for Loop {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -2160,8 +2116,6 @@ impl Visit for Mac {
         }
         &self.mac.visit(v);
     }
-}
-impl VisitMut for Mac {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -2252,8 +2206,6 @@ impl Visit for Match {
             x.visit(v);
         }
     }
-}
-impl VisitMut for Match {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -2333,8 +2285,6 @@ impl Visit for MethodCall {
             x.visit(v);
         }
     }
-}
-impl VisitMut for MethodCall {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -2390,8 +2340,6 @@ impl Visit for Parenth {
         }
         &*self.expr.visit(v);
     }
-}
-impl VisitMut for Parenth {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -2440,8 +2388,6 @@ impl Visit for Path {
         }
         &self.path.visit(v);
     }
-}
-impl VisitMut for Path {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -2501,8 +2447,6 @@ impl Visit for Range {
             &**x.visit(v);
         }
     }
-}
-impl VisitMut for Range {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -2565,8 +2509,6 @@ impl Visit for Ref {
         }
         &*self.expr.visit(v);
     }
-}
-impl VisitMut for Ref {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -2628,8 +2570,6 @@ impl Visit for Repeat {
         &*self.expr.visit(v);
         &*self.len.visit(v);
     }
-}
-impl VisitMut for Repeat {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -2682,8 +2622,6 @@ impl Visit for Return {
             &**x.visit(v);
         }
     }
-}
-impl VisitMut for Return {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -2770,8 +2708,6 @@ impl Visit for Struct {
             &**x.visit(v);
         }
     }
-}
-impl VisitMut for Struct {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -2828,8 +2764,6 @@ impl Visit for Try {
         }
         &*self.expr.visit(v);
     }
-}
-impl VisitMut for Try {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -2881,8 +2815,6 @@ impl Visit for TryBlock {
         }
         &self.block.visit(v);
     }
-}
-impl VisitMut for TryBlock {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -2943,8 +2875,6 @@ impl Visit for Tuple {
             x.visit(v);
         }
     }
-}
-impl VisitMut for Tuple {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -2996,8 +2926,6 @@ impl Visit for Unary {
         &self.op.visit(v);
         &*self.expr.visit(v);
     }
-}
-impl VisitMut for Unary {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -3058,8 +2986,6 @@ impl Visit for Unsafe {
         }
         &self.block.visit(v);
     }
-}
-impl VisitMut for Unsafe {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -3144,8 +3070,6 @@ impl Visit for While {
         &*self.cond.visit(v);
         &self.body.visit(v);
     }
-}
-impl VisitMut for While {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -3210,8 +3134,6 @@ impl Visit for Yield {
             &**x.visit(v);
         }
     }
-}
-impl VisitMut for Yield {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -3420,8 +3342,6 @@ impl Visit for Member {
             },
         }
     }
-}
-impl VisitMut for Member {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -3489,8 +3409,6 @@ impl Visit for Idx {
     {
         &self.span.visit(v);
     }
-}
-impl VisitMut for Idx {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -3664,8 +3582,6 @@ impl Visit for BinOp {
             SubAssign(_) => {},
         }
     }
-}
-impl VisitMut for BinOp {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -3758,8 +3674,6 @@ impl Visit for UnOp {
             Not(_) => {},
         }
     }
-}
-impl VisitMut for UnOp {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -3838,8 +3752,6 @@ impl Visit for FieldValue {
         &self.memb.visit(v);
         &self.expr.visit(v);
     }
-}
-impl VisitMut for FieldValue {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -3892,8 +3804,6 @@ impl Visit for Label {
     {
         &self.name.visit(v);
     }
-}
-impl VisitMut for Label {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -4041,8 +3951,6 @@ impl Visit for Arm {
         }
         &*self.body.visit(v);
     }
-}
-impl VisitMut for Arm {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -4114,8 +4022,6 @@ impl Visit for Limits {
             HalfOpen(_) => {},
         }
     }
-}
-impl VisitMut for Limits {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,

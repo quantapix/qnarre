@@ -107,8 +107,6 @@ impl Visit for Type {
             Verbatim(_) => {},
         }
     }
-}
-impl VisitMut for Type {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -205,8 +203,6 @@ impl Visit for Array {
         &*self.elem.visit(v);
         &self.len.visit(v);
     }
-}
-impl VisitMut for Array {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -330,8 +326,6 @@ impl Visit for Fn {
         }
         &self.ret.visit(v);
     }
-}
-impl VisitMut for Fn {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -385,8 +379,6 @@ impl Visit for Group {
     {
         &*self.elem.visit(v);
     }
-}
-impl VisitMut for Group {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -460,8 +452,6 @@ impl Visit for Impl {
             x.visit(v);
         }
     }
-}
-impl VisitMut for Impl {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -498,8 +488,6 @@ impl Visit for Infer {
         V: Visitor + ?Sized,
     {
     }
-}
-impl VisitMut for Infer {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -533,8 +521,6 @@ impl Visit for Mac {
     {
         &self.mac.visit(v);
     }
-}
-impl VisitMut for Mac {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -568,8 +554,6 @@ impl Visit for Never {
         V: Visitor + ?Sized,
     {
     }
-}
-impl VisitMut for Never {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -620,8 +604,6 @@ impl Visit for Parenth {
     {
         &*self.elem.visit(v);
     }
-}
-impl VisitMut for Parenth {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -661,8 +643,6 @@ impl Visit for Path {
         }
         &self.path.visit(v);
     }
-}
-impl VisitMut for Path {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -729,8 +709,6 @@ impl Visit for Ptr {
     {
         &*self.elem.visit(v);
     }
-}
-impl VisitMut for Ptr {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -786,8 +764,6 @@ impl Visit for Ref {
         }
         &*self.elem.visit(v);
     }
-}
-impl VisitMut for Ref {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -833,8 +809,6 @@ impl Visit for Slice {
     {
         &*self.elem.visit(v);
     }
-}
-impl VisitMut for Slice {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -916,8 +890,6 @@ impl Visit for Trait {
             x.visit(v);
         }
     }
-}
-impl VisitMut for Trait {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -1001,8 +973,6 @@ impl Visit for Tuple {
             x.visit(v);
         }
     }
-}
-impl VisitMut for Tuple {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -1059,8 +1029,6 @@ impl Visit for Abi {
             x.visit(v);
         }
     }
-}
-impl VisitMut for Abi {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -1115,8 +1083,6 @@ impl Visit for FnArg {
         }
         &self.typ.visit(v);
     }
-}
-impl VisitMut for FnArg {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -1170,8 +1136,6 @@ impl Visit for Variadic {
             &(x).0.visit(v);
         }
     }
-}
-impl VisitMut for Variadic {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -1247,8 +1211,6 @@ impl Visit for Ret {
             },
         }
     }
-}
-impl VisitMut for Ret {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,

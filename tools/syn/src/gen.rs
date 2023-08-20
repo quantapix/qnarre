@@ -77,7 +77,7 @@ pub mod bound {
         where
             V: Visitor + ?Sized,
         {
-            use Type::*;
+            use self::Type::*;
             match self {
                 Life(x) => {
                     x.visit(v);
@@ -88,13 +88,11 @@ pub mod bound {
                 Verbatim(_) => {},
             }
         }
-    }
-    impl VisitMut for Type {
         fn visit_mut<V>(&mut self, v: &mut V)
         where
             V: Visitor + ?Sized,
         {
-            use Type::*;
+            use self::Type::*;
             match self {
                 Life(x) => {
                     x.visit_mut(v);
@@ -181,8 +179,6 @@ pub mod bound {
             }
             &self.path.visit(v);
         }
-    }
-    impl VisitMut for Trait {
         fn visit_mut<V>(&mut self, v: &mut V)
         where
             V: Visitor + ?Sized,
@@ -237,8 +233,6 @@ pub mod bound {
                 None => {},
             }
         }
-    }
-    impl VisitMut for Modifier {
         fn visit_mut<V>(&mut self, v: &mut V)
         where
             V: Visitor + ?Sized,
@@ -333,8 +327,6 @@ pub mod bound {
                 x.visit(v);
             }
         }
-    }
-    impl VisitMut for Lifes {
         fn visit_mut<V>(&mut self, v: &mut V)
         where
             V: Visitor + ?Sized,
@@ -444,8 +436,6 @@ pub mod param {
                 },
             }
         }
-    }
-    impl VisitMut for Param {
         fn visit_mut<V>(&mut self, v: &mut V)
         where
             V: Visitor + ?Sized,
@@ -555,8 +545,6 @@ pub mod param {
                 x.visit(v);
             }
         }
-    }
-    impl VisitMut for Life {
         fn visit_mut<V>(&mut self, v: &mut V)
         where
             V: Visitor + ?Sized,
@@ -713,8 +701,6 @@ pub mod param {
                 x.visit(v);
             }
         }
-    }
-    impl VisitMut for Type {
         fn visit_mut<V>(&mut self, v: &mut V)
         where
             V: Visitor + ?Sized,
@@ -836,8 +822,6 @@ pub mod param {
                 x.visit(v);
             }
         }
-    }
-    impl VisitMut for Const {
         fn visit_mut<V>(&mut self, v: &mut V)
         where
             V: Visitor + ?Sized,
@@ -977,8 +961,6 @@ impl Visit for Where {
             x.visit(v);
         }
     }
-}
-impl VisitMut for Where {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -1131,8 +1113,6 @@ pub mod where_ {
                 },
             }
         }
-    }
-    impl VisitMut for Pred {
         fn visit_mut<V>(&mut self, v: &mut V)
         where
             V: Visitor + ?Sized,
@@ -1189,8 +1169,6 @@ pub mod where_ {
                 x.visit(v);
             }
         }
-    }
-    impl VisitMut for Life {
         fn visit_mut<V>(&mut self, v: &mut V)
         where
             V: Visitor + ?Sized,
@@ -1255,8 +1233,6 @@ pub mod where_ {
                 x.visit(v);
             }
         }
-    }
-    impl VisitMut for Type {
         fn visit_mut<V>(&mut self, v: &mut V)
         where
             V: Visitor + ?Sized,
@@ -1439,8 +1415,6 @@ impl Visit for Gens {
             x.visit(v);
         }
     }
-}
-impl VisitMut for Gens {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,

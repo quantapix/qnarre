@@ -182,8 +182,6 @@ impl Visit for Lit {
             Verbatim(_) => {},
         }
     }
-}
-impl VisitMut for Lit {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -274,8 +272,6 @@ impl Visit for Bool {
     {
         &self.span.visit(v);
     }
-}
-impl VisitMut for Bool {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -383,8 +379,6 @@ impl Visit for Byte {
         V: Visitor + ?Sized,
     {
     }
-}
-impl VisitMut for Byte {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -462,8 +456,6 @@ impl Visit for ByteStr {
         V: Visitor + ?Sized,
     {
     }
-}
-impl VisitMut for ByteStr {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -541,8 +533,6 @@ impl Visit for Char {
         V: Visitor + ?Sized,
     {
     }
-}
-impl VisitMut for Char {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -643,8 +633,6 @@ impl Visit for Float {
         V: Visitor + ?Sized,
     {
     }
-}
-impl VisitMut for Float {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -745,8 +733,6 @@ impl Visit for Int {
         V: Visitor + ?Sized,
     {
     }
-}
-impl VisitMut for Int {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -847,8 +833,6 @@ impl Visit for Str {
         V: Visitor + ?Sized,
     {
     }
-}
-impl VisitMut for Str {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,

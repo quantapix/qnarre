@@ -271,8 +271,6 @@ impl Visit for Mac {
         &self.path.visit(v);
         &self.delim.visit(v);
     }
-}
-impl VisitMut for Mac {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,

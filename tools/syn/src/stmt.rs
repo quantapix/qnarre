@@ -119,8 +119,6 @@ impl Visit for Stmt {
             },
         }
     }
-}
-impl VisitMut for Stmt {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -182,8 +180,6 @@ impl Visit for Local {
             x.visit(v);
         }
     }
-}
-impl VisitMut for Local {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -220,8 +216,6 @@ impl Visit for Mac {
         }
         &self.mac.visit(v);
     }
-}
-impl VisitMut for Mac {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -289,8 +283,6 @@ impl Visit for Block {
             x.visit(v);
         }
     }
-}
-impl VisitMut for Block {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -316,8 +308,6 @@ impl Visit for Init {
             &*(x).1.visit(v);
         }
     }
-}
-impl VisitMut for Init {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,

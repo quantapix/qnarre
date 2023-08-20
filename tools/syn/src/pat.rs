@@ -152,8 +152,6 @@ impl Visit for Pat {
             },
         }
     }
-}
-impl VisitMut for Pat {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -261,8 +259,6 @@ impl Visit for Ident {
             &*(x).1.visit(v);
         }
     }
-}
-impl VisitMut for Ident {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -330,8 +326,6 @@ impl Visit for Or {
             x.visit(v);
         }
     }
-}
-impl VisitMut for Or {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -377,8 +371,6 @@ impl Visit for Parenth {
         }
         &*self.pat.visit(v);
     }
-}
-impl VisitMut for Parenth {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -424,8 +416,6 @@ impl Visit for Ref {
         }
         &*self.pat.visit(v);
     }
-}
-impl VisitMut for Ref {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -462,8 +452,6 @@ impl Visit for Rest {
             x.visit(v);
         }
     }
-}
-impl VisitMut for Rest {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -511,8 +499,6 @@ impl Visit for Slice {
             x.visit(v);
         }
     }
-}
-impl VisitMut for Slice {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -588,8 +574,6 @@ impl Visit for Struct {
             x.visit(v);
         }
     }
-}
-impl VisitMut for Struct {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -648,8 +632,6 @@ impl Visit for Field {
         &self.memb.visit(v);
         &*self.pat.visit(v);
     }
-}
-impl VisitMut for Field {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -719,8 +701,6 @@ impl Visit for Tuple {
             x.visit(v);
         }
     }
-}
-impl VisitMut for Tuple {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -784,8 +764,6 @@ impl Visit for TupleStruct {
             x.visit(v);
         }
     }
-}
-impl VisitMut for TupleStruct {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -837,8 +815,6 @@ impl Visit for Type {
         &*self.pat.visit(v);
         &*self.typ.visit(v);
     }
-}
-impl VisitMut for Type {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -876,8 +852,6 @@ impl Visit for Wild {
             x.visit(v);
         }
     }
-}
-impl VisitMut for Wild {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,

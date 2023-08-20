@@ -108,8 +108,6 @@ impl Visit for Input {
         &self.gens.visit(v);
         &self.data.visit(v);
     }
-}
-impl VisitMut for Input {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -224,8 +222,6 @@ impl Visit for Visibility {
             },
         }
     }
-}
-impl VisitMut for Visibility {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -277,8 +273,6 @@ impl Visit for Restricted {
     {
         &*self.path.visit(v);
     }
-}
-impl VisitMut for Restricted {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -310,8 +304,6 @@ impl Visit for Data {
             },
         }
     }
-}
-impl VisitMut for Data {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -346,8 +338,6 @@ impl Visit for Enum {
             x.visit(v);
         }
     }
-}
-impl VisitMut for Enum {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -371,8 +361,6 @@ impl Visit for Struct {
     {
         &self.fields.visit(v);
     }
-}
-impl VisitMut for Struct {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -392,8 +380,6 @@ impl Visit for Union {
     {
         &self.fields.visit(v);
     }
-}
-impl VisitMut for Union {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -492,8 +478,6 @@ impl Visit for Variant {
             &(x).1.visit(v);
         }
     }
-}
-impl VisitMut for Variant {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -592,8 +576,6 @@ impl Visit for Fields {
             Unit => {},
         }
     }
-}
-impl VisitMut for Fields {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -641,8 +623,6 @@ impl Visit for Named {
             x.visit(v);
         }
     }
-}
-impl VisitMut for Named {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -696,8 +676,6 @@ impl Visit for Unnamed {
             x.visit(v);
         }
     }
-}
-impl VisitMut for Unnamed {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -780,8 +758,6 @@ impl Visit for Field {
         }
         &self.typ.visit(v);
     }
-}
-impl VisitMut for Field {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -810,8 +786,6 @@ impl Visit for Mut {
             Mut::None => {},
         }
     }
-}
-impl VisitMut for Mut {
     fn visit_mut<V>(&mut self, v: &mut V)
     where
         V: Visitor + ?Sized,
