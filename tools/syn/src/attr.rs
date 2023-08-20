@@ -5,21 +5,34 @@ pub enum Style {
     Outer,
     Inner(Token![!]),
 }
-impl Visit for Style {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<H> Hash for Style
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        use Style::*;
+        match self {
+            Outer => {
+                h.write_u8(0u8);
+            },
+            Inner(_) => {
+                h.write_u8(1u8);
+            },
+        }
+    }
+}
+impl<V> Visit for Style
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         use Style::*;
         match self {
             Inner(_) => {},
             Outer => {},
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         use Style::*;
         match self {
             Inner(_) => {},
@@ -105,6 +118,15 @@ impl Lower for Attr {
         });
     }
 }
+impl<H> Hash for Attr
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.style.hash(h);
+        self.meta.hash(h);
+    }
+}
 impl Pretty for Attr {
     fn pretty(&self, p: &mut Print) {
         use Style::*;
@@ -165,18 +187,15 @@ impl Pretty for Attr {
         p.space();
     }
 }
-impl Visit for Attr {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Attr
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         &self.style.visit(v);
         &self.meta.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         &mut self.style.visit_mut(v);
         &mut self.meta.visit_mut(v);
     }
@@ -384,6 +403,28 @@ impl Parse for Meta {
         parse_after_path(y, s)
     }
 }
+impl<H> Hash for Meta
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        use Meta::*;
+        match self {
+            Path(x) => {
+                h.write_u8(0u8);
+                x.hash(h);
+            },
+            List(x) => {
+                h.write_u8(1u8);
+                x.hash(h);
+            },
+            NameValue(x) => {
+                h.write_u8(2u8);
+                x.hash(h);
+            },
+        }
+    }
+}
 impl Pretty for Meta {
     fn pretty(&self, p: &mut Print) {
         use Meta::*;
@@ -394,11 +435,11 @@ impl Pretty for Meta {
         }
     }
 }
-impl Visit for Meta {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Meta
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         use Meta::*;
         match self {
             Path(x) => {
@@ -412,10 +453,7 @@ impl Visit for Meta {
             },
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         use Meta::*;
         match self {
             Path(x) => {
@@ -458,6 +496,16 @@ impl Lower for List {
     fn lower(&self, s: &mut Stream) {
         self.path.lower(s);
         self.delim.surround(s, self.toks.clone());
+    }
+}
+impl<H> Hash for List
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.path.hash(h);
+        self.delim.hash(h);
+        StreamHelper(&self.toks).hash(h);
     }
 }
 impl Pretty for List {
@@ -574,18 +622,15 @@ impl Pretty for List {
         }
     }
 }
-impl Visit for List {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for List
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         &self.path.visit(v);
         &self.delim.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         &mut self.path.visit_mut(v);
         &mut self.delim.visit_mut(v);
     }
@@ -609,6 +654,15 @@ impl Lower for NameValue {
         self.val.lower(s);
     }
 }
+impl<H> Hash for NameValue
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.name.hash(h);
+        self.val.hash(h);
+    }
+}
 impl Pretty for NameValue {
     fn pretty(&self, p: &mut Print) {
         p.path(&self.name, path::Kind::Simple);
@@ -616,18 +670,15 @@ impl Pretty for NameValue {
         p.expr(&self.val);
     }
 }
-impl Visit for NameValue {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for NameValue
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         &self.name.visit(v);
         &self.val.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         &mut self.name.visit_mut(v);
         &mut self.val.visit_mut(v);
     }

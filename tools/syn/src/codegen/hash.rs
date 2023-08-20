@@ -42,31 +42,6 @@ where
         self.typ.hash(h);
     }
 }
-impl<H> Hash for attr::Style
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        use attr::Style::*;
-        match self {
-            Outer => {
-                h.write_u8(0u8);
-            },
-            Inner(_) => {
-                h.write_u8(1u8);
-            },
-        }
-    }
-}
-impl<H> Hash for attr::Attr
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.style.hash(h);
-        self.meta.hash(h);
-    }
-}
 impl<H> Hash for expr::BinOp
 where
     H: Hasher,
@@ -197,65 +172,6 @@ where
         self.ident.hash(h);
         self.args.hash(h);
         self.bounds.hash(h);
-    }
-}
-impl<H> Hash for data::Data
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        use data::Data::*;
-        match self {
-            Struct(x) => {
-                h.write_u8(0u8);
-                x.hash(h);
-            },
-            Enum(x) => {
-                h.write_u8(1u8);
-                x.hash(h);
-            },
-            Union(x) => {
-                h.write_u8(2u8);
-                x.hash(h);
-            },
-        }
-    }
-}
-impl<H> Hash for data::Enum
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.variants.hash(h);
-    }
-}
-impl<H> Hash for data::Struct
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.fields.hash(h);
-        self.semi.hash(h);
-    }
-}
-impl<H> Hash for data::Union
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.fields.hash(h);
-    }
-}
-impl<H> Hash for Input
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.vis.hash(h);
-        self.ident.hash(h);
-        self.gens.hash(h);
-        self.data.hash(h);
     }
 }
 impl<H> Hash for expr::Expr
@@ -805,31 +721,6 @@ where
         self.expr.hash(h);
     }
 }
-impl<H> Hash for data::Field
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.vis.hash(h);
-        self.mut_.hash(h);
-        self.ident.hash(h);
-        self.colon.hash(h);
-        self.typ.hash(h);
-    }
-}
-impl<H> Hash for data::Mut
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        match self {
-            data::Mut::None => {
-                h.write_u8(0u8);
-            },
-        }
-    }
-}
 impl<H> Hash for pat::Field
 where
     H: Hasher,
@@ -850,43 +741,6 @@ where
         self.memb.hash(h);
         self.colon.hash(h);
         self.expr.hash(h);
-    }
-}
-impl<H> Hash for data::Fields
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        use data::Fields::*;
-        match self {
-            Named(x) => {
-                h.write_u8(0u8);
-                x.hash(h);
-            },
-            Unnamed(x) => {
-                h.write_u8(1u8);
-                x.hash(h);
-            },
-            Unit => {
-                h.write_u8(2u8);
-            },
-        }
-    }
-}
-impl<H> Hash for data::Named
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.fields.hash(h);
-    }
-}
-impl<H> Hash for data::Unnamed
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.fields.hash(h);
     }
 }
 impl<H> Hash for item::File
@@ -1521,47 +1375,6 @@ where
         }
     }
 }
-impl<H> Hash for attr::Meta
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        use attr::Meta::*;
-        match self {
-            Path(x) => {
-                h.write_u8(0u8);
-                x.hash(h);
-            },
-            List(x) => {
-                h.write_u8(1u8);
-                x.hash(h);
-            },
-            NameValue(x) => {
-                h.write_u8(2u8);
-                x.hash(h);
-            },
-        }
-    }
-}
-impl<H> Hash for attr::List
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.path.hash(h);
-        self.delim.hash(h);
-        StreamHelper(&self.toks).hash(h);
-    }
-}
-impl<H> Hash for attr::NameValue
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.name.hash(h);
-        self.val.hash(h);
-    }
-}
 impl<H> Hash for path::Parenthed
 where
     H: Hasher,
@@ -2157,46 +1970,6 @@ where
         self.attrs.hash(h);
         self.pat.hash(h);
         self.comma.hash(h);
-    }
-}
-impl<H> Hash for data::Variant
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.ident.hash(h);
-        self.fields.hash(h);
-        self.discrim.hash(h);
-    }
-}
-impl<H> Hash for data::Restricted
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.in_.hash(h);
-        self.path.hash(h);
-    }
-}
-impl<H> Hash for data::Visibility
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        use data::Visibility::*;
-        match self {
-            Public(_) => {
-                h.write_u8(0u8);
-            },
-            Restricted(x) => {
-                h.write_u8(1u8);
-                x.hash(h);
-            },
-            Inherited => {
-                h.write_u8(2u8);
-            },
-        }
     }
 }
 impl<H> Hash for gen::Where

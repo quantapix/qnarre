@@ -53,6 +53,18 @@ impl Parse for Input {
         }
     }
 }
+impl<H> Hash for Input
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.ident.hash(h);
+        self.gens.hash(h);
+        self.data.hash(h);
+    }
+}
 impl Lower for Input {
     fn lower(&self, s: &mut Stream) {
         for x in self.attrs.outers() {
@@ -95,11 +107,11 @@ impl Lower for Input {
         }
     }
 }
-impl Visit for Input {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Input
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         for x in &self.attrs {
             x.visit(v);
         }
@@ -108,10 +120,7 @@ impl Visit for Input {
         &self.gens.visit(v);
         &self.data.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         for x in &mut self.attrs {
             x.visit_mut(v);
         }
@@ -198,6 +207,26 @@ impl Lower for Visibility {
         }
     }
 }
+impl<H> Hash for Visibility
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        use Visibility::*;
+        match self {
+            Public(_) => {
+                h.write_u8(0u8);
+            },
+            Restricted(x) => {
+                h.write_u8(1u8);
+                x.hash(h);
+            },
+            Inherited => {
+                h.write_u8(2u8);
+            },
+        }
+    }
+}
 impl Pretty for Visibility {
     fn pretty(&self, p: &mut Print) {
         use Visibility::*;
@@ -208,11 +237,11 @@ impl Pretty for Visibility {
         }
     }
 }
-impl Visit for Visibility {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Visibility
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         use Visibility::*;
         match self {
             Inherited => {},
@@ -222,10 +251,7 @@ impl Visit for Visibility {
             },
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         use Visibility::*;
         match self {
             Inherited => {},
@@ -252,6 +278,15 @@ impl Lower for Restricted {
         });
     }
 }
+impl<H> Hash for Restricted
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.in_.hash(h);
+        self.path.hash(h);
+    }
+}
 impl Pretty for Restricted {
     fn pretty(&self, p: &mut Print) {
         p.word("pub(");
@@ -266,17 +301,14 @@ impl Pretty for Restricted {
         p.word(") ");
     }
 }
-impl Visit for Restricted {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Restricted
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         &*self.path.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         &mut *self.path.visit_mut(v);
     }
 }
@@ -286,11 +318,33 @@ pub enum Data {
     Struct(Struct),
     Union(Union),
 }
-impl Visit for Data {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<H> Hash for Data
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        use Data::*;
+        match self {
+            Struct(x) => {
+                h.write_u8(0u8);
+                x.hash(h);
+            },
+            Enum(x) => {
+                h.write_u8(1u8);
+                x.hash(h);
+            },
+            Union(x) => {
+                h.write_u8(2u8);
+                x.hash(h);
+            },
+        }
+    }
+}
+impl<V> Visit for Data
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         use Data::*;
         match self {
             Enum(x) => {
@@ -304,10 +358,7 @@ impl Visit for Data {
             },
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         use Data::*;
         match self {
             Enum(x) => {
@@ -328,20 +379,25 @@ pub struct Enum {
     pub brace: tok::Brace,
     pub variants: Puncted<Variant, Token![,]>,
 }
-impl Visit for Enum {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<H> Hash for Enum
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.variants.hash(h);
+    }
+}
+impl<V> Visit for Enum
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         for y in Puncted::pairs(&self.variants) {
             let x = y.value();
             x.visit(v);
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         for mut y in Puncted::pairs_mut(&mut self.variants) {
             let x = y.value_mut();
             x.visit_mut(v);
@@ -354,17 +410,23 @@ pub struct Struct {
     pub fields: Fields,
     pub semi: Option<Token![;]>,
 }
-impl Visit for Struct {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<H> Hash for Struct
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.fields.hash(h);
+        self.semi.hash(h);
+    }
+}
+impl<V> Visit for Struct
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         &self.fields.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         &mut self.fields.visit_mut(v);
     }
 }
@@ -373,17 +435,22 @@ pub struct Union {
     pub union_: Token![union],
     pub fields: Named,
 }
-impl Visit for Union {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<H> Hash for Union
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.fields.hash(h);
+    }
+}
+impl<V> Visit for Union
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         &self.fields.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         &mut self.fields.visit_mut(v);
     }
 }
@@ -432,6 +499,17 @@ impl Lower for Variant {
         }
     }
 }
+impl<H> Hash for Variant
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.ident.hash(h);
+        self.fields.hash(h);
+        self.discrim.hash(h);
+    }
+}
 impl Pretty for Variant {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -464,11 +542,11 @@ impl Pretty for Variant {
         }
     }
 }
-impl Visit for Variant {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Variant
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         for x in &self.attrs {
             x.visit(v);
         }
@@ -478,10 +556,7 @@ impl Visit for Variant {
             &(x).1.visit(v);
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         for x in &mut self.attrs {
             x.visit_mut(v);
         }
@@ -560,11 +635,32 @@ impl<'a> IntoIterator for &'a mut Fields {
         self.iter_mut()
     }
 }
-impl Visit for Fields {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<H> Hash for Fields
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        use Fields::*;
+        match self {
+            Named(x) => {
+                h.write_u8(0u8);
+                x.hash(h);
+            },
+            Unnamed(x) => {
+                h.write_u8(1u8);
+                x.hash(h);
+            },
+            Unit => {
+                h.write_u8(2u8);
+            },
+        }
+    }
+}
+impl<V> Visit for Fields
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         use Fields::*;
         match self {
             Named(x) => {
@@ -576,10 +672,7 @@ impl Visit for Fields {
             Unit => {},
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         use Fields::*;
         match self {
             Named(x) => {
@@ -613,20 +706,25 @@ impl Lower for Named {
         });
     }
 }
-impl Visit for Named {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<H> Hash for Named
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.fields.hash(h);
+    }
+}
+impl<V> Visit for Named
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         for y in Puncted::pairs(&self.fields) {
             let x = y.value();
             x.visit(v);
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         for mut y in Puncted::pairs_mut(&mut self.fields) {
             let x = y.value_mut();
             x.visit_mut(v);
@@ -654,6 +752,14 @@ impl Lower for Unnamed {
         });
     }
 }
+impl<H> Hash for Unnamed
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.fields.hash(h);
+    }
+}
 impl Pretty for Unnamed {
     fn pretty(&self, p: &mut Print) {
         p.word("(");
@@ -666,20 +772,17 @@ impl Pretty for Unnamed {
         p.word(")");
     }
 }
-impl Visit for Unnamed {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Unnamed
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         for y in Puncted::pairs(&self.fields) {
             let x = y.value();
             x.visit(v);
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         for mut y in Puncted::pairs_mut(&mut self.fields) {
             let x = y.value_mut();
             x.visit_mut(v);
@@ -732,6 +835,19 @@ impl Lower for Field {
         self.typ.lower(s);
     }
 }
+impl<H> Hash for Field
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.mut_.hash(h);
+        self.ident.hash(h);
+        self.colon.hash(h);
+        self.typ.hash(h);
+    }
+}
 impl Pretty for Field {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -743,11 +859,11 @@ impl Pretty for Field {
         p.ty(&self.typ);
     }
 }
-impl Visit for Field {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Field
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         for x in &self.attrs {
             x.visit(v);
         }
@@ -758,10 +874,7 @@ impl Visit for Field {
         }
         &self.typ.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         for x in &mut self.attrs {
             x.visit_mut(v);
         }
@@ -777,19 +890,28 @@ impl Visit for Field {
 pub enum Mut {
     None,
 }
-impl Visit for Mut {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<H> Hash for Mut
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        match self {
+            Mut::None => {
+                h.write_u8(0u8);
+            },
+        }
+    }
+}
+impl<V> Visit for Mut
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         match self {
             Mut::None => {},
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         match self {
             Mut::None => {},
         }
