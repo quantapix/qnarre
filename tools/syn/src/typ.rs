@@ -33,6 +33,76 @@ impl Parse for Type {
         parse_ambig_typ(s, plus, gen)
     }
 }
+impl<H> Hash for Type
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        use Type::*;
+        match self {
+            Array(x) => {
+                h.write_u8(0u8);
+                x.hash(h);
+            },
+            Fn(x) => {
+                h.write_u8(1u8);
+                x.hash(h);
+            },
+            Group(x) => {
+                h.write_u8(2u8);
+                x.hash(h);
+            },
+            Impl(x) => {
+                h.write_u8(3u8);
+                x.hash(h);
+            },
+            Infer(x) => {
+                h.write_u8(4u8);
+                x.hash(h);
+            },
+            Mac(x) => {
+                h.write_u8(5u8);
+                x.hash(h);
+            },
+            Never(x) => {
+                h.write_u8(6u8);
+                x.hash(h);
+            },
+            Parenth(x) => {
+                h.write_u8(7u8);
+                x.hash(h);
+            },
+            Path(x) => {
+                h.write_u8(8u8);
+                x.hash(h);
+            },
+            Ptr(x) => {
+                h.write_u8(9u8);
+                x.hash(h);
+            },
+            Ref(x) => {
+                h.write_u8(10u8);
+                x.hash(h);
+            },
+            Slice(x) => {
+                h.write_u8(11u8);
+                x.hash(h);
+            },
+            Trait(x) => {
+                h.write_u8(12u8);
+                x.hash(h);
+            },
+            Tuple(x) => {
+                h.write_u8(13u8);
+                x.hash(h);
+            },
+            Verbatim(x) => {
+                h.write_u8(14u8);
+                StreamHelper(x).hash(h);
+            },
+        }
+    }
+}
 impl Pretty for Type {
     fn pretty(&self, p: &mut Print) {
         use Type::*;
@@ -55,11 +125,11 @@ impl Pretty for Type {
         }
     }
 }
-impl Visit for Type {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Type
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         use Type::*;
         match self {
             Array(x) => {
@@ -107,10 +177,7 @@ impl Visit for Type {
             Verbatim(_) => {},
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         use Type::*;
         match self {
             Array(x) => {
@@ -186,6 +253,15 @@ impl Lower for Array {
         });
     }
 }
+impl<H> Hash for Array
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.elem.hash(h);
+        self.len.hash(h);
+    }
+}
 impl Pretty for Array {
     fn pretty(&self, p: &mut Print) {
         p.word("[");
@@ -195,18 +271,15 @@ impl Pretty for Array {
         p.word("]");
     }
 }
-impl Visit for Array {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Array
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         &*self.elem.visit(v);
         &self.len.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         &mut *self.elem.visit_mut(v);
         &mut self.len.visit_mut(v);
     }
@@ -278,6 +351,19 @@ impl Lower for Fn {
         self.ret.lower(s);
     }
 }
+impl<H> Hash for Fn
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.lifes.hash(h);
+        self.unsafe_.hash(h);
+        self.abi.hash(h);
+        self.args.hash(h);
+        self.vari.hash(h);
+        self.ret.hash(h);
+    }
+}
 impl Pretty for Fn {
     fn pretty(&self, p: &mut Print) {
         if let Some(x) = &self.lifes {
@@ -306,11 +392,11 @@ impl Pretty for Fn {
         &self.ret.pretty(p)
     }
 }
-impl Visit for Fn {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Fn
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         if let Some(x) = &self.lifes {
             x.visit(v);
         }
@@ -326,10 +412,7 @@ impl Visit for Fn {
         }
         &self.ret.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         if let Some(x) = &mut self.lifes {
             x.visit_mut(v);
         }
@@ -367,22 +450,27 @@ impl Lower for Group {
         });
     }
 }
+impl<H> Hash for Group
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.elem.hash(h);
+    }
+}
 impl Pretty for Group {
     fn pretty(&self, p: &mut Print) {
         &self.elem.pretty(p);
     }
 }
-impl Visit for Group {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Group
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         &*self.elem.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         &mut *self.elem.visit_mut(v);
     }
 }
@@ -431,6 +519,14 @@ impl Lower for Impl {
         self.bounds.lower(s);
     }
 }
+impl<H> Hash for Impl
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.bounds.hash(h);
+    }
+}
 impl Pretty for Impl {
     fn pretty(&self, p: &mut Print) {
         p.word("impl ");
@@ -442,20 +538,17 @@ impl Pretty for Impl {
         }
     }
 }
-impl Visit for Impl {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Impl
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         for y in Puncted::pairs(&self.bounds) {
             let x = y.value();
             x.visit(v);
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         for mut y in Puncted::pairs_mut(&mut self.bounds) {
             let x = y.value_mut();
             x.visit_mut(v);
@@ -476,23 +569,24 @@ impl Lower for Infer {
         self.underscore.lower(s);
     }
 }
+impl<H> Hash for Infer
+where
+    H: Hasher,
+{
+    fn hash(&self, _: &mut H) {}
+}
 impl Pretty for Infer {
     fn pretty(&self, p: &mut Print) {
         let _ = self;
         p.word("_");
     }
 }
-impl Visit for Infer {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
-    }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
-    }
+impl<V> Visit for Infer
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {}
+    fn visit_mut(&mut self, v: &mut V) {}
 }
 
 pub struct Mac {
@@ -508,23 +602,28 @@ impl Lower for Mac {
         self.mac.lower(s);
     }
 }
+impl<H> Hash for Mac
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.mac.hash(h);
+    }
+}
 impl Pretty for Mac {
     fn pretty(&self, p: &mut Print) {
         let semi = false;
         &self.mac.pretty_with_args(p, (None, semi));
     }
 }
-impl Visit for Mac {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Mac
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         &self.mac.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         &mut self.mac.visit_mut(v);
     }
 }
@@ -542,23 +641,24 @@ impl Lower for Never {
         self.bang.lower(s);
     }
 }
+impl<H> Hash for Never
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {}
+}
 impl Pretty for Never {
     fn pretty(&self, p: &mut Print) {
         let _ = self;
         p.word("!");
     }
 }
-impl Visit for Never {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
-    }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
-    }
+impl<V> Visit for Never
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {}
+    fn visit_mut(&mut self, v: &mut V) {}
 }
 
 pub struct Parenth {
@@ -590,6 +690,14 @@ impl Lower for Parenth {
         });
     }
 }
+impl<H> Hash for Parenth
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.elem.hash(h);
+    }
+}
 impl Pretty for Parenth {
     fn pretty(&self, p: &mut Print) {
         p.word("(");
@@ -597,17 +705,14 @@ impl Pretty for Parenth {
         p.word(")");
     }
 }
-impl Visit for Parenth {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Parenth
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         &*self.elem.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         &mut *self.elem.visit_mut(v);
     }
 }
@@ -628,25 +733,31 @@ impl Lower for Path {
         path::path_lower(s, &self.qself, &self.path);
     }
 }
+impl<H> Hash for Path
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.qself.hash(h);
+        self.path.hash(h);
+    }
+}
 impl Pretty for Path {
     fn pretty(&self, p: &mut Print) {
         &self.path.pretty_qpath(p, &self.qself, path::Kind::Type);
     }
 }
-impl Visit for Path {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Path
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         if let Some(x) = &self.qself {
             x.visit(v);
         }
         &self.path.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         if let Some(x) = &mut self.qself {
             x.visit_mut(v);
         }
@@ -691,6 +802,16 @@ impl Lower for Ptr {
         self.elem.lower(s);
     }
 }
+impl<H> Hash for Ptr
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.const_.hash(h);
+        self.mut_.hash(h);
+        self.elem.hash(h);
+    }
+}
 impl Pretty for Ptr {
     fn pretty(&self, p: &mut Print) {
         p.word("*");
@@ -702,17 +823,14 @@ impl Pretty for Ptr {
         &self.elem.pretty(p);
     }
 }
-impl Visit for Ptr {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Ptr
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         &*self.elem.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         &mut *self.elem.visit_mut(v);
     }
 }
@@ -741,6 +859,16 @@ impl Lower for Ref {
         self.elem.lower(s);
     }
 }
+impl<H> Hash for Ref
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.life.hash(h);
+        self.mut_.hash(h);
+        self.elem.hash(h);
+    }
+}
 impl Pretty for Ref {
     fn pretty(&self, p: &mut Print) {
         p.word("&");
@@ -754,20 +882,17 @@ impl Pretty for Ref {
         &self.elem.pretty(p);
     }
 }
-impl Visit for Ref {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Ref
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         if let Some(x) = &self.life {
             x.visit(v);
         }
         &*self.elem.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         if let Some(x) = &mut self.life {
             x.visit_mut(v);
         }
@@ -795,6 +920,14 @@ impl Lower for Slice {
         });
     }
 }
+impl<H> Hash for Slice
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.elem.hash(h);
+    }
+}
 impl Pretty for Slice {
     fn pretty(&self, p: &mut Print) {
         p.word("[");
@@ -802,17 +935,14 @@ impl Pretty for Slice {
         p.word("]");
     }
 }
-impl Visit for Slice {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Slice
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         &*self.elem.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         &mut *self.elem.visit_mut(v);
     }
 }
@@ -869,6 +999,15 @@ impl Lower for Trait {
         self.bounds.lower(s);
     }
 }
+impl<H> Hash for Trait
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.dyn_.hash(h);
+        self.bounds.hash(h);
+    }
+}
 impl Pretty for Trait {
     fn pretty(&self, p: &mut Print) {
         p.word("dyn ");
@@ -880,20 +1019,17 @@ impl Pretty for Trait {
         }
     }
 }
-impl Visit for Trait {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Trait
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         for y in Puncted::pairs(&self.bounds) {
             let x = y.value();
             x.visit(v);
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         for mut y in Puncted::pairs_mut(&mut self.bounds) {
             let x = y.value_mut();
             x.visit_mut(v);
@@ -944,6 +1080,14 @@ impl Lower for Tuple {
         });
     }
 }
+impl<H> Hash for Tuple
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.elems.hash(h);
+    }
+}
 impl Pretty for Tuple {
     fn pretty(&self, p: &mut Print) {
         p.word("(");
@@ -963,20 +1107,17 @@ impl Pretty for Tuple {
         p.word(")");
     }
 }
-impl Visit for Tuple {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Tuple
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         for y in Puncted::pairs(&self.elems) {
             let x = y.value();
             x.visit(v);
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         for mut y in Puncted::pairs_mut(&mut self.elems) {
             let x = y.value_mut();
             x.visit_mut(v);
@@ -987,6 +1128,12 @@ impl Visit for Tuple {
 pub struct Abi {
     pub extern_: Token![extern],
     pub name: Option<lit::Str>,
+}
+impl Lower for Abi {
+    fn lower(&self, s: &mut Stream) {
+        self.extern_.lower(s);
+        self.name.lower(s);
+    }
 }
 impl Parse for Abi {
     fn parse(s: Stream) -> Res<Self> {
@@ -1005,10 +1152,12 @@ impl Parse for Option<Abi> {
         }
     }
 }
-impl Lower for Abi {
-    fn lower(&self, s: &mut Stream) {
-        self.extern_.lower(s);
-        self.name.lower(s);
+impl<H> Hash for Abi
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.name.hash(h);
     }
 }
 impl Pretty for Abi {
@@ -1020,19 +1169,16 @@ impl Pretty for Abi {
         }
     }
 }
-impl Visit for Abi {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Abi
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         if let Some(x) = &self.name {
             x.visit(v);
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         if let Some(x) = &mut self.name {
             x.visit_mut(v);
         }
@@ -1060,6 +1206,16 @@ impl Lower for FnArg {
         self.typ.lower(s);
     }
 }
+impl<H> Hash for FnArg
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.name.hash(h);
+        self.typ.hash(h);
+    }
+}
 impl Pretty for FnArg {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -1070,11 +1226,11 @@ impl Pretty for FnArg {
         &self.typ.pretty(p);
     }
 }
-impl Visit for FnArg {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for FnArg
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         for x in &self.attrs {
             x.visit(v);
         }
@@ -1083,10 +1239,7 @@ impl Visit for FnArg {
         }
         &self.typ.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         for x in &mut self.attrs {
             x.visit_mut(v);
         }
@@ -1114,6 +1267,16 @@ impl Lower for Variadic {
         self.comma.lower(s);
     }
 }
+impl<H> Hash for Variadic
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.name.hash(h);
+        self.comma.hash(h);
+    }
+}
 impl Pretty for Variadic {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -1124,11 +1287,11 @@ impl Pretty for Variadic {
         p.word("...");
     }
 }
-impl Visit for Variadic {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Variadic
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         for x in &self.attrs {
             x.visit(v);
         }
@@ -1136,10 +1299,7 @@ impl Visit for Variadic {
             &(x).0.visit(v);
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         for x in &mut self.attrs {
             x.visit_mut(v);
         }
@@ -1186,6 +1346,23 @@ impl Lower for Ret {
         }
     }
 }
+impl<H> Hash for Ret
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        use Ret::*;
+        match self {
+            Default => {
+                h.write_u8(0u8);
+            },
+            Type(_, v1) => {
+                h.write_u8(1u8);
+                v1.hash(h);
+            },
+        }
+    }
+}
 impl Pretty for Ret {
     fn pretty(&self, p: &mut Print) {
         use Ret::*;
@@ -1198,11 +1375,11 @@ impl Pretty for Ret {
         }
     }
 }
-impl Visit for Ret {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Ret
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         use Ret::*;
         match self {
             Default => {},
@@ -1211,10 +1388,7 @@ impl Visit for Ret {
             },
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         use Ret::*;
         match self {
             Default => {},

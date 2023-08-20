@@ -1,28 +1,20 @@
 use crate::StreamHelper;
 use crate::*;
 use std::hash::{Hash, Hasher};
-impl Hash for typ::Abi {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
-        self.name.hash(h);
-    }
-}
-impl Hash for path::Angled {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for path::Angled
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.colon2.hash(h);
         self.args.hash(h);
     }
 }
-impl Hash for expr::Arm {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Arm
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.pat.hash(h);
         self.guard.hash(h);
@@ -30,31 +22,31 @@ impl Hash for expr::Arm {
         self.comma.hash(h);
     }
 }
-impl Hash for path::AssocConst {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for path::AssocConst
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.ident.hash(h);
         self.args.hash(h);
         self.val.hash(h);
     }
 }
-impl Hash for path::AssocType {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for path::AssocType
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.ident.hash(h);
         self.args.hash(h);
         self.typ.hash(h);
     }
 }
-impl Hash for attr::Style {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for attr::Style
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         use attr::Style::*;
         match self {
             Outer => {
@@ -66,40 +58,20 @@ impl Hash for attr::Style {
         }
     }
 }
-impl Hash for attr::Attr {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for attr::Attr
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.style.hash(h);
         self.meta.hash(h);
     }
 }
-impl Hash for typ::FnArg {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
-        self.attrs.hash(h);
-        self.name.hash(h);
-        self.typ.hash(h);
-    }
-}
-impl Hash for typ::Variadic {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
-        self.attrs.hash(h);
-        self.name.hash(h);
-        self.comma.hash(h);
-    }
-}
-impl Hash for expr::BinOp {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::BinOp
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         use expr::BinOp::*;
         match self {
             Add(_) => {
@@ -189,27 +161,27 @@ impl Hash for expr::BinOp {
         }
     }
 }
-impl Hash for stmt::Block {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for stmt::Block
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.stmts.hash(h);
     }
 }
-impl Hash for gen::bound::Lifes {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for gen::bound::Lifes
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.lifes.hash(h);
     }
 }
-impl Hash for gen::param::Const {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for gen::param::Const
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.ident.hash(h);
         self.typ.hash(h);
@@ -217,21 +189,21 @@ impl Hash for gen::param::Const {
         self.default.hash(h);
     }
 }
-impl Hash for path::Constraint {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for path::Constraint
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.ident.hash(h);
         self.args.hash(h);
         self.bounds.hash(h);
     }
 }
-impl Hash for data::Data {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for data::Data
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         use data::Data::*;
         match self {
             Struct(x) => {
@@ -249,36 +221,36 @@ impl Hash for data::Data {
         }
     }
 }
-impl Hash for data::Enum {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for data::Enum
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.variants.hash(h);
     }
 }
-impl Hash for data::Struct {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for data::Struct
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.fields.hash(h);
         self.semi.hash(h);
     }
 }
-impl Hash for data::Union {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for data::Union
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.fields.hash(h);
     }
 }
-impl Hash for Input {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for Input
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.vis.hash(h);
         self.ident.hash(h);
@@ -286,11 +258,11 @@ impl Hash for Input {
         self.data.hash(h);
     }
 }
-impl Hash for expr::Expr {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Expr
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         use expr::Expr::*;
         match self {
             Array(x) => {
@@ -452,100 +424,100 @@ impl Hash for expr::Expr {
         }
     }
 }
-impl Hash for expr::Array {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Array
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.elems.hash(h);
     }
 }
-impl Hash for expr::Assign {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Assign
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.left.hash(h);
         self.right.hash(h);
     }
 }
-impl Hash for expr::Async {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Async
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.move_.hash(h);
         self.block.hash(h);
     }
 }
-impl Hash for expr::Await {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Await
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.expr.hash(h);
     }
 }
-impl Hash for expr::Binary {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Binary
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.left.hash(h);
         self.op.hash(h);
         self.right.hash(h);
     }
 }
-impl Hash for expr::Block {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Block
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.label.hash(h);
         self.block.hash(h);
     }
 }
-impl Hash for expr::Break {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Break
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.life.hash(h);
         self.val.hash(h);
     }
 }
-impl Hash for expr::Call {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Call
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.func.hash(h);
         self.args.hash(h);
     }
 }
-impl Hash for expr::Cast {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Cast
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.expr.hash(h);
         self.typ.hash(h);
     }
 }
-impl Hash for expr::Closure {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Closure
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.lifes.hash(h);
         self.const_.hash(h);
@@ -557,39 +529,39 @@ impl Hash for expr::Closure {
         self.body.hash(h);
     }
 }
-impl Hash for expr::Const {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Const
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.block.hash(h);
     }
 }
-impl Hash for expr::Continue {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Continue
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.life.hash(h);
     }
 }
-impl Hash for expr::Field {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Field
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.expr.hash(h);
         self.memb.hash(h);
     }
 }
-impl Hash for expr::ForLoop {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::ForLoop
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.label.hash(h);
         self.pat.hash(h);
@@ -597,97 +569,97 @@ impl Hash for expr::ForLoop {
         self.body.hash(h);
     }
 }
-impl Hash for expr::Group {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Group
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.expr.hash(h);
     }
 }
-impl Hash for expr::If {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::If
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.cond.hash(h);
         self.then_.hash(h);
         self.else_.hash(h);
     }
 }
-impl Hash for expr::Index {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Index
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.expr.hash(h);
         self.idx.hash(h);
     }
 }
-impl Hash for expr::Infer {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Infer
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
     }
 }
-impl Hash for expr::Let {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Let
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.pat.hash(h);
         self.expr.hash(h);
     }
 }
-impl Hash for expr::Lit {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Lit
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.lit.hash(h);
     }
 }
-impl Hash for expr::Loop {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Loop
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.label.hash(h);
         self.body.hash(h);
     }
 }
-impl Hash for expr::Mac {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Mac
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.mac.hash(h);
     }
 }
-impl Hash for expr::Match {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Match
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.expr.hash(h);
         self.arms.hash(h);
     }
 }
-impl Hash for expr::MethodCall {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::MethodCall
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.expr.hash(h);
         self.method.hash(h);
@@ -695,70 +667,70 @@ impl Hash for expr::MethodCall {
         self.args.hash(h);
     }
 }
-impl Hash for expr::Parenth {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Parenth
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.expr.hash(h);
     }
 }
-impl Hash for expr::Path {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Path
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.qself.hash(h);
         self.path.hash(h);
     }
 }
-impl Hash for expr::Range {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Range
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.beg.hash(h);
         self.limits.hash(h);
         self.end.hash(h);
     }
 }
-impl Hash for expr::Ref {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Ref
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.mut_.hash(h);
         self.expr.hash(h);
     }
 }
-impl Hash for expr::Repeat {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Repeat
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.expr.hash(h);
         self.len.hash(h);
     }
 }
-impl Hash for expr::Return {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Return
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.expr.hash(h);
     }
 }
-impl Hash for expr::Struct {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Struct
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.qself.hash(h);
         self.path.hash(h);
@@ -767,77 +739,77 @@ impl Hash for expr::Struct {
         self.rest.hash(h);
     }
 }
-impl Hash for expr::Try {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Try
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.expr.hash(h);
     }
 }
-impl Hash for expr::TryBlock {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::TryBlock
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.block.hash(h);
     }
 }
-impl Hash for expr::Tuple {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Tuple
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.elems.hash(h);
     }
 }
-impl Hash for expr::Unary {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Unary
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.op.hash(h);
         self.expr.hash(h);
     }
 }
-impl Hash for expr::Unsafe {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Unsafe
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.block.hash(h);
     }
 }
-impl Hash for expr::While {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::While
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.label.hash(h);
         self.cond.hash(h);
         self.block.hash(h);
     }
 }
-impl Hash for expr::Yield {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Yield
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.expr.hash(h);
     }
 }
-impl Hash for data::Field {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for data::Field
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.vis.hash(h);
         self.mut_.hash(h);
@@ -846,11 +818,11 @@ impl Hash for data::Field {
         self.typ.hash(h);
     }
 }
-impl Hash for data::Mut {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for data::Mut
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         match self {
             data::Mut::None => {
                 h.write_u8(0u8);
@@ -858,33 +830,33 @@ impl Hash for data::Mut {
         }
     }
 }
-impl Hash for pat::Field {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for pat::Field
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.memb.hash(h);
         self.colon.hash(h);
         self.pat.hash(h);
     }
 }
-impl Hash for expr::FieldValue {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::FieldValue
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.memb.hash(h);
         self.colon.hash(h);
         self.expr.hash(h);
     }
 }
-impl Hash for data::Fields {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for data::Fields
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         use data::Fields::*;
         match self {
             Named(x) => {
@@ -901,37 +873,37 @@ impl Hash for data::Fields {
         }
     }
 }
-impl Hash for data::Named {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for data::Named
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.fields.hash(h);
     }
 }
-impl Hash for data::Unnamed {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for data::Unnamed
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.fields.hash(h);
     }
 }
-impl Hash for item::File {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::File
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.shebang.hash(h);
         self.attrs.hash(h);
         self.items.hash(h);
     }
 }
-impl Hash for item::FnArg {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::FnArg
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         use item::FnArg::*;
         match self {
             Receiver(x) => {
@@ -945,11 +917,11 @@ impl Hash for item::FnArg {
         }
     }
 }
-impl Hash for item::foreign::Item {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::foreign::Item
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         use item::foreign::Item::*;
         match self {
             Fn(x) => {
@@ -975,31 +947,31 @@ impl Hash for item::foreign::Item {
         }
     }
 }
-impl Hash for item::foreign::Fn {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::foreign::Fn
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.vis.hash(h);
         self.sig.hash(h);
     }
 }
-impl Hash for item::foreign::Mac {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::foreign::Mac
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.mac.hash(h);
         self.semi.hash(h);
     }
 }
-impl Hash for item::foreign::Static {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::foreign::Static
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.vis.hash(h);
         self.mut_.hash(h);
@@ -1007,22 +979,22 @@ impl Hash for item::foreign::Static {
         self.typ.hash(h);
     }
 }
-impl Hash for item::foreign::Type {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::foreign::Type
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.vis.hash(h);
         self.ident.hash(h);
         self.gens.hash(h);
     }
 }
-impl Hash for path::Arg {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for path::Arg
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         use path::Arg::*;
         match self {
             Life(x) => {
@@ -1052,11 +1024,11 @@ impl Hash for path::Arg {
         }
     }
 }
-impl Hash for gen::Param {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for gen::Param
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         use gen::Param::*;
         match self {
             Life(x) => {
@@ -1074,22 +1046,22 @@ impl Hash for gen::Param {
         }
     }
 }
-impl Hash for gen::Gens {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for gen::Gens
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.lt.hash(h);
         self.params.hash(h);
         self.gt.hash(h);
         self.where_.hash(h);
     }
 }
-impl Hash for item::impl_::Item {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::impl_::Item
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         use item::impl_::Item::*;
         match self {
             Const(x) => {
@@ -1115,11 +1087,11 @@ impl Hash for item::impl_::Item {
         }
     }
 }
-impl Hash for item::impl_::Const {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::impl_::Const
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.vis.hash(h);
         self.default.hash(h);
@@ -1129,11 +1101,11 @@ impl Hash for item::impl_::Const {
         self.expr.hash(h);
     }
 }
-impl Hash for item::impl_::Fn {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::impl_::Fn
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.vis.hash(h);
         self.default.hash(h);
@@ -1141,21 +1113,21 @@ impl Hash for item::impl_::Fn {
         self.block.hash(h);
     }
 }
-impl Hash for item::impl_::Mac {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::impl_::Mac
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.mac.hash(h);
         self.semi.hash(h);
     }
 }
-impl Hash for item::impl_::Type {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::impl_::Type
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.vis.hash(h);
         self.default.hash(h);
@@ -1164,19 +1136,19 @@ impl Hash for item::impl_::Type {
         self.typ.hash(h);
     }
 }
-impl Hash for item::impl_::Restriction {
-    fn hash<H>(&self, _h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::impl_::Restriction
+where
+    H: Hasher,
+{
+    fn hash(&self, _h: &mut H) {
         match *self {}
     }
 }
-impl Hash for item::Item {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::Item
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         use item::Item::*;
         match self {
             Const(x) => {
@@ -1246,11 +1218,11 @@ impl Hash for item::Item {
         }
     }
 }
-impl Hash for item::Const {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::Const
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.vis.hash(h);
         self.ident.hash(h);
@@ -1259,11 +1231,11 @@ impl Hash for item::Const {
         self.expr.hash(h);
     }
 }
-impl Hash for item::Enum {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::Enum
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.vis.hash(h);
         self.ident.hash(h);
@@ -1271,44 +1243,44 @@ impl Hash for item::Enum {
         self.variants.hash(h);
     }
 }
-impl Hash for item::Extern {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::Extern
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.vis.hash(h);
         self.ident.hash(h);
         self.rename.hash(h);
     }
 }
-impl Hash for item::Fn {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::Fn
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.vis.hash(h);
         self.sig.hash(h);
         self.block.hash(h);
     }
 }
-impl Hash for item::Foreign {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::Foreign
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.unsafe_.hash(h);
         self.abi.hash(h);
         self.items.hash(h);
     }
 }
-impl Hash for item::Impl {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::Impl
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.default.hash(h);
         self.unsafe_.hash(h);
@@ -1318,22 +1290,22 @@ impl Hash for item::Impl {
         self.items.hash(h);
     }
 }
-impl Hash for item::Mac {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::Mac
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.ident.hash(h);
         self.mac.hash(h);
         self.semi.hash(h);
     }
 }
-impl Hash for item::Mod {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::Mod
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.vis.hash(h);
         self.unsafe_.hash(h);
@@ -1342,11 +1314,11 @@ impl Hash for item::Mod {
         self.semi.hash(h);
     }
 }
-impl Hash for item::Static {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::Static
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.vis.hash(h);
         self.mut_.hash(h);
@@ -1355,11 +1327,11 @@ impl Hash for item::Static {
         self.expr.hash(h);
     }
 }
-impl Hash for item::Struct {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::Struct
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.vis.hash(h);
         self.ident.hash(h);
@@ -1368,11 +1340,11 @@ impl Hash for item::Struct {
         self.semi.hash(h);
     }
 }
-impl Hash for item::Trait {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::Trait
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.vis.hash(h);
         self.unsafe_.hash(h);
@@ -1385,11 +1357,11 @@ impl Hash for item::Trait {
         self.items.hash(h);
     }
 }
-impl Hash for item::TraitAlias {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::TraitAlias
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.vis.hash(h);
         self.ident.hash(h);
@@ -1397,11 +1369,11 @@ impl Hash for item::TraitAlias {
         self.bounds.hash(h);
     }
 }
-impl Hash for item::Type {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::Type
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.vis.hash(h);
         self.ident.hash(h);
@@ -1409,11 +1381,11 @@ impl Hash for item::Type {
         self.typ.hash(h);
     }
 }
-impl Hash for item::Union {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::Union
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.vis.hash(h);
         self.ident.hash(h);
@@ -1421,41 +1393,41 @@ impl Hash for item::Union {
         self.fields.hash(h);
     }
 }
-impl Hash for item::Use {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::Use
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.vis.hash(h);
         self.colon.hash(h);
         self.tree.hash(h);
     }
 }
-impl Hash for expr::Label {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Label
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.name.hash(h);
     }
 }
-impl Hash for gen::param::Life {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for gen::param::Life
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.life.hash(h);
         self.colon.hash(h);
         self.bounds.hash(h);
     }
 }
-impl Hash for lit::Lit {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for lit::Lit
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         use lit::Lit::*;
         match self {
             Str(x) => {
@@ -1493,48 +1465,48 @@ impl Hash for lit::Lit {
         }
     }
 }
-impl Hash for lit::Bool {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for lit::Bool
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.val.hash(h);
     }
 }
-impl Hash for stmt::Local {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for stmt::Local
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.pat.hash(h);
         self.init.hash(h);
     }
 }
-impl Hash for stmt::Init {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for stmt::Init
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.expr.hash(h);
         self.diverge.hash(h);
     }
 }
-impl Hash for mac::Mac {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for mac::Mac
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.path.hash(h);
         self.delim.hash(h);
         StreamHelper(&self.toks).hash(h);
     }
 }
-impl Hash for tok::Delim {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for tok::Delim
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         use tok::Delim::*;
         match self {
             Parenth(_) => {
@@ -1549,11 +1521,11 @@ impl Hash for tok::Delim {
         }
     }
 }
-impl Hash for attr::Meta {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for attr::Meta
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         use attr::Meta::*;
         match self {
             Path(x) => {
@@ -1571,39 +1543,39 @@ impl Hash for attr::Meta {
         }
     }
 }
-impl Hash for attr::List {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for attr::List
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.path.hash(h);
         self.delim.hash(h);
         StreamHelper(&self.toks).hash(h);
     }
 }
-impl Hash for attr::NameValue {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for attr::NameValue
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.name.hash(h);
         self.val.hash(h);
     }
 }
-impl Hash for path::Parenthed {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for path::Parenthed
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.args.hash(h);
         self.ret.hash(h);
     }
 }
-impl Hash for pat::Pat {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for pat::Pat
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         use pat::Pat::*;
         match self {
             Const(x) => {
@@ -1677,11 +1649,11 @@ impl Hash for pat::Pat {
         }
     }
 }
-impl Hash for pat::Ident {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for pat::Ident
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.ref_.hash(h);
         self.mut_.hash(h);
@@ -1689,57 +1661,57 @@ impl Hash for pat::Ident {
         self.sub.hash(h);
     }
 }
-impl Hash for pat::Or {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for pat::Or
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.vert.hash(h);
         self.cases.hash(h);
     }
 }
-impl Hash for pat::Parenth {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for pat::Parenth
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.pat.hash(h);
     }
 }
-impl Hash for pat::Ref {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for pat::Ref
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.mut_.hash(h);
         self.pat.hash(h);
     }
 }
-impl Hash for pat::Rest {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for pat::Rest
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
     }
 }
-impl Hash for pat::Slice {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for pat::Slice
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.pats.hash(h);
     }
 }
-impl Hash for pat::Struct {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for pat::Struct
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.qself.hash(h);
         self.path.hash(h);
@@ -1747,58 +1719,58 @@ impl Hash for pat::Struct {
         self.rest.hash(h);
     }
 }
-impl Hash for pat::Tuple {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for pat::Tuple
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.pats.hash(h);
     }
 }
-impl Hash for pat::TupleStruct {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for pat::TupleStruct
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.qself.hash(h);
         self.path.hash(h);
         self.pats.hash(h);
     }
 }
-impl Hash for pat::Type {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for pat::Type
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.pat.hash(h);
         self.typ.hash(h);
     }
 }
-impl Hash for pat::Wild {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for pat::Wild
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
     }
 }
-impl Hash for Path {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for Path
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.colon.hash(h);
         self.segs.hash(h);
     }
 }
-impl Hash for path::Args {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for path::Args
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         use path::Args::*;
         match self {
             None => {
@@ -1815,49 +1787,49 @@ impl Hash for path::Args {
         }
     }
 }
-impl Hash for path::Segment {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for path::Segment
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.ident.hash(h);
         self.args.hash(h);
     }
 }
-impl Hash for gen::where_::Life {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for gen::where_::Life
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.life.hash(h);
         self.bounds.hash(h);
     }
 }
-impl Hash for gen::where_::Type {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for gen::where_::Type
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.lifes.hash(h);
         self.typ.hash(h);
         self.bounds.hash(h);
     }
 }
-impl Hash for path::QSelf {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for path::QSelf
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.typ.hash(h);
         self.pos.hash(h);
         self.as_.hash(h);
     }
 }
-impl Hash for expr::Limits {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::Limits
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         use expr::Limits::*;
         match self {
             HalfOpen(_) => {
@@ -1869,11 +1841,11 @@ impl Hash for expr::Limits {
         }
     }
 }
-impl Hash for item::Receiver {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::Receiver
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.ref_.hash(h);
         self.mut_.hash(h);
@@ -1881,28 +1853,11 @@ impl Hash for item::Receiver {
         self.typ.hash(h);
     }
 }
-impl Hash for typ::Ret {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
-        use typ::Ret::*;
-        match self {
-            Default => {
-                h.write_u8(0u8);
-            },
-            Type(_, v1) => {
-                h.write_u8(1u8);
-                v1.hash(h);
-            },
-        }
-    }
-}
-impl Hash for item::Sig {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::Sig
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.const_.hash(h);
         self.async_.hash(h);
         self.unsafe_.hash(h);
@@ -1914,11 +1869,11 @@ impl Hash for item::Sig {
         self.ret.hash(h);
     }
 }
-impl Hash for item::StaticMut {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::StaticMut
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         use item::StaticMut::*;
         match self {
             Mut(_) => {
@@ -1930,11 +1885,11 @@ impl Hash for item::StaticMut {
         }
     }
 }
-impl Hash for stmt::Stmt {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for stmt::Stmt
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         use stmt::Stmt::*;
         match self {
             Local(x) => {
@@ -1957,32 +1912,32 @@ impl Hash for stmt::Stmt {
         }
     }
 }
-impl Hash for stmt::Mac {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for stmt::Mac
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.mac.hash(h);
         self.semi.hash(h);
     }
 }
-impl Hash for gen::bound::Trait {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for gen::bound::Trait
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.parenth.hash(h);
         self.modif.hash(h);
         self.lifes.hash(h);
         self.path.hash(h);
     }
 }
-impl Hash for gen::bound::Modifier {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for gen::bound::Modifier
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         use gen::bound::Modifier::*;
         match self {
             None => {
@@ -1994,11 +1949,11 @@ impl Hash for gen::bound::Modifier {
         }
     }
 }
-impl Hash for item::trait_::Item {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::trait_::Item
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         use item::trait_::Item::*;
         match self {
             Const(x) => {
@@ -2024,11 +1979,11 @@ impl Hash for item::trait_::Item {
         }
     }
 }
-impl Hash for item::trait_::Const {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::trait_::Const
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.ident.hash(h);
         self.gens.hash(h);
@@ -2036,32 +1991,32 @@ impl Hash for item::trait_::Const {
         self.default.hash(h);
     }
 }
-impl Hash for item::trait_::Fn {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::trait_::Fn
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.sig.hash(h);
         self.default.hash(h);
         self.semi.hash(h);
     }
 }
-impl Hash for item::trait_::Mac {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::trait_::Mac
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.mac.hash(h);
         self.semi.hash(h);
     }
 }
-impl Hash for item::trait_::Type {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::trait_::Type
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.ident.hash(h);
         self.gens.hash(h);
@@ -2070,141 +2025,11 @@ impl Hash for item::trait_::Type {
         self.default.hash(h);
     }
 }
-impl Hash for typ::Type {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
-        use typ::Type::*;
-        match self {
-            Array(x) => {
-                h.write_u8(0u8);
-                x.hash(h);
-            },
-            Fn(x) => {
-                h.write_u8(1u8);
-                x.hash(h);
-            },
-            Group(x) => {
-                h.write_u8(2u8);
-                x.hash(h);
-            },
-            Impl(x) => {
-                h.write_u8(3u8);
-                x.hash(h);
-            },
-            Infer(x) => {
-                h.write_u8(4u8);
-                x.hash(h);
-            },
-            Mac(x) => {
-                h.write_u8(5u8);
-                x.hash(h);
-            },
-            Never(x) => {
-                h.write_u8(6u8);
-                x.hash(h);
-            },
-            Parenth(x) => {
-                h.write_u8(7u8);
-                x.hash(h);
-            },
-            Path(x) => {
-                h.write_u8(8u8);
-                x.hash(h);
-            },
-            Ptr(x) => {
-                h.write_u8(9u8);
-                x.hash(h);
-            },
-            Ref(x) => {
-                h.write_u8(10u8);
-                x.hash(h);
-            },
-            Slice(x) => {
-                h.write_u8(11u8);
-                x.hash(h);
-            },
-            Trait(x) => {
-                h.write_u8(12u8);
-                x.hash(h);
-            },
-            Tuple(x) => {
-                h.write_u8(13u8);
-                x.hash(h);
-            },
-            Verbatim(x) => {
-                h.write_u8(14u8);
-                StreamHelper(x).hash(h);
-            },
-        }
-    }
-}
-impl Hash for typ::Array {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
-        self.elem.hash(h);
-        self.len.hash(h);
-    }
-}
-impl Hash for typ::Fn {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
-        self.lifes.hash(h);
-        self.unsafe_.hash(h);
-        self.abi.hash(h);
-        self.args.hash(h);
-        self.vari.hash(h);
-        self.ret.hash(h);
-    }
-}
-impl Hash for typ::Group {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
-        self.elem.hash(h);
-    }
-}
-impl Hash for typ::Impl {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
-        self.bounds.hash(h);
-    }
-}
-impl Hash for typ::Infer {
-    fn hash<H>(&self, _: &mut H)
-    where
-        H: Hasher,
-    {
-    }
-}
-impl Hash for typ::Mac {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
-        self.mac.hash(h);
-    }
-}
-impl Hash for typ::Never {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
-    }
-}
-impl Hash for gen::param::Type {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for gen::param::Type
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.ident.hash(h);
         self.colon.hash(h);
@@ -2213,11 +2038,11 @@ impl Hash for gen::param::Type {
         self.default.hash(h);
     }
 }
-impl Hash for gen::bound::Type {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for gen::bound::Type
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         use gen::bound::Type::*;
         match self {
             Trait(x) => {
@@ -2235,73 +2060,11 @@ impl Hash for gen::bound::Type {
         }
     }
 }
-impl Hash for typ::Parenth {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
-        self.elem.hash(h);
-    }
-}
-impl Hash for typ::Path {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
-        self.qself.hash(h);
-        self.path.hash(h);
-    }
-}
-impl Hash for typ::Ptr {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
-        self.const_.hash(h);
-        self.mut_.hash(h);
-        self.elem.hash(h);
-    }
-}
-impl Hash for typ::Ref {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
-        self.life.hash(h);
-        self.mut_.hash(h);
-        self.elem.hash(h);
-    }
-}
-impl Hash for typ::Slice {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
-        self.elem.hash(h);
-    }
-}
-impl Hash for typ::Trait {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
-        self.dyn_.hash(h);
-        self.bounds.hash(h);
-    }
-}
-impl Hash for typ::Tuple {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
-        self.elems.hash(h);
-    }
-}
-impl Hash for expr::UnOp {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for expr::UnOp
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         use expr::UnOp::*;
         match self {
             Deref(_) => {
@@ -2316,52 +2079,51 @@ impl Hash for expr::UnOp {
         }
     }
 }
-impl Hash for item::use_::Glob {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
-    }
+impl<H> Hash for item::use_::Glob
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {}
 }
-impl Hash for item::use_::Group {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::use_::Group
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.trees.hash(h);
     }
 }
-impl Hash for item::use_::Name {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::use_::Name
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.ident.hash(h);
     }
 }
-impl Hash for item::use_::Path {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::use_::Path
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.ident.hash(h);
         self.tree.hash(h);
     }
 }
-impl Hash for item::use_::Rename {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::use_::Rename
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.ident.hash(h);
         self.rename.hash(h);
     }
 }
-impl Hash for item::use_::Tree {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::use_::Tree
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         use item::use_::Tree::*;
         match self {
             Path(x) => {
@@ -2387,41 +2149,41 @@ impl Hash for item::use_::Tree {
         }
     }
 }
-impl Hash for item::Variadic {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for item::Variadic
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.pat.hash(h);
         self.comma.hash(h);
     }
 }
-impl Hash for data::Variant {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for data::Variant
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.ident.hash(h);
         self.fields.hash(h);
         self.discrim.hash(h);
     }
 }
-impl Hash for data::Restricted {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for data::Restricted
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.in_.hash(h);
         self.path.hash(h);
     }
 }
-impl Hash for data::Visibility {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for data::Visibility
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         use data::Visibility::*;
         match self {
             Public(_) => {
@@ -2437,19 +2199,19 @@ impl Hash for data::Visibility {
         }
     }
 }
-impl Hash for gen::Where {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for gen::Where
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         self.preds.hash(h);
     }
 }
-impl Hash for gen::where_::Pred {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: Hasher,
-    {
+impl<H> Hash for gen::where_::Pred
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
         use gen::where_::Pred::*;
         match self {
             Life(v0) => {
