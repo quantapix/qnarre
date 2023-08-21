@@ -644,7 +644,7 @@ impl PartialEq for item::Item {
             (Static(x), Static(y)) => x == y,
             (Struct(x), Struct(y)) => x == y,
             (Trait(x), Trait(y)) => x == y,
-            (TraitAlias(x), TraitAlias(y)) => x == y,
+            (Alias(x), Alias(y)) => x == y,
             (Type(x), Type(y)) => x == y,
             (Union(x), Union(y)) => x == y,
             (Use(x), Use(y)) => x == y,
@@ -758,8 +758,8 @@ impl PartialEq for item::Trait {
             && self.items == x.items
     }
 }
-impl Eq for item::TraitAlias {}
-impl PartialEq for item::TraitAlias {
+impl Eq for item::Alias {}
+impl PartialEq for item::Alias {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs
             && self.vis == x.vis

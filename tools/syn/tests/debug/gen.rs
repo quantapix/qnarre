@@ -2772,7 +2772,7 @@ impl Debug for Lite<syn::item::Trait> {
         f.finish()
     }
 }
-impl Debug for Lite<syn::item::TraitAlias> {
+impl Debug for Lite<syn::item::Alias> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut f = f.debug_struct("item::TraitAlias");
         if !self.value.attrs.is_empty() {

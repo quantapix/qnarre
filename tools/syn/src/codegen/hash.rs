@@ -312,7 +312,7 @@ where
                 h.write_u8(10u8);
                 x.hash(h);
             },
-            TraitAlias(x) => {
+            Alias(x) => {
                 h.write_u8(11u8);
                 x.hash(h);
             },
@@ -474,7 +474,7 @@ where
         self.items.hash(h);
     }
 }
-impl<H> Hash for item::TraitAlias
+impl<H> Hash for item::Alias
 where
     H: Hasher,
 {

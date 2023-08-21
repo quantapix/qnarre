@@ -160,7 +160,7 @@ fn get_ty_params(field: &data::Field, gens: &gen::Gens) -> Vec<bool> {
         gens: &'a gen::Gens,
     }
     impl<'a> Visit<'a> for BoundTypeLocator<'a> {
-        fn visit_ident(&mut self, id: &Ident) {
+        fn visit(&mut self, id: &Ident) {
             for (idx, i) in self.gens.params.iter().enumerate() {
                 if let gen::Param::Type(tparam) = i {
                     if tparam.ident == *id {
@@ -169,7 +169,7 @@ fn get_ty_params(field: &data::Field, gens: &gen::Gens) -> Vec<bool> {
                 }
             }
         }
-        fn visit_type_macro(&mut self, x: &'a typ::Mac) {
+        fn visit(&mut self, x: &'a typ::Mac) {
             for r in &mut self.result {
                 *r = true;
             }

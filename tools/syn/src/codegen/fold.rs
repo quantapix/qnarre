@@ -295,7 +295,7 @@ pub trait Fold {
     fn fold_item_trait(&mut self, i: item::Trait) -> item::Trait {
         fold_item_trait(self, i)
     }
-    fn fold_item_trait_alias(&mut self, i: item::TraitAlias) -> item::TraitAlias {
+    fn fold_item_trait_alias(&mut self, i: item::Alias) -> item::Alias {
         fold_item_trait_alias(self, i)
     }
     fn fold_item_type(&mut self, i: item::Type) -> item::Type {
@@ -1542,7 +1542,7 @@ where
         Item::Static(_binding_0) => Item::Static(f.fold_item_static(_binding_0)),
         Item::Struct(_binding_0) => Item::Struct(f.fold_item_struct(_binding_0)),
         Item::Trait(_binding_0) => Item::Trait(f.fold_item_trait(_binding_0)),
-        Item::TraitAlias(_binding_0) => Item::TraitAlias(f.fold_item_trait_alias(_binding_0)),
+        Item::Alias(_binding_0) => Item::Alias(f.fold_item_trait_alias(_binding_0)),
         Item::Type(_binding_0) => Item::Type(f.fold_item_type(_binding_0)),
         Item::Union(_binding_0) => Item::Union(f.fold_item_union(_binding_0)),
         Item::Use(_binding_0) => Item::Use(f.fold_item_use(_binding_0)),
@@ -1708,11 +1708,11 @@ where
         items: FoldHelper::lift(node.items, |it| f.fold_trait_item(it)),
     }
 }
-pub fn fold_item_trait_alias<F>(f: &mut F, node: item::TraitAlias) -> item::TraitAlias
+pub fn fold_item_trait_alias<F>(f: &mut F, node: item::Alias) -> item::Alias
 where
     F: Fold + ?Sized,
 {
-    item::TraitAlias {
+    item::Alias {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         vis: f.fold_visibility(node.vis),
         trait_: node.trait_,

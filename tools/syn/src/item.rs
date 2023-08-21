@@ -27,6 +27,15 @@ impl Lower for File {
         s.append_all(&self.items);
     }
 }
+impl Clone for File {
+    fn clone(&self) -> Self {
+        File {
+            shebang: self.shebang.clone(),
+            attrs: self.attrs.clone(),
+            items: self.items.clone(),
+        }
+    }
+}
 impl Pretty for File {
     fn pretty(&self, p: &mut Print) {
         p.cbox(0);
@@ -76,7 +85,7 @@ enum_of_structs! {
         Static(Static),
         Struct(Struct),
         Trait(Trait),
-        TraitAlias(TraitAlias),
+        Alias(Alias),
         Type(Type),
         Union(Union),
         Use(Use),
@@ -97,7 +106,7 @@ impl Item {
             | Item::Static(Static { attrs, .. })
             | Item::Struct(Struct { attrs, .. })
             | Item::Trait(Trait { attrs, .. })
-            | Item::TraitAlias(TraitAlias { attrs, .. })
+            | Item::Alias(Alias { attrs, .. })
             | Item::Type(Type { attrs, .. })
             | Item::Union(Union { attrs, .. })
             | Item::Use(Use { attrs, .. }) => std::mem::replace(attrs, ys),
@@ -144,6 +153,29 @@ impl Parse for Item {
         parse_rest_of_item(beg, attrs, s)
     }
 }
+impl Clone for Item {
+    fn clone(&self) -> Self {
+        use Item::*;
+        match self {
+            Const(x) => Const(x.clone()),
+            Enum(x) => Enum(x.clone()),
+            Extern(x) => Extern(x.clone()),
+            Fn(x) => Fn(x.clone()),
+            Foreign(x) => Foreign(x.clone()),
+            Impl(x) => Impl(x.clone()),
+            Mac(x) => Mac(x.clone()),
+            Mod(x) => Mod(x.clone()),
+            Static(x) => Static(x.clone()),
+            Struct(x) => Struct(x.clone()),
+            Trait(x) => Trait(x.clone()),
+            Alias(x) => Alias(x.clone()),
+            Type(x) => Type(x.clone()),
+            Union(x) => Union(x.clone()),
+            Use(x) => Use(x.clone()),
+            Verbatim(x) => Verbatim(x.clone()),
+        }
+    }
+}
 impl Pretty for Item {
     fn pretty(&self, p: &mut Print) {
         use Item::*;
@@ -159,7 +191,7 @@ impl Pretty for Item {
             Static(x) => x.pretty(p),
             Struct(x) => x.pretty(p),
             Trait(x) => x.pretty(p),
-            TraitAlias(x) => x.pretty(p),
+            Alias(x) => x.pretty(p),
             Type(x) => x.pretty(p),
             Union(x) => x.pretty(p),
             Use(x) => x.pretty(p),
@@ -207,7 +239,7 @@ where
             Trait(x) => {
                 x.visit(v);
             },
-            TraitAlias(x) => {
+            Alias(x) => {
                 x.visit(v);
             },
             Type(x) => {
@@ -243,7 +275,7 @@ where
             Impl(x) => {
                 x.visit_mut(v);
             },
-            Macro(x) => {
+            Mac(x) => {
                 x.visit_mut(v);
             },
             Mod(x) => {
@@ -258,7 +290,7 @@ where
             Trait(x) => {
                 x.visit_mut(v);
             },
-            TraitAlias(x) => {
+            Alias(x) => {
                 x.visit_mut(v);
             },
             Type(x) => {
@@ -321,6 +353,22 @@ impl Lower for Const {
         self.eq.lower(s);
         self.expr.lower(s);
         self.semi.lower(s);
+    }
+}
+impl Clone for Const {
+    fn clone(&self) -> Self {
+        Const {
+            attrs: self.attrs.clone(),
+            vis: self.vis.clone(),
+            const_: self.const_.clone(),
+            ident: self.ident.clone(),
+            gens: self.gens.clone(),
+            colon: self.colon.clone(),
+            typ: self.typ.clone(),
+            eq: self.eq.clone(),
+            expr: self.expr.clone(),
+            semi: self.semi.clone(),
+        }
     }
 }
 impl Pretty for Const {
@@ -421,6 +469,19 @@ impl Lower for Enum {
         self.brace.surround(s, |s| {
             self.variants.lower(s);
         });
+    }
+}
+impl Clone for Enum {
+    fn clone(&self) -> Self {
+        Enum {
+            attrs: self.attrs.clone(),
+            vis: self.vis.clone(),
+            enum_: self.enum_.clone(),
+            ident: self.ident.clone(),
+            gens: self.gens.clone(),
+            brace: self.brace.clone(),
+            variants: self.variants.clone(),
+        }
     }
 }
 impl Pretty for Enum {
@@ -529,6 +590,19 @@ impl Lower for Extern {
         self.semi.lower(s);
     }
 }
+impl Clone for Extern {
+    fn clone(&self) -> Self {
+        Extern {
+            attrs: self.attrs.clone(),
+            vis: self.vis.clone(),
+            extern_: self.extern_.clone(),
+            crate_: self.crate_.clone(),
+            ident: self.ident.clone(),
+            rename: self.rename.clone(),
+            semi: self.semi.clone(),
+        }
+    }
+}
 impl Pretty for Extern {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -592,6 +666,16 @@ impl Lower for Fn {
             s.append_all(self.attrs.inners());
             s.append_all(&self.block.stmts);
         });
+    }
+}
+impl Clone for Fn {
+    fn clone(&self) -> Self {
+        Fn {
+            attrs: self.attrs.clone(),
+            vis: self.vis.clone(),
+            sig: self.sig.clone(),
+            block: self.block.clone(),
+        }
     }
 }
 impl Pretty for Fn {
@@ -674,6 +758,17 @@ impl Lower for Foreign {
         });
     }
 }
+impl Clone for Foreign {
+    fn clone(&self) -> Self {
+        Foreign {
+            attrs: self.attrs.clone(),
+            unsafe_: self.unsafe_.clone(),
+            abi: self.abi.clone(),
+            brace: self.brace.clone(),
+            items: self.items.clone(),
+        }
+    }
+}
 impl Pretty for Foreign {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -753,6 +848,21 @@ impl Lower for Impl {
             s.append_all(self.attrs.inners());
             s.append_all(&self.items);
         });
+    }
+}
+impl Clone for Impl {
+    fn clone(&self) -> Self {
+        Impl {
+            attrs: self.attrs.clone(),
+            default: self.default.clone(),
+            unsafe_: self.unsafe_.clone(),
+            impl_: self.impl_.clone(),
+            gens: self.gens.clone(),
+            trait_: self.trait_.clone(),
+            typ: self.typ.clone(),
+            brace: self.brace.clone(),
+            items: self.items.clone(),
+        }
     }
 }
 impl Pretty for Impl {
@@ -877,6 +987,16 @@ impl Lower for Mac {
         self.semi.lower(s);
     }
 }
+impl Clone for Mac {
+    fn clone(&self) -> Self {
+        Mac {
+            attrs: self.attrs.clone(),
+            ident: self.ident.clone(),
+            mac: self.mac.clone(),
+            semi: self.semi.clone(),
+        }
+    }
+}
 impl Pretty for Mac {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -979,6 +1099,19 @@ impl Lower for Mod {
         }
     }
 }
+impl Clone for Mod {
+    fn clone(&self) -> Self {
+        Mod {
+            attrs: self.attrs.clone(),
+            vis: self.vis.clone(),
+            unsafe_: self.unsafe_.clone(),
+            mod_: self.mod_.clone(),
+            ident: self.ident.clone(),
+            items: self.items.clone(),
+            semi: self.semi.clone(),
+        }
+    }
+}
 impl Pretty for Mod {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -1062,6 +1195,22 @@ impl Parse for Static {
             expr: s.parse()?,
             semi: s.parse()?,
         })
+    }
+}
+impl Clone for Static {
+    fn clone(&self) -> Self {
+        Static {
+            attrs: self.attrs.clone(),
+            vis: self.vis.clone(),
+            static_: self.static_.clone(),
+            mut_: self.mut_.clone(),
+            ident: self.ident.clone(),
+            colon: self.colon.clone(),
+            typ: self.typ.clone(),
+            eq: self.eq.clone(),
+            expr: self.expr.clone(),
+            semi: self.semi.clone(),
+        }
     }
 }
 impl Lower for Static {
@@ -1189,6 +1338,19 @@ impl Lower for Struct {
         }
     }
 }
+impl Clone for Struct {
+    fn clone(&self) -> Self {
+        Struct {
+            attrs: self.attrs.clone(),
+            vis: self.vis.clone(),
+            struct_: self.struct_.clone(),
+            ident: self.ident.clone(),
+            gens: self.gens.clone(),
+            fields: self.fields.clone(),
+            semi: self.semi.clone(),
+        }
+    }
+}
 impl Pretty for Struct {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -1295,6 +1457,24 @@ impl Lower for Trait {
         });
     }
 }
+impl Clone for Trait {
+    fn clone(&self) -> Self {
+        Trait {
+            attrs: self.attrs.clone(),
+            vis: self.vis.clone(),
+            unsafe_: self.unsafe_.clone(),
+            auto: self.auto.clone(),
+            restriction: self.restriction.clone(),
+            trait_: self.trait_.clone(),
+            ident: self.ident.clone(),
+            gens: self.gens.clone(),
+            colon: self.colon.clone(),
+            supers: self.supers.clone(),
+            brace: self.brace.clone(),
+            items: self.items.clone(),
+        }
+    }
+}
 impl Pretty for Trait {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -1372,7 +1552,7 @@ where
     }
 }
 
-pub struct TraitAlias {
+pub struct Alias {
     pub attrs: Vec<attr::Attr>,
     pub vis: data::Visibility,
     pub trait_: Token![trait],
@@ -1382,13 +1562,13 @@ pub struct TraitAlias {
     pub bounds: Puncted<gen::bound::Type, Token![+]>,
     pub semi: Token![;],
 }
-impl Parse for TraitAlias {
+impl Parse for Alias {
     fn parse(s: Stream) -> Res<Self> {
         let (attrs, vis, trait_, ident, gens) = parse_start_of_trait_alias(s)?;
         parse_rest_of_trait_alias(s, attrs, vis, trait_, ident, gens)
     }
 }
-impl Lower for TraitAlias {
+impl Lower for Alias {
     fn lower(&self, s: &mut Stream) {
         s.append_all(self.attrs.outers());
         self.vis.lower(s);
@@ -1401,7 +1581,21 @@ impl Lower for TraitAlias {
         self.semi.lower(s);
     }
 }
-impl Pretty for TraitAlias {
+impl Clone for Alias {
+    fn clone(&self) -> Self {
+        Alias {
+            attrs: self.attrs.clone(),
+            vis: self.vis.clone(),
+            trait_: self.trait_.clone(),
+            ident: self.ident.clone(),
+            gens: self.gens.clone(),
+            eq: self.eq.clone(),
+            bounds: self.bounds.clone(),
+            semi: self.semi.clone(),
+        }
+    }
+}
+impl Pretty for Alias {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
         p.cbox(INDENT);
@@ -1423,7 +1617,7 @@ impl Pretty for TraitAlias {
         p.hardbreak();
     }
 }
-impl<V> Visit for TraitAlias
+impl<V> Visit for Alias
 where
     V: Visitor + ?Sized,
 {
@@ -1492,6 +1686,20 @@ impl Lower for Type {
         self.eq.lower(s);
         self.typ.lower(s);
         self.semi.lower(s);
+    }
+}
+impl Clone for Type {
+    fn clone(&self) -> Self {
+        Type {
+            attrs: self.attrs.clone(),
+            vis: self.vis.clone(),
+            type_: self.type_.clone(),
+            ident: self.ident.clone(),
+            gens: self.gens.clone(),
+            eq: self.eq.clone(),
+            typ: self.typ.clone(),
+            semi: self.semi.clone(),
+        }
     }
 }
 impl Pretty for Type {
@@ -1588,6 +1796,18 @@ impl Lower for Union {
         self.fields.lower(s);
     }
 }
+impl Clone for Union {
+    fn clone(&self) -> Self {
+        Union {
+            attrs: self.attrs.clone(),
+            vis: self.vis.clone(),
+            union_: self.union_.clone(),
+            ident: self.ident.clone(),
+            gens: self.gens.clone(),
+            fields: self.fields.clone(),
+        }
+    }
+}
 impl Pretty for Union {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -1656,6 +1876,18 @@ impl Lower for Use {
         self.colon.lower(s);
         self.tree.lower(s);
         self.semi.lower(s);
+    }
+}
+impl Clone for Use {
+    fn clone(&self) -> Self {
+        Use {
+            attrs: self.attrs.clone(),
+            vis: self.vis.clone(),
+            use_: self.use_.clone(),
+            colon: self.colon.clone(),
+            tree: self.tree.clone(),
+            semi: self.semi.clone(),
+        }
     }
 }
 impl Pretty for Use {
@@ -2111,6 +2343,18 @@ impl Lower for Receiver {
         }
     }
 }
+impl Clone for Receiver {
+    fn clone(&self) -> Self {
+        Receiver {
+            attrs: self.attrs.clone(),
+            ref_: self.ref_.clone(),
+            mut_: self.mut_.clone(),
+            self_: self.self_.clone(),
+            colon: self.colon.clone(),
+            typ: self.typ.clone(),
+        }
+    }
+}
 impl Pretty for Receiver {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -2189,6 +2433,15 @@ impl Parse for FnArg {
         match parse_fn_arg_or_variadic(s, attrs, variadic)? {
             FnArg(x) => Ok(x),
             Variadic(_) => unreachable!(),
+        }
+    }
+}
+impl Clone for FnArg {
+    fn clone(&self) -> Self {
+        use FnArg::*;
+        match self {
+            Receiver(x) => Receiver(x.clone()),
+            Type(x) => Type(x.clone()),
         }
     }
 }
@@ -2307,6 +2560,23 @@ impl Lower for Sig {
         self.gens.where_.lower(s);
     }
 }
+impl Clone for Sig {
+    fn clone(&self) -> Self {
+        Sig {
+            const_: self.const_.clone(),
+            async_: self.async_.clone(),
+            unsafe_: self.unsafe_.clone(),
+            abi: self.abi.clone(),
+            fn_: self.fn_.clone(),
+            ident: self.ident.clone(),
+            gens: self.gens.clone(),
+            parenth: self.parenth.clone(),
+            args: self.args.clone(),
+            vari: self.vari.clone(),
+            ret: self.ret.clone(),
+        }
+    }
+}
 impl Pretty for Sig {
     fn pretty(&self, p: &mut Print) {
         if self.const_.is_some() {
@@ -2399,6 +2669,15 @@ impl Lower for StaticMut {
         }
     }
 }
+impl Clone for StaticMut {
+    fn clone(&self) -> Self {
+        use StaticMut::*;
+        match self {
+            Mut(x) => Mut(x.clone()),
+            None => None,
+        }
+    }
+}
 impl Pretty for StaticMut {
     fn pretty(&self, p: &mut Print) {
         use StaticMut::*;
@@ -2443,6 +2722,16 @@ impl Lower for Variadic {
         }
         self.dots.lower(s);
         self.comma.lower(s);
+    }
+}
+impl Clone for Variadic {
+    fn clone(&self) -> Self {
+        Variadic {
+            attrs: self.attrs.clone(),
+            pat: self.pat.clone(),
+            dots: self.dots.clone(),
+            comma: self.comma.clone(),
+        }
     }
 }
 impl Pretty for Variadic {
@@ -2561,6 +2850,18 @@ pub mod foreign {
             Ok(y)
         }
     }
+    impl Clone for Item {
+        fn clone(&self) -> Self {
+            use self::Item::*;
+            match self {
+                Fn(x) => Fn(x.clone()),
+                Static(x) => Static(x.clone()),
+                Type(x) => Type(x.clone()),
+                Mac(x) => Mac(x.clone()),
+                Verbatim(x) => Verbatim(x.clone()),
+            }
+        }
+    }
     impl Pretty for Item {
         fn pretty(&self, p: &mut Print) {
             use self::Item::*;
@@ -2638,6 +2939,16 @@ pub mod foreign {
             self.semi.lower(s);
         }
     }
+    impl Clone for Fn {
+        fn clone(&self) -> Self {
+            Fn {
+                attrs: self.attrs.clone(),
+                vis: self.vis.clone(),
+                sig: self.sig.clone(),
+                semi: self.semi.clone(),
+            }
+        }
+    }
     impl Pretty for Fn {
         fn pretty(&self, p: &mut Print) {
             p.outer_attrs(&self.attrs);
@@ -2687,6 +2998,15 @@ pub mod foreign {
             s.append_all(self.attrs.outers());
             self.mac.lower(s);
             self.semi.lower(s);
+        }
+    }
+    impl Clone for Mac {
+        fn clone(&self) -> Self {
+            Mac {
+                attrs: self.attrs.clone(),
+                mac: self.mac.clone(),
+                semi: self.semi.clone(),
+            }
         }
     }
     impl Pretty for Mac {
@@ -2749,6 +3069,20 @@ pub mod foreign {
             self.colon.lower(s);
             self.typ.lower(s);
             self.semi.lower(s);
+        }
+    }
+    impl Clone for Static {
+        fn clone(&self) -> Self {
+            Static {
+                attrs: self.attrs.clone(),
+                vis: self.vis.clone(),
+                static_: self.static_.clone(),
+                mut_: self.mut_.clone(),
+                ident: self.ident.clone(),
+                colon: self.colon.clone(),
+                typ: self.typ.clone(),
+                semi: self.semi.clone(),
+            }
         }
     }
     impl Pretty for Static {
@@ -2823,6 +3157,18 @@ pub mod foreign {
             self.gens.lower(s);
             self.gens.where_.lower(s);
             self.semi.lower(s);
+        }
+    }
+    impl Clone for Type {
+        fn clone(&self) -> Self {
+            Type {
+                attrs: self.attrs.clone(),
+                vis: self.vis.clone(),
+                type_: self.type_.clone(),
+                ident: self.ident.clone(),
+                gens: self.gens.clone(),
+                semi: self.semi.clone(),
+            }
         }
     }
     impl Pretty for Type {
@@ -3013,6 +3359,18 @@ pub mod impl_ {
             Ok(y)
         }
     }
+    impl Clone for Item {
+        fn clone(&self) -> Self {
+            use Item::*;
+            match self {
+                Const(x) => Const(x.clone()),
+                Fn(x) => Fn(x.clone()),
+                Mac(x) => Mac(x.clone()),
+                Type(x) => Type(x.clone()),
+                Verbatim(x) => Verbatim(x.clone()),
+            }
+        }
+    }
     impl Pretty for Item {
         fn pretty(&self, p: &mut Print) {
             use self::Item::*;
@@ -3118,6 +3476,23 @@ pub mod impl_ {
             self.semi.lower(s);
         }
     }
+    impl Clone for Const {
+        fn clone(&self) -> Self {
+            Const {
+                attrs: self.attrs.clone(),
+                vis: self.vis.clone(),
+                default: self.default.clone(),
+                const_: self.const_.clone(),
+                ident: self.ident.clone(),
+                gens: self.gens.clone(),
+                colon: self.colon.clone(),
+                typ: self.typ.clone(),
+                eq: self.eq.clone(),
+                expr: self.expr.clone(),
+                semi: self.semi.clone(),
+            }
+        }
+    }
     impl Pretty for Const {
         fn pretty(&self, p: &mut Print) {
             p.outer_attrs(&self.attrs);
@@ -3190,6 +3565,17 @@ pub mod impl_ {
             });
         }
     }
+    impl Clone for Fn {
+        fn clone(&self) -> Self {
+            Fn {
+                attrs: self.attrs.clone(),
+                vis: self.vis.clone(),
+                default: self.default.clone(),
+                sig: self.sig.clone(),
+                block: self.block.clone(),
+            }
+        }
+    }
     impl Pretty for Fn {
         fn pretty(&self, p: &mut Print) {
             p.outer_attrs(&self.attrs);
@@ -3252,6 +3638,15 @@ pub mod impl_ {
             s.append_all(self.attrs.outers());
             self.mac.lower(s);
             self.semi.lower(s);
+        }
+    }
+    impl Clone for Mac {
+        fn clone(&self) -> Self {
+            Mac {
+                attrs: self.attrs.clone(),
+                mac: self.mac.clone(),
+                semi: self.semi.clone(),
+            }
         }
     }
     impl Pretty for Mac {
@@ -3328,6 +3723,21 @@ pub mod impl_ {
             self.typ.lower(s);
             self.gens.where_.lower(s);
             self.semi.lower(s);
+        }
+    }
+    impl Clone for Type {
+        fn clone(&self) -> Self {
+            Type {
+                attrs: self.attrs.clone(),
+                vis: self.vis.clone(),
+                default: self.default.clone(),
+                type_: self.type_.clone(),
+                ident: self.ident.clone(),
+                gens: self.gens.clone(),
+                eq: self.eq.clone(),
+                typ: self.typ.clone(),
+                semi: self.semi.clone(),
+            }
         }
     }
     impl Pretty for Type {
@@ -3443,6 +3853,11 @@ pub mod impl_ {
     }
 
     pub enum Restriction {}
+    impl Clone for Restriction {
+        fn clone(&self) -> Self {
+            match *self {}
+        }
+    }
     impl<V> Visit for Restriction
     where
         V: Visitor + ?Sized,
@@ -3518,6 +3933,18 @@ pub mod trait_ {
             attrs.append(ys);
             *ys = attrs;
             Ok(y)
+        }
+    }
+    impl Clone for Item {
+        fn clone(&self) -> Self {
+            use self::Item::*;
+            match self {
+                Const(x) => Const(x.clone()),
+                Fn(x) => Fn(x.clone()),
+                Mac(x) => Mac(x.clone()),
+                Type(x) => Type(x.clone()),
+                Verbatim(x) => Verbatim(x.clone()),
+            }
         }
     }
     impl Pretty for Item {
@@ -3627,6 +4054,20 @@ pub mod trait_ {
             self.semi.lower(s);
         }
     }
+    impl Clone for Const {
+        fn clone(&self) -> Self {
+            Const {
+                attrs: self.attrs.clone(),
+                const_: self.const_.clone(),
+                ident: self.ident.clone(),
+                gens: self.gens.clone(),
+                colon: self.colon.clone(),
+                typ: self.typ.clone(),
+                default: self.default.clone(),
+                semi: self.semi.clone(),
+            }
+        }
+    }
     impl Pretty for Const {
         fn pretty(&self, p: &mut Print) {
             p.outer_attrs(&self.attrs);
@@ -3722,6 +4163,16 @@ pub mod trait_ {
             }
         }
     }
+    impl Clone for Fn {
+        fn clone(&self) -> Self {
+            Fn {
+                attrs: self.attrs.clone(),
+                sig: self.sig.clone(),
+                default: self.default.clone(),
+                semi: self.semi.clone(),
+            }
+        }
+    }
     impl Pretty for Fn {
         fn pretty(&self, p: &mut Print) {
             p.outer_attrs(&self.attrs);
@@ -3787,6 +4238,15 @@ pub mod trait_ {
             s.append_all(self.attrs.outers());
             self.mac.lower(s);
             self.semi.lower(s);
+        }
+    }
+    impl Clone for Mac {
+        fn clone(&self) -> Self {
+            Mac {
+                attrs: self.attrs.clone(),
+                mac: self.mac.clone(),
+                semi: self.semi.clone(),
+            }
         }
     }
     impl Pretty for Mac {
@@ -3863,6 +4323,20 @@ pub mod trait_ {
             }
             self.gens.where_.lower(s);
             self.semi.lower(s);
+        }
+    }
+    impl Clone for Type {
+        fn clone(&self) -> Self {
+            Type {
+                attrs: self.attrs.clone(),
+                type_: self.type_.clone(),
+                ident: self.ident.clone(),
+                gens: self.gens.clone(),
+                colon: self.colon.clone(),
+                bounds: self.bounds.clone(),
+                default: self.default.clone(),
+                semi: self.semi.clone(),
+            }
         }
     }
     impl Pretty for Type {
@@ -4020,6 +4494,18 @@ pub mod use_ {
             parse_tree(s, root).map(Option::unwrap)
         }
     }
+    impl Clone for Tree {
+        fn clone(&self) -> Self {
+            use Tree::*;
+            match self {
+                Glob(x) => Glob(x.clone()),
+                Group(x) => Group(x.clone()),
+                Name(x) => Name(x.clone()),
+                Path(x) => Path(x.clone()),
+                Rename(x) => Rename(x.clone()),
+            }
+        }
+    }
     impl Pretty for Tree {
         fn pretty(&self, p: &mut Print) {
             use Tree::*;
@@ -4151,6 +4637,13 @@ pub mod use_ {
             self.star.lower(s);
         }
     }
+    impl Clone for Glob {
+        fn clone(&self) -> Self {
+            Glob {
+                star: self.star.clone(),
+            }
+        }
+    }
     impl Pretty for Glob {
         fn pretty(&self, p: &mut Print) {
             let _ = self;
@@ -4174,6 +4667,14 @@ pub mod use_ {
             self.brace.surround(s, |s| {
                 self.trees.lower(s);
             });
+        }
+    }
+    impl Clone for Group {
+        fn clone(&self) -> Self {
+            Group {
+                brace: self.brace.clone(),
+                trees: self.trees.clone(),
+            }
         }
     }
     impl Pretty for Group {
@@ -4236,6 +4737,13 @@ pub mod use_ {
             self.ident.lower(s);
         }
     }
+    impl Clone for Name {
+        fn clone(&self) -> Self {
+            Name {
+                ident: self.ident.clone(),
+            }
+        }
+    }
     impl Pretty for Name {
         fn pretty(&self, p: &mut Print) {
             &self.ident.pretty(p);
@@ -4263,6 +4771,15 @@ pub mod use_ {
             self.ident.lower(s);
             self.colon2.lower(s);
             self.tree.lower(s);
+        }
+    }
+    impl Clone for Path {
+        fn clone(&self) -> Self {
+            Path {
+                ident: self.ident.clone(),
+                colon2: self.colon2.clone(),
+                tree: self.tree.clone(),
+            }
         }
     }
     impl Pretty for Path {
@@ -4296,6 +4813,15 @@ pub mod use_ {
             self.ident.lower(s);
             self.as_.lower(s);
             self.rename.lower(s);
+        }
+    }
+    impl Clone for Rename {
+        fn clone(&self) -> Self {
+            Rename {
+                ident: self.ident.clone(),
+                as_: self.as_.clone(),
+                rename: self.rename.clone(),
+            }
         }
     }
     impl Pretty for Rename {
@@ -5009,7 +5535,7 @@ fn parse_trait_or_trait_alias(s: Stream) -> Res<Item> {
         let auto_ = None;
         parse_rest_of_trait(s, attrs, vis, unsafe_, auto_, trait_, ident, gens).map(Item::Trait)
     } else if look.peek(Token![=]) {
-        parse_rest_of_trait_alias(s, attrs, vis, trait_, ident, gens).map(Item::TraitAlias)
+        parse_rest_of_trait_alias(s, attrs, vis, trait_, ident, gens).map(Item::Alias)
     } else {
         Err(look.error())
     }
@@ -5076,7 +5602,7 @@ fn parse_rest_of_trait_alias(
     trait_: Token![trait],
     ident: Ident,
     mut gens: gen::Gens,
-) -> Res<TraitAlias> {
+) -> Res<Alias> {
     let eq: Token![=] = s.parse()?;
     let mut bounds = Puncted::new();
     loop {
@@ -5091,7 +5617,7 @@ fn parse_rest_of_trait_alias(
     }
     gens.where_ = s.parse()?;
     let semi: Token![;] = s.parse()?;
-    Ok(TraitAlias {
+    Ok(Alias {
         attrs,
         vis,
         trait_,

@@ -793,10 +793,7 @@ impl<V> Visit for Angle
 where
     V: Visitor + ?Sized,
 {
-    fn visit<'a, V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit<'a>(&self, v: &mut V) {
         for y in Puncted::pairs(&self.args) {
             let x = y.value();
             x.visit(v);

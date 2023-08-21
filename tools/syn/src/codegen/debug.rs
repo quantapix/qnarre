@@ -1339,7 +1339,7 @@ impl Debug for Item {
             Item::Static(x) => x.debug(f, "Static"),
             Item::Struct(x) => x.debug(f, "Struct"),
             Item::Trait(x) => x.debug(f, "Trait"),
-            Item::TraitAlias(x) => x.debug(f, "TraitAlias"),
+            Item::Alias(x) => x.debug(f, "Alias"),
             Item::Type(x) => x.debug(f, "Type"),
             Item::Union(x) => x.debug(f, "Union"),
             Item::Use(x) => x.debug(f, "Use"),
@@ -1554,9 +1554,9 @@ impl Debug for item::Trait {
         self.debug(f, "item::Trait")
     }
 }
-impl Debug for item::TraitAlias {
+impl Debug for item::Alias {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl item::TraitAlias {
+        impl item::Alias {
             fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut f = f.debug_struct(name);
                 f.field("attrs", &self.attrs);
@@ -1570,7 +1570,7 @@ impl Debug for item::TraitAlias {
                 f.finish()
             }
         }
-        self.debug(f, "item::TraitAlias")
+        self.debug(f, "item::Alias")
     }
 }
 impl Debug for item::Type {
