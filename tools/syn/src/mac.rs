@@ -263,18 +263,15 @@ impl Pretty for Mac {
         }
     }
 }
-impl Visit for Mac {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Mac
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         &self.path.visit(v);
         &self.delim.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         &mut self.path.visit_mut(v);
         &mut self.delim.visit_mut(v);
     }

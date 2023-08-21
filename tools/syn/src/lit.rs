@@ -151,11 +151,11 @@ impl Pretty for Lit {
         }
     }
 }
-impl Visit for Lit {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Lit
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         use Lit::*;
         match self {
             Str(x) => {
@@ -182,10 +182,7 @@ impl Visit for Lit {
             Verbatim(_) => {},
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         use Lit::*;
         match self {
             Str(x) => {
@@ -265,17 +262,14 @@ impl Pretty for Bool {
         p.word(if self.val { "true" } else { "false" });
     }
 }
-impl Visit for Bool {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Bool
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         &self.span.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         &mut self.span.visit_mut(v);
     }
 }
@@ -373,17 +367,12 @@ impl Pretty for Byte {
         p.word(self.token().to_string());
     }
 }
-impl Visit for Byte {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
-    }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
-    }
+impl<V> Visit for Byte
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {}
+    fn visit_mut(&mut self, v: &mut V) {}
 }
 
 pub struct ByteStr {
@@ -450,17 +439,12 @@ impl Pretty for ByteStr {
         p.word(self.token().to_string());
     }
 }
-impl Visit for ByteStr {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
-    }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
-    }
+impl<V> Visit for ByteStr
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {}
+    fn visit_mut(&mut self, v: &mut V) {}
 }
 
 pub struct Char {
@@ -527,17 +511,12 @@ impl Pretty for Char {
         p.word(self.token().to_string());
     }
 }
-impl Visit for Char {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
-    }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
-    }
+impl<V> Visit for Char
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {}
+    fn visit_mut(&mut self, v: &mut V) {}
 }
 
 pub struct Float {
@@ -627,17 +606,12 @@ impl Pretty for Float {
         p.word(self.token().to_string());
     }
 }
-impl Visit for Float {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
-    }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
-    }
+impl<V> Visit for Float
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {}
+    fn visit_mut(&mut self, v: &mut V) {}
 }
 
 pub struct Int {
@@ -727,17 +701,12 @@ impl Pretty for Int {
         p.word(self.token().to_string());
     }
 }
-impl Visit for Int {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
-    }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
-    }
+impl<V> Visit for Int
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {}
+    fn visit_mut(&mut self, v: &mut V) {}
 }
 
 pub struct Str {
@@ -827,17 +796,12 @@ impl Pretty for Str {
         p.word(self.token().to_string());
     }
 }
-impl Visit for Str {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
-    }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
-    }
+impl<V> Visit for Str
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {}
+    fn visit_mut(&mut self, v: &mut V) {}
 }
 
 struct Repr {

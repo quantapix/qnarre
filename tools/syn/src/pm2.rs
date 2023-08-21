@@ -658,17 +658,12 @@ impl Debug for Span {
         }
     }
 }
-impl Visit for Span {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
-    }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
-    }
+impl<V> Visit for Span
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {}
+    fn visit_mut(&mut self, v: &mut V) {}
 }
 
 #[derive(Clone)]

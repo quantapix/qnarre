@@ -15,17 +15,14 @@ impl Parse for Ident {
         })
     }
 }
-impl Visit for Ident {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Ident
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         &self.span().visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         let mut x = self.span();
         &mut x.visit_mut(v);
         self.set_span(x);
@@ -147,18 +144,15 @@ impl Pretty for Life {
         p.ident(&self.ident);
     }
 }
-impl Visit for Life {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Life
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         &self.apos.visit(v);
         &self.ident.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         &mut self.apos.visit_mut(v);
         &mut self.ident.visit_mut(v);
     }

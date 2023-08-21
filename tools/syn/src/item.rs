@@ -41,11 +41,11 @@ impl Pretty for File {
         p.end();
     }
 }
-impl Visit for File {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for File
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         for x in &self.attrs {
             x.visit(v);
         }
@@ -53,10 +53,7 @@ impl Visit for File {
             x.visit(v);
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         for x in &mut self.attrs {
             x.visit_mut(v);
         }
@@ -170,11 +167,11 @@ impl Pretty for Item {
         }
     }
 }
-impl Visit for Item {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Item
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         use Item::*;
         match self {
             Const(x) => {
@@ -225,10 +222,7 @@ impl Visit for Item {
             Verbatim(_) => {},
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         use Item::*;
         match self {
             Const(x) => {
@@ -347,11 +341,11 @@ impl Pretty for Const {
         p.hardbreak();
     }
 }
-impl Visit for Const {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Const
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         for x in &self.attrs {
             x.visit(v);
         }
@@ -361,10 +355,7 @@ impl Visit for Const {
         &*self.typ.visit(v);
         &*self.expr.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         for x in &mut self.attrs {
             x.visit_mut(v);
         }
@@ -454,11 +445,11 @@ impl Pretty for Enum {
         p.hardbreak();
     }
 }
-impl Visit for Enum {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Enum
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         for x in &self.attrs {
             x.visit(v);
         }
@@ -470,10 +461,7 @@ impl Visit for Enum {
             x.visit(v);
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         for x in &mut self.attrs {
             x.visit_mut(v);
         }
@@ -555,11 +543,11 @@ impl Pretty for Extern {
         p.hardbreak();
     }
 }
-impl Visit for Extern {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Extern
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         for x in &self.attrs {
             x.visit(v);
         }
@@ -569,10 +557,7 @@ impl Visit for Extern {
             &(x).1.visit(v);
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         for x in &mut self.attrs {
             x.visit_mut(v);
         }
@@ -628,11 +613,11 @@ impl Pretty for Fn {
         p.hardbreak();
     }
 }
-impl Visit for Fn {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Fn
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         for x in &self.attrs {
             x.visit(v);
         }
@@ -640,10 +625,7 @@ impl Visit for Fn {
         &self.sig.visit(v);
         &*self.block.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         for x in &mut self.attrs {
             x.visit_mut(v);
         }
@@ -712,11 +694,11 @@ impl Pretty for Foreign {
         p.hardbreak();
     }
 }
-impl Visit for Foreign {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Foreign
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         for x in &self.attrs {
             x.visit(v);
         }
@@ -725,10 +707,7 @@ impl Visit for Foreign {
             x.visit(v);
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         for x in &mut self.attrs {
             x.visit_mut(v);
         }
@@ -815,11 +794,11 @@ impl Pretty for Impl {
         p.hardbreak();
     }
 }
-impl Visit for Impl {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Impl
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         for x in &self.attrs {
             x.visit(v);
         }
@@ -832,10 +811,7 @@ impl Visit for Impl {
             x.visit(v);
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         for x in &mut self.attrs {
             x.visit_mut(v);
         }
@@ -909,11 +885,11 @@ impl Pretty for Mac {
         p.hardbreak();
     }
 }
-impl Visit for Mac {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Mac
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         for x in &self.attrs {
             x.visit(v);
         }
@@ -922,10 +898,7 @@ impl Visit for Mac {
         }
         &self.mac.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         for x in &mut self.attrs {
             x.visit_mut(v);
         }
@@ -1033,11 +1006,11 @@ impl Pretty for Mod {
         p.hardbreak();
     }
 }
-impl Visit for Mod {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Mod
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         for x in &self.attrs {
             x.visit(v);
         }
@@ -1049,10 +1022,7 @@ impl Visit for Mod {
             }
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         for x in &mut self.attrs {
             x.visit_mut(v);
         }
@@ -1126,11 +1096,11 @@ impl Pretty for Static {
         p.hardbreak();
     }
 }
-impl Visit for Static {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Static
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         for x in &self.attrs {
             x.visit(v);
         }
@@ -1140,10 +1110,7 @@ impl Visit for Static {
         &*self.typ.visit(v);
         &*self.expr.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         for x in &mut self.attrs {
             x.visit_mut(v);
         }
@@ -1258,11 +1225,11 @@ impl Pretty for Struct {
         p.hardbreak();
     }
 }
-impl Visit for Struct {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Struct
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         for x in &self.attrs {
             x.visit(v);
         }
@@ -1271,10 +1238,7 @@ impl Visit for Struct {
         &self.gens.visit(v);
         &self.fields.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         for x in &mut self.attrs {
             x.visit_mut(v);
         }
@@ -1366,11 +1330,11 @@ impl Pretty for Trait {
         p.hardbreak();
     }
 }
-impl Visit for Trait {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Trait
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         for x in &self.attrs {
             x.visit(v);
         }
@@ -1388,10 +1352,7 @@ impl Visit for Trait {
             x.visit(v);
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         for x in &mut self.attrs {
             x.visit_mut(v);
         }
@@ -1462,11 +1423,11 @@ impl Pretty for TraitAlias {
         p.hardbreak();
     }
 }
-impl Visit for TraitAlias {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for TraitAlias
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         for x in &self.attrs {
             x.visit(v);
         }
@@ -1478,10 +1439,7 @@ impl Visit for TraitAlias {
             x.visit(v);
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         for x in &mut self.attrs {
             x.visit_mut(v);
         }
@@ -1555,11 +1513,11 @@ impl Pretty for Type {
         p.hardbreak();
     }
 }
-impl Visit for Type {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Type
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         for x in &self.attrs {
             x.visit(v);
         }
@@ -1568,10 +1526,7 @@ impl Visit for Type {
         &self.gens.visit(v);
         &*self.typ.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         for x in &mut self.attrs {
             x.visit_mut(v);
         }
@@ -1655,11 +1610,11 @@ impl Pretty for Union {
         p.hardbreak();
     }
 }
-impl Visit for Union {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Union
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         for x in &self.attrs {
             x.visit(v);
         }
@@ -1668,10 +1623,7 @@ impl Visit for Union {
         &self.gens.visit(v);
         &self.fields.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         for x in &mut self.attrs {
             x.visit_mut(v);
         }
@@ -1719,21 +1671,18 @@ impl Pretty for Use {
         p.hardbreak();
     }
 }
-impl Visit for Use {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Use
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         for x in &self.attrs {
             x.visit(v);
         }
         &self.vis.visit(v);
         &self.tree.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         for x in &mut self.attrs {
             x.visit_mut(v);
         }
@@ -2198,11 +2147,11 @@ impl Pretty for Receiver {
         }
     }
 }
-impl Visit for Receiver {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Receiver
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         for x in &self.attrs {
             x.visit(v);
         }
@@ -2213,10 +2162,7 @@ impl Visit for Receiver {
         }
         &*self.typ.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         for x in &mut self.attrs {
             x.visit_mut(v);
         }
@@ -2255,11 +2201,11 @@ impl Pretty for FnArg {
         }
     }
 }
-impl Visit for FnArg {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for FnArg
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         use FnArg::*;
         match self {
             Receiver(x) => {
@@ -2270,10 +2216,7 @@ impl Visit for FnArg {
             },
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         use FnArg::*;
         match self {
             Receiver(x) => {
@@ -2402,11 +2345,11 @@ impl Pretty for Sig {
         p.end();
     }
 }
-impl Visit for Sig {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Sig
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         if let Some(x) = &self.abi {
             x.visit(v);
         }
@@ -2421,10 +2364,7 @@ impl Visit for Sig {
         }
         &self.ret.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         if let Some(x) = &mut self.abi {
             x.visit_mut(v);
         }
@@ -2468,21 +2408,18 @@ impl Pretty for StaticMut {
         }
     }
 }
-impl Visit for StaticMut {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for StaticMut
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         use StaticMut::*;
         match self {
             Mut(_) => {},
             None => {},
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         use StaticMut::*;
         match self {
             Mut(_) => {},
@@ -2518,11 +2455,11 @@ impl Pretty for Variadic {
         p.word("...");
     }
 }
-impl Visit for Variadic {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Variadic
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         for x in &self.attrs {
             x.visit(v);
         }
@@ -2530,10 +2467,7 @@ impl Visit for Variadic {
             &*(x).0.visit(v);
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         for x in &mut self.attrs {
             x.visit_mut(v);
         }
@@ -2639,11 +2573,11 @@ pub mod foreign {
             }
         }
     }
-    impl Visit for Item {
-        fn visit<V>(&self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+    impl<V> Visit for Item
+    where
+        V: Visitor + ?Sized,
+    {
+        fn visit(&self, v: &mut V) {
             use self::Item::*;
             match self {
                 Fn(x) => {
@@ -2661,10 +2595,7 @@ pub mod foreign {
                 Verbatim(_) => {},
             }
         }
-        fn visit_mut<V>(&mut self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+        fn visit_mut(&mut self, v: &mut V) {
             use self::Item::*;
             match self {
                 Fn(x) => {
@@ -2718,21 +2649,18 @@ pub mod foreign {
             p.hardbreak();
         }
     }
-    impl Visit for Fn {
-        fn visit<V>(&self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+    impl<V> Visit for Fn
+    where
+        V: Visitor + ?Sized,
+    {
+        fn visit(&self, v: &mut V) {
             for x in &self.attrs {
                 x.visit(v);
             }
             &self.vis.visit(v);
             &self.sig.visit(v);
         }
-        fn visit_mut<V>(&mut self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+        fn visit_mut(&mut self, v: &mut V) {
             for x in &mut self.attrs {
                 x.visit_mut(v);
             }
@@ -2769,20 +2697,17 @@ pub mod foreign {
             p.hardbreak();
         }
     }
-    impl Visit for Mac {
-        fn visit<V>(&self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+    impl<V> Visit for Mac
+    where
+        V: Visitor + ?Sized,
+    {
+        fn visit(&self, v: &mut V) {
             for x in &self.attrs {
                 x.visit(v);
             }
             &self.mac.visit(v);
         }
-        fn visit_mut<V>(&mut self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+        fn visit_mut(&mut self, v: &mut V) {
             for x in &mut self.attrs {
                 x.visit_mut(v);
             }
@@ -2841,11 +2766,11 @@ pub mod foreign {
             p.hardbreak();
         }
     }
-    impl Visit for Static {
-        fn visit<V>(&self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+    impl<V> Visit for Static
+    where
+        V: Visitor + ?Sized,
+    {
+        fn visit(&self, v: &mut V) {
             for x in &self.attrs {
                 x.visit(v);
             }
@@ -2854,10 +2779,7 @@ pub mod foreign {
             &self.ident.visit(v);
             &*self.typ.visit(v);
         }
-        fn visit_mut<V>(&mut self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+        fn visit_mut(&mut self, v: &mut V) {
             for x in &mut self.attrs {
                 x.visit_mut(v);
             }
@@ -2916,11 +2838,11 @@ pub mod foreign {
             p.hardbreak();
         }
     }
-    impl Visit for Type {
-        fn visit<V>(&self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+    impl<V> Visit for Type
+    where
+        V: Visitor + ?Sized,
+    {
+        fn visit(&self, v: &mut V) {
             for x in &self.attrs {
                 x.visit(v);
             }
@@ -2928,10 +2850,7 @@ pub mod foreign {
             &self.ident.visit(v);
             &self.gens.visit(v);
         }
-        fn visit_mut<V>(&mut self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+        fn visit_mut(&mut self, v: &mut V) {
             for x in &mut self.attrs {
                 x.visit_mut(v);
             }
@@ -3106,11 +3025,11 @@ pub mod impl_ {
             }
         }
     }
-    impl Visit for Item {
-        fn visit<V>(&self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+    impl<V> Visit for Item
+    where
+        V: Visitor + ?Sized,
+    {
+        fn visit(&self, v: &mut V) {
             use self::Item::*;
             match self {
                 Const(x) => {
@@ -3128,10 +3047,7 @@ pub mod impl_ {
                 Verbatim(_) => {},
             }
         }
-        fn visit_mut<V>(&mut self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+        fn visit_mut(&mut self, v: &mut V) {
             use self::Item::*;
             match self {
                 Const(x) => {
@@ -3223,11 +3139,11 @@ pub mod impl_ {
             p.hardbreak();
         }
     }
-    impl Visit for Const {
-        fn visit<V>(&self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+    impl<V> Visit for Const
+    where
+        V: Visitor + ?Sized,
+    {
+        fn visit(&self, v: &mut V) {
             for x in &self.attrs {
                 x.visit(v);
             }
@@ -3237,10 +3153,7 @@ pub mod impl_ {
             &self.typ.visit(v);
             &self.expr.visit(v);
         }
-        fn visit_mut<V>(&mut self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+        fn visit_mut(&mut self, v: &mut V) {
             for x in &mut self.attrs {
                 x.visit_mut(v);
             }
@@ -3299,11 +3212,11 @@ pub mod impl_ {
             p.hardbreak();
         }
     }
-    impl Visit for Fn {
-        fn visit<V>(&self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+    impl<V> Visit for Fn
+    where
+        V: Visitor + ?Sized,
+    {
+        fn visit(&self, v: &mut V) {
             for x in &self.attrs {
                 x.visit(v);
             }
@@ -3311,10 +3224,7 @@ pub mod impl_ {
             &self.sig.visit(v);
             &self.block.visit(v);
         }
-        fn visit_mut<V>(&mut self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+        fn visit_mut(&mut self, v: &mut V) {
             for x in &mut self.attrs {
                 x.visit_mut(v);
             }
@@ -3352,20 +3262,17 @@ pub mod impl_ {
             p.hardbreak();
         }
     }
-    impl Visit for Mac {
-        fn visit<V>(&self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+    impl<V> Visit for Mac
+    where
+        V: Visitor + ?Sized,
+    {
+        fn visit(&self, v: &mut V) {
             for x in &self.attrs {
                 x.visit(v);
             }
             &self.mac.visit(v);
         }
-        fn visit_mut<V>(&mut self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+        fn visit_mut(&mut self, v: &mut V) {
             for x in &mut self.attrs {
                 x.visit_mut(v);
             }
@@ -3444,11 +3351,11 @@ pub mod impl_ {
             p.hardbreak();
         }
     }
-    impl Visit for Type {
-        fn visit<V>(&self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+    impl<V> Visit for Type
+    where
+        V: Visitor + ?Sized,
+    {
+        fn visit(&self, v: &mut V) {
             for x in &self.attrs {
                 x.visit(v);
             }
@@ -3457,10 +3364,7 @@ pub mod impl_ {
             &self.gens.visit(v);
             &self.typ.visit(v);
         }
-        fn visit_mut<V>(&mut self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+        fn visit_mut(&mut self, v: &mut V) {
             for x in &mut self.attrs {
                 x.visit_mut(v);
             }
@@ -3539,17 +3443,14 @@ pub mod impl_ {
     }
 
     pub enum Restriction {}
-    impl Visit for Restriction {
-        fn visit<V>(&self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+    impl<V> Visit for Restriction
+    where
+        V: Visitor + ?Sized,
+    {
+        fn visit(&self, v: &mut V) {
             match *self {}
         }
-        fn visit_mut<V>(&mut self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+        fn visit_mut(&mut self, v: &mut V) {
             match *self {}
         }
     }
@@ -3631,11 +3532,11 @@ pub mod trait_ {
             }
         }
     }
-    impl Visit for Item {
-        fn visit<V>(&self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+    impl<V> Visit for Item
+    where
+        V: Visitor + ?Sized,
+    {
+        fn visit(&self, v: &mut V) {
             use self::Item::*;
             match self {
                 Const(x) => {
@@ -3653,10 +3554,7 @@ pub mod trait_ {
                 Verbatim(_) => {},
             }
         }
-        fn visit_mut<V>(&mut self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+        fn visit_mut(&mut self, v: &mut V) {
             use self::Item::*;
             match self {
                 Const(x) => {
@@ -3748,11 +3646,11 @@ pub mod trait_ {
             p.hardbreak();
         }
     }
-    impl Visit for Const {
-        fn visit<V>(&self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+    impl<V> Visit for Const
+    where
+        V: Visitor + ?Sized,
+    {
+        fn visit(&self, v: &mut V) {
             for x in &self.attrs {
                 x.visit(v);
             }
@@ -3763,10 +3661,7 @@ pub mod trait_ {
                 &(x).1.visit(v);
             }
         }
-        fn visit_mut<V>(&mut self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+        fn visit_mut(&mut self, v: &mut V) {
             for x in &mut self.attrs {
                 x.visit_mut(v);
             }
@@ -3850,11 +3745,11 @@ pub mod trait_ {
             p.hardbreak();
         }
     }
-    impl Visit for Fn {
-        fn visit<V>(&self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+    impl<V> Visit for Fn
+    where
+        V: Visitor + ?Sized,
+    {
+        fn visit(&self, v: &mut V) {
             for x in &self.attrs {
                 x.visit(v);
             }
@@ -3863,10 +3758,7 @@ pub mod trait_ {
                 x.visit(v);
             }
         }
-        fn visit_mut<V>(&mut self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+        fn visit_mut(&mut self, v: &mut V) {
             for x in &mut self.attrs {
                 x.visit_mut(v);
             }
@@ -3905,20 +3797,17 @@ pub mod trait_ {
             p.hardbreak();
         }
     }
-    impl Visit for Mac {
-        fn visit<V>(&self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+    impl<V> Visit for Mac
+    where
+        V: Visitor + ?Sized,
+    {
+        fn visit(&self, v: &mut V) {
             for x in &self.attrs {
                 x.visit(v);
             }
             &self.mac.visit(v);
         }
-        fn visit_mut<V>(&mut self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+        fn visit_mut(&mut self, v: &mut V) {
             for x in &mut self.attrs {
                 x.visit_mut(v);
             }
@@ -4004,11 +3893,11 @@ pub mod trait_ {
             p.hardbreak();
         }
     }
-    impl Visit for Type {
-        fn visit<V>(&self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+    impl<V> Visit for Type
+    where
+        V: Visitor + ?Sized,
+    {
+        fn visit(&self, v: &mut V) {
             for x in &self.attrs {
                 x.visit(v);
             }
@@ -4022,10 +3911,7 @@ pub mod trait_ {
                 &(x).1.visit(v);
             }
         }
-        fn visit_mut<V>(&mut self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+        fn visit_mut(&mut self, v: &mut V) {
             for x in &mut self.attrs {
                 x.visit_mut(v);
             }
@@ -4146,11 +4032,11 @@ pub mod use_ {
             }
         }
     }
-    impl Visit for Tree {
-        fn visit<V>(&self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+    impl<V> Visit for Tree
+    where
+        V: Visitor + ?Sized,
+    {
+        fn visit(&self, v: &mut V) {
             use Tree::*;
             match self {
                 Glob(x) => {
@@ -4170,10 +4056,7 @@ pub mod use_ {
                 },
             }
         }
-        fn visit_mut<V>(&mut self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+        fn visit_mut(&mut self, v: &mut V) {
             use Tree::*;
             match self {
                 Glob(x) => {
@@ -4274,17 +4157,12 @@ pub mod use_ {
             p.word("*");
         }
     }
-    impl Visit for Glob {
-        fn visit<V>(&self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
-        }
-        fn visit_mut<V>(&mut self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
-        }
+    impl<V> Visit for Glob
+    where
+        V: Visitor + ?Sized,
+    {
+        fn visit(&self, v: &mut V) {}
+        fn visit_mut(&mut self, v: &mut V) {}
     }
 
     pub struct Group {
@@ -4332,20 +4210,17 @@ pub mod use_ {
             }
         }
     }
-    impl Visit for Group {
-        fn visit<V>(&self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+    impl<V> Visit for Group
+    where
+        V: Visitor + ?Sized,
+    {
+        fn visit(&self, v: &mut V) {
             for y in Puncted::pairs(&self.trees) {
                 let x = y.value();
                 x.visit(v);
             }
         }
-        fn visit_mut<V>(&mut self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+        fn visit_mut(&mut self, v: &mut V) {
             for mut y in Puncted::pairs_mut(&mut self.trees) {
                 let x = y.value_mut();
                 x.visit_mut(v);
@@ -4366,17 +4241,14 @@ pub mod use_ {
             &self.ident.pretty(p);
         }
     }
-    impl Visit for Name {
-        fn visit<V>(&self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+    impl<V> Visit for Name
+    where
+        V: Visitor + ?Sized,
+    {
+        fn visit(&self, v: &mut V) {
             &self.ident.visit(v);
         }
-        fn visit_mut<V>(&mut self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+        fn visit_mut(&mut self, v: &mut V) {
             &mut self.ident.visit_mut(v);
         }
     }
@@ -4400,18 +4272,15 @@ pub mod use_ {
             &self.tree.pretty(p);
         }
     }
-    impl Visit for Path {
-        fn visit<V>(&self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+    impl<V> Visit for Path
+    where
+        V: Visitor + ?Sized,
+    {
+        fn visit(&self, v: &mut V) {
             &self.ident.visit(v);
             &*self.tree.visit(v);
         }
-        fn visit_mut<V>(&mut self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+        fn visit_mut(&mut self, v: &mut V) {
             &mut self.ident.visit_mut(v);
             &mut *self.tree.visit_mut(v);
         }
@@ -4436,18 +4305,15 @@ pub mod use_ {
             &self.rename.pretty(p);
         }
     }
-    impl Visit for Rename {
-        fn visit<V>(&self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+    impl<V> Visit for Rename
+    where
+        V: Visitor + ?Sized,
+    {
+        fn visit(&self, v: &mut V) {
             &self.ident.visit(v);
             &self.rename.visit(v);
         }
-        fn visit_mut<V>(&mut self, v: &mut V)
-        where
-            V: Visitor + ?Sized,
-        {
+        fn visit_mut(&mut self, v: &mut V) {
             &mut self.ident.visit_mut(v);
             &mut self.rename.visit_mut(v);
         }

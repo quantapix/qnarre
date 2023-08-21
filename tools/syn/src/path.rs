@@ -152,20 +152,17 @@ impl Pretty for Path {
         }
     }
 }
-impl Visit for Path {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Path
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         for y in Puncted::pairs(&self.segs) {
             let x = y.value();
             x.visit(v);
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         for mut y in Puncted::pairs_mut(&mut self.segs) {
             let x = y.value_mut();
             x.visit_mut(v);
@@ -226,18 +223,15 @@ impl Pretty for Segment {
         &self.args.pretty_with_args(p, x);
     }
 }
-impl Visit for Segment {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Segment
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         &self.ident.visit(v);
         &self.args.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         &mut self.ident.visit_mut(v);
         &mut self.args.visit_mut(v);
     }
@@ -298,11 +292,11 @@ impl Pretty for Args {
         }
     }
 }
-impl Visit for Args {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Args
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         use Args::*;
         match self {
             None => {},
@@ -314,10 +308,7 @@ impl Visit for Args {
             },
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         use Args::*;
         match self {
             None => {},
@@ -458,11 +449,11 @@ impl Pretty for Arg {
         }
     }
 }
-impl Visit for Arg {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Arg
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         use Arg::*;
         match self {
             Life(x) => {
@@ -485,10 +476,7 @@ impl Visit for Arg {
             },
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         use Arg::*;
         match self {
             Life(x) => {
@@ -625,7 +613,10 @@ impl Pretty for Angled {
         p.word(">");
     }
 }
-impl Visit for Angled {
+impl<V> Visit for Angled
+where
+    V: Visitor + ?Sized,
+{
     fn visit<'a, V>(&self, v: &mut V)
     where
         V: Visitor + ?Sized,
@@ -635,10 +626,7 @@ impl Visit for Angled {
             x.visit(v);
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         for mut y in Puncted::pairs_mut(&mut self.args) {
             let x = y.value_mut();
             x.visit_mut(v);
@@ -684,21 +672,18 @@ impl Pretty for Parenthed {
         p.end();
     }
 }
-impl Visit for Parenthed {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Parenthed
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         for y in Puncted::pairs(&self.ins) {
             let x = y.value();
             x.visit(v);
         }
         &self.out.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         for mut y in Puncted::pairs_mut(&mut self.ins) {
             let x = y.value_mut();
             x.visit_mut(v);
@@ -731,21 +716,18 @@ impl Pretty for AssocType {
         &self.typ.pretty(p);
     }
 }
-impl Visit for AssocType {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for AssocType
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         &self.ident.visit(v);
         if let Some(x) = &self.args {
             x.visit(v);
         }
         &self.ty.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         &mut self.ident.visit_mut(v);
         if let Some(x) = &mut self.args {
             x.visit_mut(v);
@@ -778,21 +760,18 @@ impl Pretty for AssocConst {
         &self.val.pretty(p);
     }
 }
-impl Visit for AssocConst {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for AssocConst
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         &self.ident.visit(v);
         if let Some(x) = &self.args {
             x.visit(v);
         }
         &self.val.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         &mut self.ident.visit_mut(v);
         if let Some(x) = &mut self.args {
             x.visit_mut(v);
@@ -834,11 +813,11 @@ impl Pretty for Constraint {
         p.end();
     }
 }
-impl Visit for Constraint {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Constraint
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         &self.ident.visit(v);
         if let Some(x) = &self.args {
             x.visit(v);
@@ -848,10 +827,7 @@ impl Visit for Constraint {
             x.visit(v);
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         &mut self.ident.visit_mut(v);
         if let Some(x) = &mut self.args {
             x.visit_mut(v);
@@ -870,17 +846,14 @@ pub struct QSelf {
     pub as_: Option<Token![as]>,
     pub gt: Token![>],
 }
-impl Visit for QSelf {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for QSelf
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         &*self.typ.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         &mut *self.typ.visit_mut(v);
     }
 }

@@ -528,11 +528,11 @@ impl Delim {
         });
     }
 }
-impl Visit for Delim {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Delim
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         use Delim::*;
         match self {
             Brace(_) => {},
@@ -540,10 +540,7 @@ impl Visit for Delim {
             Parenth(_) => {},
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         use Delim::*;
         match self {
             Brace(_) => {},

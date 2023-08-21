@@ -98,11 +98,11 @@ impl Pretty for Stmt {
         }
     }
 }
-impl Visit for Stmt {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Stmt
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         use Stmt::*;
         match self {
             Local(x) => {
@@ -119,10 +119,7 @@ impl Visit for Stmt {
             },
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         use Stmt::*;
         match self {
             Local(x) => {
@@ -167,11 +164,11 @@ impl Lower for Local {
         self.semi.lower(s);
     }
 }
-impl Visit for Local {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Local
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         for x in &self.attrs {
             x.visit(v);
         }
@@ -180,10 +177,7 @@ impl Visit for Local {
             x.visit(v);
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         for x in &mut self.attrs {
             x.visit_mut(v);
         }
@@ -206,20 +200,17 @@ impl Lower for Mac {
         self.semi.lower(s);
     }
 }
-impl Visit for Mac {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Mac
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         for x in &self.attrs {
             x.visit(v);
         }
         &self.mac.visit(v);
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         for x in &mut self.attrs {
             x.visit_mut(v);
         }
@@ -274,19 +265,16 @@ impl Lower for Block {
         });
     }
 }
-impl Visit for Block {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Block
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         for x in &self.stmts {
             x.visit(v);
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         for x in &mut self.stmts {
             x.visit_mut(v);
         }
@@ -298,20 +286,17 @@ pub struct Init {
     pub expr: Box<Expr>,
     pub diverge: Option<(Token![else], Box<Expr>)>,
 }
-impl Visit for Init {
-    fn visit<V>(&self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+impl<V> Visit for Init
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {
         &*self.expr.visit(v);
         if let Some(x) = &self.diverge {
             &*(x).1.visit(v);
         }
     }
-    fn visit_mut<V>(&mut self, v: &mut V)
-    where
-        V: Visitor + ?Sized,
-    {
+    fn visit_mut(&mut self, v: &mut V) {
         &mut *self.expr.visit_mut(v);
         if let Some(x) = &mut self.diverge {
             &mut *(x).1.visit_mut(v);
