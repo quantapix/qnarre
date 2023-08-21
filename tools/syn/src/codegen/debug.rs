@@ -8,9 +8,9 @@ impl Debug for typ::Abi {
         f.finish()
     }
 }
-impl Debug for path::Angled {
+impl Debug for path::Angle {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl path::Angled {
+        impl path::Angle {
             fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut f = f.debug_struct(name);
                 f.field("colon2", &self.colon2);
@@ -20,7 +20,7 @@ impl Debug for path::Angled {
                 f.finish()
             }
         }
-        self.debug(f, "path::path::path::Angled")
+        self.debug(f, "path::path::path::Angle")
     }
 }
 impl Debug for expr::Arm {
@@ -1788,9 +1788,9 @@ impl Debug for attr::NameValue {
         self.debug(f, "attr::NameValue")
     }
 }
-impl Debug for path::Parenthed {
+impl Debug for path::Parenth {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl path::Parenthed {
+        impl path::Parenth {
             fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut f = f.debug_struct(name);
                 f.field("parenth", &self.parenth);
@@ -1799,7 +1799,7 @@ impl Debug for path::Parenthed {
                 f.finish()
             }
         }
-        self.debug(f, "path::Parenthed")
+        self.debug(f, "path::Parenth")
     }
 }
 impl Debug for pat::Pat {
@@ -2010,12 +2010,12 @@ impl Debug for path::Args {
         use path::Args::*;
         match self {
             None => f.write_str("None"),
-            Angled(x) => x.debug(f, "Angled"),
-            Parenthed(x) => x.debug(f, "Parenthed"),
+            Angle(x) => x.debug(f, "Angle"),
+            Parenth(x) => x.debug(f, "Parenth"),
         }
     }
 }
-impl Debug for Segment {
+impl Debug for path::Segment {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut f = f.debug_struct("path::Segment");
         f.field("ident", &self.ident);

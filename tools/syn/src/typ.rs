@@ -1505,7 +1505,7 @@ pub fn parse_ambig_typ(s: Stream, plus: bool, gen: bool) -> Res<Type> {
             if let Type::Path(mut ty) = *y.elem {
                 let args = &mut ty.path.segs.last_mut().unwrap().args;
                 if args.is_none() {
-                    *args = path::Args::Angled(s.parse()?);
+                    *args = path::Args::Angle(s.parse()?);
                     Path::parse_rest(s, &mut ty.path, false)?;
                     return Ok(Type::Path(ty));
                 } else {

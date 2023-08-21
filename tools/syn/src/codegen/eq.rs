@@ -7,12 +7,6 @@ impl PartialEq for typ::Abi {
         self.name == x.name
     }
 }
-impl Eq for path::Angled {}
-impl PartialEq for path::Angled {
-    fn eq(&self, x: &Self) -> bool {
-        self.colon2 == x.colon2 && self.args == x.args
-    }
-}
 impl Eq for expr::Arm {}
 impl PartialEq for expr::Arm {
     fn eq(&self, x: &Self) -> bool {
@@ -21,18 +15,6 @@ impl PartialEq for expr::Arm {
             && self.guard == x.guard
             && self.body == x.body
             && self.comma == x.comma
-    }
-}
-impl Eq for path::AssocConst {}
-impl PartialEq for path::AssocConst {
-    fn eq(&self, x: &Self) -> bool {
-        self.ident == x.ident && self.args == x.args && self.val == x.val
-    }
-}
-impl Eq for path::AssocType {}
-impl PartialEq for path::AssocType {
-    fn eq(&self, x: &Self) -> bool {
-        self.ident == x.ident && self.args == x.args && self.typ == x.typ
     }
 }
 impl Eq for attr::Style {}
@@ -120,12 +102,6 @@ impl PartialEq for gen::param::Const {
             && self.typ == x.typ
             && self.eq == x.eq
             && self.default == x.default
-    }
-}
-impl Eq for path::Constraint {}
-impl PartialEq for path::Constraint {
-    fn eq(&self, x: &Self) -> bool {
-        self.ident == x.ident && self.args == x.args && self.bounds == x.bounds
     }
 }
 impl Eq for data::Data {}
@@ -575,21 +551,6 @@ impl PartialEq for item::foreign::Type {
         self.attrs == x.attrs && self.vis == x.vis && self.ident == x.ident && self.gens == x.gens
     }
 }
-impl Eq for path::Arg {}
-impl PartialEq for path::Arg {
-    fn eq(&self, x: &Self) -> bool {
-        use path::Arg::*;
-        match (self, x) {
-            (AssocConst(x), AssocConst(y)) => x == y,
-            (AssocType(x), AssocType(y)) => x == y,
-            (Const(x), Const(y)) => x == y,
-            (Constraint(x), Constraint(y)) => x == y,
-            (Life(x), Life(y)) => x == y,
-            (Type(x), Type(y)) => x == y,
-            _ => false,
-        }
-    }
-}
 impl Eq for gen::Param {}
 impl PartialEq for gen::Param {
     fn eq(&self, x: &Self) -> bool {
@@ -924,12 +885,6 @@ impl PartialEq for attr::NameValue {
         self.name == x.name && self.val == x.val
     }
 }
-impl Eq for path::Parenthed {}
-impl PartialEq for path::Parenthed {
-    fn eq(&self, x: &Self) -> bool {
-        self.args == x.args && self.ret == x.ret
-    }
-}
 impl Eq for pat::Pat {}
 impl PartialEq for pat::Pat {
     fn eq(&self, x: &Self) -> bool {
@@ -1030,30 +985,6 @@ impl PartialEq for pat::Wild {
         self.attrs == x.attrs
     }
 }
-impl Eq for Path {}
-impl PartialEq for Path {
-    fn eq(&self, x: &Self) -> bool {
-        self.colon == x.colon && self.segs == x.segs
-    }
-}
-impl Eq for path::Args {}
-impl PartialEq for path::Args {
-    fn eq(&self, x: &Self) -> bool {
-        use path::Args::*;
-        match (self, x) {
-            (None, None) => true,
-            (Angled(x), Angled(y)) => x == y,
-            (Parenthed(x), Parenthed(y)) => x == y,
-            _ => false,
-        }
-    }
-}
-impl Eq for path::Segment {}
-impl PartialEq for path::Segment {
-    fn eq(&self, x: &Self) -> bool {
-        self.ident == x.ident && self.args == x.args
-    }
-}
 impl Eq for gen::where_::Life {}
 impl PartialEq for gen::where_::Life {
     fn eq(&self, x: &Self) -> bool {
@@ -1064,12 +995,6 @@ impl Eq for gen::where_::Type {}
 impl PartialEq for gen::where_::Type {
     fn eq(&self, x: &Self) -> bool {
         self.lifes == x.lifes && self.typ == x.typ && self.bounds == x.bounds
-    }
-}
-impl Eq for path::QSelf {}
-impl PartialEq for path::QSelf {
-    fn eq(&self, x: &Self) -> bool {
-        self.ty == x.ty && self.pos == x.pos && self.as_ == x.as_
     }
 }
 impl Eq for expr::Limits {}

@@ -2550,7 +2550,7 @@ pub struct Method {
     pub expr: Box<Expr>,
     pub dot: Token![.],
     pub method: Ident,
-    pub turbofish: Option<path::Angled>,
+    pub turbofish: Option<path::Angle>,
     pub parenth: tok::Parenth,
     pub args: Puncted<Expr, Token![,]>,
 }
@@ -4867,7 +4867,7 @@ fn trailer_helper(x: Stream, mut y: Expr) -> Res<Expr> {
             }
             let memb: Member = x.parse()?;
             let turbofish = if memb.is_named() && x.peek(Token![::]) {
-                Some(path::Angled::parse_turbofish(x)?)
+                Some(path::Angle::parse_turbofish(x)?)
             } else {
                 None
             };

@@ -1,35 +1,6 @@
 use crate::StreamHelper;
 use crate::*;
 use std::hash::{Hash, Hasher};
-impl<H> Hash for path::Angled
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.colon2.hash(h);
-        self.args.hash(h);
-    }
-}
-impl<H> Hash for path::AssocConst
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.ident.hash(h);
-        self.args.hash(h);
-        self.val.hash(h);
-    }
-}
-impl<H> Hash for path::AssocType
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.ident.hash(h);
-        self.args.hash(h);
-        self.typ.hash(h);
-    }
-}
 impl<H> Hash for stmt::Block
 where
     H: Hasher,
@@ -56,16 +27,6 @@ where
         self.typ.hash(h);
         self.eq.hash(h);
         self.default.hash(h);
-    }
-}
-impl<H> Hash for path::Constraint
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.ident.hash(h);
-        self.args.hash(h);
-        self.bounds.hash(h);
     }
 }
 impl<H> Hash for pat::Field
@@ -178,40 +139,6 @@ where
         self.vis.hash(h);
         self.ident.hash(h);
         self.gens.hash(h);
-    }
-}
-impl<H> Hash for path::Arg
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        use path::Arg::*;
-        match self {
-            Life(x) => {
-                h.write_u8(0u8);
-                x.hash(h);
-            },
-            Type(x) => {
-                h.write_u8(1u8);
-                x.hash(h);
-            },
-            Const(x) => {
-                h.write_u8(2u8);
-                x.hash(h);
-            },
-            AssocType(x) => {
-                h.write_u8(3u8);
-                x.hash(h);
-            },
-            AssocConst(x) => {
-                h.write_u8(4u8);
-                x.hash(h);
-            },
-            Constraint(x) => {
-                h.write_u8(5u8);
-                x.hash(h);
-            },
-        }
     }
 }
 impl<H> Hash for gen::Param
@@ -703,15 +630,6 @@ where
         }
     }
 }
-impl<H> Hash for path::Parenthed
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.args.hash(h);
-        self.ret.hash(h);
-    }
-}
 impl<H> Hash for pat::Pat
 where
     H: Hasher,
@@ -898,45 +816,6 @@ where
         self.attrs.hash(h);
     }
 }
-impl<H> Hash for Path
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.colon.hash(h);
-        self.segs.hash(h);
-    }
-}
-impl<H> Hash for path::Args
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        use path::Args::*;
-        match self {
-            None => {
-                h.write_u8(0u8);
-            },
-            Angled(x) => {
-                h.write_u8(1u8);
-                x.hash(h);
-            },
-            Parenthed(x) => {
-                h.write_u8(2u8);
-                x.hash(h);
-            },
-        }
-    }
-}
-impl<H> Hash for path::Segment
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.ident.hash(h);
-        self.args.hash(h);
-    }
-}
 impl<H> Hash for gen::where_::Life
 where
     H: Hasher,
@@ -954,16 +833,6 @@ where
         self.lifes.hash(h);
         self.typ.hash(h);
         self.bounds.hash(h);
-    }
-}
-impl<H> Hash for path::QSelf
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.typ.hash(h);
-        self.pos.hash(h);
-        self.as_.hash(h);
     }
 }
 impl<H> Hash for item::Receiver

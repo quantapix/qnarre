@@ -117,8 +117,8 @@ pub mod bound {
                 && (s.peek(tok::Parenth) || s.peek(Token![::]) && s.peek3(tok::Parenth))
             {
                 s.parse::<Option<Token![::]>>()?;
-                let y: path::Parenthed = s.parse()?;
-                let y = path::Args::Parenthed(y);
+                let y: path::Parenth = s.parse()?;
+                let y = path::Args::Parenth(y);
                 path.segs.last_mut().unwrap().args = y;
             }
             Ok(Trait {

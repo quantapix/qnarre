@@ -13,7 +13,7 @@ pub trait Fold {
     fn fold_abi(&mut self, i: Abi) -> Abi {
         fold_abi(self, i)
     }
-    fn fold_angle_bracketed_generic_arguments(&mut self, i: path::Angled) -> path::Angled {
+    fn fold_angle_bracketed_generic_arguments(&mut self, i: path::Angle) -> path::Angle {
         fold_angle_bracketed_generic_arguments(self, i)
     }
     fn fold_arm(&mut self, i: Arm) -> Arm {
@@ -364,7 +364,7 @@ pub trait Fold {
     fn fold_meta_name_value(&mut self, i: attr::NameValue) -> attr::NameValue {
         fold_meta_name_value(self, i)
     }
-    fn fold_parenthesized_generic_arguments(&mut self, i: path::Parenthed) -> path::Parenthed {
+    fn fold_parenthesized_generic_arguments(&mut self, i: path::Parenth) -> path::Parenth {
         fold_parenthesized_generic_arguments(self, i)
     }
     fn fold_pat(&mut self, i: pat::Pat) -> pat::Pat {
@@ -566,11 +566,11 @@ where
         name: (node.name).map(|it| f.fold_lit_str(it)),
     }
 }
-pub fn fold_angle_bracketed_generic_arguments<F>(f: &mut F, node: path::Angled) -> path::Angled
+pub fn fold_angle_bracketed_generic_arguments<F>(f: &mut F, node: path::Angle) -> path::Angle
 where
     F: Fold + ?Sized,
 {
-    path::Angled {
+    path::Angle {
         colon2: node.colon2,
         lt: node.lt,
         args: FoldHelper::lift(node.args, |it| f.fold_generic_argument(it)),
@@ -1953,11 +1953,11 @@ where
         val: f.fold_expr(node.val),
     }
 }
-pub fn fold_parenthesized_generic_arguments<F>(f: &mut F, node: path::Parenthed) -> path::Parenthed
+pub fn fold_parenthesized_generic_arguments<F>(f: &mut F, node: path::Parenth) -> path::Parenth
 where
     F: Fold + ?Sized,
 {
-    path::Parenthed {
+    path::Parenth {
         parenth: node.parenth,
         args: FoldHelper::lift(node.args, |ixt| f.fold_type(x)),
         ret: f.fold_return_type(node.ret),
@@ -2120,8 +2120,8 @@ where
     use path::Args::*;
     match node {
         None => Args::None,
-        Angled(_binding_0) => Angled(f.fold_angle_bracketed_generic_arguments(_binding_0)),
-        Parenthed(_binding_0) => arenthed(f.fold_parenthesized_generic_arguments(_binding_0)),
+        Angle(_binding_0) => Angle(f.fold_angle_bracketed_generic_arguments(_binding_0)),
+        Parenth(_binding_0) => arenthed(f.fold_parenthesized_generic_arguments(_binding_0)),
     }
 }
 pub fn fold_path_segment<F>(f: &mut F, node: Segment) -> Segment

@@ -9,16 +9,6 @@ impl Clone for typ::Abi {
         }
     }
 }
-impl Clone for path::Angled {
-    fn clone(&self) -> Self {
-        path::Angled {
-            colon2: self.colon2.clone(),
-            lt: self.lt.clone(),
-            args: self.args.clone(),
-            gt: self.gt.clone(),
-        }
-    }
-}
 impl Clone for expr::Arm {
     fn clone(&self) -> Self {
         expr::Arm {
@@ -28,26 +18,6 @@ impl Clone for expr::Arm {
             fat_arrow: self.fat_arrow.clone(),
             body: self.body.clone(),
             comma: self.comma.clone(),
-        }
-    }
-}
-impl Clone for path::AssocConst {
-    fn clone(&self) -> Self {
-        path::AssocConst {
-            ident: self.ident.clone(),
-            args: self.args.clone(),
-            eq: self.eq.clone(),
-            val: self.val.clone(),
-        }
-    }
-}
-impl Clone for path::AssocType {
-    fn clone(&self) -> Self {
-        path::AssocType {
-            ident: self.ident.clone(),
-            args: self.args.clone(),
-            eq: self.eq.clone(),
-            typ: self.typ.clone(),
         }
     }
 }
@@ -120,16 +90,6 @@ impl Clone for gen::param::Const {
             typ: self.typ.clone(),
             eq: self.eq.clone(),
             default: self.default.clone(),
-        }
-    }
-}
-impl Clone for path::Constraint {
-    fn clone(&self) -> Self {
-        path::Constraint {
-            ident: self.ident.clone(),
-            args: self.args.clone(),
-            colon: self.colon.clone(),
-            bounds: self.bounds.clone(),
         }
     }
 }
@@ -744,19 +704,6 @@ impl Clone for item::foreign::Type {
         }
     }
 }
-impl Clone for path::Arg {
-    fn clone(&self) -> Self {
-        use path::Arg::*;
-        match self {
-            AssocConst(x) => AssocConst(x.clone()),
-            AssocType(x) => AssocType(x.clone()),
-            Const(x) => Const(x.clone()),
-            Constraint(x) => Constraint(x.clone()),
-            Life(x) => Life(x.clone()),
-            Type(x) => Type(x.clone()),
-        }
-    }
-}
 impl Clone for gen::Param {
     fn clone(&self) -> Self {
         use gen::Param::*;
@@ -1195,15 +1142,6 @@ impl Clone for attr::NameValue {
         }
     }
 }
-impl Clone for path::Parenthed {
-    fn clone(&self) -> Self {
-        path::Parenthed {
-            parenth: self.parenth.clone(),
-            args: self.args.clone(),
-            ret: self.ret.clone(),
-        }
-    }
-}
 impl Clone for pat::Pat {
     fn clone(&self) -> Self {
         use pat::Pat::*;
@@ -1334,32 +1272,6 @@ impl Clone for pat::Wild {
         }
     }
 }
-impl Clone for Path {
-    fn clone(&self) -> Self {
-        Path {
-            colon: self.colon.clone(),
-            segs: self.segs.clone(),
-        }
-    }
-}
-impl Clone for path::Args {
-    fn clone(&self) -> Self {
-        use path::Args::*;
-        match self {
-            None => None,
-            Angled(x) => Angled(x.clone()),
-            Parenthed(x) => Parenthed(x.clone()),
-        }
-    }
-}
-impl Clone for path::Segment {
-    fn clone(&self) -> Self {
-        path::Segment {
-            ident: self.ident.clone(),
-            args: self.args.clone(),
-        }
-    }
-}
 impl Clone for gen::where_::Life {
     fn clone(&self) -> Self {
         gen::where_::Life {
@@ -1376,17 +1288,6 @@ impl Clone for gen::where_::Type {
             typ: self.typ.clone(),
             colon: self.colon.clone(),
             bounds: self.bounds.clone(),
-        }
-    }
-}
-impl Clone for path::QSelf {
-    fn clone(&self) -> Self {
-        path::QSelf {
-            lt: self.lt.clone(),
-            typ: self.typ.clone(),
-            pos: self.pos.clone(),
-            as_: self.as_.clone(),
-            gt: self.gt.clone(),
         }
     }
 }
