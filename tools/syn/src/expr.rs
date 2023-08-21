@@ -16,7 +16,7 @@ enum_of_structs! {
         Const(Const),
         Continue(Continue),
         Field(Field),
-        ForLoop(ForLoop),
+        For(For),
         Group(Group),
         If(If),
         Index(Index),
@@ -26,7 +26,7 @@ enum_of_structs! {
         Loop(Loop),
         Mac(Mac),
         Match(Match),
-        MethodCall(MethodCall),
+        Method(Method),
         Parenth(Parenth),
         Path(Path),
         Range(Range),
@@ -69,7 +69,7 @@ impl Expr {
             | Const(Const { attrs, .. })
             | Continue(Continue { attrs, .. })
             | Field(Field { attrs, .. })
-            | ForLoop(ForLoop { attrs, .. })
+            | For(For { attrs, .. })
             | Group(Group { attrs, .. })
             | If(If { attrs, .. })
             | Index(Index { attrs, .. })
@@ -79,7 +79,7 @@ impl Expr {
             | Loop(Loop { attrs, .. })
             | Mac(Mac { attrs, .. })
             | Match(Match { attrs, .. })
-            | MethodCall(MethodCall { attrs, .. })
+            | Method(Method { attrs, .. })
             | Parenth(Parenth { attrs, .. })
             | Path(Path { attrs, .. })
             | Range(Range { attrs, .. })
@@ -112,18 +112,18 @@ impl Expr {
             | TryBlock(TryBlock { attrs, .. })
             | Tuple(Tuple { attrs, .. })
             | Unsafe(Unsafe { attrs, .. }) => !attr::has_outer(attrs),
-            Assign(_) | Await(_) | Binary(_) | Break(_) | Call(_) | Cast(_) | Continue(_) | Field(_) | ForLoop(_)
-            | Group(_) | If(_) | Index(_) | Infer(_) | Let(_) | Lit(_) | Loop(_) | Mac(_) | Match(_)
-            | MethodCall(_) | Parenth(_) | Path(_) | Range(_) | Ref(_) | Repeat(_) | Return(_) | Try(_) | Unary(_)
-            | Verbatim(_) | While(_) | Yield(_) => false,
+            Assign(_) | Await(_) | Binary(_) | Break(_) | Call(_) | Cast(_) | Continue(_) | Field(_) | For(_)
+            | Group(_) | If(_) | Index(_) | Infer(_) | Let(_) | Lit(_) | Loop(_) | Mac(_) | Match(_) | Method(_)
+            | Parenth(_) | Path(_) | Range(_) | Ref(_) | Repeat(_) | Return(_) | Try(_) | Unary(_) | Verbatim(_)
+            | While(_) | Yield(_) => false,
         }
     }
     pub fn needs_term(&self) -> bool {
         use Expr::*;
         match self {
-            If(_) | Match(_) | Block(_) | Unsafe(_) | While(_) | Loop(_) | ForLoop(_) | TryBlock(_) | Const(_) => false,
+            If(_) | Match(_) | Block(_) | Unsafe(_) | While(_) | Loop(_) | For(_) | TryBlock(_) | Const(_) => false,
             Array(_) | Assign(_) | Async(_) | Await(_) | Binary(_) | Break(_) | Call(_) | Cast(_) | Closure(_)
-            | Continue(_) | Field(_) | Group(_) | Index(_) | Infer(_) | Let(_) | Lit(_) | Mac(_) | MethodCall(_)
+            | Continue(_) | Field(_) | Group(_) | Index(_) | Infer(_) | Let(_) | Lit(_) | Mac(_) | Method(_)
             | Parenth(_) | Path(_) | Range(_) | Ref(_) | Repeat(_) | Return(_) | Struct(_) | Try(_) | Tuple(_)
             | Unary(_) | Yield(_) | Verbatim(_) => true,
         }
@@ -131,7 +131,7 @@ impl Expr {
     pub fn parseable_as_stmt(&self) -> bool {
         use Expr::*;
         match self {
-            Array(_) | Async(_) | Block(_) | Break(_) | Closure(_) | Const(_) | Continue(_) | ForLoop(_) | If(_)
+            Array(_) | Async(_) | Block(_) | Break(_) | Closure(_) | Const(_) | Continue(_) | For(_) | If(_)
             | Infer(_) | Let(_) | Lit(_) | Loop(_) | Mac(_) | Match(_) | Parenth(_) | Path(_) | Ref(_) | Repeat(_)
             | Return(_) | Struct(_) | TryBlock(_) | Tuple(_) | Unary(_) | Unsafe(_) | Verbatim(_) | While(_)
             | Yield(_) => true,
@@ -143,7 +143,7 @@ impl Expr {
             Field(x) => &x.expr.parseable_as_stmt(),
             Group(x) => &x.expr.parseable_as_stmt(),
             Index(x) => &x.expr.needs_term() && &x.expr.parseable_as_stmt(),
-            MethodCall(x) => &x.expr.parseable_as_stmt(),
+            Method(x) => &x.expr.parseable_as_stmt(),
             Range(x) => match &x.beg {
                 Some(x) => x.needs_term() && x.parseable_as_stmt(),
                 None => true,
@@ -162,10 +162,10 @@ impl Expr {
             | Cast(Cast { expr, .. })
             | Field(Field { expr, .. })
             | Index(Index { expr, .. })
-            | MethodCall(MethodCall { expr, .. })
+            | Method(Method { expr, .. })
             | Ref(Ref { expr, .. })
             | Unary(Unary { expr, .. }) => expr.has_struct_lit(),
-            Array(_) | Async(_) | Block(_) | Break(_) | Call(_) | Closure(_) | Const(_) | Continue(_) | ForLoop(_)
+            Array(_) | Async(_) | Block(_) | Break(_) | Call(_) | Closure(_) | Const(_) | Continue(_) | For(_)
             | Group(_) | If(_) | Infer(_) | Let(_) | Lit(_) | Loop(_) | Mac(_) | Match(_) | Parenth(_) | Path(_)
             | Range(_) | Repeat(_) | Return(_) | Try(_) | TryBlock(_) | Tuple(_) | Unsafe(_) | &Verbatim(_)
             | While(_) | Yield(_) => false,
@@ -191,7 +191,7 @@ impl Expr {
             | Closure(_)
             | Const(_)
             | Continue(_)
-            | ForLoop(_)
+            | For(_)
             | If(_)
             | Infer(_)
             | Lit(_)
@@ -209,7 +209,7 @@ impl Expr {
             | Verbatim(_)
             | While(_)
             | Yield(Yield { expr: None, .. }) => false,
-            Assign(_) | Await(_) | Binary(_) | Cast(_) | Field(_) | Index(_) | MethodCall(_) => true,
+            Assign(_) | Await(_) | Binary(_) | Cast(_) | Field(_) | Index(_) | Method(_) => true,
             Break(Break { val: Some(x), .. })
             | Call(Call { func: x, .. })
             | Group(Group { expr: x, .. })
@@ -236,15 +236,15 @@ impl Expr {
             },
             Group(x) => &x.expr.add_semi(),
             Array(_) | Async(_) | Await(_) | Block(_) | Call(_) | Cast(_) | Closure(_) | Const(_) | Field(_)
-            | ForLoop(_) | If(_) | Index(_) | Infer(_) | Let(_) | Lit(_) | Loop(_) | Mac(_) | Match(_)
-            | MethodCall(_) | Parenth(_) | Path(_) | Range(_) | Ref(_) | Repeat(_) | Struct(_) | Try(_)
-            | TryBlock(_) | Tuple(_) | Unary(_) | Unsafe(_) | Verbatim(_) | While(_) => false,
+            | For(_) | If(_) | Index(_) | Infer(_) | Let(_) | Lit(_) | Loop(_) | Mac(_) | Match(_) | Method(_)
+            | Parenth(_) | Path(_) | Range(_) | Ref(_) | Repeat(_) | Struct(_) | Try(_) | TryBlock(_) | Tuple(_)
+            | Unary(_) | Unsafe(_) | Verbatim(_) | While(_) => false,
         }
     }
     pub fn remove_semi(&self) -> bool {
         use Expr::*;
         match self {
-            ForLoop(_) | While(_) => true,
+            For(_) | While(_) => true,
             Group(x) => &x.expr.remove_semi(),
             If(x) => match &x.else_ {
                 Some((_, x)) => x.remove_semi(),
@@ -252,7 +252,7 @@ impl Expr {
             },
             Array(_) | Assign(_) | Async(_) | Await(_) | Binary(_) | Block(_) | Break(_) | Call(_) | Cast(_)
             | Closure(_) | Continue(_) | Const(_) | Field(_) | Index(_) | Infer(_) | Let(_) | Lit(_) | Loop(_)
-            | Mac(_) | Match(_) | MethodCall(_) | Parenth(_) | Path(_) | Range(_) | Ref(_) | Repeat(_) | Return(_)
+            | Mac(_) | Match(_) | Method(_) | Parenth(_) | Path(_) | Range(_) | Ref(_) | Repeat(_) | Return(_)
             | Struct(_) | Try(_) | TryBlock(_) | Tuple(_) | Unary(_) | Unsafe(_) | Verbatim(_) | Yield(_) => false,
         }
     }
@@ -297,7 +297,7 @@ impl Expr {
             Call(x) => x.pretty_sub(p),
             Field(x) => x.pretty_sub(p, bol),
             Index(x) => x.pretty_sub(p, bol),
-            MethodCall(x) => x.pretty_sub(p, bol, false),
+            Method(x) => x.pretty_sub(p, bol, false),
             Try(x) => x.pretty_sub(p, bol),
             _ => {
                 p.cbox(-INDENT);
@@ -312,7 +312,7 @@ impl Expr {
             Await(x) => x.pretty_with_args(p, bol),
             Field(x) => x.pretty_with_args(p, bol),
             Index(x) => x.pretty_with_args(p, bol),
-            MethodCall(x) => x.pretty_with_args(p, bol),
+            Method(x) => x.pretty_with_args(p, bol),
             Try(x) => x.pretty_with_args(p, bol),
             _ => p.expr(self),
         }
@@ -327,6 +327,172 @@ impl Expr {
 impl Parse for Expr {
     fn parse(s: Stream) -> Res<Self> {
         ambiguous_expr(s, AllowStruct(true))
+    }
+}
+impl<H> Hash for Expr
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        use Expr::*;
+        match self {
+            Array(x) => {
+                h.write_u8(0u8);
+                x.hash(h);
+            },
+            Assign(x) => {
+                h.write_u8(1u8);
+                x.hash(h);
+            },
+            Async(x) => {
+                h.write_u8(2u8);
+                x.hash(h);
+            },
+            Await(x) => {
+                h.write_u8(3u8);
+                x.hash(h);
+            },
+            Binary(x) => {
+                h.write_u8(4u8);
+                x.hash(h);
+            },
+            Block(x) => {
+                h.write_u8(5u8);
+                x.hash(h);
+            },
+            Break(x) => {
+                h.write_u8(6u8);
+                x.hash(h);
+            },
+            Call(x) => {
+                h.write_u8(7u8);
+                x.hash(h);
+            },
+            Cast(x) => {
+                h.write_u8(8u8);
+                x.hash(h);
+            },
+            Closure(x) => {
+                h.write_u8(9u8);
+                x.hash(h);
+            },
+            Const(x) => {
+                h.write_u8(10u8);
+                x.hash(h);
+            },
+            Continue(x) => {
+                h.write_u8(11u8);
+                x.hash(h);
+            },
+            Field(x) => {
+                h.write_u8(12u8);
+                x.hash(h);
+            },
+            For(x) => {
+                h.write_u8(13u8);
+                x.hash(h);
+            },
+            Group(x) => {
+                h.write_u8(14u8);
+                x.hash(h);
+            },
+            If(x) => {
+                h.write_u8(15u8);
+                x.hash(h);
+            },
+            Index(x) => {
+                h.write_u8(16u8);
+                x.hash(h);
+            },
+            Infer(x) => {
+                h.write_u8(17u8);
+                x.hash(h);
+            },
+            Let(x) => {
+                h.write_u8(18u8);
+                x.hash(h);
+            },
+            Lit(x) => {
+                h.write_u8(19u8);
+                x.hash(h);
+            },
+            Loop(x) => {
+                h.write_u8(20u8);
+                x.hash(h);
+            },
+            Mac(x) => {
+                h.write_u8(21u8);
+                x.hash(h);
+            },
+            Match(x) => {
+                h.write_u8(22u8);
+                x.hash(h);
+            },
+            Method(x) => {
+                h.write_u8(23u8);
+                x.hash(h);
+            },
+            Parenth(x) => {
+                h.write_u8(24u8);
+                x.hash(h);
+            },
+            Path(x) => {
+                h.write_u8(25u8);
+                x.hash(h);
+            },
+            Range(x) => {
+                h.write_u8(26u8);
+                x.hash(h);
+            },
+            Ref(x) => {
+                h.write_u8(27u8);
+                x.hash(h);
+            },
+            Repeat(x) => {
+                h.write_u8(28u8);
+                x.hash(h);
+            },
+            Return(x) => {
+                h.write_u8(29u8);
+                x.hash(h);
+            },
+            Struct(x) => {
+                h.write_u8(30u8);
+                x.hash(h);
+            },
+            Try(x) => {
+                h.write_u8(31u8);
+                x.hash(h);
+            },
+            TryBlock(x) => {
+                h.write_u8(32u8);
+                x.hash(h);
+            },
+            Tuple(x) => {
+                h.write_u8(33u8);
+                x.hash(h);
+            },
+            Unary(x) => {
+                h.write_u8(34u8);
+                x.hash(h);
+            },
+            Unsafe(x) => {
+                h.write_u8(35u8);
+                x.hash(h);
+            },
+            Verbatim(x) => {
+                h.write_u8(36u8);
+                StreamHelper(x).hash(h);
+            },
+            While(x) => {
+                h.write_u8(37u8);
+                x.hash(h);
+            },
+            Yield(x) => {
+                h.write_u8(38u8);
+                x.hash(h);
+            },
+        }
     }
 }
 impl Pretty for Expr {
@@ -346,7 +512,7 @@ impl Pretty for Expr {
             Const(x) => x.pretty(p),
             Continue(x) => x.pretty(p),
             Field(x) => x.pretty_with_args(p, false),
-            ForLoop(x) => x.pretty(p),
+            For(x) => x.pretty(p),
             Group(x) => x.pretty(p),
             If(x) => x.pretty(p),
             Index(x) => x.pretty_with_args(p, false),
@@ -356,7 +522,7 @@ impl Pretty for Expr {
             Loop(x) => x.pretty(p),
             Mac(x) => x.pretty(p),
             Match(x) => x.pretty(p),
-            MethodCall(x) => x.pretty_with_args(p, false),
+            Method(x) => x.pretty_with_args(p, false),
             Parenth(x) => x.pretty(p),
             Path(x) => x.pretty(p),
             Range(x) => x.pretty(p),
@@ -421,7 +587,7 @@ where
             Field(x) => {
                 x.visit(v);
             },
-            ForLoop(x) => {
+            For(x) => {
                 x.visit(v);
             },
             Group(x) => {
@@ -451,7 +617,7 @@ where
             Match(x) => {
                 x.visit(v);
             },
-            MethodCall(x) => {
+            Method(x) => {
                 x.visit(v);
             },
             Parenth(x) => {
@@ -541,7 +707,7 @@ where
             Field(x) => {
                 x.visit_mut(v);
             },
-            ForLoop(x) => {
+            For(x) => {
                 x.visit_mut(v);
             },
             Group(x) => {
@@ -571,7 +737,7 @@ where
             Match(x) => {
                 x.visit_mut(v);
             },
-            MethodCall(x) => {
+            Method(x) => {
                 x.visit_mut(v);
             },
             Parenth(x) => {
@@ -651,7 +817,7 @@ impl_by_parsing_expr! {
     expr::Cast, Cast, "expected cast expression",
     expr::Field, Field, "expected struct field access",
     expr::Index, Index, "expected indexing expression",
-    expr::MethodCall, MethodCall, "expected method call expression",
+    expr::Method, Method, "expected method call expression",
     expr::Range, Range, "expected range expression",
     expr::Try, Try, "expected try expression",
     expr::Tuple, Tuple, "expected tuple expression",
@@ -689,6 +855,15 @@ impl Lower for Array {
         self.bracket.surround(s, |s| {
             self.elems.lower(s);
         });
+    }
+}
+impl<H> Hash for Array
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.elems.hash(h);
     }
 }
 impl Pretty for Array {
@@ -742,6 +917,16 @@ impl Lower for Assign {
         self.left.lower(s);
         self.eq.lower(s);
         self.right.lower(s);
+    }
+}
+impl<H> Hash for Assign
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.left.hash(h);
+        self.right.hash(h);
     }
 }
 impl Pretty for Assign {
@@ -798,6 +983,16 @@ impl Lower for Async {
         self.block.lower(s);
     }
 }
+impl<H> Hash for Async
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.move_.hash(h);
+        self.block.hash(h);
+    }
+}
 impl Pretty for Async {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -849,6 +1044,15 @@ impl Lower for Await {
         self.await_.lower(s);
     }
 }
+impl<H> Hash for Await
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.expr.hash(h);
+    }
+}
 impl Pretty for Await {
     fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
         p.outer_attrs(&self.attrs);
@@ -887,6 +1091,17 @@ impl Lower for Binary {
         self.left.lower(s);
         self.op.lower(s);
         self.right.lower(s);
+    }
+}
+impl<H> Hash for Binary
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.left.hash(h);
+        self.op.hash(h);
+        self.right.hash(h);
     }
 }
 impl Pretty for Binary {
@@ -955,6 +1170,16 @@ impl Lower for Block {
         });
     }
 }
+impl<H> Hash for Block
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.label.hash(h);
+        self.block.hash(h);
+    }
+}
 impl Pretty for Block {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -1008,6 +1233,16 @@ impl Lower for Break {
         self.break_.lower(s);
         self.life.lower(s);
         self.val.lower(s);
+    }
+}
+impl<H> Hash for Break
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.life.hash(h);
+        self.val.hash(h);
     }
 }
 impl Pretty for Break {
@@ -1075,6 +1310,16 @@ impl Lower for Call {
         });
     }
 }
+impl<H> Hash for Call
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.func.hash(h);
+        self.args.hash(h);
+    }
+}
 impl Pretty for Call {
     fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
         p.outer_attrs(&self.attrs);
@@ -1122,6 +1367,16 @@ impl Lower for Cast {
         self.expr.lower(s);
         self.as_.lower(s);
         self.typ.lower(s);
+    }
+}
+impl<H> Hash for Cast
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.expr.hash(h);
+        self.typ.hash(h);
     }
 }
 impl Pretty for Cast {
@@ -1189,6 +1444,22 @@ impl Lower for Closure {
         self.or2.lower(s);
         self.ret.lower(s);
         self.body.lower(s);
+    }
+}
+impl<H> Hash for Closure
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.lifes.hash(h);
+        self.const_.hash(h);
+        self.static_.hash(h);
+        self.async_.hash(h);
+        self.move_.hash(h);
+        self.ins.hash(h);
+        self.ret.hash(h);
+        self.body.hash(h);
     }
 }
 impl Pretty for Closure {
@@ -1332,6 +1603,15 @@ impl Lower for Const {
         });
     }
 }
+impl<H> Hash for Const
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.block.hash(h);
+    }
+}
 impl Pretty for Const {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -1378,6 +1658,15 @@ impl Lower for Continue {
         attr::lower_outers(&self.attrs, s);
         self.continue_.lower(s);
         self.life.lower(s);
+    }
+}
+impl<H> Hash for Continue
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.life.hash(h);
     }
 }
 impl Pretty for Continue {
@@ -1434,6 +1723,16 @@ impl Lower for Field {
         self.memb.lower(s);
     }
 }
+impl<H> Hash for Field
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.expr.hash(h);
+        self.memb.hash(h);
+    }
+}
 impl Pretty for Field {
     fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
         p.outer_attrs(&self.attrs);
@@ -1462,7 +1761,7 @@ where
     }
 }
 
-pub struct ForLoop {
+pub struct For {
     pub attrs: Vec<attr::Attr>,
     pub label: Option<Label>,
     pub for_: Token![for],
@@ -1471,7 +1770,7 @@ pub struct ForLoop {
     pub expr: Box<Expr>,
     pub body: stmt::Block,
 }
-impl Parse for ForLoop {
+impl Parse for For {
     fn parse(s: Stream) -> Res<Self> {
         let mut attrs = s.call(attr::Attr::parse_outers)?;
         let label: Option<Label> = s.parse()?;
@@ -1483,7 +1782,7 @@ impl Parse for ForLoop {
         let brace = braced!(y in s);
         attr::parse_inners(&y, &mut attrs)?;
         let stmts = y.call(stmt::Block::parse_within)?;
-        Ok(ForLoop {
+        Ok(For {
             attrs,
             label,
             for_,
@@ -1494,7 +1793,7 @@ impl Parse for ForLoop {
         })
     }
 }
-impl Lower for ForLoop {
+impl Lower for For {
     fn lower(&self, s: &mut Stream) {
         attr::lower_outers(&self.attrs, s);
         self.label.lower(s);
@@ -1508,7 +1807,19 @@ impl Lower for ForLoop {
         });
     }
 }
-impl Pretty for ForLoop {
+impl<H> Hash for For
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.label.hash(h);
+        self.pat.hash(h);
+        self.expr.hash(h);
+        self.body.hash(h);
+    }
+}
+impl Pretty for For {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
         p.ibox(0);
@@ -1534,7 +1845,7 @@ impl Pretty for ForLoop {
         p.end();
     }
 }
-impl<V> Visit for ForLoop
+impl<V> Visit for For
 where
     V: Visitor + ?Sized,
 {
@@ -1573,6 +1884,15 @@ impl Lower for Group {
         self.group.surround(s, |s| {
             self.expr.lower(s);
         });
+    }
+}
+impl<H> Hash for Group
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.expr.hash(h);
     }
 }
 impl Pretty for Group {
@@ -1637,6 +1957,17 @@ impl Lower for If {
                 _ => tok::Brace::default().surround(s, |s| x.lower(s)),
             }
         }
+    }
+}
+impl<H> Hash for If
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.cond.hash(h);
+        self.then_.hash(h);
+        self.else_.hash(h);
     }
 }
 impl Pretty for If {
@@ -1756,6 +2087,16 @@ impl Lower for Index {
         });
     }
 }
+impl<H> Hash for Index
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.expr.hash(h);
+        self.idx.hash(h);
+    }
+}
 impl Pretty for Index {
     fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
         p.outer_attrs(&self.attrs);
@@ -1801,6 +2142,14 @@ impl Lower for Infer {
     fn lower(&self, s: &mut Stream) {
         attr::lower_outers(&self.attrs, s);
         self.underscore.lower(s);
+    }
+}
+impl<H> Hash for Infer
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
     }
 }
 impl Pretty for Infer {
@@ -1854,6 +2203,16 @@ impl Lower for Let {
         self.pat.lower(s);
         self.eq.lower(s);
         &self.expr.lower_struct(s);
+    }
+}
+impl<H> Hash for Let
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.pat.hash(h);
+        self.expr.hash(h);
     }
 }
 impl Pretty for Let {
@@ -1915,6 +2274,15 @@ impl Lower for Lit {
         self.lit.lower(s);
     }
 }
+impl<H> Hash for Lit
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.lit.hash(h);
+    }
+}
 impl Pretty for Lit {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -1971,6 +2339,16 @@ impl Lower for Loop {
             attr::lower_inners(&self.attrs, s);
             s.append_all(&self.body.stmts);
         });
+    }
+}
+impl<H> Hash for Loop
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.label.hash(h);
+        self.body.hash(h);
     }
 }
 impl Pretty for Loop {
@@ -2031,6 +2409,15 @@ impl Lower for Mac {
     fn lower(&self, s: &mut Stream) {
         attr::lower_outers(&self.attrs, s);
         self.mac.lower(s);
+    }
+}
+impl<H> Hash for Mac
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.mac.hash(h);
     }
 }
 impl Pretty for Mac {
@@ -2103,6 +2490,16 @@ impl Lower for Match {
         });
     }
 }
+impl<H> Hash for Match
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.expr.hash(h);
+        self.arms.hash(h);
+    }
+}
 impl Pretty for Match {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -2148,7 +2545,7 @@ where
     }
 }
 
-pub struct MethodCall {
+pub struct Method {
     pub attrs: Vec<attr::Attr>,
     pub expr: Box<Expr>,
     pub dot: Token![.],
@@ -2157,7 +2554,7 @@ pub struct MethodCall {
     pub parenth: tok::Parenth,
     pub args: Puncted<Expr, Token![,]>,
 }
-impl MethodCall {
+impl Method {
     fn pretty_sub(&self, p: &mut Print, bol: bool, unindent: bool) {
         &self.expr.pretty_sub(p, bol);
         &self.expr.pretty_zerobreak(p, bol);
@@ -2173,7 +2570,7 @@ impl MethodCall {
         p.end();
     }
 }
-impl Lower for MethodCall {
+impl Lower for Method {
     fn lower(&self, s: &mut Stream) {
         attr::lower_outers(&self.attrs, s);
         self.expr.lower(s);
@@ -2185,7 +2582,19 @@ impl Lower for MethodCall {
         });
     }
 }
-impl Pretty for MethodCall {
+impl<H> Hash for Method
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.expr.hash(h);
+        self.method.hash(h);
+        self.turbofish.hash(h);
+        self.args.hash(h);
+    }
+}
+impl Pretty for Method {
     fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
         p.outer_attrs(&self.attrs);
         p.cbox(INDENT);
@@ -2195,7 +2604,7 @@ impl Pretty for MethodCall {
         p.end();
     }
 }
-impl<V> Visit for MethodCall
+impl<V> Visit for Method
 where
     V: Visitor + ?Sized,
 {
@@ -2247,6 +2656,15 @@ impl Lower for Parenth {
         });
     }
 }
+impl<H> Hash for Parenth
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.expr.hash(h);
+    }
+}
 impl Pretty for Parenth {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -2291,6 +2709,16 @@ impl Lower for Path {
         path::path_lower(s, &self.qself, &self.path);
     }
 }
+impl<H> Hash for Path
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.qself.hash(h);
+        self.path.hash(h);
+    }
+}
 impl Pretty for Path {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -2333,6 +2761,17 @@ impl Lower for Range {
         self.beg.lower(s);
         self.limits.lower(s);
         self.end.lower(s);
+    }
+}
+impl<H> Hash for Range
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.beg.hash(h);
+        self.limits.hash(h);
+        self.end.hash(h);
     }
 }
 impl Pretty for Range {
@@ -2405,6 +2844,16 @@ impl Lower for Ref {
         self.expr.lower(s);
     }
 }
+impl<H> Hash for Ref
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.mut_.hash(h);
+        self.expr.hash(h);
+    }
+}
 impl Pretty for Ref {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -2462,6 +2911,16 @@ impl Lower for Repeat {
         });
     }
 }
+impl<H> Hash for Repeat
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.expr.hash(h);
+        self.len.hash(h);
+    }
+}
 impl Pretty for Repeat {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -2508,6 +2967,15 @@ impl Lower for Return {
         attr::lower_outers(&self.attrs, s);
         self.return_.lower(s);
         self.expr.lower(s);
+    }
+}
+impl<H> Hash for Return
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.expr.hash(h);
     }
 }
 impl Pretty for Return {
@@ -2570,6 +3038,19 @@ impl Lower for Struct {
             }
             self.rest.lower(s);
         });
+    }
+}
+impl<H> Hash for Struct
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.qself.hash(h);
+        self.path.hash(h);
+        self.fields.hash(h);
+        self.dot2.hash(h);
+        self.rest.hash(h);
     }
 }
 impl Pretty for Struct {
@@ -2651,6 +3132,15 @@ impl Lower for Try {
         self.question.lower(s);
     }
 }
+impl<H> Hash for Try
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.expr.hash(h);
+    }
+}
 impl Pretty for Try {
     fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
         p.outer_attrs(&self.attrs);
@@ -2697,6 +3187,15 @@ impl Lower for TryBlock {
         self.block.lower(s);
     }
 }
+impl<H> Hash for TryBlock
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.block.hash(h);
+    }
+}
 impl Pretty for TryBlock {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -2738,6 +3237,15 @@ impl Lower for Tuple {
                 <Token![,]>::default().lower(s);
             }
         });
+    }
+}
+impl<H> Hash for Tuple
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.elems.hash(h);
     }
 }
 impl Pretty for Tuple {
@@ -2803,6 +3311,16 @@ impl Lower for Unary {
         self.expr.lower(s);
     }
 }
+impl<H> Hash for Unary
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.op.hash(h);
+        self.expr.hash(h);
+    }
+}
 impl Pretty for Unary {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -2857,6 +3375,15 @@ impl Lower for Unsafe {
             attr::lower_inners(&self.attrs, s);
             s.append_all(&self.block.stmts);
         });
+    }
+}
+impl<H> Hash for Unsafe
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.block.hash(h);
     }
 }
 impl Pretty for Unsafe {
@@ -2922,6 +3449,17 @@ impl Lower for While {
             attr::lower_inners(&self.attrs, s);
             s.append_all(&self.block.stmts);
         });
+    }
+}
+impl<H> Hash for While
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.label.hash(h);
+        self.cond.hash(h);
+        self.block.hash(h);
     }
 }
 impl Pretty for While {
@@ -2996,6 +3534,15 @@ impl Lower for Yield {
         attr::lower_outers(&self.attrs, s);
         self.yield_.lower(s);
         self.expr.lower(s);
+    }
+}
+impl<H> Hash for Yield
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.expr.hash(h);
     }
 }
 impl Pretty for Yield {
@@ -3387,6 +3934,100 @@ impl Lower for BinOp {
         }
     }
 }
+impl<H> Hash for BinOp
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        use BinOp::*;
+        match self {
+            Add(_) => {
+                h.write_u8(0u8);
+            },
+            Sub(_) => {
+                h.write_u8(1u8);
+            },
+            Mul(_) => {
+                h.write_u8(2u8);
+            },
+            Div(_) => {
+                h.write_u8(3u8);
+            },
+            Rem(_) => {
+                h.write_u8(4u8);
+            },
+            And(_) => {
+                h.write_u8(5u8);
+            },
+            Or(_) => {
+                h.write_u8(6u8);
+            },
+            BitXor(_) => {
+                h.write_u8(7u8);
+            },
+            BitAnd(_) => {
+                h.write_u8(8u8);
+            },
+            BitOr(_) => {
+                h.write_u8(9u8);
+            },
+            Shl(_) => {
+                h.write_u8(10u8);
+            },
+            Shr(_) => {
+                h.write_u8(11u8);
+            },
+            Eq(_) => {
+                h.write_u8(12u8);
+            },
+            Lt(_) => {
+                h.write_u8(13u8);
+            },
+            Le(_) => {
+                h.write_u8(14u8);
+            },
+            Ne(_) => {
+                h.write_u8(15u8);
+            },
+            Ge(_) => {
+                h.write_u8(16u8);
+            },
+            Gt(_) => {
+                h.write_u8(17u8);
+            },
+            AddAssign(_) => {
+                h.write_u8(18u8);
+            },
+            SubAssign(_) => {
+                h.write_u8(19u8);
+            },
+            MulAssign(_) => {
+                h.write_u8(20u8);
+            },
+            DivAssign(_) => {
+                h.write_u8(21u8);
+            },
+            RemAssign(_) => {
+                h.write_u8(22u8);
+            },
+            BitXorAssign(_) => {
+                h.write_u8(23u8);
+            },
+            BitAndAssign(_) => {
+                h.write_u8(24u8);
+            },
+            BitOrAssign(_) => {
+                h.write_u8(25u8);
+            },
+            ShlAssign(_) => {
+                h.write_u8(26u8);
+            },
+            ShrAssign(_) => {
+                h.write_u8(27u8);
+            },
+        }
+    }
+}
 impl Pretty for BinOp {
     fn pretty(&self, p: &mut Print) {
         use BinOp::*;
@@ -3524,6 +4165,25 @@ impl Lower for UnOp {
         }
     }
 }
+impl<H> Hash for UnOp
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        use UnOp::*;
+        match self {
+            Deref(_) => {
+                h.write_u8(0u8);
+            },
+            Not(_) => {
+                h.write_u8(1u8);
+            },
+            Neg(_) => {
+                h.write_u8(2u8);
+            },
+        }
+    }
+}
 impl Pretty for UnOp {
     fn pretty(&self, p: &mut Print) {
         use UnOp::*;
@@ -3600,6 +4260,17 @@ impl Lower for FieldValue {
         }
     }
 }
+impl<H> Hash for FieldValue
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.memb.hash(h);
+        self.colon.hash(h);
+        self.expr.hash(h);
+    }
+}
 impl Pretty for FieldValue {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -3657,6 +4328,14 @@ impl Lower for Label {
     fn lower(&self, s: &mut Stream) {
         self.name.lower(s);
         self.colon.lower(s);
+    }
+}
+impl<H> Hash for Label
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.name.hash(h);
     }
 }
 impl Pretty for Label {
@@ -3727,6 +4406,18 @@ impl Lower for Arm {
         self.fat_arrow.lower(s);
         self.body.lower(s);
         self.comma.lower(s);
+    }
+}
+impl<H> Hash for Arm
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.pat.hash(h);
+        self.guard.hash(h);
+        self.body.hash(h);
+        self.comma.hash(h);
     }
 }
 impl Pretty for Arm {
@@ -3870,6 +4561,22 @@ impl Lower for Limits {
         match self {
             Limits::HalfOpen(x) => x.lower(s),
             Limits::Closed(x) => x.lower(s),
+        }
+    }
+}
+impl<H> Hash for Limits
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        use Limits::*;
+        match self {
+            HalfOpen(_) => {
+                h.write_u8(0u8);
+            },
+            Closed(_) => {
+                h.write_u8(1u8);
+            },
         }
     }
 }
@@ -4167,7 +4874,7 @@ fn trailer_helper(x: Stream, mut y: Expr) -> Res<Expr> {
             if turbofish.is_some() || x.peek(tok::Parenth) {
                 if let Member::Named(method) = memb {
                     let y;
-                    y = Expr::MethodCall(MethodCall {
+                    y = Expr::Method(Method {
                         attrs: Vec::new(),
                         expr: Box::new(y),
                         dot,
@@ -4251,7 +4958,7 @@ fn atom_expr(x: Stream, allow: AllowStruct) -> Res<Expr> {
     } else if x.peek(Token![while]) {
         x.parse().map(Expr::While)
     } else if x.peek(Token![for]) {
-        x.parse().map(Expr::ForLoop)
+        x.parse().map(Expr::For)
     } else if x.peek(Token![loop]) {
         x.parse().map(Expr::Loop)
     } else if x.peek(Token![match]) {
@@ -4273,7 +4980,7 @@ fn atom_expr(x: Stream, allow: AllowStruct) -> Res<Expr> {
         let mut y = if x.peek(Token![while]) {
             Expr::While(x.parse()?)
         } else if x.peek(Token![for]) {
-            Expr::ForLoop(x.parse()?)
+            Expr::For(x.parse()?)
         } else if x.peek(Token![loop]) {
             Expr::Loop(x.parse()?)
         } else if x.peek(tok::Brace) {
@@ -4283,7 +4990,7 @@ fn atom_expr(x: Stream, allow: AllowStruct) -> Res<Expr> {
         };
         match &mut y {
             Expr::While(While { label, .. })
-            | Expr::ForLoop(ForLoop { label, .. })
+            | Expr::For(For { label, .. })
             | Expr::Loop(Loop { label, .. })
             | Expr::Block(Block { label, .. }) => *label = Some(the_label),
             _ => unreachable!(),
@@ -4411,7 +5118,7 @@ pub fn expr_early(x: Stream) -> Res<Expr> {
     } else if x.peek(Token![while]) {
         Expr::While(x.parse()?)
     } else if x.peek(Token![for]) && !(x.peek2(Token![<]) && (x.peek3(Life) || x.peek3(Token![>]))) {
-        Expr::ForLoop(x.parse()?)
+        Expr::For(x.parse()?)
     } else if x.peek(Token![loop]) {
         Expr::Loop(x.parse()?)
     } else if x.peek(Token![match]) {

@@ -367,7 +367,7 @@ impl Debug for expr::Expr {
             Const(x) => x.debug(f, "Const"),
             Continue(x) => x.debug(f, "Continue"),
             Field(x) => x.debug(f, "Field"),
-            ForLoop(x) => x.debug(f, "ForLoop"),
+            For(x) => x.debug(f, "For"),
             Group(x) => x.debug(f, "Group"),
             If(x) => x.debug(f, "If"),
             Index(x) => x.debug(f, "Index"),
@@ -377,7 +377,7 @@ impl Debug for expr::Expr {
             Loop(x) => x.debug(f, "Loop"),
             Mac(x) => x.debug(f, "Macro"),
             Match(x) => x.debug(f, "Match"),
-            MethodCall(x) => x.debug(f, "MethodCall"),
+            Method(x) => x.debug(f, "Method"),
             Parenth(x) => x.debug(f, "Parenth"),
             Path(x) => x.debug(f, "Path"),
             Range(x) => x.debug(f, "Range"),
@@ -598,9 +598,9 @@ impl Debug for expr::Field {
         self.debug(f, "expr::Field")
     }
 }
-impl Debug for expr::ForLoop {
+impl Debug for expr::For {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl expr::ForLoop {
+        impl expr::For {
             fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut f = f.debug_struct(name);
                 f.field("attrs", &self.attrs);
@@ -613,7 +613,7 @@ impl Debug for expr::ForLoop {
                 f.finish()
             }
         }
-        self.debug(f, "expr::ForLoop")
+        self.debug(f, "expr::For")
     }
 }
 impl Debug for expr::Group {
@@ -747,9 +747,9 @@ impl Debug for expr::Match {
         self.debug(f, "expr::Match")
     }
 }
-impl Debug for expr::MethodCall {
+impl Debug for expr::Method {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl expr::MethodCall {
+        impl expr::Method {
             fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
                 let mut f = f.debug_struct(name);
                 f.field("attrs", &self.attrs);
@@ -762,7 +762,7 @@ impl Debug for expr::MethodCall {
                 f.finish()
             }
         }
-        self.debug(f, "expr::MethodCall")
+        self.debug(f, "expr::Method")
     }
 }
 impl Debug for expr::Parenth {

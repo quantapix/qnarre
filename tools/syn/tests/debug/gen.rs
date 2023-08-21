@@ -1262,7 +1262,7 @@ impl Debug for Lite<syn::expr::Field> {
         f.finish()
     }
 }
-impl Debug for Lite<syn::expr::ForLoop> {
+impl Debug for Lite<syn::expr::For> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut f = f.debug_struct("expr::ForLoop");
         if !self.value.attrs.is_empty() {
@@ -1411,7 +1411,7 @@ impl Debug for Lite<syn::expr::Match> {
         f.finish()
     }
 }
-impl Debug for Lite<syn::expr::MethodCall> {
+impl Debug for Lite<syn::expr::Method> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut f = f.debug_struct("expr::MethodCall");
         if !self.value.attrs.is_empty() {

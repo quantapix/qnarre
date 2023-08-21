@@ -186,7 +186,7 @@ impl PartialEq for expr::Expr {
             (Const(x), Const(y)) => x == y,
             (Continue(x), Continue(y)) => x == y,
             (Field(x), Field(y)) => x == y,
-            (ForLoop(x), ForLoop(y)) => x == y,
+            (For(x), For(y)) => x == y,
             (Group(x), Group(y)) => x == y,
             (If(x), If(y)) => x == y,
             (Index(x), Index(y)) => x == y,
@@ -196,7 +196,7 @@ impl PartialEq for expr::Expr {
             (Loop(x), Loop(y)) => x == y,
             (Mac(x), Mac(y)) => x == y,
             (Match(x), Match(y)) => x == y,
-            (MethodCall(x), MethodCall(y)) => x == y,
+            (Method(x), Method(y)) => x == y,
             (Parenth(x), Parenth(y)) => x == y,
             (Path(x), Path(y)) => x == y,
             (Range(x), Range(y)) => x == y,
@@ -302,8 +302,8 @@ impl PartialEq for expr::Field {
         self.attrs == x.attrs && self.expr == x.expr && self.memb == x.memb
     }
 }
-impl Eq for expr::ForLoop {}
-impl PartialEq for expr::ForLoop {
+impl Eq for expr::For {}
+impl PartialEq for expr::For {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs
             && self.label == x.label
@@ -366,8 +366,8 @@ impl PartialEq for expr::Match {
         self.attrs == x.attrs && self.expr == x.expr && self.arms == x.arms
     }
 }
-impl Eq for expr::MethodCall {}
-impl PartialEq for expr::MethodCall {
+impl Eq for expr::Method {}
+impl PartialEq for expr::Method {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs
             && self.expr == x.expr

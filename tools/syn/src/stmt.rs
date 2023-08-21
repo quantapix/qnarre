@@ -425,10 +425,9 @@ fn parse_expr(s: Stream, mut attrs: Vec<attr::Attr>, nosemi: NoSemi) -> Res<Stmt
             Binary(x) => &mut x.left,
             Cast(x) => &mut x.expr,
             Array(_) | Async(_) | Await(_) | Block(_) | Break(_) | Call(_) | Closure(_) | Const(_) | Continue(_)
-            | Field(_) | ForLoop(_) | Group(_) | If(_) | Index(_) | Infer(_) | Let(_) | Lit(_) | Loop(_) | Mac(_)
-            | Match(_) | MethodCall(_) | Parenth(_) | Path(_) | Range(_) | Ref(_) | Repeat(_) | Return(_)
-            | Struct(_) | Try(_) | TryBlock(_) | Tuple(_) | Unary(_) | Unsafe(_) | While(_) | Yield(_)
-            | Verbatim(_) => break,
+            | Field(_) | For(_) | Group(_) | If(_) | Index(_) | Infer(_) | Let(_) | Lit(_) | Loop(_) | Mac(_)
+            | Match(_) | Method(_) | Parenth(_) | Path(_) | Range(_) | Ref(_) | Repeat(_) | Return(_) | Struct(_)
+            | Try(_) | TryBlock(_) | Tuple(_) | Unary(_) | Unsafe(_) | While(_) | Yield(_) | Verbatim(_) => break,
         };
     }
     attrs.extend(tgt.replace_attrs(Vec::new()));

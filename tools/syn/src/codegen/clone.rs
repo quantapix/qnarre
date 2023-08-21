@@ -197,7 +197,7 @@ impl Clone for expr::Expr {
             Const(x) => Const(x.clone()),
             Continue(x) => Continue(x.clone()),
             Field(x) => Field(x.clone()),
-            ForLoop(x) => ForLoop(x.clone()),
+            For(x) => For(x.clone()),
             Group(x) => Group(x.clone()),
             If(x) => If(x.clone()),
             Index(x) => Index(x.clone()),
@@ -207,7 +207,7 @@ impl Clone for expr::Expr {
             Loop(x) => Loop(x.clone()),
             Mac(x) => Mac(x.clone()),
             Match(x) => Match(x.clone()),
-            MethodCall(x) => MethodCall(x.clone()),
+            Method(x) => Method(x.clone()),
             Parenth(x) => Parenth(x.clone()),
             Path(x) => Path(x.clone()),
             Range(x) => Range(x.clone()),
@@ -359,9 +359,9 @@ impl Clone for expr::Field {
         }
     }
 }
-impl Clone for expr::ForLoop {
+impl Clone for expr::For {
     fn clone(&self) -> Self {
-        expr::ForLoop {
+        expr::For {
             attrs: self.attrs.clone(),
             label: self.label.clone(),
             for_: self.for_.clone(),
@@ -458,9 +458,9 @@ impl Clone for expr::Match {
         }
     }
 }
-impl Clone for expr::MethodCall {
+impl Clone for expr::Method {
     fn clone(&self) -> Self {
-        expr::MethodCall {
+        expr::Method {
             attrs: self.attrs.clone(),
             expr: self.expr.clone(),
             dot: self.dot.clone(),

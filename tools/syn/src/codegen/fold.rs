@@ -109,7 +109,7 @@ pub trait Fold {
     fn fold_expr_field(&mut self, i: expr::Field) -> expr::Field {
         fold_expr_field(self, i)
     }
-    fn fold_expr_for_loop(&mut self, i: expr::ForLoop) -> expr::ForLoop {
+    fn fold_expr_for_loop(&mut self, i: expr::For) -> expr::For {
         fold_expr_for_loop(self, i)
     }
     fn fold_expr_group(&mut self, i: expr::Group) -> expr::Group {
@@ -139,7 +139,7 @@ pub trait Fold {
     fn fold_expr_match(&mut self, i: expr::Match) -> expr::Match {
         fold_expr_match(self, i)
     }
-    fn fold_expr_method_call(&mut self, i: expr::MethodCall) -> expr::MethodCall {
+    fn fold_expr_method_call(&mut self, i: expr::Method) -> expr::Method {
         fold_expr_method_call(self, i)
     }
     fn fold_expr_paren(&mut self, i: expr::Parenth) -> expr::Parenth {
@@ -802,7 +802,7 @@ where
         Expr::Const(_binding_0) => Expr::Const(full!(f.fold_expr_const(_binding_0))),
         Expr::Continue(_binding_0) => Expr::Continue(full!(f.fold_expr_continue(_binding_0))),
         Expr::Field(_binding_0) => Expr::Field(f.fold_expr_field(_binding_0)),
-        Expr::ForLoop(_binding_0) => Expr::ForLoop(full!(f.fold_expr_for_loop(_binding_0))),
+        Expr::For(_binding_0) => Expr::For(full!(f.fold_expr_for_loop(_binding_0))),
         Expr::Group(_binding_0) => Expr::Group(f.fold_expr_group(_binding_0)),
         Expr::If(_binding_0) => Expr::If(full!(f.fold_expr_if(_binding_0))),
         Expr::Index(_binding_0) => Expr::Index(f.fold_expr_index(_binding_0)),
@@ -812,7 +812,7 @@ where
         Expr::Loop(_binding_0) => Expr::Loop(full!(f.fold_expr_loop(_binding_0))),
         Expr::Macro(_binding_0) => Expr::Macro(f.fold_expr_macro(_binding_0)),
         Expr::Match(_binding_0) => Expr::Match(full!(f.fold_expr_match(_binding_0))),
-        Expr::MethodCall(_binding_0) => Expr::MethodCall(full!(f.fold_expr_method_call(_binding_0))),
+        Expr::Method(_binding_0) => Expr::Method(full!(f.fold_expr_method_call(_binding_0))),
         Expr::Parenth(_binding_0) => Expr::Parenth(f.fold_expr_paren(_binding_0)),
         Expr::Path(_binding_0) => Expr::Path(f.fold_expr_path(_binding_0)),
         Expr::Range(_binding_0) => Expr::Range(full!(f.fold_expr_range(_binding_0))),
@@ -976,11 +976,11 @@ where
         memb: f.fold_member(node.memb),
     }
 }
-pub fn fold_expr_for_loop<F>(f: &mut F, node: expr::ForLoop) -> expr::ForLoop
+pub fn fold_expr_for_loop<F>(f: &mut F, node: expr::For) -> expr::For
 where
     F: Fold + ?Sized,
 {
-    expr::ForLoop {
+    expr::For {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         label: (node.label).map(|it| f.fold_label(it)),
         for_: node.for_,
@@ -1085,11 +1085,11 @@ where
         arms: FoldHelper::lift(node.arms, |it| f.fold_arm(it)),
     }
 }
-pub fn fold_expr_method_call<F>(f: &mut F, node: expr::MethodCall) -> expr::MethodCall
+pub fn fold_expr_method_call<F>(f: &mut F, node: expr::Method) -> expr::Method
 where
     F: Fold + ?Sized,
 {
-    expr::MethodCall {
+    expr::Method {
         attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
         expr: Box::new(f.fold_expr(*node.expr)),
         dot: node.dot,
