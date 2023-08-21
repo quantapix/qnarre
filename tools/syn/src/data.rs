@@ -53,6 +53,27 @@ impl Parse for Input {
         }
     }
 }
+impl Clone for Input {
+    fn clone(&self) -> Self {
+        Input {
+            attrs: self.attrs.clone(),
+            vis: self.vis.clone(),
+            ident: self.ident.clone(),
+            gens: self.gens.clone(),
+            data: self.data.clone(),
+        }
+    }
+}
+impl Eq for Input {}
+impl PartialEq for Input {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs
+            && self.vis == x.vis
+            && self.ident == x.ident
+            && self.gens == x.gens
+            && self.data == x.data
+    }
+}
 impl<H> Hash for Input
 where
     H: Hasher,
@@ -207,6 +228,28 @@ impl Lower for Visibility {
         }
     }
 }
+impl Clone for Visibility {
+    fn clone(&self) -> Self {
+        use Visibility::*;
+        match self {
+            Inherited => Inherited,
+            Public(x) => Public(x.clone()),
+            Restricted(x) => Restricted(x.clone()),
+        }
+    }
+}
+impl Eq for Visibility {}
+impl PartialEq for Visibility {
+    fn eq(&self, x: &Self) -> bool {
+        use Visibility::*;
+        match (self, x) {
+            (Inherited, Inherited) => true,
+            (Public(_), Public(_)) => true,
+            (Restricted(x), Restricted(y)) => x == y,
+            _ => false,
+        }
+    }
+}
 impl<H> Hash for Visibility
 where
     H: Hasher,
@@ -278,6 +321,22 @@ impl Lower for Restricted {
         });
     }
 }
+impl Clone for Restricted {
+    fn clone(&self) -> Self {
+        Restricted {
+            pub_: self.pub_.clone(),
+            parenth: self.parenth.clone(),
+            in_: self.in_.clone(),
+            path: self.path.clone(),
+        }
+    }
+}
+impl Eq for Restricted {}
+impl PartialEq for Restricted {
+    fn eq(&self, x: &Self) -> bool {
+        self.in_ == x.in_ && self.path == x.path
+    }
+}
 impl<H> Hash for Restricted
 where
     H: Hasher,
@@ -317,6 +376,28 @@ pub enum Data {
     Enum(Enum),
     Struct(Struct),
     Union(Union),
+}
+impl Clone for Data {
+    fn clone(&self) -> Self {
+        use Data::*;
+        match self {
+            Struct(x) => Struct(x.clone()),
+            Enum(x) => Enum(x.clone()),
+            Union(x) => Union(x.clone()),
+        }
+    }
+}
+impl Eq for Data {}
+impl PartialEq for Data {
+    fn eq(&self, x: &Self) -> bool {
+        use Data::*;
+        match (self, x) {
+            (Struct(x), Struct(y)) => x == y,
+            (Enum(x), Enum(y)) => x == y,
+            (Union(x), Union(y)) => x == y,
+            _ => false,
+        }
+    }
 }
 impl<H> Hash for Data
 where
@@ -379,6 +460,21 @@ pub struct Enum {
     pub brace: tok::Brace,
     pub variants: Puncted<Variant, Token![,]>,
 }
+impl Clone for Enum {
+    fn clone(&self) -> Self {
+        Enum {
+            enum_: self.enum_.clone(),
+            brace: self.brace.clone(),
+            variants: self.variants.clone(),
+        }
+    }
+}
+impl Eq for Enum {}
+impl PartialEq for Enum {
+    fn eq(&self, x: &Self) -> bool {
+        self.variants == x.variants
+    }
+}
 impl<H> Hash for Enum
 where
     H: Hasher,
@@ -410,6 +506,27 @@ pub struct Struct {
     pub fields: Fields,
     pub semi: Option<Token![;]>,
 }
+impl Clone for Struct {
+    fn clone(&self) -> Self {
+        Struct {
+            struct_: self.struct_.clone(),
+            fields: self.fields.clone(),
+            semi: self.semi.clone(),
+        }
+    }
+}
+impl Eq for Struct {}
+impl PartialEq for Struct {
+    fn eq(&self, x: &Self) -> bool {
+        self.fields == x.fields && self.semi == x.semi
+    }
+}
+impl Eq for Union {}
+impl PartialEq for Union {
+    fn eq(&self, x: &Self) -> bool {
+        self.fields == x.fields
+    }
+}
 impl<H> Hash for Struct
 where
     H: Hasher,
@@ -434,6 +551,14 @@ where
 pub struct Union {
     pub union_: Token![union],
     pub fields: Named,
+}
+impl Clone for Union {
+    fn clone(&self) -> Self {
+        Union {
+            union_: self.union_.clone(),
+            fields: self.fields.clone(),
+        }
+    }
 }
 impl<H> Hash for Union
 where
@@ -497,6 +622,22 @@ impl Lower for Variant {
             eq.lower(s);
             disc.lower(s);
         }
+    }
+}
+impl Clone for Variant {
+    fn clone(&self) -> Self {
+        Variant {
+            attrs: self.attrs.clone(),
+            ident: self.ident.clone(),
+            fields: self.fields.clone(),
+            discrim: self.discrim.clone(),
+        }
+    }
+}
+impl Eq for Variant {}
+impl PartialEq for Variant {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.ident == x.ident && self.fields == x.fields && self.discrim == x.discrim
     }
 }
 impl<H> Hash for Variant
@@ -635,6 +776,28 @@ impl<'a> IntoIterator for &'a mut Fields {
         self.iter_mut()
     }
 }
+impl Clone for Fields {
+    fn clone(&self) -> Self {
+        use Fields::*;
+        match self {
+            Named(x) => Named(x.clone()),
+            Unnamed(x) => Unnamed(x.clone()),
+            Unit => Unit,
+        }
+    }
+}
+impl Eq for Fields {}
+impl PartialEq for Fields {
+    fn eq(&self, x: &Self) -> bool {
+        use Fields::*;
+        match (self, x) {
+            (Named(x), Named(y)) => x == y,
+            (Unit, Unit) => true,
+            (Unnamed(x), Unnamed(y)) => x == y,
+            _ => false,
+        }
+    }
+}
 impl<H> Hash for Fields
 where
     H: Hasher,
@@ -706,6 +869,20 @@ impl Lower for Named {
         });
     }
 }
+impl Clone for Named {
+    fn clone(&self) -> Self {
+        Named {
+            brace: self.brace.clone(),
+            fields: self.fields.clone(),
+        }
+    }
+}
+impl Eq for Named {}
+impl PartialEq for Named {
+    fn eq(&self, x: &Self) -> bool {
+        self.fields == x.fields
+    }
+}
 impl<H> Hash for Named
 where
     H: Hasher,
@@ -750,6 +927,20 @@ impl Lower for Unnamed {
         self.parenth.surround(s, |s| {
             self.fields.lower(s);
         });
+    }
+}
+impl Clone for Unnamed {
+    fn clone(&self) -> Self {
+        Unnamed {
+            parenth: self.parenth.clone(),
+            fields: self.fields.clone(),
+        }
+    }
+}
+impl Eq for Unnamed {}
+impl PartialEq for Unnamed {
+    fn eq(&self, x: &Self) -> bool {
+        self.fields == x.fields
     }
 }
 impl<H> Hash for Unnamed
@@ -835,6 +1026,29 @@ impl Lower for Field {
         self.typ.lower(s);
     }
 }
+impl Clone for Field {
+    fn clone(&self) -> Self {
+        Field {
+            attrs: self.attrs.clone(),
+            vis: self.vis.clone(),
+            mut_: self.mut_.clone(),
+            ident: self.ident.clone(),
+            colon: self.colon.clone(),
+            typ: self.typ.clone(),
+        }
+    }
+}
+impl Eq for Field {}
+impl PartialEq for Field {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs
+            && self.vis == x.vis
+            && self.mut_ == x.mut_
+            && self.ident == x.ident
+            && self.colon == x.colon
+            && self.typ == x.typ
+    }
+}
 impl<H> Hash for Field
 where
     H: Hasher,
@@ -889,6 +1103,23 @@ where
 
 pub enum Mut {
     None,
+}
+impl Clone for Mut {
+    fn clone(&self) -> Self {
+        use Mut::*;
+        match self {
+            None => None,
+        }
+    }
+}
+impl Eq for Mut {}
+impl PartialEq for Mut {
+    fn eq(&self, x: &Self) -> bool {
+        use Mut::*;
+        match (self, x) {
+            (None, None) => true,
+        }
+    }
 }
 impl<H> Hash for Mut
 where

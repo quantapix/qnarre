@@ -291,6 +291,12 @@ pub fn parse2<T: parse::Parse>(s: Stream) -> Res<T> {
     Parser::parse2(T::parse, s)
 }
 
+trait Folder {}
+
+trait Fold {
+    fn fold<F>(&self, f: &mut F);
+}
+
 trait Visitor {}
 
 trait Visit {

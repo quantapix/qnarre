@@ -1169,6 +1169,17 @@ impl Pretty for Abi {
         }
     }
 }
+impl<F> Fold for Abi
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Abi {
+            extern_: self.extern_,
+            name: (self.name).map(|x| x.fold(f)),
+        }
+    }
+}
 impl<V> Visit for Abi
 where
     V: Visitor + ?Sized,

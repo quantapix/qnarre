@@ -5,6 +5,23 @@ pub enum Style {
     Outer,
     Inner(Token![!]),
 }
+impl Copy for Style {}
+impl Clone for Style {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+impl Eq for Style {}
+impl PartialEq for Style {
+    fn eq(&self, x: &Self) -> bool {
+        use Style::*;
+        match (self, x) {
+            (Outer, Outer) => true,
+            (Inner(_), Inner(_)) => true,
+            _ => false,
+        }
+    }
+}
 impl<H> Hash for Style
 where
     H: Hasher,
@@ -116,6 +133,22 @@ impl Lower for Attr {
         self.bracket.surround(s, |s| {
             self.meta.lower(s);
         });
+    }
+}
+impl Clone for Attr {
+    fn clone(&self) -> Self {
+        Attr {
+            pound: self.pound.clone(),
+            style: self.style.clone(),
+            bracket: self.bracket.clone(),
+            meta: self.meta.clone(),
+        }
+    }
+}
+impl Eq for Attr {}
+impl PartialEq for Attr {
+    fn eq(&self, x: &Self) -> bool {
+        self.style == x.style && self.meta == x.meta
     }
 }
 impl<H> Hash for Attr
@@ -403,6 +436,28 @@ impl Parse for Meta {
         parse_after_path(y, s)
     }
 }
+impl Clone for Meta {
+    fn clone(&self) -> Self {
+        use Meta::*;
+        match self {
+            List(x) => List(x.clone()),
+            NameValue(x) => NameValue(x.clone()),
+            Path(x) => Path(x.clone()),
+        }
+    }
+}
+impl Eq for Meta {}
+impl PartialEq for Meta {
+    fn eq(&self, x: &Self) -> bool {
+        use Meta::*;
+        match (self, x) {
+            (List(x), List(y)) => x == y,
+            (NameValue(x), NameValue(y)) => x == y,
+            (Path(x), Path(y)) => x == y,
+            _ => false,
+        }
+    }
+}
 impl<H> Hash for Meta
 where
     H: Hasher,
@@ -496,6 +551,21 @@ impl Lower for List {
     fn lower(&self, s: &mut Stream) {
         self.path.lower(s);
         self.delim.surround(s, self.toks.clone());
+    }
+}
+impl Clone for List {
+    fn clone(&self) -> Self {
+        List {
+            path: self.path.clone(),
+            delim: self.delim.clone(),
+            toks: self.toks.clone(),
+        }
+    }
+}
+impl Eq for List {}
+impl PartialEq for List {
+    fn eq(&self, x: &Self) -> bool {
+        self.path == x.path && self.delim == x.delim && StreamHelper(&self.toks) == StreamHelper(&x.toks)
     }
 }
 impl<H> Hash for List
@@ -652,6 +722,21 @@ impl Lower for NameValue {
         self.name.lower(s);
         self.eq.lower(s);
         self.val.lower(s);
+    }
+}
+impl Clone for NameValue {
+    fn clone(&self) -> Self {
+        NameValue {
+            name: self.name.clone(),
+            eq: self.eq.clone(),
+            val: self.val.clone(),
+        }
+    }
+}
+impl Eq for NameValue {}
+impl PartialEq for NameValue {
+    fn eq(&self, x: &Self) -> bool {
+        self.name == x.name && self.val == x.val
     }
 }
 impl<H> Hash for NameValue

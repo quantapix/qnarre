@@ -17,22 +17,6 @@ impl PartialEq for expr::Arm {
             && self.comma == x.comma
     }
 }
-impl Eq for attr::Style {}
-impl PartialEq for attr::Style {
-    fn eq(&self, x: &Self) -> bool {
-        match (self, x) {
-            (attr::Style::Outer, attr::Style::Outer) => true,
-            (attr::Style::Inner(_), attr::Style::Inner(_)) => true,
-            _ => false,
-        }
-    }
-}
-impl Eq for attr::Attr {}
-impl PartialEq for attr::Attr {
-    fn eq(&self, x: &Self) -> bool {
-        self.style == x.style && self.meta == x.meta
-    }
-}
 impl Eq for typ::FnArg {}
 impl PartialEq for typ::FnArg {
     fn eq(&self, x: &Self) -> bool {
@@ -102,46 +86,6 @@ impl PartialEq for gen::param::Const {
             && self.typ == x.typ
             && self.eq == x.eq
             && self.default == x.default
-    }
-}
-impl Eq for data::Data {}
-impl PartialEq for data::Data {
-    fn eq(&self, x: &Self) -> bool {
-        use data::Data::*;
-        match (self, x) {
-            (Struct(x), Struct(y)) => x == y,
-            (Enum(x), Enum(y)) => x == y,
-            (Union(x), Union(y)) => x == y,
-            _ => false,
-        }
-    }
-}
-impl Eq for data::Enum {}
-impl PartialEq for data::Enum {
-    fn eq(&self, x: &Self) -> bool {
-        self.variants == x.variants
-    }
-}
-impl Eq for data::Struct {}
-impl PartialEq for data::Struct {
-    fn eq(&self, x: &Self) -> bool {
-        self.fields == x.fields && self.semi == x.semi
-    }
-}
-impl Eq for data::Union {}
-impl PartialEq for data::Union {
-    fn eq(&self, x: &Self) -> bool {
-        self.fields == x.fields
-    }
-}
-impl Eq for Input {}
-impl PartialEq for Input {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs
-            && self.vis == x.vis
-            && self.ident == x.ident
-            && self.gens == x.gens
-            && self.data == x.data
     }
 }
 impl Eq for expr::Expr {}
@@ -441,25 +385,6 @@ impl PartialEq for expr::Yield {
         self.attrs == x.attrs && self.expr == x.expr
     }
 }
-impl Eq for data::Field {}
-impl PartialEq for data::Field {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs
-            && self.vis == x.vis
-            && self.mut_ == x.mut_
-            && self.ident == x.ident
-            && self.colon == x.colon
-            && self.typ == x.typ
-    }
-}
-impl Eq for data::Mut {}
-impl PartialEq for data::Mut {
-    fn eq(&self, x: &Self) -> bool {
-        match (self, x) {
-            (data::Mut::None, data::Mut::None) => true,
-        }
-    }
-}
 impl Eq for pat::Field {}
 impl PartialEq for pat::Field {
     fn eq(&self, x: &Self) -> bool {
@@ -470,30 +395,6 @@ impl Eq for expr::FieldValue {}
 impl PartialEq for expr::FieldValue {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.memb == x.memb && self.colon == x.colon && self.expr == x.expr
-    }
-}
-impl Eq for data::Fields {}
-impl PartialEq for data::Fields {
-    fn eq(&self, x: &Self) -> bool {
-        use data::Fields::*;
-        match (self, x) {
-            (Named(x), Named(y)) => x == y,
-            (Unit, Unit) => true,
-            (Unnamed(x), Unnamed(y)) => x == y,
-            _ => false,
-        }
-    }
-}
-impl Eq for data::Named {}
-impl PartialEq for data::Named {
-    fn eq(&self, x: &Self) -> bool {
-        self.fields == x.fields
-    }
-}
-impl Eq for data::Unnamed {}
-impl PartialEq for data::Unnamed {
-    fn eq(&self, x: &Self) -> bool {
-        self.fields == x.fields
     }
 }
 impl Eq for item::File {}
@@ -859,30 +760,6 @@ impl PartialEq for tok::Delim {
             (Parenth(_), Parenth(_)) => true,
             _ => false,
         }
-    }
-}
-impl Eq for attr::Meta {}
-impl PartialEq for attr::Meta {
-    fn eq(&self, x: &Self) -> bool {
-        use attr::Meta::*;
-        match (self, x) {
-            (List(x), List(y)) => x == y,
-            (NameValue(x), NameValue(y)) => x == y,
-            (Path(x), Path(y)) => x == y,
-            _ => false,
-        }
-    }
-}
-impl Eq for attr::List {}
-impl PartialEq for attr::List {
-    fn eq(&self, x: &Self) -> bool {
-        self.path == x.path && self.delim == x.delim && StreamHelper(&self.toks) == StreamHelper(&x.toks)
-    }
-}
-impl Eq for attr::NameValue {}
-impl PartialEq for attr::NameValue {
-    fn eq(&self, x: &Self) -> bool {
-        self.name == x.name && self.val == x.val
     }
 }
 impl Eq for pat::Pat {}
@@ -1333,30 +1210,6 @@ impl Eq for item::Variadic {}
 impl PartialEq for item::Variadic {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.pat == x.pat && self.comma == x.comma
-    }
-}
-impl Eq for data::Variant {}
-impl PartialEq for data::Variant {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs && self.ident == x.ident && self.fields == x.fields && self.discrim == x.discrim
-    }
-}
-impl Eq for data::Restricted {}
-impl PartialEq for data::Restricted {
-    fn eq(&self, x: &Self) -> bool {
-        self.in_ == x.in_ && self.path == x.path
-    }
-}
-impl Eq for data::Visibility {}
-impl PartialEq for data::Visibility {
-    fn eq(&self, x: &Self) -> bool {
-        use data::Visibility::*;
-        match (self, x) {
-            (Inherited, Inherited) => true,
-            (Public(_), Public(_)) => true,
-            (Restricted(x), Restricted(y)) => x == y,
-            _ => false,
-        }
     }
 }
 impl Eq for gen::Where {}

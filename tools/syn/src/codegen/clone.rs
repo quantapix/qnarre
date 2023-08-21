@@ -21,22 +21,6 @@ impl Clone for expr::Arm {
         }
     }
 }
-impl Copy for attr::Style {}
-impl Clone for attr::Style {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-impl Clone for attr::Attr {
-    fn clone(&self) -> Self {
-        attr::Attr {
-            pound: self.pound.clone(),
-            style: self.style.clone(),
-            bracket: self.bracket.clone(),
-            meta: self.meta.clone(),
-        }
-    }
-}
 impl Clone for typ::FnArg {
     fn clone(&self) -> Self {
         typ::FnArg {
@@ -90,53 +74,6 @@ impl Clone for gen::param::Const {
             typ: self.typ.clone(),
             eq: self.eq.clone(),
             default: self.default.clone(),
-        }
-    }
-}
-impl Clone for data::Data {
-    fn clone(&self) -> Self {
-        use data::Data::*;
-        match self {
-            Struct(x) => Struct(x.clone()),
-            Enum(x) => Enum(x.clone()),
-            Union(x) => Union(x.clone()),
-        }
-    }
-}
-impl Clone for data::Enum {
-    fn clone(&self) -> Self {
-        data::Enum {
-            enum_: self.enum_.clone(),
-            brace: self.brace.clone(),
-            variants: self.variants.clone(),
-        }
-    }
-}
-impl Clone for data::Struct {
-    fn clone(&self) -> Self {
-        data::Struct {
-            struct_: self.struct_.clone(),
-            fields: self.fields.clone(),
-            semi: self.semi.clone(),
-        }
-    }
-}
-impl Clone for data::Union {
-    fn clone(&self) -> Self {
-        data::Union {
-            union_: self.union_.clone(),
-            fields: self.fields.clone(),
-        }
-    }
-}
-impl Clone for Input {
-    fn clone(&self) -> Self {
-        Input {
-            attrs: self.attrs.clone(),
-            vis: self.vis.clone(),
-            ident: self.ident.clone(),
-            gens: self.gens.clone(),
-            data: self.data.clone(),
         }
     }
 }
@@ -567,25 +504,6 @@ impl Clone for expr::Yield {
         }
     }
 }
-impl Clone for data::Field {
-    fn clone(&self) -> Self {
-        data::Field {
-            attrs: self.attrs.clone(),
-            vis: self.vis.clone(),
-            mut_: self.mut_.clone(),
-            ident: self.ident.clone(),
-            colon: self.colon.clone(),
-            typ: self.typ.clone(),
-        }
-    }
-}
-impl Clone for data::Mut {
-    fn clone(&self) -> Self {
-        match self {
-            data::Mut::None => data::Mut::None,
-        }
-    }
-}
 impl Clone for pat::Field {
     fn clone(&self) -> Self {
         pat::Field {
@@ -603,31 +521,6 @@ impl Clone for expr::FieldValue {
             memb: self.memb.clone(),
             colon: self.colon.clone(),
             expr: self.expr.clone(),
-        }
-    }
-}
-impl Clone for data::Fields {
-    fn clone(&self) -> Self {
-        match self {
-            data::Fields::Named(x) => data::Fields::Named(x.clone()),
-            data::Fields::Unnamed(x) => data::Fields::Unnamed(x.clone()),
-            data::Fields::Unit => data::Fields::Unit,
-        }
-    }
-}
-impl Clone for data::Named {
-    fn clone(&self) -> Self {
-        data::Named {
-            brace: self.brace.clone(),
-            fields: self.fields.clone(),
-        }
-    }
-}
-impl Clone for data::Unnamed {
-    fn clone(&self) -> Self {
-        data::Unnamed {
-            parenth: self.parenth.clone(),
-            fields: self.fields.clone(),
         }
     }
 }
@@ -746,34 +639,6 @@ impl Clone for expr::Member {
         match self {
             Named(x) => Named(x.clone()),
             Unnamed(x) => Unnamed(x.clone()),
-        }
-    }
-}
-impl Clone for attr::Meta {
-    fn clone(&self) -> Self {
-        use attr::Meta::*;
-        match self {
-            List(x) => List(x.clone()),
-            NameValue(x) => NameValue(x.clone()),
-            Path(x) => Path(x.clone()),
-        }
-    }
-}
-impl Clone for attr::List {
-    fn clone(&self) -> Self {
-        attr::List {
-            path: self.path.clone(),
-            delim: self.delim.clone(),
-            toks: self.toks.clone(),
-        }
-    }
-}
-impl Clone for attr::NameValue {
-    fn clone(&self) -> Self {
-        attr::NameValue {
-            name: self.name.clone(),
-            eq: self.eq.clone(),
-            val: self.val.clone(),
         }
     }
 }
@@ -1144,36 +1009,6 @@ impl Copy for expr::UnOp {}
 impl Clone for expr::UnOp {
     fn clone(&self) -> Self {
         *self
-    }
-}
-impl Clone for data::Variant {
-    fn clone(&self) -> Self {
-        data::Variant {
-            attrs: self.attrs.clone(),
-            ident: self.ident.clone(),
-            fields: self.fields.clone(),
-            discrim: self.discrim.clone(),
-        }
-    }
-}
-impl Clone for data::Restricted {
-    fn clone(&self) -> Self {
-        data::Restricted {
-            pub_: self.pub_.clone(),
-            parenth: self.parenth.clone(),
-            in_: self.in_.clone(),
-            path: self.path.clone(),
-        }
-    }
-}
-impl Clone for data::Visibility {
-    fn clone(&self) -> Self {
-        use data::Visibility::*;
-        match self {
-            Inherited => Inherited,
-            Public(x) => Public(x.clone()),
-            Restricted(x) => Restricted(x.clone()),
-        }
     }
 }
 impl Clone for gen::Where {
