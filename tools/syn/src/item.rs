@@ -36,6 +36,16 @@ impl Clone for File {
         }
     }
 }
+impl<H> Hash for File
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.shebang.hash(h);
+        self.attrs.hash(h);
+        self.items.hash(h);
+    }
+}
 impl Pretty for File {
     fn pretty(&self, p: &mut Print) {
         p.cbox(0);
@@ -173,6 +183,80 @@ impl Clone for Item {
             Union(x) => Union(x.clone()),
             Use(x) => Use(x.clone()),
             Verbatim(x) => Verbatim(x.clone()),
+        }
+    }
+}
+impl<H> Hash for Item
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        use Item::*;
+        match self {
+            Const(x) => {
+                h.write_u8(0u8);
+                x.hash(h);
+            },
+            Enum(x) => {
+                h.write_u8(1u8);
+                x.hash(h);
+            },
+            Extern(x) => {
+                h.write_u8(2u8);
+                x.hash(h);
+            },
+            Fn(x) => {
+                h.write_u8(3u8);
+                x.hash(h);
+            },
+            Foreign(x) => {
+                h.write_u8(4u8);
+                x.hash(h);
+            },
+            Impl(x) => {
+                h.write_u8(5u8);
+                x.hash(h);
+            },
+            Mac(x) => {
+                h.write_u8(6u8);
+                x.hash(h);
+            },
+            Mod(x) => {
+                h.write_u8(7u8);
+                x.hash(h);
+            },
+            Static(x) => {
+                h.write_u8(8u8);
+                x.hash(h);
+            },
+            Struct(x) => {
+                h.write_u8(9u8);
+                x.hash(h);
+            },
+            Trait(x) => {
+                h.write_u8(10u8);
+                x.hash(h);
+            },
+            Alias(x) => {
+                h.write_u8(11u8);
+                x.hash(h);
+            },
+            Type(x) => {
+                h.write_u8(12u8);
+                x.hash(h);
+            },
+            Union(x) => {
+                h.write_u8(13u8);
+                x.hash(h);
+            },
+            Use(x) => {
+                h.write_u8(14u8);
+                x.hash(h);
+            },
+            Verbatim(x) => {
+                h.write_u8(15u8);
+                StreamHelper(x).hash(h);
+            },
         }
     }
 }
@@ -371,6 +455,19 @@ impl Clone for Const {
         }
     }
 }
+impl<H> Hash for Const
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.ident.hash(h);
+        self.gens.hash(h);
+        self.typ.hash(h);
+        self.expr.hash(h);
+    }
+}
 impl Pretty for Const {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -482,6 +579,18 @@ impl Clone for Enum {
             brace: self.brace.clone(),
             variants: self.variants.clone(),
         }
+    }
+}
+impl<H> Hash for Enum
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.ident.hash(h);
+        self.gens.hash(h);
+        self.variants.hash(h);
     }
 }
 impl Pretty for Enum {
@@ -603,6 +712,17 @@ impl Clone for Extern {
         }
     }
 }
+impl<H> Hash for Extern
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.ident.hash(h);
+        self.rename.hash(h);
+    }
+}
 impl Pretty for Extern {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -676,6 +796,17 @@ impl Clone for Fn {
             sig: self.sig.clone(),
             block: self.block.clone(),
         }
+    }
+}
+impl<H> Hash for Fn
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.sig.hash(h);
+        self.block.hash(h);
     }
 }
 impl Pretty for Fn {
@@ -767,6 +898,17 @@ impl Clone for Foreign {
             brace: self.brace.clone(),
             items: self.items.clone(),
         }
+    }
+}
+impl<H> Hash for Foreign
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.unsafe_.hash(h);
+        self.abi.hash(h);
+        self.items.hash(h);
     }
 }
 impl Pretty for Foreign {
@@ -863,6 +1005,20 @@ impl Clone for Impl {
             brace: self.brace.clone(),
             items: self.items.clone(),
         }
+    }
+}
+impl<H> Hash for Impl
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.default.hash(h);
+        self.unsafe_.hash(h);
+        self.gens.hash(h);
+        self.trait_.hash(h);
+        self.typ.hash(h);
+        self.items.hash(h);
     }
 }
 impl Pretty for Impl {
@@ -997,6 +1153,17 @@ impl Clone for Mac {
         }
     }
 }
+impl<H> Hash for Mac
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.ident.hash(h);
+        self.mac.hash(h);
+        self.semi.hash(h);
+    }
+}
 impl Pretty for Mac {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -1112,6 +1279,19 @@ impl Clone for Mod {
         }
     }
 }
+impl<H> Hash for Mod
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.unsafe_.hash(h);
+        self.ident.hash(h);
+        self.items.hash(h);
+        self.semi.hash(h);
+    }
+}
 impl Pretty for Mod {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -1197,6 +1377,20 @@ impl Parse for Static {
         })
     }
 }
+impl Lower for Static {
+    fn lower(&self, s: &mut Stream) {
+        s.append_all(self.attrs.outers());
+        self.vis.lower(s);
+        self.static_.lower(s);
+        self.mut_.lower(s);
+        self.ident.lower(s);
+        self.colon.lower(s);
+        self.typ.lower(s);
+        self.eq.lower(s);
+        self.expr.lower(s);
+        self.semi.lower(s);
+    }
+}
 impl Clone for Static {
     fn clone(&self) -> Self {
         Static {
@@ -1213,18 +1407,17 @@ impl Clone for Static {
         }
     }
 }
-impl Lower for Static {
-    fn lower(&self, s: &mut Stream) {
-        s.append_all(self.attrs.outers());
-        self.vis.lower(s);
-        self.static_.lower(s);
-        self.mut_.lower(s);
-        self.ident.lower(s);
-        self.colon.lower(s);
-        self.typ.lower(s);
-        self.eq.lower(s);
-        self.expr.lower(s);
-        self.semi.lower(s);
+impl<H> Hash for Static
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.mut_.hash(h);
+        self.ident.hash(h);
+        self.typ.hash(h);
+        self.expr.hash(h);
     }
 }
 impl Pretty for Static {
@@ -1351,6 +1544,19 @@ impl Clone for Struct {
         }
     }
 }
+impl<H> Hash for Struct
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.ident.hash(h);
+        self.gens.hash(h);
+        self.fields.hash(h);
+        self.semi.hash(h);
+    }
+}
 impl Pretty for Struct {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -1475,6 +1681,23 @@ impl Clone for Trait {
         }
     }
 }
+impl<H> Hash for Trait
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.unsafe_.hash(h);
+        self.auto.hash(h);
+        self.restriction.hash(h);
+        self.ident.hash(h);
+        self.gens.hash(h);
+        self.colon.hash(h);
+        self.supers.hash(h);
+        self.items.hash(h);
+    }
+}
 impl Pretty for Trait {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -1595,6 +1818,18 @@ impl Clone for Alias {
         }
     }
 }
+impl<H> Hash for Alias
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.ident.hash(h);
+        self.gens.hash(h);
+        self.bounds.hash(h);
+    }
+}
 impl Pretty for Alias {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -1700,6 +1935,18 @@ impl Clone for Type {
             typ: self.typ.clone(),
             semi: self.semi.clone(),
         }
+    }
+}
+impl<H> Hash for Type
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.ident.hash(h);
+        self.gens.hash(h);
+        self.typ.hash(h);
     }
 }
 impl Pretty for Type {
@@ -1808,6 +2055,18 @@ impl Clone for Union {
         }
     }
 }
+impl<H> Hash for Union
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.ident.hash(h);
+        self.gens.hash(h);
+        self.fields.hash(h);
+    }
+}
 impl Pretty for Union {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -1888,6 +2147,17 @@ impl Clone for Use {
             tree: self.tree.clone(),
             semi: self.semi.clone(),
         }
+    }
+}
+impl<H> Hash for Use
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.colon.hash(h);
+        self.tree.hash(h);
     }
 }
 impl Pretty for Use {
@@ -2119,7 +2389,7 @@ impl Pretty for Verbatim {
         }
         let y: Type = match parse2(self.clone()) {
             Ok(x) => x,
-            Err(_) => unimplemented!("item::Item::Verbatim `{}`", self),
+            Err(_) => unimplemented!("Item::Verbatim `{}`", self),
         };
         use Type::*;
         match y {
@@ -2355,6 +2625,18 @@ impl Clone for Receiver {
         }
     }
 }
+impl<H> Hash for Receiver
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.ref_.hash(h);
+        self.mut_.hash(h);
+        self.colon.hash(h);
+        self.typ.hash(h);
+    }
+}
 impl Pretty for Receiver {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -2442,6 +2724,24 @@ impl Clone for FnArg {
         match self {
             Receiver(x) => Receiver(x.clone()),
             Type(x) => Type(x.clone()),
+        }
+    }
+}
+impl<H> Hash for FnArg
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        use FnArg::*;
+        match self {
+            Receiver(x) => {
+                h.write_u8(0u8);
+                x.hash(h);
+            },
+            Type(x) => {
+                h.write_u8(1u8);
+                x.hash(h);
+            },
         }
     }
 }
@@ -2577,6 +2877,22 @@ impl Clone for Sig {
         }
     }
 }
+impl<H> Hash for Sig
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.const_.hash(h);
+        self.async_.hash(h);
+        self.unsafe_.hash(h);
+        self.abi.hash(h);
+        self.ident.hash(h);
+        self.gens.hash(h);
+        self.args.hash(h);
+        self.vari.hash(h);
+        self.ret.hash(h);
+    }
+}
 impl Pretty for Sig {
     fn pretty(&self, p: &mut Print) {
         if self.const_.is_some() {
@@ -2678,6 +2994,22 @@ impl Clone for StaticMut {
         }
     }
 }
+impl<H> Hash for StaticMut
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        use StaticMut::*;
+        match self {
+            Mut(_) => {
+                h.write_u8(0u8);
+            },
+            None => {
+                h.write_u8(1u8);
+            },
+        }
+    }
+}
 impl Pretty for StaticMut {
     fn pretty(&self, p: &mut Print) {
         use StaticMut::*;
@@ -2732,6 +3064,16 @@ impl Clone for Variadic {
             dots: self.dots.clone(),
             comma: self.comma.clone(),
         }
+    }
+}
+impl<H> Hash for Variadic
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.pat.hash(h);
+        self.comma.hash(h);
     }
 }
 impl Pretty for Variadic {
@@ -2862,6 +3204,36 @@ pub mod foreign {
             }
         }
     }
+    impl<H> Hash for Item
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            use self::Item::*;
+            match self {
+                Fn(x) => {
+                    h.write_u8(0u8);
+                    x.hash(h);
+                },
+                Static(x) => {
+                    h.write_u8(1u8);
+                    x.hash(h);
+                },
+                Type(x) => {
+                    h.write_u8(2u8);
+                    x.hash(h);
+                },
+                Mac(x) => {
+                    h.write_u8(3u8);
+                    x.hash(h);
+                },
+                Verbatim(x) => {
+                    h.write_u8(4u8);
+                    StreamHelper(x).hash(h);
+                },
+            }
+        }
+    }
     impl Pretty for Item {
         fn pretty(&self, p: &mut Print) {
             use self::Item::*;
@@ -2949,6 +3321,16 @@ pub mod foreign {
             }
         }
     }
+    impl<H> Hash for Fn
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.attrs.hash(h);
+            self.vis.hash(h);
+            self.sig.hash(h);
+        }
+    }
     impl Pretty for Fn {
         fn pretty(&self, p: &mut Print) {
             p.outer_attrs(&self.attrs);
@@ -3007,6 +3389,16 @@ pub mod foreign {
                 mac: self.mac.clone(),
                 semi: self.semi.clone(),
             }
+        }
+    }
+    impl<H> Hash for Mac
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.attrs.hash(h);
+            self.mac.hash(h);
+            self.semi.hash(h);
         }
     }
     impl Pretty for Mac {
@@ -3083,6 +3475,18 @@ pub mod foreign {
                 typ: self.typ.clone(),
                 semi: self.semi.clone(),
             }
+        }
+    }
+    impl<H> Hash for Static
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.attrs.hash(h);
+            self.vis.hash(h);
+            self.mut_.hash(h);
+            self.ident.hash(h);
+            self.typ.hash(h);
         }
     }
     impl Pretty for Static {
@@ -3169,6 +3573,17 @@ pub mod foreign {
                 gens: self.gens.clone(),
                 semi: self.semi.clone(),
             }
+        }
+    }
+    impl<H> Hash for Type
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.attrs.hash(h);
+            self.vis.hash(h);
+            self.ident.hash(h);
+            self.gens.hash(h);
         }
     }
     impl Pretty for Type {
@@ -3361,13 +3776,43 @@ pub mod impl_ {
     }
     impl Clone for Item {
         fn clone(&self) -> Self {
-            use Item::*;
+            use self::Item::*;
             match self {
                 Const(x) => Const(x.clone()),
                 Fn(x) => Fn(x.clone()),
                 Mac(x) => Mac(x.clone()),
                 Type(x) => Type(x.clone()),
                 Verbatim(x) => Verbatim(x.clone()),
+            }
+        }
+    }
+    impl<H> Hash for Item
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            use self::Item::*;
+            match self {
+                Const(x) => {
+                    h.write_u8(0u8);
+                    x.hash(h);
+                },
+                Fn(x) => {
+                    h.write_u8(1u8);
+                    x.hash(h);
+                },
+                Type(x) => {
+                    h.write_u8(2u8);
+                    x.hash(h);
+                },
+                Mac(x) => {
+                    h.write_u8(3u8);
+                    x.hash(h);
+                },
+                Verbatim(x) => {
+                    h.write_u8(4u8);
+                    StreamHelper(x).hash(h);
+                },
             }
         }
     }
@@ -3493,6 +3938,20 @@ pub mod impl_ {
             }
         }
     }
+    impl<H> Hash for Const
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.attrs.hash(h);
+            self.vis.hash(h);
+            self.default.hash(h);
+            self.ident.hash(h);
+            self.gens.hash(h);
+            self.typ.hash(h);
+            self.expr.hash(h);
+        }
+    }
     impl Pretty for Const {
         fn pretty(&self, p: &mut Print) {
             p.outer_attrs(&self.attrs);
@@ -3576,6 +4035,18 @@ pub mod impl_ {
             }
         }
     }
+    impl<H> Hash for Fn
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.attrs.hash(h);
+            self.vis.hash(h);
+            self.default.hash(h);
+            self.sig.hash(h);
+            self.block.hash(h);
+        }
+    }
     impl Pretty for Fn {
         fn pretty(&self, p: &mut Print) {
             p.outer_attrs(&self.attrs);
@@ -3647,6 +4118,16 @@ pub mod impl_ {
                 mac: self.mac.clone(),
                 semi: self.semi.clone(),
             }
+        }
+    }
+    impl<H> Hash for Mac
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.attrs.hash(h);
+            self.mac.hash(h);
+            self.semi.hash(h);
         }
     }
     impl Pretty for Mac {
@@ -3738,6 +4219,19 @@ pub mod impl_ {
                 typ: self.typ.clone(),
                 semi: self.semi.clone(),
             }
+        }
+    }
+    impl<H> Hash for Type
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.attrs.hash(h);
+            self.vis.hash(h);
+            self.default.hash(h);
+            self.ident.hash(h);
+            self.gens.hash(h);
+            self.typ.hash(h);
         }
     }
     impl Pretty for Type {
@@ -3858,6 +4352,14 @@ pub mod impl_ {
             match *self {}
         }
     }
+    impl<H> Hash for Restriction
+    where
+        H: Hasher,
+    {
+        fn hash(&self, _h: &mut H) {
+            match *self {}
+        }
+    }
     impl<V> Visit for Restriction
     where
         V: Visitor + ?Sized,
@@ -3944,6 +4446,36 @@ pub mod trait_ {
                 Mac(x) => Mac(x.clone()),
                 Type(x) => Type(x.clone()),
                 Verbatim(x) => Verbatim(x.clone()),
+            }
+        }
+    }
+    impl<H> Hash for Item
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            use self::Item::*;
+            match self {
+                Const(x) => {
+                    h.write_u8(0u8);
+                    x.hash(h);
+                },
+                Fn(x) => {
+                    h.write_u8(1u8);
+                    x.hash(h);
+                },
+                Type(x) => {
+                    h.write_u8(2u8);
+                    x.hash(h);
+                },
+                Mac(x) => {
+                    h.write_u8(3u8);
+                    x.hash(h);
+                },
+                Verbatim(x) => {
+                    h.write_u8(4u8);
+                    StreamHelper(x).hash(h);
+                },
             }
         }
     }
@@ -4068,6 +4600,18 @@ pub mod trait_ {
             }
         }
     }
+    impl<H> Hash for Const
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.attrs.hash(h);
+            self.ident.hash(h);
+            self.gens.hash(h);
+            self.typ.hash(h);
+            self.default.hash(h);
+        }
+    }
     impl Pretty for Const {
         fn pretty(&self, p: &mut Print) {
             p.outer_attrs(&self.attrs);
@@ -4173,6 +4717,17 @@ pub mod trait_ {
             }
         }
     }
+    impl<H> Hash for Fn
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.attrs.hash(h);
+            self.sig.hash(h);
+            self.default.hash(h);
+            self.semi.hash(h);
+        }
+    }
     impl Pretty for Fn {
         fn pretty(&self, p: &mut Print) {
             p.outer_attrs(&self.attrs);
@@ -4247,6 +4802,16 @@ pub mod trait_ {
                 mac: self.mac.clone(),
                 semi: self.semi.clone(),
             }
+        }
+    }
+    impl<H> Hash for Mac
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.attrs.hash(h);
+            self.mac.hash(h);
+            self.semi.hash(h);
         }
     }
     impl Pretty for Mac {
@@ -4337,6 +4902,19 @@ pub mod trait_ {
                 default: self.default.clone(),
                 semi: self.semi.clone(),
             }
+        }
+    }
+    impl<H> Hash for Type
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.attrs.hash(h);
+            self.ident.hash(h);
+            self.gens.hash(h);
+            self.colon.hash(h);
+            self.bounds.hash(h);
+            self.default.hash(h);
         }
     }
     impl Pretty for Type {
@@ -4506,6 +5084,36 @@ pub mod use_ {
             }
         }
     }
+    impl<H> Hash for Tree
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            use Tree::*;
+            match self {
+                Path(x) => {
+                    h.write_u8(0u8);
+                    x.hash(h);
+                },
+                Name(x) => {
+                    h.write_u8(1u8);
+                    x.hash(h);
+                },
+                Rename(x) => {
+                    h.write_u8(2u8);
+                    x.hash(h);
+                },
+                Glob(x) => {
+                    h.write_u8(3u8);
+                    x.hash(h);
+                },
+                Group(x) => {
+                    h.write_u8(4u8);
+                    x.hash(h);
+                },
+            }
+        }
+    }
     impl Pretty for Tree {
         fn pretty(&self, p: &mut Print) {
             use Tree::*;
@@ -4644,6 +5252,12 @@ pub mod use_ {
             }
         }
     }
+    impl<H> Hash for Glob
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {}
+    }
     impl Pretty for Glob {
         fn pretty(&self, p: &mut Print) {
             let _ = self;
@@ -4675,6 +5289,14 @@ pub mod use_ {
                 brace: self.brace.clone(),
                 trees: self.trees.clone(),
             }
+        }
+    }
+    impl<H> Hash for Group
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.trees.hash(h);
         }
     }
     impl Pretty for Group {
@@ -4744,6 +5366,14 @@ pub mod use_ {
             }
         }
     }
+    impl<H> Hash for Name
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.ident.hash(h);
+        }
+    }
     impl Pretty for Name {
         fn pretty(&self, p: &mut Print) {
             &self.ident.pretty(p);
@@ -4780,6 +5410,15 @@ pub mod use_ {
                 colon2: self.colon2.clone(),
                 tree: self.tree.clone(),
             }
+        }
+    }
+    impl<H> Hash for Path
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.ident.hash(h);
+            self.tree.hash(h);
         }
     }
     impl Pretty for Path {
@@ -4822,6 +5461,15 @@ pub mod use_ {
                 as_: self.as_.clone(),
                 rename: self.rename.clone(),
             }
+        }
+    }
+    impl<H> Hash for Rename
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.ident.hash(h);
+            self.rename.hash(h);
         }
     }
     impl Pretty for Rename {
