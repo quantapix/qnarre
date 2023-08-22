@@ -28,6 +28,57 @@ impl Lower for Stmt {
         }
     }
 }
+impl Clone for Stmt {
+    fn clone(&self) -> Self {
+        use Stmt::*;
+        match self {
+            Expr(x, v1) => Expr(x.clone(), v1.clone()),
+            Item(x) => Item(x.clone()),
+            Local(x) => Local(x.clone()),
+            Mac(x) => Mac(x.clone()),
+        }
+    }
+}
+impl Eq for Stmt {}
+impl PartialEq for Stmt {
+    fn eq(&self, x: &Self) -> bool {
+        use Stmt::*;
+        match (self, x) {
+            (Expr(x, self1), Expr(y, other1)) => x == y && self1 == other1,
+            (Item(x), Item(y)) => x == y,
+            (Local(x), Local(y)) => x == y,
+            (Mac(x), Mac(y)) => x == y,
+            _ => false,
+        }
+    }
+}
+impl<H> Hash for Stmt
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        use Stmt::*;
+        match self {
+            Local(x) => {
+                h.write_u8(0u8);
+                x.hash(h);
+            },
+            Item(x) => {
+                h.write_u8(1u8);
+                x.hash(h);
+            },
+            Expr(x, v1) => {
+                h.write_u8(2u8);
+                x.hash(h);
+                v1.hash(h);
+            },
+            Mac(x) => {
+                h.write_u8(3u8);
+                x.hash(h);
+            },
+        }
+    }
+}
 impl Pretty for Stmt {
     fn pretty(&self, p: &mut Print) {
         use Stmt::*;
@@ -164,6 +215,33 @@ impl Lower for Local {
         self.semi.lower(s);
     }
 }
+impl Clone for Local {
+    fn clone(&self) -> Self {
+        Local {
+            attrs: self.attrs.clone(),
+            let_: self.let_.clone(),
+            pat: self.pat.clone(),
+            init: self.init.clone(),
+            semi: self.semi.clone(),
+        }
+    }
+}
+impl Eq for Local {}
+impl PartialEq for Local {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.pat == x.pat && self.init == x.init
+    }
+}
+impl<H> Hash for Local
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.pat.hash(h);
+        self.init.hash(h);
+    }
+}
 impl<V> Visit for Local
 where
     V: Visitor + ?Sized,
@@ -198,6 +276,31 @@ impl Lower for Mac {
         attr::lower_outers(&self.attrs, s);
         self.mac.lower(s);
         self.semi.lower(s);
+    }
+}
+impl Clone for Mac {
+    fn clone(&self) -> Self {
+        Mac {
+            attrs: self.attrs.clone(),
+            mac: self.mac.clone(),
+            semi: self.semi.clone(),
+        }
+    }
+}
+impl Eq for Mac {}
+impl PartialEq for Mac {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.mac == x.mac && self.semi == x.semi
+    }
+}
+impl<H> Hash for Mac
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.mac.hash(h);
+        self.semi.hash(h);
     }
 }
 impl<V> Visit for Mac
@@ -265,6 +368,28 @@ impl Lower for Block {
         });
     }
 }
+impl Clone for Block {
+    fn clone(&self) -> Self {
+        Block {
+            brace: self.brace.clone(),
+            stmts: self.stmts.clone(),
+        }
+    }
+}
+impl Eq for Block {}
+impl PartialEq for Block {
+    fn eq(&self, x: &Self) -> bool {
+        self.stmts == x.stmts
+    }
+}
+impl<H> Hash for Block
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.stmts.hash(h);
+    }
+}
 impl<V> Visit for Block
 where
     V: Visitor + ?Sized,
@@ -285,6 +410,30 @@ pub struct Init {
     pub eq: Token![=],
     pub expr: Box<Expr>,
     pub diverge: Option<(Token![else], Box<Expr>)>,
+}
+impl Clone for Init {
+    fn clone(&self) -> Self {
+        Init {
+            eq: self.eq.clone(),
+            expr: self.expr.clone(),
+            diverge: self.diverge.clone(),
+        }
+    }
+}
+impl Eq for Init {}
+impl PartialEq for Init {
+    fn eq(&self, x: &Self) -> bool {
+        self.expr == x.expr && self.diverge == x.diverge
+    }
+}
+impl<H> Hash for Init
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.expr.hash(h);
+        self.diverge.hash(h);
+    }
 }
 impl<V> Visit for Init
 where
@@ -418,8 +567,8 @@ fn parse_local(s: Stream, attrs: Vec<attr::Attr>) -> Res<Local> {
 fn parse_expr(s: Stream, mut attrs: Vec<attr::Attr>, nosemi: NoSemi) -> Res<Stmt> {
     let mut y = expr::expr_early(s)?;
     let mut tgt = &mut y;
-    use Expr::*;
     loop {
+        use Expr::*;
         tgt = match tgt {
             Assign(x) => &mut x.left,
             Binary(x) => &mut x.left,
@@ -434,8 +583,8 @@ fn parse_expr(s: Stream, mut attrs: Vec<attr::Attr>, nosemi: NoSemi) -> Res<Stmt
     tgt.replace_attrs(attrs);
     let semi: Option<Token![;]> = s.parse()?;
     match y {
-        Mac(expr::Mac { attrs, mac }) if semi.is_some() || mac.delim.is_brace() => {
-            return Ok(Stmt::Mac(stmt::Mac { attrs, mac, semi }));
+        Expr::Mac(expr::Mac { attrs, mac }) if semi.is_some() || mac.delim.is_brace() => {
+            return Ok(Stmt::Mac(Mac { attrs, mac, semi }));
         },
         _ => {},
     }

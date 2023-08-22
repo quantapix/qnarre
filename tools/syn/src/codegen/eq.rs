@@ -66,12 +66,6 @@ impl PartialEq for expr::BinOp {
         }
     }
 }
-impl Eq for stmt::Block {}
-impl PartialEq for stmt::Block {
-    fn eq(&self, x: &Self) -> bool {
-        self.stmts == x.stmts
-    }
-}
 impl Eq for gen::bound::Lifes {}
 impl PartialEq for gen::bound::Lifes {
     fn eq(&self, x: &Self) -> bool {
@@ -703,47 +697,6 @@ impl PartialEq for gen::param::Life {
         self.attrs == x.attrs && self.life == x.life && self.colon == x.colon && self.bounds == x.bounds
     }
 }
-impl Eq for lit::Lit {}
-impl PartialEq for lit::Lit {
-    fn eq(&self, x: &Self) -> bool {
-        use lit::Lit::*;
-        match (self, x) {
-            (Str(x), Str(y)) => x == y,
-            (ByteStr(x), ByteStr(y)) => x == y,
-            (Byte(x), Byte(y)) => x == y,
-            (Char(x), Char(y)) => x == y,
-            (Int(x), Int(y)) => x == y,
-            (Float(x), Float(y)) => x == y,
-            (Bool(x), Bool(y)) => x == y,
-            (Verbatim(x), Verbatim(y)) => x.to_string() == y.to_string(),
-            _ => false,
-        }
-    }
-}
-impl Eq for lit::Bool {}
-impl PartialEq for lit::Bool {
-    fn eq(&self, x: &Self) -> bool {
-        self.val == x.val
-    }
-}
-impl Eq for lit::Byte {}
-impl Eq for lit::ByteStr {}
-impl Eq for lit::Char {}
-impl Eq for lit::Float {}
-impl Eq for lit::Int {}
-impl Eq for lit::Str {}
-impl Eq for stmt::Local {}
-impl PartialEq for stmt::Local {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs && self.pat == x.pat && self.init == x.init
-    }
-}
-impl Eq for stmt::Init {}
-impl PartialEq for stmt::Init {
-    fn eq(&self, x: &Self) -> bool {
-        self.expr == x.expr && self.diverge == x.diverge
-    }
-}
 impl Eq for mac::Mac {}
 impl PartialEq for mac::Mac {
     fn eq(&self, x: &Self) -> bool {
@@ -929,25 +882,6 @@ impl PartialEq for item::StaticMut {
             (None, None) => true,
             _ => false,
         }
-    }
-}
-impl Eq for stmt::Stmt {}
-impl PartialEq for stmt::Stmt {
-    fn eq(&self, x: &Self) -> bool {
-        use stmt::Stmt::*;
-        match (self, x) {
-            (Expr(x, self1), Expr(y, other1)) => x == y && self1 == other1,
-            (Item(x), Item(y)) => x == y,
-            (Local(x), Local(y)) => x == y,
-            (Mac(x), Mac(y)) => x == y,
-            _ => false,
-        }
-    }
-}
-impl Eq for stmt::Mac {}
-impl PartialEq for stmt::Mac {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs && self.mac == x.mac && self.semi == x.semi
     }
 }
 impl Eq for gen::bound::Trait {}

@@ -46,14 +46,6 @@ impl Clone for expr::BinOp {
         *self
     }
 }
-impl Clone for stmt::Block {
-    fn clone(&self) -> Self {
-        stmt::Block {
-            brace: self.brace.clone(),
-            stmts: self.stmts.clone(),
-        }
-    }
-}
 impl Clone for gen::bound::Lifes {
     fn clone(&self) -> Self {
         gen::bound::Lifes {
@@ -570,49 +562,6 @@ impl Clone for gen::param::Life {
         }
     }
 }
-impl Clone for lit::Lit {
-    fn clone(&self) -> Self {
-        use lit::Lit::*;
-        match self {
-            Bool(x) => Bool(x.clone()),
-            Byte(x) => Byte(x.clone()),
-            ByteStr(x) => ByteStr(x.clone()),
-            Char(x) => Char(x.clone()),
-            Float(x) => Float(x.clone()),
-            Int(x) => Int(x.clone()),
-            Str(x) => Str(x.clone()),
-            Verbatim(x) => Verbatim(x.clone()),
-        }
-    }
-}
-impl Clone for lit::Bool {
-    fn clone(&self) -> Self {
-        lit::Bool {
-            val: self.val.clone(),
-            span: self.span.clone(),
-        }
-    }
-}
-impl Clone for stmt::Local {
-    fn clone(&self) -> Self {
-        stmt::Local {
-            attrs: self.attrs.clone(),
-            let_: self.let_.clone(),
-            pat: self.pat.clone(),
-            init: self.init.clone(),
-            semi: self.semi.clone(),
-        }
-    }
-}
-impl Clone for stmt::Init {
-    fn clone(&self) -> Self {
-        stmt::Init {
-            eq: self.eq.clone(),
-            expr: self.expr.clone(),
-            diverge: self.diverge.clone(),
-        }
-    }
-}
 impl Clone for mac::Mac {
     fn clone(&self) -> Self {
         mac::Mac {
@@ -803,26 +752,6 @@ impl Clone for typ::Ret {
         match self {
             Default => Default,
             Type(x, v1) => Type(x.clone(), v1.clone()),
-        }
-    }
-}
-impl Clone for stmt::Stmt {
-    fn clone(&self) -> Self {
-        use stmt::Stmt::*;
-        match self {
-            Expr(x, v1) => Expr(x.clone(), v1.clone()),
-            Item(x) => Item(x.clone()),
-            Local(x) => Local(x.clone()),
-            Mac(x) => Mac(x.clone()),
-        }
-    }
-}
-impl Clone for stmt::Mac {
-    fn clone(&self) -> Self {
-        stmt::Mac {
-            attrs: self.attrs.clone(),
-            mac: self.mac.clone(),
-            semi: self.semi.clone(),
         }
     }
 }

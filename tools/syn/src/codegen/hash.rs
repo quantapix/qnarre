@@ -1,14 +1,6 @@
 use crate::StreamHelper;
 use crate::*;
 use std::hash::{Hash, Hasher};
-impl<H> Hash for stmt::Block
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.stmts.hash(h);
-    }
-}
 impl<H> Hash for gen::bound::Lifes
 where
     H: Hasher,
@@ -82,75 +74,6 @@ where
         self.life.hash(h);
         self.colon.hash(h);
         self.bounds.hash(h);
-    }
-}
-impl<H> Hash for lit::Lit
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        use lit::Lit::*;
-        match self {
-            Str(x) => {
-                h.write_u8(0u8);
-                x.hash(h);
-            },
-            ByteStr(x) => {
-                h.write_u8(1u8);
-                x.hash(h);
-            },
-            Byte(x) => {
-                h.write_u8(2u8);
-                x.hash(h);
-            },
-            Char(x) => {
-                h.write_u8(3u8);
-                x.hash(h);
-            },
-            Int(x) => {
-                h.write_u8(4u8);
-                x.hash(h);
-            },
-            Float(x) => {
-                h.write_u8(5u8);
-                x.hash(h);
-            },
-            Bool(x) => {
-                h.write_u8(6u8);
-                x.hash(h);
-            },
-            Verbatim(x) => {
-                h.write_u8(7u8);
-                x.to_string().hash(h);
-            },
-        }
-    }
-}
-impl<H> Hash for lit::Bool
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.val.hash(h);
-    }
-}
-impl<H> Hash for stmt::Local
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.pat.hash(h);
-        self.init.hash(h);
-    }
-}
-impl<H> Hash for stmt::Init
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.expr.hash(h);
-        self.diverge.hash(h);
     }
 }
 impl<H> Hash for mac::Mac
@@ -385,43 +308,6 @@ where
         self.lifes.hash(h);
         self.typ.hash(h);
         self.bounds.hash(h);
-    }
-}
-impl<H> Hash for stmt::Stmt
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        use stmt::Stmt::*;
-        match self {
-            Local(x) => {
-                h.write_u8(0u8);
-                x.hash(h);
-            },
-            Item(x) => {
-                h.write_u8(1u8);
-                x.hash(h);
-            },
-            Expr(x, v1) => {
-                h.write_u8(2u8);
-                x.hash(h);
-                v1.hash(h);
-            },
-            Mac(x) => {
-                h.write_u8(3u8);
-                x.hash(h);
-            },
-        }
-    }
-}
-impl<H> Hash for stmt::Mac
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.mac.hash(h);
-        self.semi.hash(h);
     }
 }
 impl<H> Hash for gen::bound::Trait

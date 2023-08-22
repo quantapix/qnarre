@@ -136,6 +136,80 @@ impl Parse for Lit {
         })
     }
 }
+impl Clone for Lit {
+    fn clone(&self) -> Self {
+        use Lit::*;
+        match self {
+            Bool(x) => Bool(x.clone()),
+            Byte(x) => Byte(x.clone()),
+            ByteStr(x) => ByteStr(x.clone()),
+            Char(x) => Char(x.clone()),
+            Float(x) => Float(x.clone()),
+            Int(x) => Int(x.clone()),
+            Str(x) => Str(x.clone()),
+            Verbatim(x) => Verbatim(x.clone()),
+        }
+    }
+}
+impl Eq for Lit {}
+impl PartialEq for Lit {
+    fn eq(&self, x: &Self) -> bool {
+        use Lit::*;
+        match (self, x) {
+            (Str(x), Str(y)) => x == y,
+            (ByteStr(x), ByteStr(y)) => x == y,
+            (Byte(x), Byte(y)) => x == y,
+            (Char(x), Char(y)) => x == y,
+            (Int(x), Int(y)) => x == y,
+            (Float(x), Float(y)) => x == y,
+            (Bool(x), Bool(y)) => x == y,
+            (Verbatim(x), Verbatim(y)) => x.to_string() == y.to_string(),
+            _ => false,
+        }
+    }
+}
+impl<H> Hash for Lit
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        use Lit::*;
+        match self {
+            Str(x) => {
+                h.write_u8(0u8);
+                x.hash(h);
+            },
+            ByteStr(x) => {
+                h.write_u8(1u8);
+                x.hash(h);
+            },
+            Byte(x) => {
+                h.write_u8(2u8);
+                x.hash(h);
+            },
+            Char(x) => {
+                h.write_u8(3u8);
+                x.hash(h);
+            },
+            Int(x) => {
+                h.write_u8(4u8);
+                x.hash(h);
+            },
+            Float(x) => {
+                h.write_u8(5u8);
+                x.hash(h);
+            },
+            Bool(x) => {
+                h.write_u8(6u8);
+                x.hash(h);
+            },
+            Verbatim(x) => {
+                h.write_u8(7u8);
+                x.to_string().hash(h);
+            },
+        }
+    }
+}
 impl Pretty for Lit {
     fn pretty(&self, p: &mut Print) {
         use Lit::*;
@@ -233,16 +307,6 @@ impl Bool {
         Ident::new(s, self.span)
     }
 }
-impl Debug for Bool {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Bool {
-            pub fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                f.debug_struct(name).field("value", &self.val).finish()
-            }
-        }
-        self.debug(f, "lit::Bool")
-    }
-}
 impl Parse for Bool {
     fn parse(s: Stream) -> Res<Self> {
         let x = s.fork();
@@ -255,6 +319,28 @@ impl Parse for Bool {
 impl Lower for Bool {
     fn lower(&self, s: &mut Stream) {
         s.append(self.token());
+    }
+}
+impl Clone for Bool {
+    fn clone(&self) -> Self {
+        Bool {
+            val: self.val.clone(),
+            span: self.span.clone(),
+        }
+    }
+}
+impl Eq for Bool {}
+impl PartialEq for Bool {
+    fn eq(&self, x: &Self) -> bool {
+        self.val == x.val
+    }
+}
+impl<H> Hash for Bool
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.val.hash(h);
     }
 }
 impl Pretty for Bool {
@@ -271,6 +357,16 @@ where
     }
     fn visit_mut(&mut self, v: &mut V) {
         &mut self.span.visit_mut(v);
+    }
+}
+impl Debug for Bool {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Bool {
+            pub fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+                f.debug_struct(name).field("value", &self.val).finish()
+            }
+        }
+        self.debug(f, "lit::Bool")
     }
 }
 
@@ -335,18 +431,6 @@ impl Byte {
         self.repr.tok.clone()
     }
 }
-impl Debug for Byte {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Byte {
-            pub fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                f.debug_struct(name)
-                    .field("token", &format_args!("{}", self.repr.tok))
-                    .finish()
-            }
-        }
-        self.debug(f, "LitByte")
-    }
-}
 extra_traits!(Byte);
 impl Parse for Byte {
     fn parse(s: Stream) -> Res<Self> {
@@ -362,6 +446,7 @@ impl Lower for Byte {
         self.repr.tok.lower(s);
     }
 }
+impl Eq for lit::Byte {}
 impl Pretty for Byte {
     fn pretty(&self, p: &mut Print) {
         p.word(self.token().to_string());
@@ -373,6 +458,18 @@ where
 {
     fn visit(&self, v: &mut V) {}
     fn visit_mut(&mut self, v: &mut V) {}
+}
+impl Debug for Byte {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Byte {
+            pub fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+                f.debug_struct(name)
+                    .field("token", &format_args!("{}", self.repr.tok))
+                    .finish()
+            }
+        }
+        self.debug(f, "LitByte")
+    }
 }
 
 pub struct ByteStr {
@@ -407,18 +504,6 @@ impl ByteStr {
         self.repr.tok.clone()
     }
 }
-impl Debug for ByteStr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl ByteStr {
-            pub fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                f.debug_struct(name)
-                    .field("token", &format_args!("{}", self.repr.tok))
-                    .finish()
-            }
-        }
-        self.debug(f, "lit::ByteStr")
-    }
-}
 extra_traits!(ByteStr);
 impl Parse for ByteStr {
     fn parse(s: Stream) -> Res<Self> {
@@ -434,6 +519,7 @@ impl Lower for ByteStr {
         self.repr.tok.lower(s);
     }
 }
+impl Eq for lit::ByteStr {}
 impl Pretty for ByteStr {
     fn pretty(&self, p: &mut Print) {
         p.word(self.token().to_string());
@@ -445,6 +531,18 @@ where
 {
     fn visit(&self, v: &mut V) {}
     fn visit_mut(&mut self, v: &mut V) {}
+}
+impl Debug for ByteStr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl ByteStr {
+            pub fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+                f.debug_struct(name)
+                    .field("token", &format_args!("{}", self.repr.tok))
+                    .finish()
+            }
+        }
+        self.debug(f, "lit::ByteStr")
+    }
 }
 
 pub struct Char {
@@ -479,18 +577,6 @@ impl Char {
         self.repr.tok.clone()
     }
 }
-impl Debug for Char {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Char {
-            pub fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                f.debug_struct(name)
-                    .field("token", &format_args!("{}", self.repr.tok))
-                    .finish()
-            }
-        }
-        self.debug(f, "lit::Char")
-    }
-}
 extra_traits!(Char);
 impl Parse for Char {
     fn parse(s: Stream) -> Res<Self> {
@@ -506,6 +592,7 @@ impl Lower for Char {
         self.repr.tok.lower(s);
     }
 }
+impl Eq for lit::Char {}
 impl Pretty for Char {
     fn pretty(&self, p: &mut Print) {
         p.word(self.token().to_string());
@@ -517,6 +604,18 @@ where
 {
     fn visit(&self, v: &mut V) {}
     fn visit_mut(&mut self, v: &mut V) {}
+}
+impl Debug for Char {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Char {
+            pub fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+                f.debug_struct(name)
+                    .field("token", &format_args!("{}", self.repr.tok))
+                    .finish()
+            }
+        }
+        self.debug(f, "lit::Char")
+    }
 }
 
 pub struct Float {
@@ -569,23 +668,6 @@ impl From<pm2::Lit> for Float {
         }
     }
 }
-impl Display for Float {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.repr.tok.fmt(f)
-    }
-}
-impl Debug for Float {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Float {
-            pub fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                f.debug_struct(name)
-                    .field("token", &format_args!("{}", self.repr.tok))
-                    .finish()
-            }
-        }
-        self.debug(f, "lit::Float")
-    }
-}
 extra_traits!(Float);
 impl Parse for Float {
     fn parse(s: Stream) -> Res<Self> {
@@ -601,6 +683,7 @@ impl Lower for Float {
         self.repr.tok.lower(s);
     }
 }
+impl Eq for lit::Float {}
 impl Pretty for Float {
     fn pretty(&self, p: &mut Print) {
         p.word(self.token().to_string());
@@ -612,6 +695,23 @@ where
 {
     fn visit(&self, v: &mut V) {}
     fn visit_mut(&mut self, v: &mut V) {}
+}
+impl Debug for Float {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Float {
+            pub fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+                f.debug_struct(name)
+                    .field("token", &format_args!("{}", self.repr.tok))
+                    .finish()
+            }
+        }
+        self.debug(f, "lit::Float")
+    }
+}
+impl Display for Float {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.repr.tok.fmt(f)
+    }
 }
 
 pub struct Int {
@@ -664,23 +764,6 @@ impl From<pm2::Lit> for Int {
         }
     }
 }
-impl Display for Int {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.repr.tok.fmt(f)
-    }
-}
-impl Debug for Int {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Int {
-            pub fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                f.debug_struct(name)
-                    .field("token", &format_args!("{}", self.repr.tok))
-                    .finish()
-            }
-        }
-        self.debug(f, "LitInt")
-    }
-}
 extra_traits!(Int);
 impl Parse for Int {
     fn parse(s: Stream) -> Res<Self> {
@@ -696,6 +779,7 @@ impl Lower for Int {
         self.repr.tok.lower(s);
     }
 }
+impl Eq for lit::Int {}
 impl Pretty for Int {
     fn pretty(&self, p: &mut Print) {
         p.word(self.token().to_string());
@@ -707,6 +791,23 @@ where
 {
     fn visit(&self, v: &mut V) {}
     fn visit_mut(&mut self, v: &mut V) {}
+}
+impl Debug for Int {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Int {
+            pub fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+                f.debug_struct(name)
+                    .field("token", &format_args!("{}", self.repr.tok))
+                    .finish()
+            }
+        }
+        self.debug(f, "LitInt")
+    }
+}
+impl Display for Int {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.repr.tok.fmt(f)
+    }
 }
 
 pub struct Str {
@@ -764,18 +865,6 @@ impl Str {
         self.repr.tok.clone()
     }
 }
-impl Debug for Str {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Str {
-            pub fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                f.debug_struct(name)
-                    .field("token", &format_args!("{}", self.repr.tok))
-                    .finish()
-            }
-        }
-        self.debug(f, "lit::Str")
-    }
-}
 extra_traits!(Str);
 impl Parse for Str {
     fn parse(s: Stream) -> Res<Self> {
@@ -791,6 +880,7 @@ impl Lower for Str {
         self.repr.tok.lower(s);
     }
 }
+impl Eq for lit::Str {}
 impl Pretty for Str {
     fn pretty(&self, p: &mut Print) {
         p.word(self.token().to_string());
@@ -802,6 +892,18 @@ where
 {
     fn visit(&self, v: &mut V) {}
     fn visit_mut(&mut self, v: &mut V) {}
+}
+impl Debug for Str {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Str {
+            pub fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+                f.debug_struct(name)
+                    .field("token", &format_args!("{}", self.repr.tok))
+                    .finish()
+            }
+        }
+        self.debug(f, "lit::Str")
+    }
 }
 
 struct Repr {
