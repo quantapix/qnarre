@@ -528,6 +528,47 @@ impl Delim {
         });
     }
 }
+impl Clone for Delim {
+    fn clone(&self) -> Self {
+        use Delim::*;
+        match self {
+            Brace(x) => Brace(x.clone()),
+            Bracket(x) => Bracket(x.clone()),
+            Parenth(x) => Parenth(x.clone()),
+        }
+    }
+}
+impl Eq for Delim {}
+impl PartialEq for Delim {
+    fn eq(&self, x: &Self) -> bool {
+        use Delim::*;
+        match (self, x) {
+            (Brace(_), Brace(_)) => true,
+            (Bracket(_), Bracket(_)) => true,
+            (Parenth(_), Parenth(_)) => true,
+            _ => false,
+        }
+    }
+}
+impl<H> Hash for Delim
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        use Delim::*;
+        match self {
+            Parenth(_) => {
+                h.write_u8(0u8);
+            },
+            Brace(_) => {
+                h.write_u8(1u8);
+            },
+            Bracket(_) => {
+                h.write_u8(2u8);
+            },
+        }
+    }
+}
 impl<V> Visit for Delim
 where
     V: Visitor + ?Sized,

@@ -379,12 +379,6 @@ impl PartialEq for expr::Yield {
         self.attrs == x.attrs && self.expr == x.expr
     }
 }
-impl Eq for pat::Field {}
-impl PartialEq for pat::Field {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs && self.memb == x.memb && self.colon == x.colon && self.pat == x.pat
-    }
-}
 impl Eq for expr::FieldValue {}
 impl PartialEq for expr::FieldValue {
     fn eq(&self, x: &Self) -> bool {
@@ -701,118 +695,6 @@ impl Eq for mac::Mac {}
 impl PartialEq for mac::Mac {
     fn eq(&self, x: &Self) -> bool {
         self.path == x.path && self.delim == x.delim && StreamHelper(&self.toks) == StreamHelper(&x.toks)
-    }
-}
-impl Eq for tok::Delim {}
-impl PartialEq for tok::Delim {
-    fn eq(&self, x: &Self) -> bool {
-        use tok::Delim::*;
-        match (self, x) {
-            (Brace(_), Brace(_)) => true,
-            (Bracket(_), Bracket(_)) => true,
-            (Parenth(_), Parenth(_)) => true,
-            _ => false,
-        }
-    }
-}
-impl Eq for pat::Pat {}
-impl PartialEq for pat::Pat {
-    fn eq(&self, x: &Self) -> bool {
-        use pat::Pat::*;
-        match (self, x) {
-            (Const(x), Const(y)) => x == y,
-            (Ident(x), Ident(y)) => x == y,
-            (Lit(x), Lit(y)) => x == y,
-            (Mac(x), Mac(y)) => x == y,
-            (Or(x), Or(y)) => x == y,
-            (Parenth(x), Parenth(y)) => x == y,
-            (Path(x), Path(y)) => x == y,
-            (Range(x), Range(y)) => x == y,
-            (Ref(x), Ref(y)) => x == y,
-            (Rest(x), Rest(y)) => x == y,
-            (Slice(x), Slice(y)) => x == y,
-            (Struct(x), Struct(y)) => x == y,
-            (Tuple(x), Tuple(y)) => x == y,
-            (TupleStruct(x), TupleStruct(y)) => x == y,
-            (Type(x), Type(y)) => x == y,
-            (Verbatim(x), Verbatim(y)) => StreamHelper(x) == StreamHelper(y),
-            (Wild(x), Wild(y)) => x == y,
-            _ => false,
-        }
-    }
-}
-impl Eq for pat::Ident {}
-impl PartialEq for pat::Ident {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs
-            && self.ref_ == x.ref_
-            && self.mut_ == x.mut_
-            && self.ident == x.ident
-            && self.sub == x.sub
-    }
-}
-impl Eq for pat::Or {}
-impl PartialEq for pat::Or {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs && self.vert == x.vert && self.cases == x.cases
-    }
-}
-impl Eq for pat::Parenth {}
-impl PartialEq for pat::Parenth {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs && self.pat == x.pat
-    }
-}
-impl Eq for pat::Ref {}
-impl PartialEq for pat::Ref {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs && self.mut_ == x.mut_ && self.pat == x.pat
-    }
-}
-impl Eq for pat::Rest {}
-impl PartialEq for pat::Rest {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs
-    }
-}
-impl Eq for pat::Slice {}
-impl PartialEq for pat::Slice {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs && self.pats == x.pats
-    }
-}
-impl Eq for pat::Struct {}
-impl PartialEq for pat::Struct {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs
-            && self.qself == x.qself
-            && self.path == x.path
-            && self.fields == x.fields
-            && self.rest == x.rest
-    }
-}
-impl Eq for pat::Tuple {}
-impl PartialEq for pat::Tuple {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs && self.pats == x.pats
-    }
-}
-impl Eq for pat::TupleStruct {}
-impl PartialEq for pat::TupleStruct {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs && self.qself == x.qself && self.path == x.path && self.pats == x.pats
-    }
-}
-impl Eq for pat::Type {}
-impl PartialEq for pat::Type {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs && self.pat == x.pat && self.typ == x.typ
-    }
-}
-impl Eq for pat::Wild {}
-impl PartialEq for pat::Wild {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs
     }
 }
 impl Eq for gen::where_::Life {}

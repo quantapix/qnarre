@@ -70,6 +70,134 @@ impl Pat {
         parse_many(s, vert)
     }
 }
+impl Clone for Pat {
+    fn clone(&self) -> Self {
+        use Pat::*;
+        match self {
+            Const(x) => Const(x.clone()),
+            Ident(x) => Ident(x.clone()),
+            Lit(x) => Lit(x.clone()),
+            Mac(x) => Mac(x.clone()),
+            Or(x) => Or(x.clone()),
+            Parenth(x) => Parenth(x.clone()),
+            Path(x) => Path(x.clone()),
+            Range(x) => Range(x.clone()),
+            Ref(x) => Ref(x.clone()),
+            Rest(x) => Rest(x.clone()),
+            Slice(x) => Slice(x.clone()),
+            Struct(x) => Struct(x.clone()),
+            Tuple(x) => Tuple(x.clone()),
+            TupleStruct(x) => TupleStruct(x.clone()),
+            Type(x) => Type(x.clone()),
+            Verbatim(x) => Verbatim(x.clone()),
+            Wild(x) => Wild(x.clone()),
+        }
+    }
+}
+impl Eq for Pat {}
+impl PartialEq for Pat {
+    fn eq(&self, x: &Self) -> bool {
+        use Pat::*;
+        match (self, x) {
+            (Const(x), Const(y)) => x == y,
+            (Ident(x), Ident(y)) => x == y,
+            (Lit(x), Lit(y)) => x == y,
+            (Mac(x), Mac(y)) => x == y,
+            (Or(x), Or(y)) => x == y,
+            (Parenth(x), Parenth(y)) => x == y,
+            (Path(x), Path(y)) => x == y,
+            (Range(x), Range(y)) => x == y,
+            (Ref(x), Ref(y)) => x == y,
+            (Rest(x), Rest(y)) => x == y,
+            (Slice(x), Slice(y)) => x == y,
+            (Struct(x), Struct(y)) => x == y,
+            (Tuple(x), Tuple(y)) => x == y,
+            (TupleStruct(x), TupleStruct(y)) => x == y,
+            (Type(x), Type(y)) => x == y,
+            (Verbatim(x), Verbatim(y)) => StreamHelper(x) == StreamHelper(y),
+            (Wild(x), Wild(y)) => x == y,
+            _ => false,
+        }
+    }
+}
+impl<H> Hash for Pat
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        use Pat::*;
+        match self {
+            Const(x) => {
+                h.write_u8(0u8);
+                x.hash(h);
+            },
+            Ident(x) => {
+                h.write_u8(1u8);
+                x.hash(h);
+            },
+            Lit(x) => {
+                h.write_u8(2u8);
+                x.hash(h);
+            },
+            Mac(x) => {
+                h.write_u8(3u8);
+                x.hash(h);
+            },
+            Or(x) => {
+                h.write_u8(4u8);
+                x.hash(h);
+            },
+            Parenth(x) => {
+                h.write_u8(5u8);
+                x.hash(h);
+            },
+            Path(x) => {
+                h.write_u8(6u8);
+                x.hash(h);
+            },
+            Range(x) => {
+                h.write_u8(7u8);
+                x.hash(h);
+            },
+            Ref(x) => {
+                h.write_u8(8u8);
+                x.hash(h);
+            },
+            Rest(x) => {
+                h.write_u8(9u8);
+                x.hash(h);
+            },
+            Slice(x) => {
+                h.write_u8(10u8);
+                x.hash(h);
+            },
+            Struct(x) => {
+                h.write_u8(11u8);
+                x.hash(h);
+            },
+            Tuple(x) => {
+                h.write_u8(12u8);
+                x.hash(h);
+            },
+            TupleStruct(x) => {
+                h.write_u8(13u8);
+                x.hash(h);
+            },
+            Type(x) => {
+                h.write_u8(14u8);
+                x.hash(h);
+            },
+            Verbatim(x) => {
+                h.write_u8(15u8);
+                StreamHelper(x).hash(h);
+            },
+            Wild(x) => {
+                h.write_u8(16u8);
+                x.hash(h);
+            },
+        }
+    }
+}
 impl Pretty for Pat {
     fn pretty(&self, p: &mut Print) {
         use Pat::*;
@@ -227,6 +355,39 @@ impl Lower for Ident {
         }
     }
 }
+impl Clone for Ident {
+    fn clone(&self) -> Self {
+        Ident {
+            attrs: self.attrs.clone(),
+            ref_: self.ref_.clone(),
+            mut_: self.mut_.clone(),
+            ident: self.ident.clone(),
+            sub: self.sub.clone(),
+        }
+    }
+}
+impl Eq for Ident {}
+impl PartialEq for Ident {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs
+            && self.ref_ == x.ref_
+            && self.mut_ == x.mut_
+            && self.ident == x.ident
+            && self.sub == x.sub
+    }
+}
+impl<H> Hash for Ident
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.ref_.hash(h);
+        self.mut_.hash(h);
+        self.ident.hash(h);
+        self.sub.hash(h);
+    }
+}
 impl Pretty for Ident {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -277,6 +438,31 @@ impl Lower for Or {
         s.append_all(self.attrs.outers());
         self.vert.lower(s);
         self.cases.lower(s);
+    }
+}
+impl Clone for Or {
+    fn clone(&self) -> Self {
+        Or {
+            attrs: self.attrs.clone(),
+            vert: self.vert.clone(),
+            cases: self.cases.clone(),
+        }
+    }
+}
+impl Eq for Or {}
+impl PartialEq for Or {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.vert == x.vert && self.cases == x.cases
+    }
+}
+impl<H> Hash for Or
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.vert.hash(h);
+        self.cases.hash(h);
     }
 }
 impl Pretty for Or {
@@ -344,6 +530,30 @@ impl Lower for Parenth {
         });
     }
 }
+impl Clone for Parenth {
+    fn clone(&self) -> Self {
+        Parenth {
+            attrs: self.attrs.clone(),
+            parenth: self.parenth.clone(),
+            pat: self.pat.clone(),
+        }
+    }
+}
+impl Eq for Parenth {}
+impl PartialEq for Parenth {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.pat == x.pat
+    }
+}
+impl<H> Hash for Parenth
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.pat.hash(h);
+    }
+}
 impl Pretty for Parenth {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -384,6 +594,32 @@ impl Lower for Ref {
         self.pat.lower(s);
     }
 }
+impl Clone for Ref {
+    fn clone(&self) -> Self {
+        Ref {
+            attrs: self.attrs.clone(),
+            and: self.and.clone(),
+            mut_: self.mut_.clone(),
+            pat: self.pat.clone(),
+        }
+    }
+}
+impl Eq for Ref {}
+impl PartialEq for Ref {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.mut_ == x.mut_ && self.pat == x.pat
+    }
+}
+impl<H> Hash for Ref
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.mut_.hash(h);
+        self.pat.hash(h);
+    }
+}
 impl Pretty for Ref {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -422,6 +658,28 @@ impl Lower for Rest {
         self.dot2.lower(s);
     }
 }
+impl Clone for Rest {
+    fn clone(&self) -> Self {
+        Rest {
+            attrs: self.attrs.clone(),
+            dot2: self.dot2.clone(),
+        }
+    }
+}
+impl Eq for Rest {}
+impl PartialEq for Rest {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs
+    }
+}
+impl<H> Hash for Rest
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+    }
+}
 impl Pretty for Rest {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -455,6 +713,30 @@ impl Lower for Slice {
         self.bracket.surround(s, |s| {
             self.pats.lower(s);
         });
+    }
+}
+impl Clone for Slice {
+    fn clone(&self) -> Self {
+        Slice {
+            attrs: self.attrs.clone(),
+            bracket: self.bracket.clone(),
+            pats: self.pats.clone(),
+        }
+    }
+}
+impl Eq for Slice {}
+impl PartialEq for Slice {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.pats == x.pats
+    }
+}
+impl<H> Hash for Slice
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.pats.hash(h);
     }
 }
 impl Pretty for Slice {
@@ -511,6 +793,40 @@ impl Lower for Struct {
             }
             self.rest.lower(s);
         });
+    }
+}
+impl Clone for Struct {
+    fn clone(&self) -> Self {
+        Struct {
+            attrs: self.attrs.clone(),
+            qself: self.qself.clone(),
+            path: self.path.clone(),
+            brace: self.brace.clone(),
+            fields: self.fields.clone(),
+            rest: self.rest.clone(),
+        }
+    }
+}
+impl Eq for Struct {}
+impl PartialEq for Struct {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs
+            && self.qself == x.qself
+            && self.path == x.path
+            && self.fields == x.fields
+            && self.rest == x.rest
+    }
+}
+impl<H> Hash for Struct
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.qself.hash(h);
+        self.path.hash(h);
+        self.fields.hash(h);
+        self.rest.hash(h);
     }
 }
 impl Pretty for Struct {
@@ -587,6 +903,33 @@ impl Lower for Field {
         self.pat.lower(s);
     }
 }
+impl Clone for Field {
+    fn clone(&self) -> Self {
+        Field {
+            attrs: self.attrs.clone(),
+            memb: self.memb.clone(),
+            colon: self.colon.clone(),
+            pat: self.pat.clone(),
+        }
+    }
+}
+impl Eq for Field {}
+impl PartialEq for Field {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.memb == x.memb && self.colon == x.colon && self.pat == x.pat
+    }
+}
+impl<H> Hash for Field
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.memb.hash(h);
+        self.colon.hash(h);
+        self.pat.hash(h);
+    }
+}
 impl Pretty for Field {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -637,6 +980,30 @@ impl Lower for Tuple {
         self.parenth.surround(s, |s| {
             self.pats.lower(s);
         });
+    }
+}
+impl Clone for Tuple {
+    fn clone(&self) -> Self {
+        Tuple {
+            attrs: self.attrs.clone(),
+            parenth: self.parenth.clone(),
+            pats: self.pats.clone(),
+        }
+    }
+}
+impl Eq for Tuple {}
+impl PartialEq for Tuple {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.pats == x.pats
+    }
+}
+impl<H> Hash for Tuple
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.pats.hash(h);
     }
 }
 impl Pretty for Tuple {
@@ -701,6 +1068,34 @@ impl Lower for TupleStruct {
         });
     }
 }
+impl Clone for TupleStruct {
+    fn clone(&self) -> Self {
+        TupleStruct {
+            attrs: self.attrs.clone(),
+            qself: self.qself.clone(),
+            path: self.path.clone(),
+            parenth: self.parenth.clone(),
+            pats: self.pats.clone(),
+        }
+    }
+}
+impl Eq for TupleStruct {}
+impl PartialEq for TupleStruct {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.qself == x.qself && self.path == x.path && self.pats == x.pats
+    }
+}
+impl<H> Hash for TupleStruct
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.qself.hash(h);
+        self.path.hash(h);
+        self.pats.hash(h);
+    }
+}
 impl Pretty for TupleStruct {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -763,6 +1158,32 @@ impl Lower for Type {
         self.typ.lower(s);
     }
 }
+impl Clone for Type {
+    fn clone(&self) -> Self {
+        Type {
+            attrs: self.attrs.clone(),
+            pat: self.pat.clone(),
+            colon: self.colon.clone(),
+            typ: self.typ.clone(),
+        }
+    }
+}
+impl Eq for Type {}
+impl PartialEq for Type {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.pat == x.pat && self.typ == x.typ
+    }
+}
+impl<H> Hash for Type
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.pat.hash(h);
+        self.typ.hash(h);
+    }
+}
 impl Pretty for Type {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -799,6 +1220,28 @@ impl Lower for Wild {
     fn lower(&self, s: &mut Stream) {
         s.append_all(self.attrs.outers());
         self.underscore.lower(s);
+    }
+}
+impl Clone for Wild {
+    fn clone(&self) -> Self {
+        Wild {
+            attrs: self.attrs.clone(),
+            underscore: self.underscore.clone(),
+        }
+    }
+}
+impl Eq for Wild {}
+impl PartialEq for Wild {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs
+    }
+}
+impl<H> Hash for Wild
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
     }
 }
 impl Pretty for Wild {

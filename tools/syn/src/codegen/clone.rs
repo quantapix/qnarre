@@ -496,16 +496,6 @@ impl Clone for expr::Yield {
         }
     }
 }
-impl Clone for pat::Field {
-    fn clone(&self) -> Self {
-        pat::Field {
-            attrs: self.attrs.clone(),
-            memb: self.memb.clone(),
-            colon: self.colon.clone(),
-            pat: self.pat.clone(),
-        }
-    }
-}
 impl Clone for expr::FieldValue {
     fn clone(&self) -> Self {
         expr::FieldValue {
@@ -572,152 +562,12 @@ impl Clone for mac::Mac {
         }
     }
 }
-impl Clone for tok::Delim {
-    fn clone(&self) -> Self {
-        use tok::Delim::*;
-        match self {
-            Brace(x) => Brace(x.clone()),
-            Bracket(x) => Bracket(x.clone()),
-            Parenth(x) => Parenth(x.clone()),
-        }
-    }
-}
 impl Clone for expr::Member {
     fn clone(&self) -> Self {
         use expr::Member::*;
         match self {
             Named(x) => Named(x.clone()),
             Unnamed(x) => Unnamed(x.clone()),
-        }
-    }
-}
-impl Clone for pat::Pat {
-    fn clone(&self) -> Self {
-        use pat::Pat::*;
-        match self {
-            Const(x) => Const(x.clone()),
-            Ident(x) => Ident(x.clone()),
-            Lit(x) => Lit(x.clone()),
-            Mac(x) => Mac(x.clone()),
-            Or(x) => Or(x.clone()),
-            Parenth(x) => Parenth(x.clone()),
-            Path(x) => Path(x.clone()),
-            Range(x) => Range(x.clone()),
-            Ref(x) => Ref(x.clone()),
-            Rest(x) => Rest(x.clone()),
-            Slice(x) => Slice(x.clone()),
-            Struct(x) => Struct(x.clone()),
-            Tuple(x) => Tuple(x.clone()),
-            TupleStruct(x) => TupleStruct(x.clone()),
-            Type(x) => Type(x.clone()),
-            Verbatim(x) => Verbatim(x.clone()),
-            Wild(x) => Wild(x.clone()),
-        }
-    }
-}
-impl Clone for pat::Ident {
-    fn clone(&self) -> Self {
-        pat::Ident {
-            attrs: self.attrs.clone(),
-            ref_: self.ref_.clone(),
-            mut_: self.mut_.clone(),
-            ident: self.ident.clone(),
-            sub: self.sub.clone(),
-        }
-    }
-}
-impl Clone for pat::Or {
-    fn clone(&self) -> Self {
-        pat::Or {
-            attrs: self.attrs.clone(),
-            vert: self.vert.clone(),
-            cases: self.cases.clone(),
-        }
-    }
-}
-impl Clone for pat::Parenth {
-    fn clone(&self) -> Self {
-        pat::Parenth {
-            attrs: self.attrs.clone(),
-            parenth: self.parenth.clone(),
-            pat: self.pat.clone(),
-        }
-    }
-}
-impl Clone for pat::Ref {
-    fn clone(&self) -> Self {
-        pat::Ref {
-            attrs: self.attrs.clone(),
-            and: self.and.clone(),
-            mut_: self.mut_.clone(),
-            pat: self.pat.clone(),
-        }
-    }
-}
-impl Clone for pat::Rest {
-    fn clone(&self) -> Self {
-        pat::Rest {
-            attrs: self.attrs.clone(),
-            dot2: self.dot2.clone(),
-        }
-    }
-}
-impl Clone for pat::Slice {
-    fn clone(&self) -> Self {
-        pat::Slice {
-            attrs: self.attrs.clone(),
-            bracket: self.bracket.clone(),
-            pats: self.pats.clone(),
-        }
-    }
-}
-impl Clone for pat::Struct {
-    fn clone(&self) -> Self {
-        pat::Struct {
-            attrs: self.attrs.clone(),
-            qself: self.qself.clone(),
-            path: self.path.clone(),
-            brace: self.brace.clone(),
-            fields: self.fields.clone(),
-            rest: self.rest.clone(),
-        }
-    }
-}
-impl Clone for pat::Tuple {
-    fn clone(&self) -> Self {
-        pat::Tuple {
-            attrs: self.attrs.clone(),
-            parenth: self.parenth.clone(),
-            pats: self.pats.clone(),
-        }
-    }
-}
-impl Clone for pat::TupleStruct {
-    fn clone(&self) -> Self {
-        pat::TupleStruct {
-            attrs: self.attrs.clone(),
-            qself: self.qself.clone(),
-            path: self.path.clone(),
-            parenth: self.parenth.clone(),
-            pats: self.pats.clone(),
-        }
-    }
-}
-impl Clone for pat::Type {
-    fn clone(&self) -> Self {
-        pat::Type {
-            attrs: self.attrs.clone(),
-            pat: self.pat.clone(),
-            colon: self.colon.clone(),
-            typ: self.typ.clone(),
-        }
-    }
-}
-impl Clone for pat::Wild {
-    fn clone(&self) -> Self {
-        pat::Wild {
-            attrs: self.attrs.clone(),
-            underscore: self.underscore.clone(),
         }
     }
 }
