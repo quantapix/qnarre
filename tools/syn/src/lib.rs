@@ -238,52 +238,6 @@ impl<'a> Hash for StreamHelper<'a> {
     }
 }
 
-mod codegen {
-    #[rustfmt::skip]
-    pub mod fold;
-    #[rustfmt::skip]
-    mod clone;
-    #[rustfmt::skip]
-    mod debug;
-    #[rustfmt::skip]
-    mod eq;
-    #[rustfmt::skip]
-    mod hash;
-    mod helper {
-        pub mod fold {
-            use crate::punct::{Pair, Puncted};
-            pub trait FoldHelper {
-                type Item;
-                fn lift<F>(self, f: F) -> Self
-                where
-                    F: FnMut(Self::Item) -> Self::Item;
-            }
-            impl<T> FoldHelper for Vec<T> {
-                type Item = T;
-                fn lift<F>(self, f: F) -> Self
-                where
-                    F: FnMut(Self::Item) -> Self::Item,
-                {
-                    self.into_iter().map(f).collect()
-                }
-            }
-            impl<T, U> FoldHelper for Puncted<T, U> {
-                type Item = T;
-                fn lift<F>(self, mut f: F) -> Self
-                where
-                    F: FnMut(Self::Item) -> Self::Item,
-                {
-                    self.into_pairs()
-                        .map(Pair::into_tuple)
-                        .map(|(t, u)| Pair::new(f(t), u))
-                        .collect()
-                }
-            }
-        }
-    }
-}
-pub use codegen::*;
-
 pub fn parse<T: parse::Parse>(s: Stream) -> Res<T> {
     Parser::parse(T::parse, s)
 }
@@ -295,6 +249,34 @@ trait Folder {}
 
 trait Fold {
     fn fold<F>(&self, f: &mut F);
+}
+
+pub trait FoldHelper {
+    type Item;
+    fn lift<F>(self, f: F) -> Self
+    where
+        F: FnMut(Self::Item) -> Self::Item;
+}
+impl<T> FoldHelper for Vec<T> {
+    type Item = T;
+    fn lift<F>(self, f: F) -> Self
+    where
+        F: FnMut(Self::Item) -> Self::Item,
+    {
+        self.into_iter().map(f).collect()
+    }
+}
+impl<T, U> FoldHelper for Puncted<T, U> {
+    type Item = T;
+    fn lift<F>(self, mut f: F) -> Self
+    where
+        F: FnMut(Self::Item) -> Self::Item,
+    {
+        self.into_pairs()
+            .map(Pair::into_tuple)
+            .map(|(t, u)| Pair::new(f(t), u))
+            .collect()
+    }
 }
 
 trait Visitor {}

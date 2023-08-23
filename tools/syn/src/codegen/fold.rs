@@ -9,2084 +9,2375 @@ macro_rules! full {
     };
 }
 
-pub fn fold_abi<F>(f: &mut F, node: Abi) -> Abi
+impl<F> Fold for path::Angle
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    Abi {
-        extern_: node.extern_,
-        name: (node.name).map(|it| f.fold_lit_str(it)),
-    }
+    fn fold(&self, f: &mut F) {
+        path::Angle {
+            colon2: self.colon2,
+            lt: self.lt,
+            args: FoldHelper::lift(self.args, |x| x.fold(f)),
+            gt: self.gt,
+        }
+    }
+}
+impl<F> Fold for Arm
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Arm {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            pat: self.pat.fold(f),
+            guard: (self.guard).map(|x| ((x).0, Box::new(*(x).1.fold(f)))),
+            fat_arrow: self.fat_arrow,
+            body: Box::new(*self.body.fold(f)),
+            comma: self.comma,
+        }
+    }
 }
-pub fn fold_angle_bracketed_generic_arguments<F>(f: &mut F, node: path::Angle) -> path::Angle
+impl<F> Fold for path::AssocConst
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    path::Angle {
-        colon2: node.colon2,
-        lt: node.lt,
-        args: FoldHelper::lift(node.args, |it| f.fold_generic_argument(it)),
-        gt: node.gt,
+    fn fold(&self, f: &mut F) {
+        path::AssocConst {
+            ident: self.ident.fold(f),
+            args: (self.args).map(|x| x.fold(f)),
+            eq: self.eq,
+            val: self.val.fold(f),
+        }
     }
 }
-pub fn fold_arm<F>(f: &mut F, node: Arm) -> Arm
+impl<F> Fold for path::AssocType
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    Arm {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        pat: f.fold_pat(node.pat),
-        guard: (node.guard).map(|it| ((it).0, Box::new(f.fold_expr(*(it).1)))),
-        fat_arrow: node.fat_arrow,
-        body: Box::new(f.fold_expr(*node.body)),
-        comma: node.comma,
+    fn fold(&self, f: &mut F) {
+        path::AssocType {
+            ident: self.ident.fold(f),
+            args: (self.args).map(|x| x.fold(f)),
+            eq: self.eq,
+            typ: self.typ.fold(f),
+        }
     }
-}
-pub fn fold_assoc_const<F>(f: &mut F, node: path::AssocConst) -> path::AssocConst
+}
+impl<F> Fold for typ::FnArg
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    path::AssocConst {
-        ident: f.fold_ident(node.ident),
-        args: (node.args).map(|it| f.fold_angle_bracketed_generic_arguments(it)),
-        eq: node.eq,
-        val: f.fold_expr(node.val),
+    fn fold(&self, f: &mut F) {
+        typ::FnArg {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            name: (self.name).map(|x| ((x).0.fold(f), (x).1)),
+            typ: self.typ.fold(f),
+        }
     }
 }
-pub fn fold_assoc_type<F>(f: &mut F, node: path::AssocType) -> path::AssocType
+impl<F> Fold for typ::Variadic
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    path::AssocType {
-        ident: f.fold_ident(node.ident),
-        args: (node.args).map(|it| f.fold_angle_bracketed_generic_arguments(it)),
-        eq: node.eq,
-        typ: f.fold_type(node.typ),
+    fn fold(&self, f: &mut F) {
+        typ::Variadic {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            name: (self.name).map(|x| ((x).0.fold(f), (x).1)),
+            dots: self.dots,
+            comma: self.comma,
+        }
     }
 }
-pub fn fold_attr_style<F>(f: &mut F, node: attr::Style) -> attr::Style
+impl<F> Fold for BinOp
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    match node {
-        attr::Style::Outer => attr::Style::Outer,
-        attr::Style::Inner(_binding_0) => attr::Style::Inner(_binding_0),
+    fn fold(&self, f: &mut F) {
+        match self {
+            BinOp::Add(x) => BinOp::Add(x),
+            BinOp::Sub(x) => BinOp::Sub(x),
+            BinOp::Mul(x) => BinOp::Mul(x),
+            BinOp::Div(x) => BinOp::Div(x),
+            BinOp::Rem(x) => BinOp::Rem(x),
+            BinOp::And(x) => BinOp::And(x),
+            BinOp::Or(x) => BinOp::Or(x),
+            BinOp::BitXor(x) => BinOp::BitXor(x),
+            BinOp::BitAnd(x) => BinOp::BitAnd(x),
+            BinOp::BitOr(x) => BinOp::BitOr(x),
+            BinOp::Shl(x) => BinOp::Shl(x),
+            BinOp::Shr(x) => BinOp::Shr(x),
+            BinOp::Eq(x) => BinOp::Eq(x),
+            BinOp::Lt(x) => BinOp::Lt(x),
+            BinOp::Le(x) => BinOp::Le(x),
+            BinOp::Ne(x) => BinOp::Ne(x),
+            BinOp::Ge(x) => BinOp::Ge(x),
+            BinOp::Gt(x) => BinOp::Gt(x),
+            BinOp::AddAssign(x) => BinOp::AddAssign(x),
+            BinOp::SubAssign(x) => BinOp::SubAssign(x),
+            BinOp::MulAssign(x) => BinOp::MulAssign(x),
+            BinOp::DivAssign(x) => BinOp::DivAssign(x),
+            BinOp::RemAssign(x) => BinOp::RemAssign(x),
+            BinOp::BitXorAssign(x) => BinOp::BitXorAssign(x),
+            BinOp::BitAndAssign(x) => BinOp::BitAndAssign(x),
+            BinOp::BitOrAssign(x) => BinOp::BitOrAssign(x),
+            BinOp::ShlAssign(x) => BinOp::ShlAssign(x),
+            BinOp::ShrAssign(x) => BinOp::ShrAssign(x),
+        }
     }
 }
-pub fn fold_attribute<F>(f: &mut F, node: attr::Attr) -> attr::Attr
+impl<F> Fold for Block
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    attr::Attr {
-        pound: node.pound,
-        style: f.fold_attr_style(node.style),
-        bracket: node.bracket,
-        meta: f.fold_meta(node.meta),
+    fn fold(&self, f: &mut F) {
+        Block {
+            brace: self.brace,
+            stmts: FoldHelper::lift(self.stmts, |x| x.fold(f)),
+        }
     }
 }
-pub fn fold_bare_fn_arg<F>(f: &mut F, node: typ::FnArg) -> typ::FnArg
+impl<F> Fold for Bgen::bound::Lifes
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    typ::FnArg {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        name: (node.name).map(|it| (f.fold_ident((it).0), (it).1)),
-        typ: f.fold_type(node.typ),
+    fn fold(&self, f: &mut F) {
+        Bgen::bound::Lifes {
+            for_: self.for_,
+            lt: self.lt,
+            lifes: FoldHelper::lift(self.lifes, |x| x.fold(f)),
+            gt: self.gt,
+        }
     }
 }
-pub fn fold_bare_variadic<F>(f: &mut F, node: typ::Variadic) -> typ::Variadic
+impl<F> Fold for gen::param::Const
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    typ::Variadic {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        name: (node.name).map(|it| (f.fold_ident((it).0), (it).1)),
-        dots: node.dots,
-        comma: node.comma,
+    fn fold(&self, f: &mut F) {
+        gen::param::Const {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            const_: self.const_,
+            ident: self.ident.fold(f),
+            colon: self.colon,
+            typ: self.typ.fold(f),
+            eq: self.eq,
+            default: (self.default).map(|x| x.fold(f)),
+        }
     }
 }
-pub fn fold_bin_op<F>(f: &mut F, node: BinOp) -> BinOp
+impl<F> Fold for Constraint
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    match node {
-        BinOp::Add(_binding_0) => BinOp::Add(_binding_0),
-        BinOp::Sub(_binding_0) => BinOp::Sub(_binding_0),
-        BinOp::Mul(_binding_0) => BinOp::Mul(_binding_0),
-        BinOp::Div(_binding_0) => BinOp::Div(_binding_0),
-        BinOp::Rem(_binding_0) => BinOp::Rem(_binding_0),
-        BinOp::And(_binding_0) => BinOp::And(_binding_0),
-        BinOp::Or(_binding_0) => BinOp::Or(_binding_0),
-        BinOp::BitXor(_binding_0) => BinOp::BitXor(_binding_0),
-        BinOp::BitAnd(_binding_0) => BinOp::BitAnd(_binding_0),
-        BinOp::BitOr(_binding_0) => BinOp::BitOr(_binding_0),
-        BinOp::Shl(_binding_0) => BinOp::Shl(_binding_0),
-        BinOp::Shr(_binding_0) => BinOp::Shr(_binding_0),
-        BinOp::Eq(_binding_0) => BinOp::Eq(_binding_0),
-        BinOp::Lt(_binding_0) => BinOp::Lt(_binding_0),
-        BinOp::Le(_binding_0) => BinOp::Le(_binding_0),
-        BinOp::Ne(_binding_0) => BinOp::Ne(_binding_0),
-        BinOp::Ge(_binding_0) => BinOp::Ge(_binding_0),
-        BinOp::Gt(_binding_0) => BinOp::Gt(_binding_0),
-        BinOp::AddAssign(_binding_0) => BinOp::AddAssign(_binding_0),
-        BinOp::SubAssign(_binding_0) => BinOp::SubAssign(_binding_0),
-        BinOp::MulAssign(_binding_0) => BinOp::MulAssign(_binding_0),
-        BinOp::DivAssign(_binding_0) => BinOp::DivAssign(_binding_0),
-        BinOp::RemAssign(_binding_0) => BinOp::RemAssign(_binding_0),
-        BinOp::BitXorAssign(_binding_0) => BinOp::BitXorAssign(_binding_0),
-        BinOp::BitAndAssign(_binding_0) => BinOp::BitAndAssign(_binding_0),
-        BinOp::BitOrAssign(_binding_0) => BinOp::BitOrAssign(_binding_0),
-        BinOp::ShlAssign(_binding_0) => BinOp::ShlAssign(_binding_0),
-        BinOp::ShrAssign(_binding_0) => BinOp::ShrAssign(_binding_0),
-    }
-}
-pub fn fold_block<F>(f: &mut F, node: Block) -> Block
-where
-    F: Fold + ?Sized,
+    fn fold(&self, f: &mut F) {
+        Constraint {
+            ident: self.ident.fold(f),
+            gnrs: (self.gnrs).map(|x| x.fold(f)),
+            colon: self.colon,
+            bounds: FoldHelper::lift(self.bounds, |x| x.fold(f)),
+        }
+    }
+}
+impl<F> Fold for Data
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        match self {
+            Data::Struct(x) => Data::Struct(x.fold(f)),
+            Data::Enum(x) => Data::Enum(x.fold(f)),
+            Data::Union(x) => Data::Union(x.fold(f)),
+        }
+    }
+}
+impl<F> Fold for data::Enum
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        data::Enum {
+            enum_: self.enum_,
+            brace: self.brace,
+            variants: FoldHelper::lift(self.variants, |x| x.fold(f)),
+        }
+    }
+}
+impl<F> Fold for data::Struct
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        data::Struct {
+            struct_: self.struct_,
+            fields: self.fields.fold(f),
+            semi: self.semi,
+        }
+    }
+}
+impl<F> Fold for data::Union
+where
+    F: Folder + ?Sized,
 {
-    Block {
-        brace: node.brace,
-        stmts: FoldHelper::lift(node.stmts, |it| f.fold_stmt(it)),
-    }
-}
-pub fn fold_bound_lifetimes<F>(f: &mut F, node: Bgen::bound::Lifes) -> Bgen::bound::Lifes
-where
-    F: Fold + ?Sized,
+    fn fold(&self, f: &mut F) {
+        data::Union {
+            union_: self.union_,
+            fields: self.fields.fold(f),
+        }
+    }
+}
+impl<F> Fold for Input
+where
+    F: Folder + ?Sized,
 {
-    Bgen::bound::Lifes {
-        for_: node.for_,
-        lt: node.lt,
-        lifes: FoldHelper::lift(node.lifes, |it| f.fold_generic_param(it)),
-        gt: node.gt,
+    fn fold(&self, f: &mut F) {
+        Input {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            vis: self.vis.fold(f),
+            ident: self.ident.fold(f),
+            gens: self.gens.fold(f),
+            data: self.data.fold(f),
+        }
     }
 }
-pub fn fold_const_param<F>(f: &mut F, node: gen::param::Const) -> gen::param::Const
+impl<F> Fold for Expr
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    gen::param::Const {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        const_: node.const_,
-        ident: f.fold_ident(node.ident),
-        colon: node.colon,
-        typ: f.fold_type(node.typ),
-        eq: node.eq,
-        default: (node.default).map(|it| f.fold_expr(it)),
-    }
-}
-pub fn fold_constraint<F>(f: &mut F, node: Constraint) -> Constraint
-where
-    F: Fold + ?Sized,
-{
-    Constraint {
-        ident: f.fold_ident(node.ident),
-        gnrs: (node.gnrs).map(|it| f.fold_angle_bracketed_generic_arguments(it)),
-        colon: node.colon,
-        bounds: FoldHelper::lift(node.bounds, |it| f.fold_type_param_bound(it)),
-    }
-}
-pub fn fold_data<F>(f: &mut F, node: Data) -> Data
-where
-    F: Fold + ?Sized,
-{
-    match node {
-        Data::Struct(_binding_0) => Data::Struct(f.fold_data_struct(_binding_0)),
-        Data::Enum(_binding_0) => Data::Enum(f.fold_data_enum(_binding_0)),
-        Data::Union(_binding_0) => Data::Union(f.fold_data_union(_binding_0)),
+    fn fold(&self, f: &mut F) {
+        match self {
+            Expr::Array(x) => Expr::Array(full!(x.fold(f))),
+            Expr::Assign(x) => Expr::Assign(full!(x.fold(f))),
+            Expr::Async(x) => Expr::Async(full!(x.fold(f))),
+            Expr::Await(x) => Expr::Await(full!(x.fold(f))),
+            Expr::Binary(x) => Expr::Binary(x.fold(f)),
+            Expr::Block(x) => Expr::Block(full!(x.fold(f))),
+            Expr::Break(x) => Expr::Break(full!(x.fold(f))),
+            Expr::Call(x) => Expr::Call(x.fold(f)),
+            Expr::Cast(x) => Expr::Cast(x.fold(f)),
+            Expr::Closure(x) => Expr::Closure(full!(x.fold(f))),
+            Expr::Const(x) => Expr::Const(full!(x.fold(f))),
+            Expr::Continue(x) => Expr::Continue(full!(x.fold(f))),
+            Expr::Field(x) => Expr::Field(x.fold(f)),
+            Expr::For(x) => Expr::For(full!(x.fold(f))),
+            Expr::Group(x) => Expr::Group(x.fold(f)),
+            Expr::If(x) => Expr::If(full!(x.fold(f))),
+            Expr::Index(x) => Expr::Index(x.fold(f)),
+            Expr::Infer(x) => Expr::Infer(full!(x.fold(f))),
+            Expr::Let(x) => Expr::Let(full!(x.fold(f))),
+            Expr::Lit(x) => Expr::Lit(x.fold(f)),
+            Expr::Loop(x) => Expr::Loop(full!(x.fold(f))),
+            Expr::Macro(x) => Expr::Macro(x.fold(f)),
+            Expr::Match(x) => Expr::Match(full!(x.fold(f))),
+            Expr::Method(x) => Expr::Method(full!(x.fold(f))),
+            Expr::Parenth(x) => Expr::Parenth(x.fold(f)),
+            Expr::Path(x) => Expr::Path(x.fold(f)),
+            Expr::Range(x) => Expr::Range(full!(x.fold(f))),
+            Expr::Reference(x) => Expr::Reference(full!(x.fold(f))),
+            Expr::Repeat(x) => Expr::Repeat(full!(x.fold(f))),
+            Expr::Return(x) => Expr::Return(full!(x.fold(f))),
+            Expr::Struct(x) => Expr::Struct(full!(x.fold(f))),
+            Expr::Try(x) => Expr::Try(full!(x.fold(f))),
+            Expr::TryBlock(x) => Expr::TryBlock(full!(x.fold(f))),
+            Expr::Tuple(x) => Expr::Tuple(full!(x.fold(f))),
+            Expr::Unary(x) => Expr::Unary(x.fold(f)),
+            Expr::Unsafe(x) => Expr::Unsafe(full!(x.fold(f))),
+            Expr::Stream(x) => Expr::Stream(x),
+            Expr::While(x) => Expr::While(full!(x.fold(f))),
+            Expr::Yield(x) => Expr::Yield(full!(x.fold(f))),
+        }
     }
 }
-pub fn fold_data_enum<F>(f: &mut F, node: data::Enum) -> data::Enum
+impl<F> Fold for expr::Array
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    data::Enum {
-        enum_: node.enum_,
-        brace: node.brace,
-        variants: FoldHelper::lift(node.variants, |it| f.fold_variant(it)),
+    fn fold(&self, f: &mut F) {
+        expr::Array {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            bracket: self.bracket,
+            elems: FoldHelper::lift(self.elems, |x| x.fold(f)),
+        }
     }
 }
-pub fn fold_data_struct<F>(f: &mut F, node: data::Struct) -> data::Struct
+impl<F> Fold for expr::Assign
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    data::Struct {
-        struct_: node.struct_,
-        fields: f.fold_fields(node.fields),
-        semi: node.semi,
+    fn fold(&self, f: &mut F) {
+        expr::Assign {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            left: Box::new(*self.left.fold(f)),
+            eq: self.eq,
+            right: Box::new(*self.right.fold(f)),
+        }
     }
 }
-pub fn fold_data_union<F>(f: &mut F, node: data::Union) -> data::Union
+impl<F> Fold for expr::Async
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    data::Union {
-        union_: node.union_,
-        fields: f.fold_fields_named(node.fields),
+    fn fold(&self, f: &mut F) {
+        expr::Async {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            async_: self.async_,
+            move_: self.move_,
+            block: self.block.fold(f),
+        }
     }
 }
-pub fn fold_derive_input<F>(f: &mut F, node: Input) -> Input
+impl<F> Fold for expr::Await
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    Input {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        vis: f.fold_visibility(node.vis),
-        ident: f.fold_ident(node.ident),
-        gens: f.fold_generics(node.gens),
-        data: f.fold_data(node.data),
+    fn fold(&self, f: &mut F) {
+        expr::Await {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            expr: Box::new(*self.expr.fold(f)),
+            dot: self.dot,
+            await_: self.await_,
+        }
     }
 }
-pub fn fold_expr<F>(f: &mut F, node: Expr) -> Expr
+impl<F> Fold for expr::Binary
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    match node {
-        Expr::Array(_binding_0) => Expr::Array(full!(f.fold_expr_array(_binding_0))),
-        Expr::Assign(_binding_0) => Expr::Assign(full!(f.fold_expr_assign(_binding_0))),
-        Expr::Async(_binding_0) => Expr::Async(full!(f.fold_expr_async(_binding_0))),
-        Expr::Await(_binding_0) => Expr::Await(full!(f.fold_expr_await(_binding_0))),
-        Expr::Binary(_binding_0) => Expr::Binary(f.fold_expr_binary(_binding_0)),
-        Expr::Block(_binding_0) => Expr::Block(full!(f.fold_expr_block(_binding_0))),
-        Expr::Break(_binding_0) => Expr::Break(full!(f.fold_expr_break(_binding_0))),
-        Expr::Call(_binding_0) => Expr::Call(f.fold_expr_call(_binding_0)),
-        Expr::Cast(_binding_0) => Expr::Cast(f.fold_expr_cast(_binding_0)),
-        Expr::Closure(_binding_0) => Expr::Closure(full!(f.fold_expr_closure(_binding_0))),
-        Expr::Const(_binding_0) => Expr::Const(full!(f.fold_expr_const(_binding_0))),
-        Expr::Continue(_binding_0) => Expr::Continue(full!(f.fold_expr_continue(_binding_0))),
-        Expr::Field(_binding_0) => Expr::Field(f.fold_expr_field(_binding_0)),
-        Expr::For(_binding_0) => Expr::For(full!(f.fold_expr_for_loop(_binding_0))),
-        Expr::Group(_binding_0) => Expr::Group(f.fold_expr_group(_binding_0)),
-        Expr::If(_binding_0) => Expr::If(full!(f.fold_expr_if(_binding_0))),
-        Expr::Index(_binding_0) => Expr::Index(f.fold_expr_index(_binding_0)),
-        Expr::Infer(_binding_0) => Expr::Infer(full!(f.fold_expr_infer(_binding_0))),
-        Expr::Let(_binding_0) => Expr::Let(full!(f.fold_expr_let(_binding_0))),
-        Expr::Lit(_binding_0) => Expr::Lit(f.fold_expr_lit(_binding_0)),
-        Expr::Loop(_binding_0) => Expr::Loop(full!(f.fold_expr_loop(_binding_0))),
-        Expr::Macro(_binding_0) => Expr::Macro(f.fold_expr_macro(_binding_0)),
-        Expr::Match(_binding_0) => Expr::Match(full!(f.fold_expr_match(_binding_0))),
-        Expr::Method(_binding_0) => Expr::Method(full!(f.fold_expr_method_call(_binding_0))),
-        Expr::Parenth(_binding_0) => Expr::Parenth(f.fold_expr_paren(_binding_0)),
-        Expr::Path(_binding_0) => Expr::Path(f.fold_expr_path(_binding_0)),
-        Expr::Range(_binding_0) => Expr::Range(full!(f.fold_expr_range(_binding_0))),
-        Expr::Reference(_binding_0) => Expr::Reference(full!(f.fold_expr_reference(_binding_0))),
-        Expr::Repeat(_binding_0) => Expr::Repeat(full!(f.fold_expr_repeat(_binding_0))),
-        Expr::Return(_binding_0) => Expr::Return(full!(f.fold_expr_return(_binding_0))),
-        Expr::Struct(_binding_0) => Expr::Struct(full!(f.fold_expr_struct(_binding_0))),
-        Expr::Try(_binding_0) => Expr::Try(full!(f.fold_expr_try(_binding_0))),
-        Expr::TryBlock(_binding_0) => Expr::TryBlock(full!(f.fold_expr_try_block(_binding_0))),
-        Expr::Tuple(_binding_0) => Expr::Tuple(full!(f.fold_expr_tuple(_binding_0))),
-        Expr::Unary(_binding_0) => Expr::Unary(f.fold_expr_unary(_binding_0)),
-        Expr::Unsafe(_binding_0) => Expr::Unsafe(full!(f.fold_expr_unsafe(_binding_0))),
-        Expr::Stream(_binding_0) => Expr::Stream(_binding_0),
-        Expr::While(_binding_0) => Expr::While(full!(f.fold_expr_while(_binding_0))),
-        Expr::Yield(_binding_0) => Expr::Yield(full!(f.fold_expr_yield(_binding_0))),
+    fn fold(&self, f: &mut F) {
+        expr::Binary {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            left: Box::new(*self.left.fold(f)),
+            op: self.op.fold(f),
+            right: Box::new(*self.right.fold(f)),
+        }
     }
 }
-pub fn fold_expr_array<F>(f: &mut F, node: expr::Array) -> expr::Array
+impl<F> Fold for expr::Block
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::Array {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        bracket: node.bracket,
-        elems: FoldHelper::lift(node.elems, |it| f.fold_expr(it)),
+    fn fold(&self, f: &mut F) {
+        expr::Block {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            label: (self.label).map(|x| x.fold(f)),
+            block: self.block.fold(f),
+        }
     }
 }
-pub fn fold_expr_assign<F>(f: &mut F, node: expr::Assign) -> expr::Assign
+impl<F> Fold for expr::Break
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::Assign {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        left: Box::new(f.fold_expr(*node.left)),
-        eq: node.eq,
-        right: Box::new(f.fold_expr(*node.right)),
+    fn fold(&self, f: &mut F) {
+        expr::Break {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            break_: self.break_,
+            life: (self.life).map(|x| x.fold(f)),
+            val: (self.val).map(|x| Box::new(*x.fold(f))),
+        }
     }
 }
-pub fn fold_expr_async<F>(f: &mut F, node: expr::Async) -> expr::Async
+impl<F> Fold for expr::Call
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::Async {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        async_: node.async_,
-        move_: node.move_,
-        block: f.fold_block(node.block),
+    fn fold(&self, f: &mut F) {
+        expr::Call {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            func: Box::new(*self.func.fold(f)),
+            parenth: self.parenth,
+            args: FoldHelper::lift(self.args, |x| x.fold(f)),
+        }
     }
 }
-pub fn fold_expr_await<F>(f: &mut F, node: expr::Await) -> expr::Await
+impl<F> Fold for expr::Cast
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::Await {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        expr: Box::new(f.fold_expr(*node.expr)),
-        dot: node.dot,
-        await_: node.await_,
+    fn fold(&self, f: &mut F) {
+        expr::Cast {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            expr: Box::new(*self.expr.fold(f)),
+            as_: self.as_,
+            typ: Box::new(*self.typ.fold(f)),
+        }
     }
 }
-pub fn fold_expr_binary<F>(f: &mut F, node: expr::Binary) -> expr::Binary
+impl<F> Fold for expr::Closure
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::Binary {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        left: Box::new(f.fold_expr(*node.left)),
-        op: f.fold_bin_op(node.op),
-        right: Box::new(f.fold_expr(*node.right)),
+    fn fold(&self, f: &mut F) {
+        expr::Closure {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            lifes: (self.lifes).map(|x| x.fold(f)),
+            const_: self.const_,
+            static_: self.static_,
+            async_: self.async_,
+            move_: self.move_,
+            or1: self.or1,
+            ins: FoldHelper::lift(self.inputs, |x| x.fold(f)),
+            or2: self.or2,
+            ret: self.ret.fold(f),
+            body: Box::new(*self.body.fold(f)),
+        }
     }
 }
-pub fn fold_expr_block<F>(f: &mut F, node: expr::Block) -> expr::Block
+impl<F> Fold for expr::Const
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::Block {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        label: (node.label).map(|it| f.fold_label(it)),
-        block: f.fold_block(node.block),
+    fn fold(&self, f: &mut F) {
+        expr::Const {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            const_: self.const_,
+            block: self.block.fold(f),
+        }
     }
 }
-pub fn fold_expr_break<F>(f: &mut F, node: expr::Break) -> expr::Break
+impl<F> Fold for expr::Continue
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::Break {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        break_: node.break_,
-        life: (node.life).map(|it| f.fold_lifetime(it)),
-        val: (node.val).map(|it| Box::new(f.fold_expr(*it))),
+    fn fold(&self, f: &mut F) {
+        expr::Continue {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            continue_: self.continue_,
+            life: (self.life).map(|x| x.fold(f)),
+        }
     }
 }
-pub fn fold_expr_call<F>(f: &mut F, node: expr::Call) -> expr::Call
+impl<F> Fold for expr::Field
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::Call {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        func: Box::new(f.fold_expr(*node.func)),
-        parenth: node.parenth,
-        args: FoldHelper::lift(node.args, |it| f.fold_expr(it)),
+    fn fold(&self, f: &mut F) {
+        expr::Field {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            expr: Box::new(*self.expr.fold(f)),
+            dot: self.dot,
+            memb: self.memb.fold(f),
+        }
     }
 }
-pub fn fold_expr_cast<F>(f: &mut F, node: expr::Cast) -> expr::Cast
+impl<F> Fold for expr::For
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::Cast {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        expr: Box::new(f.fold_expr(*node.expr)),
-        as_: node.as_,
-        typ: Box::new(f.fold_type(*node.typ)),
+    fn fold(&self, f: &mut F) {
+        expr::For {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            label: (self.label).map(|x| x.fold(f)),
+            for_: self.for_,
+            pat: Box::new(*self.pat.fold(f)),
+            in_: self.in_,
+            expr: Box::new(*self.expr.fold(f)),
+            body: self.body.fold(f),
+        }
     }
 }
-pub fn fold_expr_closure<F>(f: &mut F, node: expr::Closure) -> expr::Closure
+impl<F> Fold for expr::Group
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::Closure {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        lifes: (node.lifes).map(|it| f.fold_bound_lifetimes(it)),
-        const_: node.const_,
-        static_: node.static_,
-        async_: node.async_,
-        move_: node.move_,
-        or1: node.or1,
-        ins: FoldHelper::lift(node.inputs, |it| f.fold_pat(it)),
-        or2: node.or2,
-        ret: f.fold_return_type(node.ret),
-        body: Box::new(f.fold_expr(*node.body)),
+    fn fold(&self, f: &mut F) {
+        expr::Group {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            group: self.group,
+            expr: Box::new(*self.expr.fold(f)),
+        }
     }
 }
-pub fn fold_expr_const<F>(f: &mut F, node: expr::Const) -> expr::Const
+impl<F> Fold for expr::If
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::Const {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        const_: node.const_,
-        block: f.fold_block(node.block),
+    fn fold(&self, f: &mut F) {
+        expr::If {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            if_: self.if_,
+            cond: Box::new(*self.cond.fold(f)),
+            then_: self.then_.fold(f),
+            else_: (self.else_).map(|x| ((x).0, Box::new(*x.fold(f)))),
+        }
     }
 }
-pub fn fold_expr_continue<F>(f: &mut F, node: expr::Continue) -> expr::Continue
+impl<F> Fold for expr::Index
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::Continue {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        continue_: node.continue_,
-        life: (node.life).map(|it| f.fold_lifetime(it)),
+    fn fold(&self, f: &mut F) {
+        expr::Index {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            expr: Box::new(*self.expr.fold(f)),
+            bracket: self.bracket,
+            idx: Box::new(*self.idx.fold(f)),
+        }
     }
 }
-pub fn fold_expr_field<F>(f: &mut F, node: expr::Field) -> expr::Field
+impl<F> Fold for expr::Infer
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::Field {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        expr: Box::new(f.fold_expr(*node.expr)),
-        dot: node.dot,
-        memb: f.fold_member(node.memb),
+    fn fold(&self, f: &mut F) {
+        expr::Infer {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            underscore: self.underscore,
+        }
     }
 }
-pub fn fold_expr_for_loop<F>(f: &mut F, node: expr::For) -> expr::For
+impl<F> Fold for expr::Let
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::For {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        label: (node.label).map(|it| f.fold_label(it)),
-        for_: node.for_,
-        pat: Box::new(f.fold_pat(*node.pat)),
-        in_: node.in_,
-        expr: Box::new(f.fold_expr(*node.expr)),
-        body: f.fold_block(node.body),
+    fn fold(&self, f: &mut F) {
+        expr::Let {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            let_: self.let_,
+            pat: Box::new(*self.pat.fold(f)),
+            eq: self.eq,
+            expr: Box::new(*self.expr.fold(f)),
+        }
     }
 }
-pub fn fold_expr_group<F>(f: &mut F, node: expr::Group) -> expr::Group
+impl<F> Fold for expr::Lit
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::Group {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        group: node.group,
-        expr: Box::new(f.fold_expr(*node.expr)),
+    fn fold(&self, f: &mut F) {
+        expr::Lit {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            lit: self.lit.fold(f),
+        }
     }
 }
-pub fn fold_expr_if<F>(f: &mut F, node: expr::If) -> expr::If
+impl<F> Fold for expr::Loop
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::If {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        if_: node.if_,
-        cond: Box::new(f.fold_expr(*node.cond)),
-        then_: f.fold_block(node.then_),
-        else_: (node.else_).map(|it| ((it).0, Box::new(f.fold_expr(*(it).1)))),
+    fn fold(&self, f: &mut F) {
+        expr::Loop {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            label: (self.label).map(|x| x.fold(f)),
+            loop_: self.loop_,
+            body: self.body.fold(f),
+        }
     }
 }
-pub fn fold_expr_index<F>(f: &mut F, node: expr::Index) -> expr::Index
+impl<F> Fold for expr::Mac
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::Index {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        expr: Box::new(f.fold_expr(*node.expr)),
-        bracket: node.bracket,
-        idx: Box::new(f.fold_expr(*node.idx)),
+    fn fold(&self, f: &mut F) {
+        expr::Mac {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            mac: self.mac.fold(f),
+        }
     }
 }
-pub fn fold_expr_infer<F>(f: &mut F, node: expr::Infer) -> expr::Infer
+impl<F> Fold for expr::Match
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::Infer {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        underscore: node.underscore,
+    fn fold(&self, f: &mut F) {
+        expr::Match {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            match_: self.match_,
+            expr: Box::new(*self.expr.fold(f)),
+            brace: self.brace,
+            arms: FoldHelper::lift(self.arms, |x| x.fold(f)),
+        }
     }
 }
-pub fn fold_expr_let<F>(f: &mut F, node: expr::Let) -> expr::Let
+impl<F> Fold for expr::Method
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::Let {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        let_: node.let_,
-        pat: Box::new(f.fold_pat(*node.pat)),
-        eq: node.eq,
-        expr: Box::new(f.fold_expr(*node.expr)),
+    fn fold(&self, f: &mut F) {
+        expr::Method {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            expr: Box::new(*self.expr.fold(f)),
+            dot: self.dot,
+            method: self.method.fold(f),
+            turbofish: (self.turbofish).map(|x| x.fold(f)),
+            parenth: self.parenth,
+            args: FoldHelper::lift(self.args, |x| x.fold(f)),
+        }
     }
 }
-pub fn fold_expr_lit<F>(f: &mut F, node: expr::Lit) -> expr::Lit
+impl<F> Fold for expr::Parenth
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::Lit {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        lit: f.fold_lit(node.lit),
+    fn fold(&self, f: &mut F) {
+        expr::Parenth {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            parenth: self.parenth,
+            expr: Box::new(*self.expr.fold(f)),
+        }
     }
 }
-pub fn fold_expr_loop<F>(f: &mut F, node: expr::Loop) -> expr::Loop
+impl<F> Fold for expr::Path
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::Loop {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        label: (node.label).map(|it| f.fold_label(it)),
-        loop_: node.loop_,
-        body: f.fold_block(node.body),
+    fn fold(&self, f: &mut F) {
+        expr::Path {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            qself: (self.qself).map(|x| x.fold(f)),
+            path: self.path.fold(f),
+        }
     }
 }
-pub fn fold_expr_macro<F>(f: &mut F, node: expr::Mac) -> expr::Mac
+impl<F> Fold for expr::Range
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::Mac {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        mac: f.fold_macro(node.mac),
+    fn fold(&self, f: &mut F) {
+        expr::Range {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            beg: (self.beg).map(|x| Box::new(*x.fold(f))),
+            limits: self.limits.fold(f),
+            end: (self.end).map(|x| Box::new(*x.fold(f))),
+        }
     }
 }
-pub fn fold_expr_match<F>(f: &mut F, node: expr::Match) -> expr::Match
+impl<F> Fold for expr::Ref
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::Match {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        match_: node.match_,
-        expr: Box::new(f.fold_expr(*node.expr)),
-        brace: node.brace,
-        arms: FoldHelper::lift(node.arms, |it| f.fold_arm(it)),
+    fn fold(&self, f: &mut F) {
+        expr::Ref {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            and: self.and,
+            mut_: self.mut_,
+            expr: Box::new(*self.expr.fold(f)),
+        }
     }
 }
-pub fn fold_expr_method_call<F>(f: &mut F, node: expr::Method) -> expr::Method
+impl<F> Fold for expr::Repeat
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::Method {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        expr: Box::new(f.fold_expr(*node.expr)),
-        dot: node.dot,
-        method: f.fold_ident(node.method),
-        turbofish: (node.turbofish).map(|it| f.fold_angle_bracketed_generic_arguments(it)),
-        parenth: node.parenth,
-        args: FoldHelper::lift(node.args, |it| f.fold_expr(it)),
+    fn fold(&self, f: &mut F) {
+        expr::Repeat {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            bracket: self.bracket,
+            expr: Box::new(*self.expr.fold(f)),
+            semi: self.semi,
+            len: Box::new(*self.len.fold(f)),
+        }
     }
 }
-pub fn fold_expr_paren<F>(f: &mut F, node: expr::Parenth) -> expr::Parenth
+impl<F> Fold for expr::Return
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::Parenth {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        parenth: node.parenth,
-        expr: Box::new(f.fold_expr(*node.expr)),
+    fn fold(&self, f: &mut F) {
+        expr::Return {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            return_: self.return_,
+            expr: (self.expr).map(|x| Box::new(*x.fold(f))),
+        }
     }
 }
-pub fn fold_expr_path<F>(f: &mut F, node: expr::Path) -> expr::Path
+impl<F> Fold for expr::Struct
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::Path {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        qself: (node.qself).map(|it| f.fold_qself(it)),
-        path: f.fold_path(node.path),
+    fn fold(&self, f: &mut F) {
+        expr::Struct {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            qself: (self.qself).map(|x| x.fold(f)),
+            path: self.path.fold(f),
+            brace: self.brace,
+            fields: FoldHelper::lift(self.fields, |x| x.fold(f)),
+            dot2: self.dot2,
+            rest: (self.rest).map(|x| Box::new(*x.fold(f))),
+        }
     }
 }
-pub fn fold_expr_range<F>(f: &mut F, node: expr::Range) -> expr::Range
+impl<F> Fold for expr::Try
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::Range {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        beg: (node.beg).map(|it| Box::new(f.fold_expr(*it))),
-        limits: f.fold_range_limits(node.limits),
-        end: (node.end).map(|it| Box::new(f.fold_expr(*it))),
+    fn fold(&self, f: &mut F) {
+        expr::Try {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            expr: Box::new(*self.expr.fold(f)),
+            question: self.question,
+        }
     }
 }
-pub fn fold_expr_reference<F>(f: &mut F, node: expr::Ref) -> expr::Ref
+impl<F> Fold for expr::TryBlock
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::Ref {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        and: node.and,
-        mut_: node.mut_,
-        expr: Box::new(f.fold_expr(*node.expr)),
+    fn fold(&self, f: &mut F) {
+        expr::TryBlock {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            try_: self.try_,
+            block: self.block.fold(f),
+        }
     }
 }
-pub fn fold_expr_repeat<F>(f: &mut F, node: expr::Repeat) -> expr::Repeat
+impl<F> Fold for expr::Tuple
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::Repeat {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        bracket: node.bracket,
-        expr: Box::new(f.fold_expr(*node.expr)),
-        semi: node.semi,
-        len: Box::new(f.fold_expr(*node.len)),
+    fn fold(&self, f: &mut F) {
+        expr::Tuple {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            parenth: self.parenth,
+            elems: FoldHelper::lift(self.elems, |x| x.fold(f)),
+        }
     }
 }
-pub fn fold_expr_return<F>(f: &mut F, node: expr::Return) -> expr::Return
+impl<F> Fold for expr::Unary
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::Return {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        return_: node.return_,
-        expr: (node.expr).map(|it| Box::new(f.fold_expr(*it))),
+    fn fold(&self, f: &mut F) {
+        expr::Unary {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            op: self.op.fold(f),
+            expr: Box::new(*self.expr.fold(f)),
+        }
     }
 }
-pub fn fold_expr_struct<F>(f: &mut F, node: expr::Struct) -> expr::Struct
+impl<F> Fold for expr::Unsafe
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::Struct {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        qself: (node.qself).map(|it| f.fold_qself(it)),
-        path: f.fold_path(node.path),
-        brace: node.brace,
-        fields: FoldHelper::lift(node.fields, |it| f.fold_field_value(it)),
-        dot2: node.dot2,
-        rest: (node.rest).map(|it| Box::new(f.fold_expr(*it))),
+    fn fold(&self, f: &mut F) {
+        expr::Unsafe {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            unsafe_: self.unsafe_,
+            block: self.block.fold(f),
+        }
     }
 }
-pub fn fold_expr_try<F>(f: &mut F, node: expr::Try) -> expr::Try
+impl<F> Fold for expr::While
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::Try {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        expr: Box::new(f.fold_expr(*node.expr)),
-        question: node.question,
+    fn fold(&self, f: &mut F) {
+        expr::While {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            label: (self.label).map(|x| x.fold(f)),
+            while_: self.while_,
+            cond: Box::new(*self.cond.fold(f)),
+            block: self.block.fold(f),
+        }
     }
 }
-pub fn fold_expr_try_block<F>(f: &mut F, node: expr::TryBlock) -> expr::TryBlock
+impl<F> Fold for expr::Yield
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::TryBlock {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        try_: node.try_,
-        block: f.fold_block(node.block),
+    fn fold(&self, f: &mut F) {
+        expr::Yield {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            yield_: self.yield_,
+            expr: (self.expr).map(|x| Box::new(*x.fold(f))),
+        }
     }
 }
-pub fn fold_expr_tuple<F>(f: &mut F, node: expr::Tuple) -> expr::Tuple
+impl<F> Fold for data::Field
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::Tuple {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        parenth: node.parenth,
-        elems: FoldHelper::lift(node.elems, |it| f.fold_expr(it)),
+    fn fold(&self, f: &mut F) {
+        data::Field {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            vis: self.vis.fold(f),
+            mut_: self.mut_.fold(f),
+            ident: (self.ident).map(|x| x.fold(f)),
+            colon: self.colon,
+            typ: self.typ.fold(f),
+        }
     }
 }
-pub fn fold_expr_unary<F>(f: &mut F, node: expr::Unary) -> expr::Unary
+impl<F> Fold for data::Mut
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::Unary {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        op: f.fold_un_op(node.op),
-        expr: Box::new(f.fold_expr(*node.expr)),
+    fn fold(&self, f: &mut F) {
+        match self {
+            data::Mut::None => data::Mut::None,
+        }
     }
 }
-pub fn fold_expr_unsafe<F>(f: &mut F, node: expr::Unsafe) -> expr::Unsafe
+impl<F> Fold for pat::Field
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::Unsafe {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        unsafe_: node.unsafe_,
-        block: f.fold_block(node.block),
+    fn fold(&self, f: &mut F) {
+        pat::Fieldeld {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            member: self.memb.fold(f),
+            colon: self.colon,
+            pat: Box::new(*self.pat.fold(f)),
+        }
     }
 }
-pub fn fold_expr_while<F>(f: &mut F, node: expr::While) -> expr::While
+impl<F> Fold for FieldValue
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::While {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        label: (node.label).map(|it| f.fold_label(it)),
-        while_: node.while_,
-        cond: Box::new(f.fold_expr(*node.cond)),
-        block: f.fold_block(node.block),
+    fn fold(&self, f: &mut F) {
+        FieldValue {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            member: self.member.fold(f),
+            colon: self.colon,
+            expr: self.expr.fold(f),
+        }
     }
 }
-pub fn fold_expr_yield<F>(f: &mut F, node: expr::Yield) -> expr::Yield
+impl<F> Fold for data::Fields
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    expr::Yield {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        yield_: node.yield_,
-        expr: (node.expr).map(|it| Box::new(f.fold_expr(*it))),
+    fn fold(&self, f: &mut F) {
+        match self {
+            data::Fields::Named(x) => data::Fields::Named(x.fold(f)),
+            data::Fields::Unnamed(x) => data::Fields::Unnamed(x.fold(f)),
+            data::Fields::Unit => data::Fields::Unit,
+        }
     }
 }
-pub fn fold_field<F>(f: &mut F, node: data::Field) -> data::Field
+impl<F> Fold for data::Named
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    data::Field {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        vis: f.fold_visibility(node.vis),
-        mut_: f.fold_field_mutability(node.mut_),
-        ident: (node.ident).map(|it| f.fold_ident(it)),
-        colon: node.colon,
-        typ: f.fold_type(node.typ),
+    fn fold(&self, f: &mut F) {
+        data::Named {
+            brace: self.brace,
+            fields: FoldHelper::lift(self.fields, |x| x.fold(f)),
+        }
     }
 }
-pub fn fold_field_mutability<F>(f: &mut F, node: data::Mut) -> data::Mut
+impl<F> Fold for data::Unnamed
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    match node {
-        data::Mut::None => data::Mut::None,
+    fn fold(&self, f: &mut F) {
+        data::Unnamed {
+            parenth: self.parenth,
+            fields: FoldHelper::lift(self.fields, |x| x.fold(f)),
+        }
     }
 }
-pub fn fold_field_pat<F>(f: &mut F, node: pat::Field) -> pat::Field
+impl<F> Fold for item::File
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    pat::Fieldeld {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        member: f.fold_member(node.memb),
-        colon: node.colon,
-        pat: Box::new(f.fold_pat(*node.pat)),
+    fn fold(&self, f: &mut F) {
+        item::File {
+            shebang: self.shebang,
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            items: FoldHelper::lift(self.items, |x| x.fold(f)),
+        }
     }
 }
-pub fn fold_field_value<F>(f: &mut F, node: FieldValue) -> FieldValue
+impl<F> Fold for item::FnArg
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    FieldValue {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        member: f.fold_member(node.member),
-        colon: node.colon,
-        expr: f.fold_expr(node.expr),
+    fn fold(&self, f: &mut F) {
+        match self {
+            item::FnArg::Receiver(x) => item::FnArg::Receiver(x.fold(f)),
+            item::FnArg::Type(x) => item::FnArg::Type(x.fold(f)),
+        }
     }
 }
-pub fn fold_fields<F>(f: &mut F, node: data::Fields) -> data::Fields
+impl<F> Fold for item::foreign::Item
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    match node {
-        data::Fields::Named(_binding_0) => data::Fields::Named(f.fold_fields_named(_binding_0)),
-        data::Fields::Unnamed(_binding_0) => data::Fields::Unnamed(f.fold_fields_unnamed(_binding_0)),
-        data::Fields::Unit => data::Fields::Unit,
+    fn fold(&self, f: &mut F) {
+        match self {
+            item::foreign::Item::Fn(x) => item::foreign::Item::Fn(x.fold(f)),
+            item::foreign::Item::Static(x) => item::foreign::Item::Static(x.fold(f)),
+            item::foreign::Item::Type(x) => item::foreign::Item::Type(x.fold(f)),
+            item::foreign::Item::Macro(x) => item::foreign::Item::Macro(x.fold(f)),
+            item::foreign::Item::Verbatim(x) => item::foreign::Item::Verbatim(x),
+        }
     }
 }
-pub fn fold_fields_named<F>(f: &mut F, node: data::Named) -> data::Named
+impl<F> Fold for item::foreign::Fn
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    data::Named {
-        brace: node.brace,
-        fields: FoldHelper::lift(node.fields, |it| f.fold_field(it)),
+    fn fold(&self, f: &mut F) {
+        item::foreign::Fn {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            vis: self.vis.fold(f),
+            sig: self.sig.fold(f),
+            semi: self.semi,
+        }
     }
 }
-pub fn fold_fields_unnamed<F>(f: &mut F, node: data::Unnamed) -> data::Unnamed
+impl<F> Fold for item::foreign::Mac
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    data::Unnamed {
-        parenth: node.parenth,
-        fields: FoldHelper::lift(node.fields, |it| f.fold_field(it)),
+    fn fold(&self, f: &mut F) {
+        item::foreign::Mac {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            mac: self.mac.fold(f),
+            semi: self.semi,
+        }
     }
 }
-pub fn fold_file<F>(f: &mut F, node: item::File) -> item::File
+impl<F> Fold for item::foreign::Static
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    item::File {
-        shebang: node.shebang,
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        items: FoldHelper::lift(node.items, |it| f.fold_item(it)),
+    fn fold(&self, f: &mut F) {
+        item::foreign::Static {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            vis: self.vis.fold(f),
+            static_: self.static_,
+            mut_: self.mut_.fold(f),
+            ident: self.ident.fold(f),
+            colon: self.colon,
+            typ: Box::new(*self.typ.fold(f)),
+            semi: self.semi,
+        }
     }
 }
-pub fn fold_fn_arg<F>(f: &mut F, node: item::FnArg) -> item::FnArg
+impl<F> Fold for item::foreign::Type
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    match node {
-        item::FnArg::Receiver(_binding_0) => item::FnArg::Receiver(f.fold_receiver(_binding_0)),
-        item::FnArg::Type(_binding_0) => item::FnArg::Type(f.fold_pat_type(_binding_0)),
+    fn fold(&self, f: &mut F) {
+        item::foreign::Type {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            vis: self.vis.fold(f),
+            type_: self.type_,
+            ident: self.ident.fold(f),
+            gens: self.gens.fold(f),
+            semi: self.semi,
+        }
     }
 }
-pub fn fold_foreign_item<F>(f: &mut F, node: item::foreign::Item) -> item::foreign::Item
+impl<F> Fold for Arg
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    match node {
-        item::foreign::Item::Fn(_binding_0) => item::foreign::Item::Fn(f.fold_foreign_item_fn(_binding_0)),
-        item::foreign::Item::Static(_binding_0) => item::foreign::Item::Static(f.fold_foreign_item_static(_binding_0)),
-        item::foreign::Item::Type(_binding_0) => item::foreign::Item::Type(f.fold_foreign_item_type(_binding_0)),
-        item::foreign::Item::Macro(_binding_0) => item::foreign::Item::Macro(f.fold_foreign_item_macro(_binding_0)),
-        item::foreign::Item::Verbatim(_binding_0) => item::foreign::Item::Verbatim(_binding_0),
+    fn fold(&self, f: &mut F) {
+        match self {
+            Arg::Life(x) => Arg::Life(x.fold(f)),
+            Arg::Type(x) => Arg::Type(x.fold(f)),
+            Arg::Const(x) => Arg::Const(x.fold(f)),
+            Arg::AssocType(x) => Arg::AssocType(x.fold(f)),
+            Arg::AssocConst(x) => Arg::AssocConst(x.fold(f)),
+            Arg::Constraint(x) => Arg::Constraint(x.fold(f)),
+        }
     }
 }
-pub fn fold_foreign_item_fn<F>(f: &mut F, node: item::foreign::Fn) -> item::foreign::Fn
+impl<F> Fold for gen::Param
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    item::foreign::Fn {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        vis: f.fold_visibility(node.vis),
-        sig: f.fold_signature(node.sig),
-        semi: node.semi,
+    fn fold(&self, f: &mut F) {
+        match self {
+            gen::Param::Life(x) => gen::Param::Life(x.fold(f)),
+            gen::Param::Type(x) => gen::Param::Type(x.fold(f)),
+            gen::Param::Const(x) => gen::Param::Const(x.fold(f)),
+        }
     }
 }
-pub fn fold_foreign_item_macro<F>(f: &mut F, node: item::foreign::Mac) -> item::foreign::Mac
+impl<F> Fold for gen::Gens
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    item::foreign::Mac {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        mac: f.fold_macro(node.mac),
-        semi: node.semi,
+    fn fold(&self, f: &mut F) {
+        gen::Gens {
+            lt: self.lt,
+            params: FoldHelper::lift(self.params, |x| x.fold(f)),
+            gt: self.gt,
+            where_: (self.where_).map(|x| x.fold(f)),
+        }
     }
 }
-pub fn fold_foreign_item_static<F>(f: &mut F, node: item::foreign::Static) -> item::foreign::Static
+impl<F> Fold for Ident
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    item::foreign::Static {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        vis: f.fold_visibility(node.vis),
-        static_: node.static_,
-        mut_: f.fold_static_mutability(node.mut_),
-        ident: f.fold_ident(node.ident),
-        colon: node.colon,
-        typ: Box::new(f.fold_type(*node.typ)),
-        semi: node.semi,
+    fn fold(&self, f: &mut F) {
+        let mut y = self;
+        let span = self.span().fold(f);
+        self.set_span(span);
+        y
     }
 }
-pub fn fold_foreign_item_type<F>(f: &mut F, node: item::foreign::Type) -> item::foreign::Type
+impl<F> Fold for item::impl_::Item
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    item::foreign::Type {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        vis: f.fold_visibility(node.vis),
-        type_: node.type_,
-        ident: f.fold_ident(node.ident),
-        gens: f.fold_generics(node.gens),
-        semi: node.semi,
+    fn fold(&self, f: &mut F) {
+        match self {
+            item::impl_::Item::Const(x) => item::impl_::Item::Const(x.fold(f)),
+            item::impl_::Item::Fn(x) => item::impl_::Item::Fn(x.fold(f)),
+            item::impl_::Item::Type(x) => item::impl_::Item::Type(x.fold(f)),
+            item::impl_::Item::Macro(x) => item::impl_::Item::Macro(x.fold(f)),
+            item::impl_::Item::Verbatim(x) => item::impl_::Item::Verbatim(x),
+        }
     }
 }
-pub fn fold_generic_argument<F>(f: &mut F, node: Arg) -> Arg
+impl<F> Fold for item::impl_::Const
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    match node {
-        Arg::Life(_binding_0) => Arg::Life(f.fold_lifetime(_binding_0)),
-        Arg::Type(_binding_0) => Arg::Type(f.fold_type(_binding_0)),
-        Arg::Const(_binding_0) => Arg::Const(f.fold_expr(_binding_0)),
-        Arg::AssocType(_binding_0) => Arg::AssocType(f.fold_assoc_type(_binding_0)),
-        Arg::AssocConst(_binding_0) => Arg::AssocConst(f.fold_assoc_const(_binding_0)),
-        Arg::Constraint(_binding_0) => Arg::Constraint(f.fold_constraint(_binding_0)),
+    fn fold(&self, f: &mut F) {
+        item::impl_::Const {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            vis: self.vis.fold(f),
+            default_: self.default_,
+            const_: self.const_,
+            ident: self.ident.fold(f),
+            gens: self.gens.fold(f),
+            colon: self.colon,
+            typ: self.typ.fold(f),
+            eq: self.eq,
+            expr: self.expr.fold(f),
+            semi: self.semi,
+        }
     }
 }
-pub fn fold_generic_param<F>(f: &mut F, node: gen::Param) -> gen::Param
+impl<F> Fold for item::impl_::Fn
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    match node {
-        gen::Param::Life(_binding_0) => gen::Param::Life(f.fold_lifetime_param(_binding_0)),
-        gen::Param::Type(_binding_0) => gen::Param::Type(f.fold_type_param(_binding_0)),
-        gen::Param::Const(_binding_0) => gen::Param::Const(f.fold_const_param(_binding_0)),
+    fn fold(&self, f: &mut F) {
+        item::impl_::Fn {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            vis: self.vis.fold(f),
+            default_: self.default_,
+            sig: self.sig.fold(f),
+            block: self.block.fold(f),
+        }
     }
 }
-pub fn fold_generics<F>(f: &mut F, node: gen::Gens) -> gen::Gens
+impl<F> Fold for item::impl_::Mac
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    gen::Gens {
-        lt: node.lt,
-        params: FoldHelper::lift(node.params, |it| f.fold_generic_param(it)),
-        gt: node.gt,
-        where_: (node.where_).map(|it| f.fold_where_clause(it)),
+    fn fold(&self, f: &mut F) {
+        item::impl_::Mac {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            mac: self.mac.fold(f),
+            semi: self.semi,
+        }
     }
 }
-pub fn fold_ident<F>(f: &mut F, node: Ident) -> Ident
+impl<F> Fold for item::impl_::Type
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    let mut node = node;
-    let span = f.fold_span(node.span());
-    node.set_span(span);
-    node
-}
-pub fn fold_impl_item<F>(f: &mut F, node: item::impl_::Item) -> item::impl_::Item
-where
-    F: Fold + ?Sized,
-{
-    match node {
-        item::impl_::Item::Const(_binding_0) => item::impl_::Item::Const(f.fold_impl_item_const(_binding_0)),
-        item::impl_::Item::Fn(_binding_0) => item::impl_::Item::Fn(f.fold_impl_item_fn(_binding_0)),
-        item::impl_::Item::Type(_binding_0) => item::impl_::Item::Type(f.fold_impl_item_type(_binding_0)),
-        item::impl_::Item::Macro(_binding_0) => item::impl_::Item::Macro(f.fold_impl_item_macro(_binding_0)),
-        item::impl_::Item::Verbatim(_binding_0) => item::impl_::Item::Verbatim(_binding_0),
+    fn fold(&self, f: &mut F) {
+        item::impl_::Type {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            vis: self.vis.fold(f),
+            default_: self.default_,
+            type_: self.type_,
+            ident: self.ident.fold(f),
+            gens: self.gens.fold(f),
+            eq: self.eq,
+            typ: self.typ.fold(f),
+            semi: self.semi,
+        }
     }
 }
-pub fn fold_impl_item_const<F>(f: &mut F, node: item::impl_::Const) -> item::impl_::Const
+impl<F> Fold for item::impl_::Restriction
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    item::impl_::Const {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        vis: f.fold_visibility(node.vis),
-        default_: node.default_,
-        const_: node.const_,
-        ident: f.fold_ident(node.ident),
-        gens: f.fold_generics(node.gens),
-        colon: node.colon,
-        typ: f.fold_type(node.typ),
-        eq: node.eq,
-        expr: f.fold_expr(node.expr),
-        semi: node.semi,
+    fn fold(&self, f: &mut F) {
+        match self {}
     }
 }
-pub fn fold_impl_item_fn<F>(f: &mut F, node: item::impl_::Fn) -> item::impl_::Fn
+impl<F> Fold for Index
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    item::impl_::Fn {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        vis: f.fold_visibility(node.vis),
-        default_: node.default_,
-        sig: f.fold_signature(node.sig),
-        block: f.fold_block(node.block),
+    fn fold(&self, f: &mut F) {
+        Index {
+            index: self.index,
+            span: self.span.fold(f),
+        }
     }
 }
-pub fn fold_impl_item_macro<F>(f: &mut F, node: item::impl_::Mac) -> item::impl_::Mac
+impl<F> Fold for Item
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    item::impl_::Mac {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        mac: f.fold_macro(node.mac),
-        semi: node.semi,
+    fn fold(&self, f: &mut F) {
+        match self {
+            Item::Const(x) => Item::Const(x.fold(f)),
+            Item::Enum(x) => Item::Enum(x.fold(f)),
+            Item::Extern(x) => Item::Extern(x.fold(f)),
+            Item::Fn(x) => Item::Fn(x.fold(f)),
+            Item::Foreign(x) => Item::Foreign(x.fold(f)),
+            Item::Impl(x) => Item::Impl(x.fold(f)),
+            Item::Macro(x) => Item::Macro(x.fold(f)),
+            Item::Mod(x) => Item::Mod(x.fold(f)),
+            Item::Static(x) => Item::Static(x.fold(f)),
+            Item::Struct(x) => Item::Struct(x.fold(f)),
+            Item::Trait(x) => Item::Trait(x.fold(f)),
+            Item::Alias(x) => Item::Alias(x.fold(f)),
+            Item::Type(x) => Item::Type(x.fold(f)),
+            Item::Union(x) => Item::Union(x.fold(f)),
+            Item::Use(x) => Item::Use(x.fold(f)),
+            Item::Stream(x) => Item::Stream(x),
+        }
     }
 }
-pub fn fold_impl_item_type<F>(f: &mut F, node: item::impl_::Type) -> item::impl_::Type
+impl<F> Fold for item::Const
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    item::impl_::Type {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        vis: f.fold_visibility(node.vis),
-        default_: node.default_,
-        type_: node.type_,
-        ident: f.fold_ident(node.ident),
-        gens: f.fold_generics(node.gens),
-        eq: node.eq,
-        typ: f.fold_type(node.typ),
-        semi: node.semi,
+    fn fold(&self, f: &mut F) {
+        item::Const {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            vis: self.vis.fold(f),
+            const_: self.const_,
+            ident: self.ident.fold(f),
+            gens: self.gens.fold(f),
+            colon: self.colon,
+            typ: Box::new(*self.typ.fold(f)),
+            eq: self.eq,
+            expr: Box::new(*self.expr.fold(f)),
+            semi: self.semi,
+        }
     }
-}
-pub fn fold_impl_restriction<F>(f: &mut F, node: item::impl_::Restriction) -> item::impl_::Restriction
-where
-    F: Fold + ?Sized,
-{
-    match node {}
 }
-pub fn fold_index<F>(f: &mut F, node: Index) -> Index
+impl<F> Fold for item::Enum
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    Index {
-        index: node.index,
-        span: f.fold_span(node.span),
+    fn fold(&self, f: &mut F) {
+        item::Enum {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            vis: self.vis.fold(f),
+            enum_: self.enum_,
+            ident: self.ident.fold(f),
+            gens: self.gens.fold(f),
+            brace: self.brace,
+            variants: FoldHelper::lift(self.variants, |x| x.fold(f)),
+        }
     }
 }
-pub fn fold_item<F>(f: &mut F, node: Item) -> Item
+impl<F> Fold for item::Extern
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    match node {
-        Item::Const(_binding_0) => Item::Const(f.fold_item_const(_binding_0)),
-        Item::Enum(_binding_0) => Item::Enum(f.fold_item_enum(_binding_0)),
-        Item::Extern(_binding_0) => Item::Extern(f.fold_item_extern_crate(_binding_0)),
-        Item::Fn(_binding_0) => Item::Fn(f.fold_item_fn(_binding_0)),
-        Item::Foreign(_binding_0) => Item::Foreign(f.fold_item_foreign_mod(_binding_0)),
-        Item::Impl(_binding_0) => Item::Impl(f.fold_item_impl(_binding_0)),
-        Item::Macro(_binding_0) => Item::Macro(f.fold_item_macro(_binding_0)),
-        Item::Mod(_binding_0) => Item::Mod(f.fold_item_mod(_binding_0)),
-        Item::Static(_binding_0) => Item::Static(f.fold_item_static(_binding_0)),
-        Item::Struct(_binding_0) => Item::Struct(f.fold_item_struct(_binding_0)),
-        Item::Trait(_binding_0) => Item::Trait(f.fold_item_trait(_binding_0)),
-        Item::Alias(_binding_0) => Item::Alias(f.fold_item_trait_alias(_binding_0)),
-        Item::Type(_binding_0) => Item::Type(f.fold_item_type(_binding_0)),
-        Item::Union(_binding_0) => Item::Union(f.fold_item_union(_binding_0)),
-        Item::Use(_binding_0) => Item::Use(f.fold_item_use(_binding_0)),
-        Item::Stream(_binding_0) => Item::Stream(_binding_0),
+    fn fold(&self, f: &mut F) {
+        item::Extern {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            vis: self.vis.fold(f),
+            extern_: self.extern_,
+            crate_: self.crate_,
+            ident: self.ident.fold(f),
+            rename: (self.rename).map(|x| ((x).0, (x).1.fold(f))),
+            semi: self.semi,
+        }
     }
 }
-pub fn fold_item_const<F>(f: &mut F, node: item::Const) -> item::Const
+impl<F> Fold for item::Fn
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    item::Const {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        vis: f.fold_visibility(node.vis),
-        const_: node.const_,
-        ident: f.fold_ident(node.ident),
-        gens: f.fold_generics(node.gens),
-        colon: node.colon,
-        typ: Box::new(f.fold_type(*node.typ)),
-        eq: node.eq,
-        expr: Box::new(f.fold_expr(*node.expr)),
-        semi: node.semi,
+    fn fold(&self, f: &mut F) {
+        item::Fn {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            vis: self.vis.fold(f),
+            sig: self.sig.fold(f),
+            block: Box::new(*self.block.fold(f)),
+        }
     }
 }
-pub fn fold_item_enum<F>(f: &mut F, node: item::Enum) -> item::Enum
+impl<F> Fold for item::Foreign
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    item::Enum {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        vis: f.fold_visibility(node.vis),
-        enum_: node.enum_,
-        ident: f.fold_ident(node.ident),
-        gens: f.fold_generics(node.gens),
-        brace: node.brace,
-        variants: FoldHelper::lift(node.variants, |it| f.fold_variant(it)),
+    fn fold(&self, f: &mut F) {
+        item::Foreign {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            unsafe_: self.unsafe_,
+            abi: self.abi.fold(f),
+            brace: self.brace,
+            items: FoldHelper::lift(self.items, |x| x.fold(f)),
+        }
     }
 }
-pub fn fold_item_extern_crate<F>(f: &mut F, node: item::Extern) -> item::Extern
+impl<F> Fold for item::Impl
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    item::Extern {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        vis: f.fold_visibility(node.vis),
-        extern_: node.extern_,
-        crate_: node.crate_,
-        ident: f.fold_ident(node.ident),
-        rename: (node.rename).map(|it| ((it).0, f.fold_ident((it).1))),
-        semi: node.semi,
+    fn fold(&self, f: &mut F) {
+        item::Impl {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            default: self.default,
+            unsafe_: self.unsafe_,
+            impl_: self.impl_,
+            gens: self.gens.fold(f),
+            trait_: (self.trait_).map(|x| ((x).0, (x).1.fold(f), (x).2)),
+            typ: Box::new(*self.typ.fold(f)),
+            brace: self.brace,
+            items: FoldHelper::lift(self.items, |x| x.fold(f)),
+        }
     }
 }
-pub fn fold_item_fn<F>(f: &mut F, node: item::Fn) -> item::Fn
+impl<F> Fold for item::Mac
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    item::Fn {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        vis: f.fold_visibility(node.vis),
-        sig: f.fold_signature(node.sig),
-        block: Box::new(f.fold_block(*node.block)),
+    fn fold(&self, f: &mut F) {
+        item::Mac {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            ident: (self.ident).map(|x| x.fold(f)),
+            mac: self.mac.fold(f),
+            semi: self.semi,
+        }
     }
 }
-pub fn fold_item_foreign_mod<F>(f: &mut F, node: item::Foreign) -> item::Foreign
+impl<F> Fold for item::Mod
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    item::Foreign {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        unsafe_: node.unsafe_,
-        abi: f.fold_abi(node.abi),
-        brace: node.brace,
-        items: FoldHelper::lift(node.items, |it| f.fold_foreign_item(it)),
+    fn fold(&self, f: &mut F) {
+        item::Mod {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            vis: self.vis.fold(f),
+            unsafe_: self.unsafe_,
+            mod_: self.mod_,
+            ident: self.ident.fold(f),
+            items: (self.items).map(|x| ((x).0, FoldHelper::lift((x).1, |x| x.fold(f)))),
+            semi: self.semi,
+        }
     }
 }
-pub fn fold_item_impl<F>(f: &mut F, node: item::Impl) -> item::Impl
+impl<F> Fold for item::Static
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    item::Impl {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        default: node.default,
-        unsafe_: node.unsafe_,
-        impl_: node.impl_,
-        gens: f.fold_generics(node.gens),
-        trait_: (node.trait_).map(|it| ((it).0, f.fold_path((it).1), (it).2)),
-        typ: Box::new(f.fold_type(*node.typ)),
-        brace: node.brace,
-        items: FoldHelper::lift(node.items, |it| f.fold_impl_item(it)),
+    fn fold(&self, f: &mut F) {
+        item::Static {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            vis: self.vis.fold(f),
+            static_: self.static_,
+            mut_: self.mut_.fold(f),
+            ident: self.ident.fold(f),
+            colon: self.colon,
+            typ: Box::new(*self.typ.fold(f)),
+            eq: self.eq,
+            expr: Box::new(*self.expr.fold(f)),
+            semi: self.semi,
+        }
     }
 }
-pub fn fold_item_macro<F>(f: &mut F, node: item::Mac) -> item::Mac
+impl<F> Fold for item::Struct
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    item::Mac {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        ident: (node.ident).map(|it| f.fold_ident(it)),
-        mac: f.fold_macro(node.mac),
-        semi: node.semi,
+    fn fold(&self, f: &mut F) {
+        item::Struct {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            vis: self.vis.fold(f),
+            struct_: self.struct_,
+            ident: self.ident.fold(f),
+            gens: self.gens.fold(f),
+            fields: self.fields.fold(f),
+            semi: self.semi,
+        }
     }
 }
-pub fn fold_item_mod<F>(f: &mut F, node: item::Mod) -> item::Mod
+impl<F> Fold for item::Trait
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    item::Mod {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        vis: f.fold_visibility(node.vis),
-        unsafe_: node.unsafe_,
-        mod_: node.mod_,
-        ident: f.fold_ident(node.ident),
-        items: (node.items).map(|it| ((it).0, FoldHelper::lift((it).1, |it| f.fold_item(it)))),
-        semi: node.semi,
+    fn fold(&self, f: &mut F) {
+        item::Trait {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            vis: self.vis.fold(f),
+            unsafe_: self.unsafe_,
+            auto: self.auto,
+            restriction: (self.restriction).map(|x| x.fold(f)),
+            trait_: self.trait_,
+            ident: self.ident.fold(f),
+            gens: self.gens.fold(f),
+            colon: self.colon,
+            supers: FoldHelper::lift(self.supers, |x| x.fold(f)),
+            brace: self.brace,
+            items: FoldHelper::lift(self.items, |x| x.fold(f)),
+        }
     }
 }
-pub fn fold_item_static<F>(f: &mut F, node: item::Static) -> item::Static
+impl<F> Fold for item::Alias
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    item::Static {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        vis: f.fold_visibility(node.vis),
-        static_: node.static_,
-        mut_: f.fold_static_mutability(node.mut_),
-        ident: f.fold_ident(node.ident),
-        colon: node.colon,
-        typ: Box::new(f.fold_type(*node.typ)),
-        eq: node.eq,
-        expr: Box::new(f.fold_expr(*node.expr)),
-        semi: node.semi,
+    fn fold(&self, f: &mut F) {
+        item::Alias {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            vis: self.vis.fold(f),
+            trait_: self.trait_,
+            ident: self.ident.fold(f),
+            gens: self.gens.fold(f),
+            eq: self.eq,
+            bounds: FoldHelper::lift(self.bounds, |x| x.fold(f)),
+            semi: self.semi,
+        }
     }
 }
-pub fn fold_item_struct<F>(f: &mut F, node: item::Struct) -> item::Struct
+impl<F> Fold for item::Type
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    item::Struct {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        vis: f.fold_visibility(node.vis),
-        struct_: node.struct_,
-        ident: f.fold_ident(node.ident),
-        gens: f.fold_generics(node.gens),
-        fields: f.fold_fields(node.fields),
-        semi: node.semi,
+    fn fold(&self, f: &mut F) {
+        item::Type {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            vis: self.vis.fold(f),
+            type_: self.type_,
+            ident: self.ident.fold(f),
+            gens: self.gens.fold(f),
+            eq: self.eq,
+            typ: Box::new(*self.typ.fold(f)),
+            semi: self.semi,
+        }
     }
 }
-pub fn fold_item_trait<F>(f: &mut F, node: item::Trait) -> item::Trait
+impl<F> Fold for item::Union
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    item::Trait {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        vis: f.fold_visibility(node.vis),
-        unsafe_: node.unsafe_,
-        auto: node.auto,
-        restriction: (node.restriction).map(|it| f.fold_impl_restriction(it)),
-        trait_: node.trait_,
-        ident: f.fold_ident(node.ident),
-        gens: f.fold_generics(node.gens),
-        colon: node.colon,
-        supers: FoldHelper::lift(node.supers, |it| f.fold_type_param_bound(it)),
-        brace: node.brace,
-        items: FoldHelper::lift(node.items, |it| f.fold_trait_item(it)),
+    fn fold(&self, f: &mut F) {
+        item::Union {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            vis: self.vis.fold(f),
+            union_: self.union_,
+            ident: self.ident.fold(f),
+            gens: self.gens.fold(f),
+            fields: self.fields.fold(f),
+        }
     }
 }
-pub fn fold_item_trait_alias<F>(f: &mut F, node: item::Alias) -> item::Alias
+impl<F> Fold for item::Use
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    item::Alias {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        vis: f.fold_visibility(node.vis),
-        trait_: node.trait_,
-        ident: f.fold_ident(node.ident),
-        gens: f.fold_generics(node.gens),
-        eq: node.eq,
-        bounds: FoldHelper::lift(node.bounds, |it| f.fold_type_param_bound(it)),
-        semi: node.semi,
+    fn fold(&self, f: &mut F) {
+        item::Use {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            vis: self.vis.fold(f),
+            use_: self.use_,
+            colon: self.colon,
+            tree: self.tree.fold(f),
+            semi: self.semi,
+        }
     }
 }
-pub fn fold_item_type<F>(f: &mut F, node: item::Type) -> item::Type
+impl<F> Fold for Label
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    item::Type {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        vis: f.fold_visibility(node.vis),
-        type_: node.type_,
-        ident: f.fold_ident(node.ident),
-        gens: f.fold_generics(node.gens),
-        eq: node.eq,
-        typ: Box::new(f.fold_type(*node.typ)),
-        semi: node.semi,
+    fn fold(&self, f: &mut F) {
+        Label {
+            name: self.name.fold(f),
+            colon: self.colon,
+        }
     }
 }
-pub fn fold_item_union<F>(f: &mut F, node: item::Union) -> item::Union
+impl<F> Fold for Life
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    item::Union {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        vis: f.fold_visibility(node.vis),
-        union_: node.union_,
-        ident: f.fold_ident(node.ident),
-        gens: f.fold_generics(node.gens),
-        fields: f.fold_fields_named(node.fields),
+    fn fold(&self, f: &mut F) {
+        Life {
+            apos: self.apos.fold(f),
+            ident: self.ident.fold(f),
+        }
     }
 }
-pub fn fold_item_use<F>(f: &mut F, node: item::Use) -> item::Use
+impl<F> Fold for gen::param::Life
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    item::Use {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        vis: f.fold_visibility(node.vis),
-        use_: node.use_,
-        colon: node.colon,
-        tree: f.fold_use_tree(node.tree),
-        semi: node.semi,
+    fn fold(&self, f: &mut F) {
+        gen::param::Life {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            life: self.life.fold(f),
+            colon: self.colon,
+            bounds: FoldHelper::lift(self.bounds, |x| x.fold(f)),
+        }
     }
 }
-pub fn fold_label<F>(f: &mut F, node: Label) -> Label
+impl<F> Fold for Lit
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    Label {
-        name: f.fold_lifetime(node.name),
-        colon: node.colon,
+    fn fold(&self, f: &mut F) {
+        match self {
+            Lit::Str(x) => Lit::Str(x.fold(f)),
+            Lit::ByteStr(x) => Lit::ByteStr(x.fold(f)),
+            Lit::Byte(x) => Lit::Byte(x.fold(f)),
+            Lit::Char(x) => Lit::Char(x.fold(f)),
+            Lit::Int(x) => Lit::Int(x.fold(f)),
+            Lit::Float(x) => Lit::Float(x.fold(f)),
+            Lit::Bool(x) => Lit::Bool(x.fold(f)),
+            Lit::Stream(x) => Lit::Stream(x),
+        }
     }
 }
-pub fn fold_lifetime<F>(f: &mut F, node: Life) -> Life
+impl<F> Fold for lit::Bool
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    Life {
-        apos: f.fold_span(node.apos),
-        ident: f.fold_ident(node.ident),
+    fn fold(&self, f: &mut F) {
+        lit::Bool {
+            val: self.val,
+            span: self.span.fold(f),
+        }
     }
 }
-pub fn fold_lifetime_param<F>(f: &mut F, node: gen::param::Life) -> gen::param::Life
+impl<F> Fold for lit::Byte
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    gen::param::Life {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        life: f.fold_lifetime(node.life),
-        colon: node.colon,
-        bounds: FoldHelper::lift(node.bounds, |it| f.fold_lifetime(it)),
+    fn fold(&self, f: &mut F) {
+        let span = self.span().fold(f);
+        let mut y = self;
+        self.set_span(span);
+        y
     }
 }
-pub fn fold_lit<F>(f: &mut F, node: Lit) -> Lit
+impl<F> Fold for lit::ByteStr
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    match node {
-        Lit::Str(_binding_0) => Lit::Str(f.fold_lit_str(_binding_0)),
-        Lit::ByteStr(_binding_0) => Lit::ByteStr(f.fold_lit_byte_str(_binding_0)),
-        Lit::Byte(_binding_0) => Lit::Byte(f.fold_lit_byte(_binding_0)),
-        Lit::Char(_binding_0) => Lit::Char(f.fold_lit_char(_binding_0)),
-        Lit::Int(_binding_0) => Lit::Int(f.fold_lit_int(_binding_0)),
-        Lit::Float(_binding_0) => Lit::Float(f.fold_lit_float(_binding_0)),
-        Lit::Bool(_binding_0) => Lit::Bool(f.fold_lit_bool(_binding_0)),
-        Lit::Stream(_binding_0) => Lit::Stream(_binding_0),
+    fn fold(&self, f: &mut F) {
+        let span = self.span().fold(f);
+        let mut y = self;
+        self.set_span(span);
+        y
     }
 }
-pub fn fold_lit_bool<F>(f: &mut F, node: lit::Bool) -> lit::Bool
+impl<F> Fold for lit::Char
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    lit::Bool {
-        val: node.val,
-        span: f.fold_span(node.span),
+    fn fold(&self, f: &mut F) {
+        let span = self.span().fold(f);
+        let mut y = self;
+        self.set_span(span);
+        y
     }
-}
-pub fn fold_lit_byte<F>(f: &mut F, node: lit::Byte) -> lit::Byte
-where
-    F: Fold + ?Sized,
-{
-    let span = f.fold_span(node.span());
-    let mut node = node;
-    node.set_span(span);
-    node
 }
-pub fn fold_lit_byte_str<F>(f: &mut F, node: lit::ByteStr) -> lit::ByteStr
+impl<F> Fold for lit::Float
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    let span = f.fold_span(node.span());
-    let mut node = node;
-    node.set_span(span);
-    node
-}
-pub fn fold_lit_char<F>(f: &mut F, node: lit::Char) -> lit::Char
-where
-    F: Fold + ?Sized,
-{
-    let span = f.fold_span(node.span());
-    let mut node = node;
-    node.set_span(span);
-    node
-}
-pub fn fold_lit_float<F>(f: &mut F, node: lit::Float) -> lit::Float
-where
-    F: Fold + ?Sized,
-{
-    let span = f.fold_span(node.span());
-    let mut node = node;
-    node.set_span(span);
-    node
-}
-pub fn fold_lit_int<F>(f: &mut F, node: lit::Int) -> lit::Int
-where
-    F: Fold + ?Sized,
-{
-    let span = f.fold_span(node.span());
-    let mut node = node;
-    node.set_span(span);
-    node
-}
-pub fn fold_lit_str<F>(f: &mut F, node: lit::Str) -> lit::Str
-where
-    F: Fold + ?Sized,
-{
-    let span = f.fold_span(node.span());
-    let mut node = node;
-    node.set_span(span);
-    node
-}
-pub fn fold_local<F>(f: &mut F, node: stmt::Local) -> stmt::Local
-where
-    F: Fold + ?Sized,
-{
-    stmt::Local {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        let_: node.let_,
-        pat: f.fold_pat(node.pat),
-        init: (node.init).map(|it| f.fold_local_init(it)),
-        semi: node.semi,
+    fn fold(&self, f: &mut F) {
+        let span = self.span().fold(f);
+        let mut y = self;
+        self.set_span(span);
+        y
     }
 }
-pub fn fold_local_init<F>(f: &mut F, node: stmt::Init) -> stmt::Init
+impl<F> Fold for lit::Int
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    stmt::Init {
-        eq: node.eq,
-        expr: Box::new(f.fold_expr(*node.expr)),
-        diverge: (node.diverge).map(|it| ((it).0, Box::new(f.fold_expr(*(it).1)))),
+    fn fold(&self, f: &mut F) {
+        let span = self.span().fold(f);
+        let mut y = self;
+        self.set_span(span);
+        y
     }
 }
-pub fn fold_macro<F>(f: &mut F, node: Macro) -> Macro
+impl<F> Fold for lit::Str
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    Macro {
-        path: f.fold_path(node.path),
-        bang: node.bang,
-        delim: f.fold_macro_delimiter(node.delim),
-        toks: node.toks,
+    fn fold(&self, f: &mut F) {
+        let span = self.span().fold(f);
+        let mut y = self;
+        self.set_span(span);
+        y
     }
 }
-pub fn fold_macro_delimiter<F>(f: &mut F, node: tok::Delim) -> tok::Delim
+impl<F> Fold for stmt::Local
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    match node {
-        tok::Delim::Parenth(_binding_0) => tok::Delim::Parenth(_binding_0),
-        tok::Delim::Brace(_binding_0) => tok::Delim::Brace(_binding_0),
-        tok::Delim::Bracket(_binding_0) => tok::Delim::Bracket(_binding_0),
+    fn fold(&self, f: &mut F) {
+        stmt::Local {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            let_: self.let_,
+            pat: self.pat.fold(f),
+            init: (self.init).map(|x| x.fold(f)),
+            semi: self.semi,
+        }
     }
 }
-pub fn fold_member<F>(f: &mut F, node: Member) -> Member
+impl<F> Fold for stmt::Init
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    match node {
-        Member::Named(_binding_0) => Member::Named(f.fold_ident(_binding_0)),
-        Member::Unnamed(_binding_0) => Member::Unnamed(f.fold_index(_binding_0)),
+    fn fold(&self, f: &mut F) {
+        stmt::Init {
+            eq: self.eq,
+            expr: Box::new(*self.expr.fold(f)),
+            diverge: (self.diverge).map(|x| ((x).0, Box::new(*(x).1.fold(f)))),
+        }
     }
 }
-pub fn fold_meta<F>(f: &mut F, node: attr::Meta) -> attr::Meta
+impl<F> Fold for Macro
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    match node {
-        attr::Meta::Path(_binding_0) => attr::Meta::Path(f.fold_path(_binding_0)),
-        attr::Meta::List(_binding_0) => attr::Meta::List(f.fold_meta_list(_binding_0)),
-        attr::Meta::NameValue(_binding_0) => attr::Meta::NameValue(f.fold_meta_name_value(_binding_0)),
+    fn fold(&self, f: &mut F) {
+        Macro {
+            path: self.path.fold(f),
+            bang: self.bang,
+            delim: self.delim.fold(f),
+            toks: self.toks,
+        }
     }
 }
-pub fn fold_meta_list<F>(f: &mut F, node: attr::List) -> attr::List
+impl<F> Fold for tok::Delim
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    attr::List {
-        path: f.fold_path(node.path),
-        delim: f.fold_macro_delimiter(node.delim),
-        toks: node.toks,
+    fn fold(&self, f: &mut F) {
+        match self {
+            tok::Delim::Parenth(x) => tok::Delim::Parenth(x),
+            tok::Delim::Brace(x) => tok::Delim::Brace(x),
+            tok::Delim::Bracket(x) => tok::Delim::Bracket(x),
+        }
     }
 }
-pub fn fold_meta_name_value<F>(f: &mut F, node: attr::NameValue) -> attr::NameValue
+impl<F> Fold for Member
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    attr::NameValue {
-        name: f.fold_path(node.name),
-        eq: node.eq,
-        val: f.fold_expr(node.val),
+    fn fold(&self, f: &mut F) {
+        match self {
+            Member::Named(x) => Member::Named(x.fold(f)),
+            Member::Unnamed(x) => Member::Unnamed(x.fold(f)),
+        }
     }
 }
-pub fn fold_parenthesized_generic_arguments<F>(f: &mut F, node: path::Parenth) -> path::Parenth
+impl<F> Fold for path::Parenth
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    path::Parenth {
-        parenth: node.parenth,
-        args: FoldHelper::lift(node.args, |ixt| f.fold_type(x)),
-        ret: f.fold_return_type(node.ret),
+    fn fold(&self, f: &mut F) {
+        path::Parenth {
+            parenth: self.parenth,
+            args: FoldHelper::lift(self.args, |ixt| x.fold(f)),
+            ret: self.ret.fold(f),
+        }
     }
 }
-pub fn fold_pat<F>(f: &mut F, node: pat::Pat) -> pat::Pat
+impl<F> Fold for pat::Pat
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    match node {
-        pat::Pat::Const(_binding_0) => pat::Pat::Const(f.fold_expr_const(_binding_0)),
-        pat::Pat::Ident(_binding_0) => pat::Pat::Ident(f.fold_pat_ident(_binding_0)),
-        pat::Pat::Lit(_binding_0) => pat::Pat::Lit(f.fold_expr_lit(_binding_0)),
-        pat::Pat::Mac(_binding_0) => pat::Pat::Mac(f.fold_expr_macro(_binding_0)),
-        pat::Pat::Or(_binding_0) => pat::Pat::Or(f.fold_pat_or(_binding_0)),
-        pat::Pat::Parenth(_binding_0) => pat::Pat::Parenth(f.fold_pat_paren(_binding_0)),
-        pat::Pat::Path(_binding_0) => pat::Pat::Path(f.fold_expr_path(_binding_0)),
-        pat::Pat::Range(_binding_0) => pat::Pat::Range(f.fold_expr_range(_binding_0)),
-        pat::Pat::Ref(_binding_0) => pat::Pat::Ref(f.fold_pat_reference(_binding_0)),
-        pat::Pat::Rest(_binding_0) => pat::Pat::Rest(f.fold_pat_rest(_binding_0)),
-        pat::Pat::Slice(_binding_0) => pat::Pat::Slice(f.fold_pat_slice(_binding_0)),
-        pat::Pat::Struct(_binding_0) => pat::Pat::Struct(f.fold_pat_struct(_binding_0)),
-        pat::Pat::Tuple(_binding_0) => pat::Pat::Tuple(f.fold_pat_tuple(_binding_0)),
-        pat::Pat::TupleStruct(_binding_0) => pat::Pat::TupleStruct(f.fold_pat_tuple_struct(_binding_0)),
-        pat::Pat::Type(_binding_0) => pat::Pat::Type(f.fold_pat_type(_binding_0)),
-        pat::Pat::Verbatim(_binding_0) => pat::Pat::Verbatim(_binding_0),
-        pat::Pat::Wild(_binding_0) => pat::Pat::Wild(f.fold_pat_wild(_binding_0)),
+    fn fold(&self, f: &mut F) {
+        match self {
+            pat::Pat::Const(x) => pat::Pat::Const(x.fold(f)),
+            pat::Pat::Ident(x) => pat::Pat::Ident(x.fold(f)),
+            pat::Pat::Lit(x) => pat::Pat::Lit(x.fold(f)),
+            pat::Pat::Mac(x) => pat::Pat::Mac(x.fold(f)),
+            pat::Pat::Or(x) => pat::Pat::Or(x.fold(f)),
+            pat::Pat::Parenth(x) => pat::Pat::Parenth(x.fold(f)),
+            pat::Pat::Path(x) => pat::Pat::Path(x.fold(f)),
+            pat::Pat::Range(x) => pat::Pat::Range(x.fold(f)),
+            pat::Pat::Ref(x) => pat::Pat::Ref(x.fold(f)),
+            pat::Pat::Rest(x) => pat::Pat::Rest(x.fold(f)),
+            pat::Pat::Slice(x) => pat::Pat::Slice(x.fold(f)),
+            pat::Pat::Struct(x) => pat::Pat::Struct(x.fold(f)),
+            pat::Pat::Tuple(x) => pat::Pat::Tuple(x.fold(f)),
+            pat::Pat::TupleStruct(x) => pat::Pat::TupleStruct(x.fold(f)),
+            pat::Pat::Type(x) => pat::Pat::Type(x.fold(f)),
+            pat::Pat::Verbatim(x) => pat::Pat::Verbatim(x),
+            pat::Pat::Wild(x) => pat::Pat::Wild(x.fold(f)),
+        }
     }
 }
-pub fn fold_pat_ident<F>(f: &mut F, node: pat::Ident) -> pat::Ident
+impl<F> Fold for pat::Ident
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    pat::Ident {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        ref_: node.ref_,
-        mut_: node.mut_,
-        ident: f.fold_ident(node.ident),
-        sub: (node.sub).map(|it| ((it).0, Box::new(f.fold_pat(*(it).1)))),
+    fn fold(&self, f: &mut F) {
+        pat::Ident {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            ref_: self.ref_,
+            mut_: self.mut_,
+            ident: self.ident.fold(f),
+            sub: (self.sub).map(|x| ((x).0, Box::new(*(x).1.fold(f)))),
+        }
     }
 }
-pub fn fold_pat_or<F>(f: &mut F, node: pat::Or) -> pat::Or
+impl<F> Fold for pat::Or
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    pat::Or {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        vert: node.vert,
-        cases: FoldHelper::lift(node.cases, |it| f.fold_pat(it)),
+    fn fold(&self, f: &mut F) {
+        pat::Or {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            vert: self.vert,
+            cases: FoldHelper::lift(self.cases, |x| x.fold(f)),
+        }
     }
 }
-pub fn fold_pat_paren<F>(f: &mut F, node: pat::Parenth) -> pat::Parenth
+impl<F> Fold for pat::Parenth
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    pat::Parenth {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        parenth: node.parenth,
-        pat: Box::new(f.fold_pat(*node.pat)),
+    fn fold(&self, f: &mut F) {
+        pat::Parenth {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            parenth: self.parenth,
+            pat: Box::new(*self.pat.fold(f)),
+        }
     }
 }
-pub fn fold_pat_reference<F>(f: &mut F, node: pat::Ref) -> pat::Ref
+impl<F> Fold for pat::Ref
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    pat::Ref {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        and: node.and,
-        mut_: node.mut_,
-        pat: Box::new(f.fold_pat(*node.pat)),
+    fn fold(&self, f: &mut F) {
+        pat::Ref {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            and: self.and,
+            mut_: self.mut_,
+            pat: Box::new(*self.pat.fold(f)),
+        }
     }
 }
-pub fn fold_pat_rest<F>(f: &mut F, node: pat::Rest) -> pat::Rest
+impl<F> Fold for pat::Rest
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    pat::Restest {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        dot2: node.dot2,
+    fn fold(&self, f: &mut F) {
+        pat::Restest {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            dot2: self.dot2,
+        }
     }
 }
-pub fn fold_pat_slice<F>(f: &mut F, node: pat::Slice) -> pat::Slice
+impl<F> Fold for pat::Slice
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    pat::Slice {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        bracket: node.bracket,
-        pats: FoldHelper::lift(node.pats, |it| f.fold_pat(it)),
+    fn fold(&self, f: &mut F) {
+        pat::Slice {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            bracket: self.bracket,
+            pats: FoldHelper::lift(self.pats, |x| x.fold(f)),
+        }
     }
 }
-pub fn fold_pat_struct<F>(f: &mut F, node: pat::Struct) -> pat::Struct
+impl<F> Fold for pat::Struct
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    pat::Struct {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        qself: (node.qself).map(|it| f.fold_qself(it)),
-        path: f.fold_path(node.path),
-        brace: node.brace,
-        fields: FoldHelper::lift(node.fields, |it| f.fold_field_pat(it)),
-        rest: (node.rest).map(|it| f.fold_pat_rest(it)),
+    fn fold(&self, f: &mut F) {
+        pat::Struct {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            qself: (self.qself).map(|x| x.fold(f)),
+            path: self.path.fold(f),
+            brace: self.brace,
+            fields: FoldHelper::lift(self.fields, |x| x.fold(f)),
+            rest: (self.rest).map(|x| x.fold(f)),
+        }
     }
 }
-pub fn fold_pat_tuple<F>(f: &mut F, node: pat::Tuple) -> pat::Tuple
+impl<F> Fold for pat::Tuple
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    pat::Tuple {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        parenth: node.parenth,
-        pats: FoldHelper::lift(node.pats, |it| f.fold_pat(it)),
+    fn fold(&self, f: &mut F) {
+        pat::Tuple {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            parenth: self.parenth,
+            pats: FoldHelper::lift(self.pats, |x| x.fold(f)),
+        }
     }
 }
-pub fn fold_pat_tuple_struct<F>(f: &mut F, node: pat::TupleStruct) -> pat::TupleStruct
+impl<F> Fold for pat::TupleStruct
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    pat::TupleStructuct {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        qself: (node.qself).map(|it| f.fold_qself(it)),
-        path: f.fold_path(node.path),
-        parenth: node.parenth,
-        elems: FoldHelper::lift(node.pats, |it| f.fold_pat(it)),
+    fn fold(&self, f: &mut F) {
+        pat::TupleStructuct {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            qself: (self.qself).map(|x| x.fold(f)),
+            path: self.path.fold(f),
+            parenth: self.parenth,
+            elems: FoldHelper::lift(self.pats, |x| x.fold(f)),
+        }
     }
 }
-pub fn fold_pat_type<F>(f: &mut F, node: pat::Type) -> pat::Type
+impl<F> Fold for pat::Type
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    pat::Type {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        pat: Box::new(f.fold_pat(*node.pat)),
-        colon: node.colon,
-        typ: Box::new(f.fold_type(*node.typ)),
+    fn fold(&self, f: &mut F) {
+        pat::Type {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            pat: Box::new(*self.pat.fold(f)),
+            colon: self.colon,
+            typ: Box::new(*self.typ.fold(f)),
+        }
     }
 }
-pub fn fold_pat_wild<F>(f: &mut F, node: pat::Wild) -> pat::Wild
+impl<F> Fold for pat::Wild
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    pat::Wild {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        underscore: node.underscore,
+    fn fold(&self, f: &mut F) {
+        pat::Wild {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            underscore: self.underscore,
+        }
     }
 }
-pub fn fold_path<F>(f: &mut F, node: Path) -> Path
+impl<F> Fold for Path
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    Path {
-        colon: node.colon,
-        segs: FoldHelper::lift(node.segs, |it| f.fold_path_segment(it)),
+    fn fold(&self, f: &mut F) {
+        Path {
+            colon: self.colon,
+            segs: FoldHelper::lift(self.segs, |x| x.fold(f)),
+        }
     }
 }
-pub fn fold_path_arguments<F>(f: &mut F, node: path::Args) -> path::Args
+impl<F> Fold for path::Args
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    use path::Args::*;
-    match node {
-        None => Args::None,
-        Angle(_binding_0) => Angle(f.fold_angle_bracketed_generic_arguments(_binding_0)),
-        Parenth(_binding_0) => arenthed(f.fold_parenthesized_generic_arguments(_binding_0)),
+    fn fold(&self, f: &mut F) {
+        use path::Args::*;
+        match self {
+            None => Args::None,
+            Angle(x) => Angle(x.fold(f)),
+            Parenth(x) => arenthed(x.fold(f)),
+        }
     }
 }
-pub fn fold_path_segment<F>(f: &mut F, node: Segment) -> Segment
+impl<F> Fold for Segment
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    Segment {
-        ident: f.fold_ident(node.ident),
-        args: f.fold_path_arguments(node.args),
+    fn fold(&self, f: &mut F) {
+        Segment {
+            ident: self.ident.fold(f),
+            args: self.args.fold(f),
+        }
     }
 }
-pub fn fold_predicate_lifetime<F>(f: &mut F, node: gen::Where::Life) -> gen::Where::Life
+impl<F> Fold for gen::Where::Life
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    gen::Where::Life {
-        life: f.fold_lifetime(node.life),
-        colon: node.colon,
-        bounds: FoldHelper::lift(node.bounds, |it| f.fold_lifetime(it)),
+    fn fold(&self, f: &mut F) {
+        gen::Where::Life {
+            life: self.life.fold(f),
+            colon: self.colon,
+            bounds: FoldHelper::lift(self.bounds, |x| x.fold(f)),
+        }
     }
 }
-pub fn fold_predicate_type<F>(f: &mut F, node: gen::Where::Type) -> gen::Where::Type
+impl<F> Fold for gen::Where::Type
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    gen::Where::Type {
-        lifes: (node.lifes).map(|it| f.fold_bound_lifetimes(it)),
-        bounded: f.fold_type(node.bounded),
-        colon: node.colon,
-        bounds: FoldHelper::lift(node.bounds, |it| f.fold_type_param_bound(it)),
+    fn fold(&self, f: &mut F) {
+        gen::Where::Type {
+            lifes: (self.lifes).map(|x| x.fold(f)),
+            bounded: self.bounded.fold(f),
+            colon: self.colon,
+            bounds: FoldHelper::lift(self.bounds, |x| x.fold(f)),
+        }
     }
 }
-pub fn fold_qself<F>(f: &mut F, node: path::QSelf) -> path::QSelf
+impl<F> Fold for path::QSelf
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    path::QSelf {
-        lt: node.lt,
-        typ: Box::new(f.fold_type(*node.typ)),
-        pos: node.pos,
-        as_: node.as_,
-        gt: node.gt,
+    fn fold(&self, f: &mut F) {
+        path::QSelf {
+            lt: self.lt,
+            typ: Box::new(*self.typ.fold(f)),
+            pos: self.pos,
+            as_: self.as_,
+            gt: self.gt,
+        }
     }
 }
-pub fn fold_range_limits<F>(f: &mut F, node: expr::Limits) -> expr::Limits
+impl<F> Fold for expr::Limits
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    match node {
-        expr::Limits::HalfOpen(_binding_0) => expr::Limits::HalfOpen(_binding_0),
-        expr::Limits::Closed(_binding_0) => expr::Limits::Closed(_binding_0),
+    fn fold(&self, f: &mut F) {
+        match self {
+            expr::Limits::HalfOpen(x) => expr::Limits::HalfOpen(x),
+            expr::Limits::Closed(x) => expr::Limits::Closed(x),
+        }
     }
 }
-pub fn fold_receiver<F>(f: &mut F, node: item::Receiver) -> item::Receiver
+impl<F> Fold for item::Receiver
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    item::Receiver {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        ref_: (node.ref_).map(|it| ((it).0, ((it).1).map(|it| f.fold_lifetime(it)))),
-        mut_: node.mut_,
-        self_: node.self_,
-        colon: node.colon,
-        typ: Box::new(f.fold_type(*node.typ)),
+    fn fold(&self, f: &mut F) {
+        item::Receiver {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            ref_: (self.ref_).map(|x| ((x).0, ((x).1).map(|x| x.fold(f)))),
+            mut_: self.mut_,
+            self_: self.self_,
+            colon: self.colon,
+            typ: Box::new(*self.typ.fold(f)),
+        }
     }
 }
-pub fn fold_return_type<F>(f: &mut F, node: typ::Ret) -> typ::Ret
+impl<F> Fold for typ::Ret
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    match node {
-        typ::Ret::Default => typ::Ret::Default,
-        typ::Ret::Type(_binding_0, _binding_1) => typ::Ret::Type(_binding_0, Box::new(f.fold_type(*_binding_1))),
+    fn fold(&self, f: &mut F) {
+        match self {
+            typ::Ret::Default => typ::Ret::Default,
+            typ::Ret::Type(x, y) => typ::Ret::Type(x, Box::new(*y.fold(f))),
+        }
     }
 }
-pub fn fold_signature<F>(f: &mut F, node: item::Sig) -> item::Sig
+impl<F> Fold for item::Sig
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    item::Sig {
-        const_: node.const_,
-        async_: node.async_,
-        unsafe_: node.unsafe_,
-        abi: (node.abi).map(|it| f.fold_abi(it)),
-        fn_: node.fn_,
-        ident: f.fold_ident(node.ident),
-        gens: f.fold_generics(node.gens),
-        parenth: node.parenth,
-        args: FoldHelper::lift(node.args, |it| f.fold_fn_arg(it)),
-        vari: (node.vari).map(|it| f.fold_variadic(it)),
-        ret: f.fold_return_type(node.ret),
+    fn fold(&self, f: &mut F) {
+        item::Sig {
+            const_: self.const_,
+            async_: self.async_,
+            unsafe_: self.unsafe_,
+            abi: (self.abi).map(|x| x.fold(f)),
+            fn_: self.fn_,
+            ident: self.ident.fold(f),
+            gens: self.gens.fold(f),
+            parenth: self.parenth,
+            args: FoldHelper::lift(self.args, |x| x.fold(f)),
+            vari: (self.vari).map(|x| x.fold(f)),
+            ret: self.ret.fold(f),
+        }
     }
 }
-pub fn fold_span<F>(f: &mut F, node: pm2::Span) -> pm2::Span
+impl<F> Fold for pm2::Span
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    node
+    fn fold(&self, f: &mut F) {
+        node
+    }
 }
-pub fn fold_static_mutability<F>(f: &mut F, node: StaticMut) -> StaticMut
+impl<F> Fold for StaticMut
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    match node {
-        StaticMut::Mut(_binding_0) => StaticMut::Mut(_binding_0),
-        StaticMut::None => StaticMut::None,
+    fn fold(&self, f: &mut F) {
+        match self {
+            StaticMut::Mut(x) => StaticMut::Mut(x),
+            StaticMut::None => StaticMut::None,
+        }
     }
 }
-pub fn fold_stmt<F>(f: &mut F, node: stmt::Stmt) -> stmt::Stmt
+impl<F> Fold for stmt::Stmt
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    match node {
-        stmt::Stmt::stmt::Local(_binding_0) => stmt::Stmt::stmt::Local(f.fold_local(_binding_0)),
-        stmt::Stmt::Item(_binding_0) => stmt::Stmt::Item(f.fold_item(_binding_0)),
-        stmt::Stmt::Expr(_binding_0, _binding_1) => stmt::Stmt::Expr(f.fold_expr(_binding_0), _binding_1),
-        stmt::Stmt::Mac(_binding_0) => stmt::Stmt::Mac(f.fold_stmt_macro(_binding_0)),
+    fn fold(&self, f: &mut F) {
+        match self {
+            stmt::Stmt::stmt::Local(x) => stmt::Stmt::stmt::Local(x.fold(f)),
+            stmt::Stmt::Item(x) => stmt::Stmt::Item(x.fold(f)),
+            stmt::Stmt::Expr(x, y) => stmt::Stmt::Expr(x.fold(f), y),
+            stmt::Stmt::Mac(x) => stmt::Stmt::Mac(x.fold(f)),
+        }
     }
 }
-pub fn fold_stmt_macro<F>(f: &mut F, node: stmt::Mac) -> stmt::Mac
+impl<F> Fold for stmt::Mac
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    stmt::Mac {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        mac: f.fold_macro(node.mac),
-        semi: node.semi,
+    fn fold(&self, f: &mut F) {
+        stmt::Mac {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            mac: self.mac.fold(f),
+            semi: self.semi,
+        }
     }
 }
-pub fn fold_trait_bound<F>(f: &mut F, node: gen::bound::Trait) -> gen::bound::Trait
+impl<F> Fold for gen::bound::Trait
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    gen::bound::Trait {
-        parenth: node.parenth,
-        modif: f.fold_trait_bound_modifier(node.modif),
-        lifes: (node.lifes).map(|it| f.fold_bound_lifetimes(it)),
-        path: f.fold_path(node.path),
+    fn fold(&self, f: &mut F) {
+        gen::bound::Trait {
+            parenth: self.parenth,
+            modif: self.modif.fold(f),
+            lifes: (self.lifes).map(|x| x.fold(f)),
+            path: self.path.fold(f),
+        }
     }
 }
-pub fn fold_trait_bound_modifier<F>(f: &mut F, node: gen::bound::Modifier) -> gen::bound::Modifier
+impl<F> Fold for gen::bound::Modifier
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    match node {
-        gen::bound::Modifier::None => gen::bound::Modifier::None,
-        gen::bound::Modifier::Maybe(_binding_0) => gen::bound::Modifier::Maybe(_binding_0),
+    fn fold(&self, f: &mut F) {
+        match self {
+            gen::bound::Modifier::None => gen::bound::Modifier::None,
+            gen::bound::Modifier::Maybe(x) => gen::bound::Modifier::Maybe(x),
+        }
     }
 }
-pub fn fold_trait_item<F>(f: &mut F, node: item::trait_::Item) -> item::trait_::Item
+impl<F> Fold for item::trait_::Item
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    match node {
-        item::trait_::Item::Const(_binding_0) => item::trait_::Item::Const(f.fold_trait_item_const(_binding_0)),
-        item::trait_::Item::Fn(_binding_0) => item::trait_::Item::Fn(f.fold_trait_item_fn(_binding_0)),
-        item::trait_::Item::Type(_binding_0) => item::trait_::Item::Type(f.fold_trait_item_type(_binding_0)),
-        item::trait_::Item::Macro(_binding_0) => item::trait_::Item::Macro(f.fold_trait_item_macro(_binding_0)),
-        item::trait_::Item::Verbatim(_binding_0) => item::trait_::Item::Verbatim(_binding_0),
+    fn fold(&self, f: &mut F) {
+        match self {
+            item::trait_::Item::Const(x) => item::trait_::Item::Const(x.fold(f)),
+            item::trait_::Item::Fn(x) => item::trait_::Item::Fn(x.fold(f)),
+            item::trait_::Item::Type(x) => item::trait_::Item::Type(x.fold(f)),
+            item::trait_::Item::Macro(x) => item::trait_::Item::Macro(x.fold(f)),
+            item::trait_::Item::Verbatim(x) => item::trait_::Item::Verbatim(x),
+        }
     }
 }
-pub fn fold_trait_item_const<F>(f: &mut F, node: item::trait_::Const) -> item::trait_::Const
+impl<F> Fold for item::trait_::Const
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    item::trait_::Const {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        const_: node.const_,
-        ident: f.fold_ident(node.ident),
-        gens: f.fold_generics(node.gens),
-        colon: node.colon,
-        typ: f.fold_type(node.typ),
-        default: (node.default).map(|it| ((it).0, f.fold_expr((it).1))),
-        semi: node.semi,
+    fn fold(&self, f: &mut F) {
+        item::trait_::Const {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            const_: self.const_,
+            ident: self.ident.fold(f),
+            gens: self.gens.fold(f),
+            colon: self.colon,
+            typ: self.typ.fold(f),
+            default: (self.default).map(|x| ((x).0, (x).1.fold(f))),
+            semi: self.semi,
+        }
     }
 }
-pub fn fold_trait_item_fn<F>(f: &mut F, node: item::trait_::Fn) -> item::trait_::Fn
+impl<F> Fold for item::trait_::Fn
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    item::trait_::Fn {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        sig: f.fold_signature(node.sig),
-        default: (node.default).map(|it| f.fold_block(it)),
-        semi: node.semi,
+    fn fold(&self, f: &mut F) {
+        item::trait_::Fn {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            sig: self.sig.fold(f),
+            default: (self.default).map(|x| x.fold(f)),
+            semi: self.semi,
+        }
     }
 }
-pub fn fold_trait_item_macro<F>(f: &mut F, node: item::trait_::Mac) -> item::trait_::Mac
+impl<F> Fold for item::trait_::Mac
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    item::trait_::Mac {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        mac: f.fold_macro(node.mac),
-        semi: node.semi,
+    fn fold(&self, f: &mut F) {
+        item::trait_::Mac {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            mac: self.mac.fold(f),
+            semi: self.semi,
+        }
     }
 }
-pub fn fold_trait_item_type<F>(f: &mut F, node: item::trait_::Type) -> item::trait_::Type
+impl<F> Fold for item::trait_::Type
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    item::trait_::Type {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        type_: node.type_,
-        ident: f.fold_ident(node.ident),
-        gens: f.fold_generics(node.gens),
-        colon: node.colon,
-        bounds: FoldHelper::lift(node.bounds, |it| f.fold_type_param_bound(it)),
-        default: (node.default).map(|it| ((it).0, f.fold_type((it).1))),
-        semi: node.semi,
+    fn fold(&self, f: &mut F) {
+        item::trait_::Type {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            type_: self.type_,
+            ident: self.ident.fold(f),
+            gens: self.gens.fold(f),
+            colon: self.colon,
+            bounds: FoldHelper::lift(self.bounds, |x| x.fold(f)),
+            default: (self.default).map(|x| ((x).0, (x).1.fold(f))),
+            semi: self.semi,
+        }
     }
 }
-pub fn fold_type<F>(f: &mut F, node: typ::Type) -> typ::Type
+impl<F> Fold for typ::Type
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    match node {
-        typ::Type::Array(_binding_0) => typ::Type::Array(f.fold_type_array(_binding_0)),
-        typ::Type::Fn(_binding_0) => typ::Type::Fn(f.fold_type_bare_fn(_binding_0)),
-        typ::Type::Group(_binding_0) => typ::Type::Group(f.fold_type_group(_binding_0)),
-        typ::Type::Impl(_binding_0) => typ::Type::Impl(f.fold_type_impl_trait(_binding_0)),
-        typ::Type::Infer(_binding_0) => typ::Type::Infer(f.fold_type_infer(_binding_0)),
-        typ::Type::Mac(_binding_0) => typ::Type::Mac(f.fold_type_macro(_binding_0)),
-        typ::Type::Never(_binding_0) => typ::Type::Never(f.fold_type_never(_binding_0)),
-        typ::Type::Parenth(_binding_0) => typ::Type::Parenth(f.fold_type_paren(_binding_0)),
-        typ::Type::Path(_binding_0) => typ::Type::Path(f.fold_type_path(_binding_0)),
-        typ::Type::Ptr(_binding_0) => typ::Type::Ptr(f.fold_type_ptr(_binding_0)),
-        typ::Type::Ref(_binding_0) => typ::Type::Ref(f.fold_type_reference(_binding_0)),
-        typ::Type::Slice(_binding_0) => typ::Type::Slice(f.fold_type_slice(_binding_0)),
-        typ::Type::Trait(_binding_0) => typ::Type::Trait(f.fold_type_trait_object(_binding_0)),
-        typ::Type::Tuple(_binding_0) => typ::Type::Tuple(f.fold_type_tuple(_binding_0)),
-        typ::Type::Stream(_binding_0) => typ::Type::Stream(_binding_0),
+    fn fold(&self, f: &mut F) {
+        match self {
+            typ::Type::Array(x) => typ::Type::Array(x.fold(f)),
+            typ::Type::Fn(x) => typ::Type::Fn(x.fold(f)),
+            typ::Type::Group(x) => typ::Type::Group(x.fold(f)),
+            typ::Type::Impl(x) => typ::Type::Impl(x.fold(f)),
+            typ::Type::Infer(x) => typ::Type::Infer(x.fold(f)),
+            typ::Type::Mac(x) => typ::Type::Mac(x.fold(f)),
+            typ::Type::Never(x) => typ::Type::Never(x.fold(f)),
+            typ::Type::Parenth(x) => typ::Type::Parenth(x.fold(f)),
+            typ::Type::Path(x) => typ::Type::Path(x.fold(f)),
+            typ::Type::Ptr(x) => typ::Type::Ptr(x.fold(f)),
+            typ::Type::Ref(x) => typ::Type::Ref(x.fold(f)),
+            typ::Type::Slice(x) => typ::Type::Slice(x.fold(f)),
+            typ::Type::Trait(x) => typ::Type::Trait(x.fold(f)),
+            typ::Type::Tuple(x) => typ::Type::Tuple(x.fold(f)),
+            typ::Type::Stream(x) => typ::Type::Stream(x),
+        }
     }
 }
-pub fn fold_type_array<F>(f: &mut F, node: typ::Array) -> typ::Array
+impl<F> Fold for typ::Array
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    typ::Array {
-        bracket: node.bracket,
-        elem: Box::new(f.fold_type(*node.elem)),
-        semi: node.semi,
-        len: f.fold_expr(node.len),
+    fn fold(&self, f: &mut F) {
+        typ::Array {
+            bracket: self.bracket,
+            elem: Box::new(*self.elem.fold(f)),
+            semi: self.semi,
+            len: self.len.fold(f),
+        }
     }
 }
-pub fn fold_type_bare_fn<F>(f: &mut F, node: typ::Fn) -> typ::Fn
+impl<F> Fold for typ::Fn
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    typ::Fn {
-        lifes: (node.lifes).map(|it| f.fold_bound_lifetimes(it)),
-        unsafe_: node.unsafe_,
-        abi: (node.abi).map(|it| f.fold_abi(it)),
-        fn_: node.fn_,
-        parenth: node.parenth,
-        args: FoldHelper::lift(node.args, |it| f.fold_bare_fn_arg(it)),
-        vari: (node.vari).map(|it| f.fold_bare_variadic(it)),
-        ret: f.fold_return_type(node.ret),
+    fn fold(&self, f: &mut F) {
+        typ::Fn {
+            lifes: (self.lifes).map(|x| x.fold(f)),
+            unsafe_: self.unsafe_,
+            abi: (self.abi).map(|x| x.fold(f)),
+            fn_: self.fn_,
+            parenth: self.parenth,
+            args: FoldHelper::lift(self.args, |x| x.fold(f)),
+            vari: (self.vari).map(|x| x.fold(f)),
+            ret: self.ret.fold(f),
+        }
     }
 }
-pub fn fold_type_group<F>(f: &mut F, node: typ::Group) -> typ::Group
+impl<F> Fold for typ::Group
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    typ::Group {
-        group: node.group,
-        elem: Box::new(f.fold_type(*node.elem)),
+    fn fold(&self, f: &mut F) {
+        typ::Group {
+            group: self.group,
+            elem: Box::new(*self.elem.fold(f)),
+        }
     }
 }
-pub fn fold_type_impl_trait<F>(f: &mut F, node: typ::Impl) -> typ::Impl
+impl<F> Fold for typ::Impl
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    typ::Impl {
-        impl_: node.impl_,
-        bounds: FoldHelper::lift(node.bounds, |it| f.fold_type_param_bound(it)),
+    fn fold(&self, f: &mut F) {
+        typ::Impl {
+            impl_: self.impl_,
+            bounds: FoldHelper::lift(self.bounds, |x| x.fold(f)),
+        }
     }
 }
-pub fn fold_type_infer<F>(f: &mut F, node: typ::Infer) -> typ::Infer
+impl<F> Fold for typ::Infer
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    typ::Infer {
-        underscore: node.underscore,
+    fn fold(&self, f: &mut F) {
+        typ::Infer {
+            underscore: self.underscore,
+        }
     }
 }
-pub fn fold_type_macro<F>(f: &mut F, node: typ::Mac) -> typ::Mac
+impl<F> Fold for typ::Mac
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    typ::Mac {
-        mac: f.fold_macro(node.mac),
+    fn fold(&self, f: &mut F) {
+        typ::Mac { mac: self.mac.fold(f) }
     }
 }
-pub fn fold_type_never<F>(f: &mut F, node: typ::Never) -> typ::Never
+impl<F> Fold for typ::Never
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    typ::Never { bang: node.bang }
+    fn fold(&self, f: &mut F) {
+        typ::Never { bang: self.bang }
+    }
 }
-pub fn fold_type_param<F>(f: &mut F, node: gen::param::Type) -> gen::param::Type
+impl<F> Fold for gen::param::Type
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    gen::param::Type {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        ident: f.fold_ident(node.ident),
-        colon: node.colon,
-        bounds: FoldHelper::lift(node.bounds, |it| f.fold_type_param_bound(it)),
-        eq: node.eq,
-        default: (node.default).map(|it| f.fold_type(it)),
+    fn fold(&self, f: &mut F) {
+        gen::param::Type {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            ident: self.ident.fold(f),
+            colon: self.colon,
+            bounds: FoldHelper::lift(self.bounds, |x| x.fold(f)),
+            eq: self.eq,
+            default: (self.default).map(|x| x.fold(f)),
+        }
     }
 }
-pub fn fold_type_param_bound<F>(f: &mut F, node: gen::bound::Type) -> gen::bound::Type
+impl<F> Fold for gen::bound::Type
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    match node {
-        gen::bound::Type::Trait(_binding_0) => gen::bound::Type::Trait(f.fold_trait_bound(_binding_0)),
-        gen::bound::Type::Life(_binding_0) => gen::bound::Type::Life(f.fold_lifetime(_binding_0)),
-        gen::bound::Type::Verbatim(_binding_0) => gen::bound::Type::Verbatim(_binding_0),
+    fn fold(&self, f: &mut F) {
+        match self {
+            gen::bound::Type::Trait(x) => gen::bound::Type::Trait(x.fold(f)),
+            gen::bound::Type::Life(x) => gen::bound::Type::Life(x.fold(f)),
+            gen::bound::Type::Verbatim(x) => gen::bound::Type::Verbatim(x),
+        }
     }
 }
-pub fn fold_type_paren<F>(f: &mut F, node: typ::Parenth) -> typ::Parenth
+impl<F> Fold for typ::Parenth
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    typ::Parenth {
-        parenth: node.parenth,
-        elem: Box::new(f.fold_type(*node.elem)),
+    fn fold(&self, f: &mut F) {
+        typ::Parenth {
+            parenth: self.parenth,
+            elem: Box::new(*self.elem.fold(f)),
+        }
     }
 }
-pub fn fold_type_path<F>(f: &mut F, node: typ::Path) -> typ::Path
+impl<F> Fold for typ::Path
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    typ::Path {
-        qself: (node.qself).map(|it| f.fold_qself(it)),
-        path: f.fold_path(node.path),
+    fn fold(&self, f: &mut F) {
+        typ::Path {
+            qself: (self.qself).map(|x| x.fold(f)),
+            path: self.path.fold(f),
+        }
     }
 }
-pub fn fold_type_ptr<F>(f: &mut F, node: typ::Ptr) -> typ::Ptr
+impl<F> Fold for typ::Ptr
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    typ::Ptr {
-        star: node.star,
-        const_: node.const_,
-        mut_: node.mut_,
-        elem: Box::new(f.fold_type(*node.elem)),
+    fn fold(&self, f: &mut F) {
+        typ::Ptr {
+            star: self.star,
+            const_: self.const_,
+            mut_: self.mut_,
+            elem: Box::new(*self.elem.fold(f)),
+        }
     }
 }
-pub fn fold_type_reference<F>(f: &mut F, node: typ::Ref) -> typ::Ref
+impl<F> Fold for typ::Ref
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    typ::Ref {
-        and: node.and,
-        life: (node.life).map(|it| f.fold_lifetime(it)),
-        mut_: node.mut_,
-        elem: Box::new(f.fold_type(*node.elem)),
+    fn fold(&self, f: &mut F) {
+        typ::Ref {
+            and: self.and,
+            life: (self.life).map(|x| x.fold(f)),
+            mut_: self.mut_,
+            elem: Box::new(*self.elem.fold(f)),
+        }
     }
 }
-pub fn fold_type_slice<F>(f: &mut F, node: typ::Slice) -> typ::Slice
+impl<F> Fold for typ::Slice
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    typ::Slice {
-        bracket: node.bracket,
-        elem: Box::new(f.fold_type(*node.elem)),
+    fn fold(&self, f: &mut F) {
+        typ::Slice {
+            bracket: self.bracket,
+            elem: Box::new(*self.elem.fold(f)),
+        }
     }
 }
-pub fn fold_type_trait_object<F>(f: &mut F, node: typ::Trait) -> typ::Trait
+impl<F> Fold for typ::Trait
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    typ::Trait {
-        dyn_: node.dyn_,
-        bounds: FoldHelper::lift(node.bounds, |it| f.fold_type_param_bound(it)),
+    fn fold(&self, f: &mut F) {
+        typ::Trait {
+            dyn_: self.dyn_,
+            bounds: FoldHelper::lift(self.bounds, |x| x.fold(f)),
+        }
     }
 }
-pub fn fold_type_tuple<F>(f: &mut F, node: typ::Tuple) -> typ::Tuple
+impl<F> Fold for typ::Tuple
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    typ::Tuple {
-        parenth: node.parenth,
-        elems: FoldHelper::lift(node.elems, |it| f.fold_type(it)),
+    fn fold(&self, f: &mut F) {
+        typ::Tuple {
+            parenth: self.parenth,
+            elems: FoldHelper::lift(self.elems, |x| x.fold(f)),
+        }
     }
 }
-pub fn fold_un_op<F>(f: &mut F, node: UnOp) -> UnOp
+impl<F> Fold for UnOp
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    match node {
-        UnOp::Deref(_binding_0) => UnOp::Deref(_binding_0),
-        UnOp::Not(_binding_0) => UnOp::Not(_binding_0),
-        UnOp::Neg(_binding_0) => UnOp::Neg(_binding_0),
+    fn fold(&self, f: &mut F) {
+        match self {
+            UnOp::Deref(x) => UnOp::Deref(x),
+            UnOp::Not(x) => UnOp::Not(x),
+            UnOp::Neg(x) => UnOp::Neg(x),
+        }
     }
 }
-pub fn fold_use_glob<F>(f: &mut F, node: item::use_::Glob) -> item::use_::Glob
+impl<F> Fold for item::use_::Glob
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    item::use_::Glob { star: node.star }
+    fn fold(&self, f: &mut F) {
+        item::use_::Glob { star: self.star }
+    }
 }
-pub fn fold_use_group<F>(f: &mut F, node: item::use_::Group) -> item::use_::Group
+impl<F> Fold for item::use_::Group
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    item::use_::Group {
-        brace: node.brace,
-        trees: FoldHelper::lift(node.trees, |it| f.fold_use_tree(it)),
+    fn fold(&self, f: &mut F) {
+        item::use_::Group {
+            brace: self.brace,
+            trees: FoldHelper::lift(self.trees, |x| x.fold(f)),
+        }
     }
 }
-pub fn fold_use_name<F>(f: &mut F, node: item::use_::Name) -> item::use_::Name
+impl<F> Fold for item::use_::Name
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    item::use_::Name {
-        ident: f.fold_ident(node.ident),
+    fn fold(&self, f: &mut F) {
+        item::use_::Name {
+            ident: self.ident.fold(f),
+        }
     }
 }
-pub fn fold_use_path<F>(f: &mut F, node: item::use_::Path) -> item::use_::Path
+impl<F> Fold for item::use_::Path
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    item::use_::Path {
-        ident: f.fold_ident(node.ident),
-        colon2: node.colon2,
-        tree: Box::new(f.fold_use_tree(*node.tree)),
+    fn fold(&self, f: &mut F) {
+        item::use_::Path {
+            ident: self.ident.fold(f),
+            colon2: self.colon2,
+            tree: Box::new(*self.tree.fold(f)),
+        }
     }
 }
-pub fn fold_use_rename<F>(f: &mut F, node: item::use_::Rename) -> item::use_::Rename
+impl<F> Fold for item::use_::Rename
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    item::use_::Rename {
-        ident: f.fold_ident(node.ident),
-        as_: node.as_,
-        rename: f.fold_ident(node.rename),
+    fn fold(&self, f: &mut F) {
+        item::use_::Rename {
+            ident: self.ident.fold(f),
+            as_: self.as_,
+            rename: self.rename.fold(f),
+        }
     }
 }
-pub fn fold_use_tree<F>(f: &mut F, node: item::use_::Tree) -> item::use_::Tree
+impl<F> Fold for item::use_::Tree
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    match node {
-        item::use_::Tree::Path(_binding_0) => item::use_::Tree::Path(f.fold_use_path(_binding_0)),
-        item::use_::Tree::Name(_binding_0) => item::use_::Tree::Name(f.fold_use_name(_binding_0)),
-        item::use_::Tree::Rename(_binding_0) => item::use_::Tree::Rename(f.fold_use_rename(_binding_0)),
-        item::use_::Tree::Glob(_binding_0) => item::use_::Tree::Glob(f.fold_use_glob(_binding_0)),
-        item::use_::Tree::Group(_binding_0) => item::use_::Tree::Group(f.fold_use_group(_binding_0)),
+    fn fold(&self, f: &mut F) {
+        match self {
+            item::use_::Tree::Path(x) => item::use_::Tree::Path(x.fold(f)),
+            item::use_::Tree::Name(x) => item::use_::Tree::Name(x.fold(f)),
+            item::use_::Tree::Rename(x) => item::use_::Tree::Rename(x.fold(f)),
+            item::use_::Tree::Glob(x) => item::use_::Tree::Glob(x.fold(f)),
+            item::use_::Tree::Group(x) => item::use_::Tree::Group(x.fold(f)),
+        }
     }
 }
-pub fn fold_variadic<F>(f: &mut F, node: item::Variadic) -> item::Variadic
+impl<F> Fold for item::Variadic
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    item::Variadic {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        pat: (node.pat).map(|it| (Box::new(f.fold_pat(*(it).0)), (it).1)),
-        dots: node.dots,
-        comma: node.comma,
+    fn fold(&self, f: &mut F) {
+        item::Variadic {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            pat: (self.pat).map(|x| (Box::new(*(x).0.fold(f), (x).1))),
+            dots: self.dots,
+            comma: self.comma,
+        }
     }
 }
-pub fn fold_variant<F>(f: &mut F, node: data::Variant) -> data::Variant
+impl<F> Fold for data::Variant
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    data::Variant {
-        attrs: FoldHelper::lift(node.attrs, |it| f.fold_attribute(it)),
-        ident: f.fold_ident(node.ident),
-        fields: f.fold_fields(node.fields),
-        discrim: (node.discrim).map(|it| ((it).0, f.fold_expr((it).1))),
+    fn fold(&self, f: &mut F) {
+        data::Variant {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            ident: self.ident.fold(f),
+            fields: self.fields.fold(f),
+            discrim: (self.discrim).map(|x| ((x).0, (x).1.fold(f))),
+        }
     }
 }
-pub fn fold_vis_restricted<F>(f: &mut F, node: data::Restricted) -> data::Restricted
+impl<F> Fold for data::Restricted
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    data::Restricted {
-        pub_: node.pub_,
-        parenth: node.parenth,
-        in_: node.in_,
-        path: Box::new(f.fold_path(*node.path)),
+    fn fold(&self, f: &mut F) {
+        data::Restricted {
+            pub_: self.pub_,
+            parenth: self.parenth,
+            in_: self.in_,
+            path: Box::new(*self.path.fold(f)),
+        }
     }
 }
-pub fn fold_visibility<F>(f: &mut F, node: data::Visibility) -> data::Visibility
+impl<F> Fold for data::Visibility
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    match node {
-        data::Visibility::Public(_binding_0) => data::Visibility::Public(_binding_0),
-        data::Visibility::Restricted(_binding_0) => data::Visibility::Restricted(f.fold_vis_restricted(_binding_0)),
-        data::Visibility::Inherited => data::Visibility::Inherited,
+    fn fold(&self, f: &mut F) {
+        match self {
+            data::Visibility::Public(x) => data::Visibility::Public(x),
+            data::Visibility::Restricted(x) => data::Visibility::Restricted(x.fold(f)),
+            data::Visibility::Inherited => data::Visibility::Inherited,
+        }
     }
 }
-pub fn fold_where_clause<F>(f: &mut F, node: gen::Where) -> gen::Where
+impl<F> Fold for gen::Where
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    gen::Where {
-        where_: node.where_,
-        preds: FoldHelper::lift(node.preds, |it| f.fold_where_predicate(it)),
+    fn fold(&self, f: &mut F) {
+        gen::Where {
+            where_: self.where_,
+            preds: FoldHelper::lift(self.preds, |x| x.fold(f)),
+        }
     }
 }
-pub fn fold_where_predicate<F>(f: &mut F, node: gen::Where::Pred) -> gen::Where::Pred
+impl<F> Fold for gen::Where::Pred
 where
-    F: Fold + ?Sized,
+    F: Folder + ?Sized,
 {
-    match node {
-        gen::Where::Pred::Life(_binding_0) => gen::Where::Pred::Life(f.fold_predicate_lifetime(_binding_0)),
-        gen::Where::Pred::Type(_binding_0) => gen::Where::Pred::Type(f.fold_predicate_type(_binding_0)),
+    fn fold(&self, f: &mut F) {
+        match self {
+            gen::Where::Pred::Life(x) => gen::Where::Pred::Life(x.fold(f)),
+            gen::Where::Pred::Type(x) => gen::Where::Pred::Type(x.fold(f)),
+        }
     }
 }

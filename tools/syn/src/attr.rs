@@ -11,6 +11,20 @@ impl Clone for Style {
         *self
     }
 }
+impl Debug for Style {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("attr::Style::")?;
+        use Style::*;
+        match self {
+            Outer => f.write_str("Outer"),
+            Inner(x) => {
+                let mut f = f.debug_tuple("Inner");
+                f.field(x);
+                f.finish()
+            },
+        }
+    }
+}
 impl Eq for Style {}
 impl PartialEq for Style {
     fn eq(&self, x: &Self) -> bool {
@@ -19,6 +33,18 @@ impl PartialEq for Style {
             (Outer, Outer) => true,
             (Inner(_), Inner(_)) => true,
             _ => false,
+        }
+    }
+}
+impl<F> Fold for Style
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        use Style::*;
+        match self {
+            Outer => Outer,
+            Inner(x) => Inner(x),
         }
     }
 }
@@ -145,19 +171,20 @@ impl Clone for Attr {
         }
     }
 }
+impl Debug for Attr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut f = f.debug_struct("attr::Attr");
+        f.field("pound", &self.pound);
+        f.field("style", &self.style);
+        f.field("bracket", &self.bracket);
+        f.field("meta", &self.meta);
+        f.finish()
+    }
+}
 impl Eq for Attr {}
 impl PartialEq for Attr {
     fn eq(&self, x: &Self) -> bool {
         self.style == x.style && self.meta == x.meta
-    }
-}
-impl<H> Hash for Attr
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.style.hash(h);
-        self.meta.hash(h);
     }
 }
 impl Pretty for Attr {
@@ -218,6 +245,28 @@ impl Pretty for Attr {
         &self.meta.pretty(p);
         p.word("]");
         p.space();
+    }
+}
+impl<F> Fold for Attr
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Attr {
+            pound: self.pound,
+            style: self.style.fold(f),
+            bracket: self.bracket,
+            meta: self.meta.fold(f),
+        }
+    }
+}
+impl<H> Hash for Attr
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.style.hash(h);
+        self.meta.hash(h);
     }
 }
 impl<V> Visit for Attr
@@ -446,6 +495,17 @@ impl Clone for Meta {
         }
     }
 }
+impl Debug for Meta {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("attr::Meta::")?;
+        use Meta::*;
+        match self {
+            Path(x) => x.debug(f, "Path"),
+            List(x) => x.debug(f, "List"),
+            NameValue(x) => x.debug(f, "NameValue"),
+        }
+    }
+}
 impl Eq for Meta {}
 impl PartialEq for Meta {
     fn eq(&self, x: &Self) -> bool {
@@ -455,6 +515,29 @@ impl PartialEq for Meta {
             (NameValue(x), NameValue(y)) => x == y,
             (Path(x), Path(y)) => x == y,
             _ => false,
+        }
+    }
+}
+impl Pretty for Meta {
+    fn pretty(&self, p: &mut Print) {
+        use Meta::*;
+        match self {
+            List(x) => x.pretty(p),
+            NameValue(x) => x.pretty(p),
+            Path(x) => p.path(x, path::Kind::Simple),
+        }
+    }
+}
+impl<F> Fold for Meta
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        use Meta::*;
+        match self {
+            Path(x) => Path(x.fold(f)),
+            List(x) => List(x.fold(f)),
+            NameValue(x) => NameValue(x.fold(f)),
         }
     }
 }
@@ -477,16 +560,6 @@ where
                 h.write_u8(2u8);
                 x.hash(h);
             },
-        }
-    }
-}
-impl Pretty for Meta {
-    fn pretty(&self, p: &mut Print) {
-        use Meta::*;
-        match self {
-            List(x) => x.pretty(p),
-            NameValue(x) => x.pretty(p),
-            Path(x) => p.path(x, path::Kind::Simple),
         }
     }
 }
@@ -562,20 +635,24 @@ impl Clone for List {
         }
     }
 }
+impl Debug for List {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl List {
+            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+                let mut f = f.debug_struct(name);
+                f.field("path", &self.path);
+                f.field("delim", &self.delim);
+                f.field("toks", &self.toks);
+                f.finish()
+            }
+        }
+        self.debug(f, "attr::List")
+    }
+}
 impl Eq for List {}
 impl PartialEq for List {
     fn eq(&self, x: &Self) -> bool {
         self.path == x.path && self.delim == x.delim && StreamHelper(&self.toks) == StreamHelper(&x.toks)
-    }
-}
-impl<H> Hash for List
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.path.hash(h);
-        self.delim.hash(h);
-        StreamHelper(&self.toks).hash(h);
     }
 }
 impl Pretty for List {
@@ -692,6 +769,28 @@ impl Pretty for List {
         }
     }
 }
+impl<F> Fold for List
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        List {
+            path: self.path.fold(f),
+            delim: self.delim.fold(f),
+            toks: self.toks,
+        }
+    }
+}
+impl<H> Hash for List
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.path.hash(h);
+        self.delim.hash(h);
+        StreamHelper(&self.toks).hash(h);
+    }
+}
 impl<V> Visit for List
 where
     V: Visitor + ?Sized,
@@ -733,10 +832,43 @@ impl Clone for NameValue {
         }
     }
 }
+impl Debug for NameValue {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl NameValue {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("name", &self.name);
+                f.field("eq", &self.eq);
+                f.field("val", &self.val);
+                f.finish()
+            }
+        }
+        self.debug(f, "attr::NameValue")
+    }
+}
 impl Eq for NameValue {}
 impl PartialEq for NameValue {
     fn eq(&self, x: &Self) -> bool {
         self.name == x.name && self.val == x.val
+    }
+}
+impl Pretty for NameValue {
+    fn pretty(&self, p: &mut Print) {
+        p.path(&self.name, path::Kind::Simple);
+        p.word(" = ");
+        p.expr(&self.val);
+    }
+}
+impl<F> Fold for NameValue
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        NameValue {
+            name: self.name.fold(f),
+            eq: self.eq,
+            val: self.val.fold(f),
+        }
     }
 }
 impl<H> Hash for NameValue
@@ -746,13 +878,6 @@ where
     fn hash(&self, h: &mut H) {
         self.name.hash(h);
         self.val.hash(h);
-    }
-}
-impl Pretty for NameValue {
-    fn pretty(&self, p: &mut Print) {
-        p.path(&self.name, path::Kind::Simple);
-        p.word(" = ");
-        p.expr(&self.val);
     }
 }
 impl<V> Visit for NameValue

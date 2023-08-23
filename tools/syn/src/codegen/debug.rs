@@ -55,29 +55,6 @@ impl Debug for AssocType {
         f.finish()
     }
 }
-impl Debug for attr::Style {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("attr::Style::")?;
-        match self {
-            attr::Style::Outer => f.write_str("Outer"),
-            attr::Style::Inner(x) => {
-                let mut f = f.debug_tuple("Inner");
-                f.field(x);
-                f.finish()
-            },
-        }
-    }
-}
-impl Debug for attr::Attr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("attr::Attr");
-        f.field("pound", &self.pound);
-        f.field("style", &self.style);
-        f.field("bracket", &self.bracket);
-        f.field("meta", &self.meta);
-        f.finish()
-    }
-}
 impl Debug for typ::FnArg {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut f = f.debug_struct("typ::FnArg");
@@ -1748,44 +1725,6 @@ impl Debug for Member {
                 f.finish()
             },
         }
-    }
-}
-impl Debug for attr::Meta {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("attr::Meta::")?;
-        match self {
-            attr::Meta::Path(x) => x.debug(f, "Path"),
-            attr::Meta::List(x) => x.debug(f, "List"),
-            attr::Meta::NameValue(x) => x.debug(f, "NameValue"),
-        }
-    }
-}
-impl Debug for attr::List {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl attr::List {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut f = f.debug_struct(name);
-                f.field("path", &self.path);
-                f.field("delimiter", &self.delim);
-                f.field("tokens", &self.toks);
-                f.finish()
-            }
-        }
-        self.debug(f, "attr::List")
-    }
-}
-impl Debug for attr::NameValue {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl attr::NameValue {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut f = f.debug_struct(name);
-                f.field("path", &self.name);
-                f.field("eq", &self.eq);
-                f.field("value", &self.val);
-                f.finish()
-            }
-        }
-        self.debug(f, "attr::NameValue")
     }
 }
 impl Debug for path::Parenth {
