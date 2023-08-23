@@ -178,67 +178,6 @@ where
         }
     }
 }
-impl<F> Fold for Data
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        match self {
-            Data::Struct(x) => Data::Struct(x.fold(f)),
-            Data::Enum(x) => Data::Enum(x.fold(f)),
-            Data::Union(x) => Data::Union(x.fold(f)),
-        }
-    }
-}
-impl<F> Fold for data::Enum
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        data::Enum {
-            enum_: self.enum_,
-            brace: self.brace,
-            variants: FoldHelper::lift(self.variants, |x| x.fold(f)),
-        }
-    }
-}
-impl<F> Fold for data::Struct
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        data::Struct {
-            struct_: self.struct_,
-            fields: self.fields.fold(f),
-            semi: self.semi,
-        }
-    }
-}
-impl<F> Fold for data::Union
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        data::Union {
-            union_: self.union_,
-            fields: self.fields.fold(f),
-        }
-    }
-}
-impl<F> Fold for Input
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        Input {
-            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
-            vis: self.vis.fold(f),
-            ident: self.ident.fold(f),
-            gens: self.gens.fold(f),
-            data: self.data.fold(f),
-        }
-    }
-}
 impl<F> Fold for Expr
 where
     F: Folder + ?Sized,
@@ -782,31 +721,6 @@ where
         }
     }
 }
-impl<F> Fold for data::Field
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        data::Field {
-            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
-            vis: self.vis.fold(f),
-            mut_: self.mut_.fold(f),
-            ident: (self.ident).map(|x| x.fold(f)),
-            colon: self.colon,
-            typ: self.typ.fold(f),
-        }
-    }
-}
-impl<F> Fold for data::Mut
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        match self {
-            data::Mut::None => data::Mut::None,
-        }
-    }
-}
 impl<F> Fold for pat::Field
 where
     F: Folder + ?Sized,
@@ -830,40 +744,6 @@ where
             member: self.member.fold(f),
             colon: self.colon,
             expr: self.expr.fold(f),
-        }
-    }
-}
-impl<F> Fold for data::Fields
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        match self {
-            data::Fields::Named(x) => data::Fields::Named(x.fold(f)),
-            data::Fields::Unnamed(x) => data::Fields::Unnamed(x.fold(f)),
-            data::Fields::Unit => data::Fields::Unit,
-        }
-    }
-}
-impl<F> Fold for data::Named
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        data::Named {
-            brace: self.brace,
-            fields: FoldHelper::lift(self.fields, |x| x.fold(f)),
-        }
-    }
-}
-impl<F> Fold for data::Unnamed
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        data::Unnamed {
-            parenth: self.parenth,
-            fields: FoldHelper::lift(self.fields, |x| x.fold(f)),
         }
     }
 }
@@ -2318,44 +2198,6 @@ where
             pat: (self.pat).map(|x| (Box::new(*(x).0.fold(f), (x).1))),
             dots: self.dots,
             comma: self.comma,
-        }
-    }
-}
-impl<F> Fold for data::Variant
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        data::Variant {
-            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
-            ident: self.ident.fold(f),
-            fields: self.fields.fold(f),
-            discrim: (self.discrim).map(|x| ((x).0, (x).1.fold(f))),
-        }
-    }
-}
-impl<F> Fold for data::Restricted
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        data::Restricted {
-            pub_: self.pub_,
-            parenth: self.parenth,
-            in_: self.in_,
-            path: Box::new(*self.path.fold(f)),
-        }
-    }
-}
-impl<F> Fold for data::Visibility
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        match self {
-            data::Visibility::Public(x) => data::Visibility::Public(x),
-            data::Visibility::Restricted(x) => data::Visibility::Restricted(x.fold(f)),
-            data::Visibility::Inherited => data::Visibility::Inherited,
         }
     }
 }

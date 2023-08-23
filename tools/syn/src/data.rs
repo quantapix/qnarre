@@ -64,6 +64,17 @@ impl Clone for Input {
         }
     }
 }
+impl Debug for Input {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut f = f.debug_struct("Input");
+        f.field("attrs", &self.attrs);
+        f.field("vis", &self.vis);
+        f.field("ident", &self.ident);
+        f.field("gens", &self.gens);
+        f.field("data", &self.data);
+        f.finish()
+    }
+}
 impl Eq for Input {}
 impl PartialEq for Input {
     fn eq(&self, x: &Self) -> bool {
@@ -72,18 +83,6 @@ impl PartialEq for Input {
             && self.ident == x.ident
             && self.gens == x.gens
             && self.data == x.data
-    }
-}
-impl<H> Hash for Input
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.vis.hash(h);
-        self.ident.hash(h);
-        self.gens.hash(h);
-        self.data.hash(h);
     }
 }
 impl Lower for Input {
@@ -126,6 +125,32 @@ impl Lower for Input {
                 x.fields.lower(s);
             },
         }
+    }
+}
+impl<F> Fold for Input
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Input {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            vis: self.vis.fold(f),
+            ident: self.ident.fold(f),
+            gens: self.gens.fold(f),
+            data: self.data.fold(f),
+        }
+    }
+}
+impl<H> Hash for Input
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.ident.hash(h);
+        self.gens.hash(h);
+        self.data.hash(h);
     }
 }
 impl<V> Visit for Input
@@ -238,6 +263,21 @@ impl Clone for Visibility {
         }
     }
 }
+impl Debug for Visibility {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("data::Visibility::")?;
+        use Visibility::*;
+        match self {
+            Public(x) => {
+                let mut f = f.debug_tuple("Public");
+                f.field(x);
+                f.finish()
+            },
+            Restricted(x) => x.debug(f, "Restricted"),
+            Inherited => f.write_str("Inherited"),
+        }
+    }
+}
 impl Eq for Visibility {}
 impl PartialEq for Visibility {
     fn eq(&self, x: &Self) -> bool {
@@ -247,6 +287,29 @@ impl PartialEq for Visibility {
             (Public(_), Public(_)) => true,
             (Restricted(x), Restricted(y)) => x == y,
             _ => false,
+        }
+    }
+}
+impl Pretty for Visibility {
+    fn pretty(&self, p: &mut Print) {
+        use Visibility::*;
+        match self {
+            Public(_) => p.word("pub "),
+            Restricted(x) => x.pretty(p),
+            Inherited => {},
+        }
+    }
+}
+impl<F> Fold for Visibility
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        use Visibility::*;
+        match self {
+            Public(x) => Public(x),
+            Restricted(x) => Restricted(x.fold(f)),
+            Inherited => Inherited,
         }
     }
 }
@@ -267,16 +330,6 @@ where
             Inherited => {
                 h.write_u8(2u8);
             },
-        }
-    }
-}
-impl Pretty for Visibility {
-    fn pretty(&self, p: &mut Print) {
-        use Visibility::*;
-        match self {
-            Public(_) => p.word("pub "),
-            Restricted(x) => x.pretty(p),
-            Inherited => {},
         }
     }
 }
@@ -331,19 +384,25 @@ impl Clone for Restricted {
         }
     }
 }
+impl Debug for Restricted {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Restricted {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("pub_", &self.pub_);
+                f.field("parenth", &self.parenth);
+                f.field("in_", &self.in_);
+                f.field("path", &self.path);
+                f.finish()
+            }
+        }
+        self.debug(f, "data::Restricted")
+    }
+}
 impl Eq for Restricted {}
 impl PartialEq for Restricted {
     fn eq(&self, x: &Self) -> bool {
         self.in_ == x.in_ && self.path == x.path
-    }
-}
-impl<H> Hash for Restricted
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.in_.hash(h);
-        self.path.hash(h);
     }
 }
 impl Pretty for Restricted {
@@ -358,6 +417,28 @@ impl Pretty for Restricted {
         }
         p.path(&self.path, path::Kind::Simple);
         p.word(") ");
+    }
+}
+impl<F> Fold for Restricted
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Restricted {
+            pub_: self.pub_,
+            parenth: self.parenth,
+            in_: self.in_,
+            path: Box::new(*self.path.fold(f)),
+        }
+    }
+}
+impl<H> Hash for Restricted
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.in_.hash(h);
+        self.path.hash(h);
     }
 }
 impl<V> Visit for Restricted
@@ -387,6 +468,17 @@ impl Clone for Data {
         }
     }
 }
+impl Debug for Data {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("data::Data::")?;
+        use Data::*;
+        match self {
+            Enum(x) => x.debug(f, "Enum"),
+            Struct(x) => x.debug(f, "Struct"),
+            Union(x) => x.debug(f, "Union"),
+        }
+    }
+}
 impl Eq for Data {}
 impl PartialEq for Data {
     fn eq(&self, x: &Self) -> bool {
@@ -399,6 +491,19 @@ impl PartialEq for Data {
         }
     }
 }
+impl<F> Fold for Data
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        use Data::*;
+        match self {
+            Enum(x) => Enum(x.fold(f)),
+            Struct(x) => Struct(x.fold(f)),
+            Union(x) => Union(x.fold(f)),
+        }
+    }
+}
 impl<H> Hash for Data
 where
     H: Hasher,
@@ -406,12 +511,12 @@ where
     fn hash(&self, h: &mut H) {
         use Data::*;
         match self {
-            Struct(x) => {
-                h.write_u8(0u8);
-                x.hash(h);
-            },
             Enum(x) => {
                 h.write_u8(1u8);
+                x.hash(h);
+            },
+            Struct(x) => {
+                h.write_u8(0u8);
                 x.hash(h);
             },
             Union(x) => {
@@ -469,10 +574,36 @@ impl Clone for Enum {
         }
     }
 }
+impl Debug for Enum {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Enum {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("enum_", &self.enum_);
+                f.field("brace", &self.brace);
+                f.field("variants", &self.variants);
+                f.finish()
+            }
+        }
+        self.debug(f, "data::Enum")
+    }
+}
 impl Eq for Enum {}
 impl PartialEq for Enum {
     fn eq(&self, x: &Self) -> bool {
         self.variants == x.variants
+    }
+}
+impl<F> Fold for Enum
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Enum {
+            enum_: self.enum_,
+            brace: self.brace,
+            variants: FoldHelper::lift(self.variants, |x| x.fold(f)),
+        }
     }
 }
 impl<H> Hash for Enum
@@ -515,6 +646,20 @@ impl Clone for Struct {
         }
     }
 }
+impl Debug for Struct {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Struct {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("struct_", &self.struct_);
+                f.field("fields", &self.fields);
+                f.field("semi", &self.semi);
+                f.finish()
+            }
+        }
+        self.debug(f, "data::Struct")
+    }
+}
 impl Eq for Struct {}
 impl PartialEq for Struct {
     fn eq(&self, x: &Self) -> bool {
@@ -525,6 +670,18 @@ impl Eq for Union {}
 impl PartialEq for Union {
     fn eq(&self, x: &Self) -> bool {
         self.fields == x.fields
+    }
+}
+impl<F> Fold for Struct
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Struct {
+            struct_: self.struct_,
+            fields: self.fields.fold(f),
+            semi: self.semi,
+        }
     }
 }
 impl<H> Hash for Struct
@@ -557,6 +714,30 @@ impl Clone for Union {
         Union {
             union_: self.union_.clone(),
             fields: self.fields.clone(),
+        }
+    }
+}
+impl Debug for Union {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Union {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("union_", &self.union_);
+                f.field("fields", &self.fields);
+                f.finish()
+            }
+        }
+        self.debug(f, "data::Union")
+    }
+}
+impl<F> Fold for Union
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Union {
+            union_: self.union_,
+            fields: self.fields.fold(f),
         }
     }
 }
@@ -634,21 +815,20 @@ impl Clone for Variant {
         }
     }
 }
+impl Debug for Variant {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut f = f.debug_struct("data::Variant");
+        f.field("attrs", &self.attrs);
+        f.field("ident", &self.ident);
+        f.field("fields", &self.fields);
+        f.field("discrim", &self.discrim);
+        f.finish()
+    }
+}
 impl Eq for Variant {}
 impl PartialEq for Variant {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.ident == x.ident && self.fields == x.fields && self.discrim == x.discrim
-    }
-}
-impl<H> Hash for Variant
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.ident.hash(h);
-        self.fields.hash(h);
-        self.discrim.hash(h);
     }
 }
 impl Pretty for Variant {
@@ -681,6 +861,30 @@ impl Pretty for Variant {
             p.word(" = ");
             p.expr(x);
         }
+    }
+}
+impl<F> Fold for Variant
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Variant {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            ident: self.ident.fold(f),
+            fields: self.fields.fold(f),
+            discrim: (self.discrim).map(|x| ((x).0, (x).1.fold(f))),
+        }
+    }
+}
+impl<H> Hash for Variant
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.ident.hash(h);
+        self.fields.hash(h);
+        self.discrim.hash(h);
     }
 }
 impl<V> Visit for Variant
@@ -786,6 +990,17 @@ impl Clone for Fields {
         }
     }
 }
+impl Debug for Fields {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("data::Fields::")?;
+        use Fields::*;
+        match self {
+            Named(x) => x.debug(f, "Named"),
+            Unnamed(x) => x.debug(f, "Unnamed"),
+            Unit => f.write_str("Unit"),
+        }
+    }
+}
 impl Eq for Fields {}
 impl PartialEq for Fields {
     fn eq(&self, x: &Self) -> bool {
@@ -795,6 +1010,19 @@ impl PartialEq for Fields {
             (Unit, Unit) => true,
             (Unnamed(x), Unnamed(y)) => x == y,
             _ => false,
+        }
+    }
+}
+impl<F> Fold for Fields
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        use Fields::*;
+        match self {
+            Named(x) => Named(x.fold(f)),
+            Unnamed(x) => Unnamed(x.fold(f)),
+            Unit => Unit,
         }
     }
 }
@@ -877,10 +1105,34 @@ impl Clone for Named {
         }
     }
 }
+impl Debug for Named {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Named {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("brace", &self.brace);
+                f.field("fields", &self.fields);
+                f.finish()
+            }
+        }
+        self.debug(f, "data::Named")
+    }
+}
 impl Eq for Named {}
 impl PartialEq for Named {
     fn eq(&self, x: &Self) -> bool {
         self.fields == x.fields
+    }
+}
+impl<F> Fold for Named
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Named {
+            brace: self.brace,
+            fields: FoldHelper::lift(self.fields, |x| x.fold(f)),
+        }
     }
 }
 impl<H> Hash for Named
@@ -937,18 +1189,23 @@ impl Clone for Unnamed {
         }
     }
 }
+impl Debug for Unnamed {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Unnamed {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("parenth", &self.parenth);
+                f.field("fields", &self.fields);
+                f.finish()
+            }
+        }
+        self.debug(f, "data::Unnamed")
+    }
+}
 impl Eq for Unnamed {}
 impl PartialEq for Unnamed {
     fn eq(&self, x: &Self) -> bool {
         self.fields == x.fields
-    }
-}
-impl<H> Hash for Unnamed
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.fields.hash(h);
     }
 }
 impl Pretty for Unnamed {
@@ -961,6 +1218,25 @@ impl Pretty for Unnamed {
         }
         p.offset(-INDENT);
         p.word(")");
+    }
+}
+impl<F> Fold for Unnamed
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Unnamed {
+            parenth: self.parenth,
+            fields: FoldHelper::lift(self.fields, |x| x.fold(f)),
+        }
+    }
+}
+impl<H> Hash for Unnamed
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.fields.hash(h);
     }
 }
 impl<V> Visit for Unnamed
@@ -1038,6 +1314,18 @@ impl Clone for Field {
         }
     }
 }
+impl Debug for Field {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut f = f.debug_struct("data::Field");
+        f.field("attrs", &self.attrs);
+        f.field("vis", &self.vis);
+        f.field("mut_", &self.mut_);
+        f.field("ident", &self.ident);
+        f.field("colon", &self.colon);
+        f.field("ty", &self.typ);
+        f.finish()
+    }
+}
 impl Eq for Field {}
 impl PartialEq for Field {
     fn eq(&self, x: &Self) -> bool {
@@ -1047,6 +1335,32 @@ impl PartialEq for Field {
             && self.ident == x.ident
             && self.colon == x.colon
             && self.typ == x.typ
+    }
+}
+impl Pretty for Field {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.visibility(&self.vis);
+        if let Some(x) = &self.ident {
+            p.ident(x);
+            p.word(": ");
+        }
+        p.ty(&self.typ);
+    }
+}
+impl<F> Fold for Field
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Field {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            vis: self.vis.fold(f),
+            mut_: self.mut_.fold(f),
+            ident: (self.ident).map(|x| x.fold(f)),
+            colon: self.colon,
+            typ: self.typ.fold(f),
+        }
     }
 }
 impl<H> Hash for Field
@@ -1060,17 +1374,6 @@ where
         self.ident.hash(h);
         self.colon.hash(h);
         self.typ.hash(h);
-    }
-}
-impl Pretty for Field {
-    fn pretty(&self, p: &mut Print) {
-        p.outer_attrs(&self.attrs);
-        p.visibility(&self.vis);
-        if let Some(x) = &self.ident {
-            p.ident(x);
-            p.word(": ");
-        }
-        p.ty(&self.typ);
     }
 }
 impl<V> Visit for Field
@@ -1112,6 +1415,15 @@ impl Clone for Mut {
         }
     }
 }
+impl Debug for Mut {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("Mut::")?;
+        use Mut::*;
+        match self {
+            None => f.write_str("None"),
+        }
+    }
+}
 impl Eq for Mut {}
 impl PartialEq for Mut {
     fn eq(&self, x: &Self) -> bool {
@@ -1121,13 +1433,25 @@ impl PartialEq for Mut {
         }
     }
 }
+impl<F> Fold for Mut
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        use Mut::*;
+        match self {
+            None => None,
+        }
+    }
+}
 impl<H> Hash for Mut
 where
     H: Hasher,
 {
     fn hash(&self, h: &mut H) {
+        use Mut::*;
         match self {
-            Mut::None => {
+            None => {
                 h.write_u8(0u8);
             },
         }
@@ -1138,13 +1462,15 @@ where
     V: Visitor + ?Sized,
 {
     fn visit(&self, v: &mut V) {
+        use Mut::*;
         match self {
-            Mut::None => {},
+            None => {},
         }
     }
     fn visit_mut(&mut self, v: &mut V) {
+        use Mut::*;
         match self {
-            Mut::None => {},
+            None => {},
         }
     }
 }

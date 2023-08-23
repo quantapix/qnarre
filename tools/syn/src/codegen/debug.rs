@@ -263,69 +263,6 @@ impl Debug for path::Constraint {
         f.finish()
     }
 }
-impl Debug for data::Data {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("Data::")?;
-        use data::Data::*;
-        match self {
-            Struct(x) => x.debug(f, "Struct"),
-            Enum(x) => x.debug(f, "Enum"),
-            Union(x) => x.debug(f, "Union"),
-        }
-    }
-}
-impl Debug for data::Enum {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl data::Enum {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut f = f.debug_struct(name);
-                f.field("enum_", &self.enum_);
-                f.field("brace", &self.brace);
-                f.field("variants", &self.variants);
-                f.finish()
-            }
-        }
-        self.debug(f, "data::Enum")
-    }
-}
-impl Debug for data::Struct {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl data::Struct {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut f = f.debug_struct(name);
-                f.field("struct_", &self.struct_);
-                f.field("fields", &self.fields);
-                f.field("semi", &self.semi);
-                f.finish()
-            }
-        }
-        self.debug(f, "data::Struct")
-    }
-}
-impl Debug for data::Union {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl data::Union {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut f = f.debug_struct(name);
-                f.field("union_", &self.union_);
-                f.field("fields", &self.fields);
-                f.finish()
-            }
-        }
-        self.debug(f, "data::Union")
-    }
-}
-impl Debug for Input {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("Input");
-        f.field("attrs", &self.attrs);
-        f.field("vis", &self.vis);
-        f.field("ident", &self.ident);
-        f.field("gens", &self.gens);
-        f.field("data", &self.data);
-        f.finish()
-    }
-}
 impl Debug for expr::Expr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("Expr::")?;
@@ -948,26 +885,6 @@ impl Debug for expr::Yield {
         self.debug(f, "expr::Yield")
     }
 }
-impl Debug for data::Field {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("data::Field");
-        f.field("attrs", &self.attrs);
-        f.field("vis", &self.vis);
-        f.field("mut_", &self.mut_);
-        f.field("ident", &self.ident);
-        f.field("colon", &self.colon);
-        f.field("ty", &self.typ);
-        f.finish()
-    }
-}
-impl Debug for data::Mut {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("Mut::")?;
-        match self {
-            data::Mut::None => f.write_str("None"),
-        }
-    }
-}
 impl Debug for pat::Field {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut f = f.debug_struct("pat::Field");
@@ -986,42 +903,6 @@ impl Debug for FieldValue {
         f.field("colon", &self.colon);
         f.field("expr", &self.expr);
         f.finish()
-    }
-}
-impl Debug for data::Fields {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("data::Fields::")?;
-        match self {
-            data::Fields::Named(x) => x.debug(f, "Named"),
-            data::Fields::Unnamed(x) => x.debug(f, "Unnamed"),
-            data::Fields::Unit => f.write_str("Unit"),
-        }
-    }
-}
-impl Debug for data::Named {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl data::Named {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut f = f.debug_struct(name);
-                f.field("brace", &self.brace);
-                f.field("fields", &self.fields);
-                f.finish()
-            }
-        }
-        self.debug(f, "data::Named")
-    }
-}
-impl Debug for data::Unnamed {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl data::Unnamed {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut f = f.debug_struct(name);
-                f.field("parenth", &self.parenth);
-                f.field("fields", &self.fields);
-                f.finish()
-            }
-        }
-        self.debug(f, "data::Unnamed")
     }
 }
 impl Debug for item::File {
@@ -2554,45 +2435,6 @@ impl Debug for item::Variadic {
         f.field("dots", &self.dots);
         f.field("comma", &self.comma);
         f.finish()
-    }
-}
-impl Debug for data::Variant {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("data::Variant");
-        f.field("attrs", &self.attrs);
-        f.field("ident", &self.ident);
-        f.field("fields", &self.fields);
-        f.field("discriminant", &self.discrim);
-        f.finish()
-    }
-}
-impl Debug for data::Restricted {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl data::Restricted {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut f = f.debug_struct(name);
-                f.field("pub_", &self.pub_);
-                f.field("parenth", &self.parenth);
-                f.field("in_", &self.in_);
-                f.field("path", &self.path);
-                f.finish()
-            }
-        }
-        self.debug(f, "data::Restricted")
-    }
-}
-impl Debug for data::Visibility {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("data::Visibility::")?;
-        match self {
-            data::Visibility::Public(x) => {
-                let mut f = f.debug_tuple("Public");
-                f.field(x);
-                f.finish()
-            },
-            data::Visibility::Restricted(x) => x.debug(f, "Restricted"),
-            data::Visibility::Inherited => f.write_str("Inherited"),
-        }
     }
 }
 impl Debug for gen::Where {
