@@ -375,6 +375,57 @@ impl Clone for Expr {
         }
     }
 }
+impl Debug for Expr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("Expr::")?;
+        use Expr::*;
+        match self {
+            Array(x) => x.debug(f, "Array"),
+            Assign(x) => x.debug(f, "Assign"),
+            Async(x) => x.debug(f, "Async"),
+            Await(x) => x.debug(f, "Await"),
+            Binary(x) => x.debug(f, "Binary"),
+            Block(x) => x.debug(f, "Block"),
+            Break(x) => x.debug(f, "Break"),
+            Call(x) => x.debug(f, "Call"),
+            Cast(x) => x.debug(f, "Cast"),
+            Closure(x) => x.debug(f, "Closure"),
+            Const(x) => x.debug(f, "Const"),
+            Continue(x) => x.debug(f, "Continue"),
+            Field(x) => x.debug(f, "Field"),
+            For(x) => x.debug(f, "For"),
+            Group(x) => x.debug(f, "Group"),
+            If(x) => x.debug(f, "If"),
+            Index(x) => x.debug(f, "Index"),
+            Infer(x) => x.debug(f, "Infer"),
+            Let(x) => x.debug(f, "Let"),
+            Lit(x) => x.debug(f, "Lit"),
+            Loop(x) => x.debug(f, "Loop"),
+            Mac(x) => x.debug(f, "Macro"),
+            Match(x) => x.debug(f, "Match"),
+            Method(x) => x.debug(f, "Method"),
+            Parenth(x) => x.debug(f, "Parenth"),
+            Path(x) => x.debug(f, "Path"),
+            Range(x) => x.debug(f, "Range"),
+            Ref(x) => x.debug(f, "Reference"),
+            Repeat(x) => x.debug(f, "Repeat"),
+            Return(x) => x.debug(f, "Return"),
+            Struct(x) => x.debug(f, "Struct"),
+            Try(x) => x.debug(f, "Try"),
+            TryBlock(x) => x.debug(f, "TryBlock"),
+            Tuple(x) => x.debug(f, "Tuple"),
+            Unary(x) => x.debug(f, "Unary"),
+            Unsafe(x) => x.debug(f, "Unsafe"),
+            Verbatim(x) => {
+                let mut f = f.debug_tuple("Stream");
+                f.field(x);
+                f.finish()
+            },
+            While(x) => x.debug(f, "While"),
+            Yield(x) => x.debug(f, "Yield"),
+        }
+    }
+}
 impl Eq for Expr {}
 impl PartialEq for Expr {
     fn eq(&self, x: &Self) -> bool {
@@ -960,19 +1011,24 @@ impl Clone for Array {
         }
     }
 }
+impl Debug for Array {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Array {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("bracket", &self.bracket);
+                f.field("elems", &self.elems);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::Array")
+    }
+}
 impl Eq for Array {}
 impl PartialEq for Array {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.elems == x.elems
-    }
-}
-impl<H> Hash for Array
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.elems.hash(h);
     }
 }
 impl Pretty for Array {
@@ -988,6 +1044,27 @@ impl Pretty for Array {
         p.offset(-INDENT);
         p.end();
         p.word("]");
+    }
+}
+impl<F> Fold for Array
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Array {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            bracket: self.bracket,
+            elems: FoldHelper::lift(self.elems, |x| x.fold(f)),
+        }
+    }
+}
+impl<H> Hash for Array
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.elems.hash(h);
     }
 }
 impl<V> Visit for Array
@@ -1038,20 +1115,25 @@ impl Clone for Assign {
         }
     }
 }
+impl Debug for Assign {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Assign {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("left", &self.left);
+                f.field("eq", &self.eq);
+                f.field("right", &self.right);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::Assign")
+    }
+}
 impl Eq for Assign {}
 impl PartialEq for Assign {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.left == x.left && self.right == x.right
-    }
-}
-impl<H> Hash for Assign
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.left.hash(h);
-        self.right.hash(h);
     }
 }
 impl Pretty for Assign {
@@ -1062,6 +1144,29 @@ impl Pretty for Assign {
         p.word(" = ");
         &self.right.pretty(p);
         p.end();
+    }
+}
+impl<F> Fold for Assign
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Assign {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            left: Box::new(*self.left.fold(f)),
+            eq: self.eq,
+            right: Box::new(*self.right.fold(f)),
+        }
+    }
+}
+impl<H> Hash for Assign
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.left.hash(h);
+        self.right.hash(h);
     }
 }
 impl<V> Visit for Assign
@@ -1118,20 +1223,25 @@ impl Clone for Async {
         }
     }
 }
+impl Debug for Async {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Async {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("async_", &self.async_);
+                f.field("capture", &self.move_);
+                f.field("block", &self.block);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::Async")
+    }
+}
 impl Eq for Async {}
 impl PartialEq for Async {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.move_ == x.move_ && self.block == x.block
-    }
-}
-impl<H> Hash for Async
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.move_.hash(h);
-        self.block.hash(h);
     }
 }
 impl Pretty for Async {
@@ -1144,6 +1254,29 @@ impl Pretty for Async {
         p.cbox(INDENT);
         p.small_block(&self.block, &self.attrs);
         p.end();
+    }
+}
+impl<F> Fold for Async
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Async {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            async_: self.async_,
+            move_: self.move_,
+            block: self.block.fold(f),
+        }
+    }
+}
+impl<H> Hash for Async
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.move_.hash(h);
+        self.block.hash(h);
     }
 }
 impl<V> Visit for Async
@@ -1195,10 +1328,46 @@ impl Clone for Await {
         }
     }
 }
+impl Debug for Await {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Await {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("base", &self.expr);
+                f.field("dot", &self.dot);
+                f.field("await_", &self.await_);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::Await")
+    }
+}
 impl Eq for Await {}
 impl PartialEq for Await {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.expr == x.expr
+    }
+}
+impl Pretty for Await {
+    fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
+        p.outer_attrs(&self.attrs);
+        p.cbox(INDENT);
+        self.pretty_sub(p, pretty::Args::beg_line(x));
+        p.end();
+    }
+}
+impl<F> Fold for Await
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Await {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            expr: Box::new(*self.expr.fold(f)),
+            dot: self.dot,
+            await_: self.await_,
+        }
     }
 }
 impl<H> Hash for Await
@@ -1208,14 +1377,6 @@ where
     fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.expr.hash(h);
-    }
-}
-impl Pretty for Await {
-    fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
-        p.outer_attrs(&self.attrs);
-        p.cbox(INDENT);
-        self.pretty_sub(p, pretty::Args::beg_line(x));
-        p.end();
     }
 }
 impl<V> Visit for Await
@@ -1260,21 +1421,25 @@ impl Clone for Binary {
         }
     }
 }
+impl Debug for Binary {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Binary {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("left", &self.left);
+                f.field("op", &self.op);
+                f.field("right", &self.right);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::Binary")
+    }
+}
 impl Eq for Binary {}
 impl PartialEq for Binary {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.left == x.left && self.op == x.op && self.right == x.right
-    }
-}
-impl<H> Hash for Binary
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.left.hash(h);
-        self.op.hash(h);
-        self.right.hash(h);
     }
 }
 impl Pretty for Binary {
@@ -1289,6 +1454,30 @@ impl Pretty for Binary {
         p.nbsp();
         &self.right.pretty(p);
         p.end();
+    }
+}
+impl<F> Fold for Binary
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Binary {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            left: Box::new(*self.left.fold(f)),
+            op: self.op.fold(f),
+            right: Box::new(*self.right.fold(f)),
+        }
+    }
+}
+impl<H> Hash for Binary
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.left.hash(h);
+        self.op.hash(h);
+        self.right.hash(h);
     }
 }
 impl<V> Visit for Binary
@@ -1352,20 +1541,24 @@ impl Clone for Block {
         }
     }
 }
+impl Debug for Block {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Block {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("label", &self.label);
+                f.field("block", &self.block);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::Block")
+    }
+}
 impl Eq for Block {}
 impl PartialEq for Block {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.label == x.label && self.block == x.block
-    }
-}
-impl<H> Hash for Block
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.label.hash(h);
-        self.block.hash(h);
     }
 }
 impl Pretty for Block {
@@ -1377,6 +1570,28 @@ impl Pretty for Block {
         p.cbox(INDENT);
         p.small_block(&self.block, &self.attrs);
         p.end();
+    }
+}
+impl<F> Fold for Block
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Block {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            label: (self.label).map(|x| x.fold(f)),
+            block: self.block.fold(f),
+        }
+    }
+}
+impl<H> Hash for Block
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.label.hash(h);
+        self.block.hash(h);
     }
 }
 impl<V> Visit for Block
@@ -1433,20 +1648,25 @@ impl Clone for Break {
         }
     }
 }
+impl Debug for Break {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Break {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("break_", &self.break_);
+                f.field("label", &self.life);
+                f.field("expr", &self.val);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::Break")
+    }
+}
 impl Eq for Break {}
 impl PartialEq for Break {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.life == x.life && self.val == x.val
-    }
-}
-impl<H> Hash for Break
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.life.hash(h);
-        self.val.hash(h);
     }
 }
 impl Pretty for Break {
@@ -1461,6 +1681,29 @@ impl Pretty for Break {
             p.nbsp();
             p.value(x);
         }
+    }
+}
+impl<F> Fold for Break
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Break {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            break_: self.break_,
+            life: (self.life).map(|x| x.fold(f)),
+            val: (self.val).map(|x| Box::new(*x.fold(f))),
+        }
+    }
+}
+impl<H> Hash for Break
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.life.hash(h);
+        self.val.hash(h);
     }
 }
 impl<V> Visit for Break
@@ -1524,10 +1767,47 @@ impl Clone for Call {
         }
     }
 }
+impl Debug for Call {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Call {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("func", &self.func);
+                f.field("parenth", &self.parenth);
+                f.field("args", &self.args);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::Call")
+    }
+}
 impl Eq for Call {}
 impl PartialEq for Call {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.func == x.func && self.args == x.args
+    }
+}
+impl Pretty for Call {
+    fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
+        p.outer_attrs(&self.attrs);
+        &self.func.pretty_beg_line(p, pretty::Args::beg_line(x));
+        p.word("(");
+        p.call_args(&self.args);
+        p.word(")");
+    }
+}
+impl<F> Fold for Call
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Call {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            func: Box::new(*self.func.fold(f)),
+            parenth: self.parenth,
+            args: FoldHelper::lift(self.args, |x| x.fold(f)),
+        }
     }
 }
 impl<H> Hash for Call
@@ -1538,15 +1818,6 @@ where
         self.attrs.hash(h);
         self.func.hash(h);
         self.args.hash(h);
-    }
-}
-impl Pretty for Call {
-    fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
-        p.outer_attrs(&self.attrs);
-        &self.func.pretty_beg_line(p, pretty::Args::beg_line(x));
-        p.word("(");
-        p.call_args(&self.args);
-        p.word(")");
     }
 }
 impl<V> Visit for Call
@@ -1599,20 +1870,25 @@ impl Clone for Cast {
         }
     }
 }
+impl Debug for Cast {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Cast {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("expr", &self.expr);
+                f.field("as_", &self.as_);
+                f.field("ty", &self.typ);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::Cast")
+    }
+}
 impl Eq for Cast {}
 impl PartialEq for Cast {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.expr == x.expr && self.typ == x.typ
-    }
-}
-impl<H> Hash for Cast
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.expr.hash(h);
-        self.typ.hash(h);
     }
 }
 impl Pretty for Cast {
@@ -1626,6 +1902,29 @@ impl Pretty for Cast {
         p.word("as ");
         p.ty(&self.typ);
         p.end();
+    }
+}
+impl<F> Fold for Cast
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Cast {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            expr: Box::new(*self.expr.fold(f)),
+            as_: self.as_,
+            typ: Box::new(*self.typ.fold(f)),
+        }
+    }
+}
+impl<H> Hash for Cast
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.expr.hash(h);
+        self.typ.hash(h);
     }
 }
 impl<V> Visit for Cast
@@ -1699,6 +1998,28 @@ impl Clone for Closure {
         }
     }
 }
+impl Debug for Closure {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Closure {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("lifes", &self.lifes);
+                f.field("const_", &self.const_);
+                f.field("movability", &self.static_);
+                f.field("asyncness", &self.async_);
+                f.field("capture", &self.move_);
+                f.field("or1", &self.or1);
+                f.field("inputs", &self.ins);
+                f.field("or2", &self.or2);
+                f.field("output", &self.ret);
+                f.field("body", &self.body);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::Closure")
+    }
+}
 impl Eq for Closure {}
 impl PartialEq for Closure {
     fn eq(&self, x: &Self) -> bool {
@@ -1711,22 +2032,6 @@ impl PartialEq for Closure {
             && self.ins == x.ins
             && self.ret == x.ret
             && self.body == x.body
-    }
-}
-impl<H> Hash for Closure
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.lifes.hash(h);
-        self.const_.hash(h);
-        self.static_.hash(h);
-        self.async_.hash(h);
-        self.move_.hash(h);
-        self.ins.hash(h);
-        self.ret.hash(h);
-        self.body.hash(h);
     }
 }
 impl Pretty for Closure {
@@ -1807,6 +2112,42 @@ impl Pretty for Closure {
         p.end();
     }
 }
+impl<F> Fold for Closure
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Closure {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            lifes: (self.lifes).map(|x| x.fold(f)),
+            const_: self.const_,
+            static_: self.static_,
+            async_: self.async_,
+            move_: self.move_,
+            or1: self.or1,
+            ins: FoldHelper::lift(self.inputs, |x| x.fold(f)),
+            or2: self.or2,
+            ret: self.ret.fold(f),
+            body: Box::new(*self.body.fold(f)),
+        }
+    }
+}
+impl<H> Hash for Closure
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.lifes.hash(h);
+        self.const_.hash(h);
+        self.static_.hash(h);
+        self.async_.hash(h);
+        self.move_.hash(h);
+        self.ins.hash(h);
+        self.ret.hash(h);
+        self.body.hash(h);
+    }
+}
 impl<V> Visit for Closure
 where
     V: Visitor + ?Sized,
@@ -1879,19 +2220,24 @@ impl Clone for Const {
         }
     }
 }
+impl Debug for Const {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Const {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("const_", &self.const_);
+                f.field("block", &self.block);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::Const")
+    }
+}
 impl Eq for Const {}
 impl PartialEq for Const {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.block == x.block
-    }
-}
-impl<H> Hash for Const
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.block.hash(h);
     }
 }
 impl Pretty for Const {
@@ -1901,6 +2247,27 @@ impl Pretty for Const {
         p.cbox(INDENT);
         p.small_block(&self.block, &self.attrs);
         p.end();
+    }
+}
+impl<F> Fold for Const
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Const {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            const_: self.const_,
+            block: self.block.fold(f),
+        }
+    }
+}
+impl<H> Hash for Const
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.block.hash(h);
     }
 }
 impl<V> Visit for Const
@@ -1951,19 +2318,24 @@ impl Clone for Continue {
         }
     }
 }
+impl Debug for Continue {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Continue {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("continue_", &self.continue_);
+                f.field("label", &self.life);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::Continue")
+    }
+}
 impl Eq for Continue {}
 impl PartialEq for Continue {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.life == x.life
-    }
-}
-impl<H> Hash for Continue
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.life.hash(h);
     }
 }
 impl Pretty for Continue {
@@ -1974,6 +2346,27 @@ impl Pretty for Continue {
             p.nbsp();
             p.lifetime(x);
         }
+    }
+}
+impl<F> Fold for Continue
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Continue {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            continue_: self.continue_,
+            life: (self.life).map(|x| x.fold(f)),
+        }
+    }
+}
+impl<H> Hash for Continue
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.life.hash(h);
     }
 }
 impl<V> Visit for Continue
@@ -2030,10 +2423,46 @@ impl Clone for Field {
         }
     }
 }
+impl Debug for Field {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Field {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("base", &self.expr);
+                f.field("dot", &self.dot);
+                f.field("member", &self.memb);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::Field")
+    }
+}
 impl Eq for Field {}
 impl PartialEq for Field {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.expr == x.expr && self.memb == x.memb
+    }
+}
+impl Pretty for Field {
+    fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
+        p.outer_attrs(&self.attrs);
+        p.cbox(INDENT);
+        self.pretty_sub(p, pretty::Args::beg_line(x));
+        p.end();
+    }
+}
+impl<F> Fold for Field
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Field {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            expr: Box::new(*self.expr.fold(f)),
+            dot: self.dot,
+            memb: self.memb.fold(f),
+        }
     }
 }
 impl<H> Hash for Field
@@ -2044,14 +2473,6 @@ where
         self.attrs.hash(h);
         self.expr.hash(h);
         self.memb.hash(h);
-    }
-}
-impl Pretty for Field {
-    fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
-        p.outer_attrs(&self.attrs);
-        p.cbox(INDENT);
-        self.pretty_sub(p, pretty::Args::beg_line(x));
-        p.end();
     }
 }
 impl<V> Visit for Field
@@ -2133,6 +2554,24 @@ impl Clone for For {
         }
     }
 }
+impl Debug for For {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl For {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("label", &self.label);
+                f.field("for_", &self.for_);
+                f.field("pat", &self.pat);
+                f.field("in_", &self.in_);
+                f.field("expr", &self.expr);
+                f.field("body", &self.body);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::For")
+    }
+}
 impl Eq for For {}
 impl PartialEq for For {
     fn eq(&self, x: &Self) -> bool {
@@ -2141,18 +2580,6 @@ impl PartialEq for For {
             && self.pat == x.pat
             && self.expr == x.expr
             && self.body == x.body
-    }
-}
-impl<H> Hash for For
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.label.hash(h);
-        self.pat.hash(h);
-        self.expr.hash(h);
-        self.body.hash(h);
     }
 }
 impl Pretty for For {
@@ -2179,6 +2606,34 @@ impl Pretty for For {
         p.end();
         p.word("}");
         p.end();
+    }
+}
+impl<F> Fold for For
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        For {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            label: (self.label).map(|x| x.fold(f)),
+            for_: self.for_,
+            pat: Box::new(*self.pat.fold(f)),
+            in_: self.in_,
+            expr: Box::new(*self.expr.fold(f)),
+            body: self.body.fold(f),
+        }
+    }
+}
+impl<H> Hash for For
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.label.hash(h);
+        self.pat.hash(h);
+        self.expr.hash(h);
+        self.body.hash(h);
     }
 }
 impl<V> Visit for For
@@ -2231,10 +2686,42 @@ impl Clone for Group {
         }
     }
 }
+impl Debug for Group {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Group {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("group", &self.group);
+                f.field("expr", &self.expr);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::Group")
+    }
+}
 impl Eq for Group {}
 impl PartialEq for Group {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.expr == x.expr
+    }
+}
+impl Pretty for Group {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        &self.expr.pretty(p);
+    }
+}
+impl<F> Fold for Group
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Group {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            group: self.group,
+            expr: Box::new(*self.expr.fold(f)),
+        }
     }
 }
 impl<H> Hash for Group
@@ -2244,12 +2731,6 @@ where
     fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.expr.hash(h);
-    }
-}
-impl Pretty for Group {
-    fn pretty(&self, p: &mut Print) {
-        p.outer_attrs(&self.attrs);
-        &self.expr.pretty(p);
     }
 }
 impl<V> Visit for Group
@@ -2316,26 +2797,31 @@ impl Clone for If {
             attrs: self.attrs.clone(),
             if_: self.if_.clone(),
             cond: self.cond.clone(),
-            then_: self.then_branch.clone(),
-            else_: self.else_branch.clone(),
+            then_: self.then_.clone(),
+            else_: self.else_.clone(),
         }
+    }
+}
+impl Debug for If {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl If {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("if_", &self.if_);
+                f.field("cond", &self.cond);
+                f.field("then_", &self.then_);
+                f.field("else_", &self.else_);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::If")
     }
 }
 impl Eq for If {}
 impl PartialEq for If {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.cond == x.cond && self.then_ == x.then_ && self.else_ == x.else_
-    }
-}
-impl<H> Hash for If
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.cond.hash(h);
-        self.then_.hash(h);
-        self.else_.hash(h);
     }
 }
 impl Pretty for If {
@@ -2391,6 +2877,31 @@ impl Pretty for If {
             p.word("}");
         }
         p.end();
+    }
+}
+impl<F> Fold for If
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        If {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            if_: self.if_,
+            cond: Box::new(*self.cond.fold(f)),
+            then_: self.then_.fold(f),
+            else_: (self.else_).map(|x| ((x).0, Box::new(*x.fold(f)))),
+        }
+    }
+}
+impl<H> Hash for If
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.cond.hash(h);
+        self.then_.hash(h);
+        self.else_.hash(h);
     }
 }
 impl<V> Visit for If
@@ -2465,10 +2976,47 @@ impl Clone for Index {
         }
     }
 }
+impl Debug for Index {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Index {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("expr", &self.expr);
+                f.field("bracket", &self.bracket);
+                f.field("idx", &self.idx);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::Index")
+    }
+}
 impl Eq for Index {}
 impl PartialEq for Index {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.expr == x.expr && self.idx == x.idx
+    }
+}
+impl Pretty for Index {
+    fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
+        p.outer_attrs(&self.attrs);
+        &self.expr.pretty_beg_line(p, pretty::Args::beg_line(x));
+        p.word("[");
+        &self.idx.pretty(p);
+        p.word("]");
+    }
+}
+impl<F> Fold for Index
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Index {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            expr: Box::new(*self.expr.fold(f)),
+            bracket: self.bracket,
+            idx: Box::new(*self.idx.fold(f)),
+        }
     }
 }
 impl<H> Hash for Index
@@ -2479,15 +3027,6 @@ where
         self.attrs.hash(h);
         self.expr.hash(h);
         self.idx.hash(h);
-    }
-}
-impl Pretty for Index {
-    fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
-        p.outer_attrs(&self.attrs);
-        &self.expr.pretty_beg_line(p, pretty::Args::beg_line(x));
-        p.word("[");
-        &self.idx.pretty(p);
-        p.word("]");
     }
 }
 impl<V> Visit for Index
@@ -2536,10 +3075,40 @@ impl Clone for Infer {
         }
     }
 }
+impl Debug for Infer {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Infer {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("underscore", &self.underscore);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::Infer")
+    }
+}
 impl Eq for Infer {}
 impl PartialEq for Infer {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs
+    }
+}
+impl Pretty for Infer {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.word("_");
+    }
+}
+impl<F> Fold for Infer
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Infer {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            underscore: self.underscore,
+        }
     }
 }
 impl<H> Hash for Infer
@@ -2548,12 +3117,6 @@ where
 {
     fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
-    }
-}
-impl Pretty for Infer {
-    fn pretty(&self, p: &mut Print) {
-        p.outer_attrs(&self.attrs);
-        p.word("_");
     }
 }
 impl<V> Visit for Infer
@@ -2614,20 +3177,26 @@ impl Clone for Let {
         }
     }
 }
+impl Debug for Let {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Let {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("let_", &self.let_);
+                f.field("pat", &self.pat);
+                f.field("eq", &self.eq);
+                f.field("expr", &self.expr);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::Let")
+    }
+}
 impl Eq for Let {}
 impl PartialEq for Let {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.pat == x.pat && self.expr == x.expr
-    }
-}
-impl<H> Hash for Let
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.pat.hash(h);
-        self.expr.hash(h);
     }
 }
 impl Pretty for Let {
@@ -2649,6 +3218,30 @@ impl Pretty for Let {
             p.word(")");
         }
         p.end();
+    }
+}
+impl<F> Fold for Let
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Let {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            let_: self.let_,
+            pat: Box::new(*self.pat.fold(f)),
+            eq: self.eq,
+            expr: Box::new(*self.expr.fold(f)),
+        }
+    }
+}
+impl<H> Hash for Let
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.pat.hash(h);
+        self.expr.hash(h);
     }
 }
 impl<V> Visit for Let
@@ -2697,10 +3290,40 @@ impl Clone for Lit {
         }
     }
 }
+impl Debug for Lit {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Lit {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("lit", &self.lit);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::Lit")
+    }
+}
 impl Eq for Lit {}
 impl PartialEq for Lit {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.lit == x.lit
+    }
+}
+impl Pretty for Lit {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.lit(&self.lit);
+    }
+}
+impl<F> Fold for Lit
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Lit {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            lit: self.lit.fold(f),
+        }
     }
 }
 impl<H> Hash for Lit
@@ -2710,12 +3333,6 @@ where
     fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.lit.hash(h);
-    }
-}
-impl Pretty for Lit {
-    fn pretty(&self, p: &mut Print) {
-        p.outer_attrs(&self.attrs);
-        p.lit(&self.lit);
     }
 }
 impl<V> Visit for Lit
@@ -2780,20 +3397,25 @@ impl Clone for Loop {
         }
     }
 }
+impl Debug for Loop {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Loop {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("label", &self.label);
+                f.field("loop_", &self.loop_);
+                f.field("body", &self.body);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::Loop")
+    }
+}
 impl Eq for Loop {}
 impl PartialEq for Loop {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.label == x.label && self.body == x.body
-    }
-}
-impl<H> Hash for Loop
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.label.hash(h);
-        self.body.hash(h);
     }
 }
 impl Pretty for Loop {
@@ -2812,6 +3434,29 @@ impl Pretty for Loop {
         p.offset(-INDENT);
         p.end();
         p.word("}");
+    }
+}
+impl<F> Fold for Loop
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Loop {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            label: (self.label).map(|x| x.fold(f)),
+            loop_: self.loop_,
+            body: self.body.fold(f),
+        }
+    }
+}
+impl<H> Hash for Loop
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.label.hash(h);
+        self.body.hash(h);
     }
 }
 impl<V> Visit for Loop
@@ -2864,10 +3509,41 @@ impl Clone for Mac {
         }
     }
 }
+impl Debug for Mac {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Mac {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("mac", &self.mac);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::Mac")
+    }
+}
 impl Eq for Mac {}
 impl PartialEq for Mac {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.mac == x.mac
+    }
+}
+impl Pretty for Mac {
+    fn pretty(&self, p: &mut Mac) {
+        p.outer_attrs(&self.attrs);
+        let semi = false;
+        p.mac(&self.mac, None, semi);
+    }
+}
+impl<F> Fold for Mac
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Mac {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            mac: self.mac.fold(f),
+        }
     }
 }
 impl<H> Hash for Mac
@@ -2877,13 +3553,6 @@ where
     fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.mac.hash(h);
-    }
-}
-impl Pretty for Mac {
-    fn pretty(&self, p: &mut Mac) {
-        p.outer_attrs(&self.attrs);
-        let semi = false;
-        p.mac(&self.mac, None, semi);
     }
 }
 impl<V> Visit for Mac
@@ -2960,20 +3629,26 @@ impl Clone for Match {
         }
     }
 }
+impl Debug for Match {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Match {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("match_", &self.match_);
+                f.field("expr", &self.expr);
+                f.field("brace", &self.brace);
+                f.field("arms", &self.arms);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::Match")
+    }
+}
 impl Eq for Match {}
 impl PartialEq for Match {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.expr == x.expr && self.arms == x.arms
-    }
-}
-impl<H> Hash for Match
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.expr.hash(h);
-        self.arms.hash(h);
     }
 }
 impl Pretty for Match {
@@ -2995,6 +3670,30 @@ impl Pretty for Match {
         p.end();
         p.word("}");
         p.end();
+    }
+}
+impl<F> Fold for Match
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Match {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            match_: self.match_,
+            expr: Box::new(*self.expr.fold(f)),
+            brace: self.brace,
+            arms: FoldHelper::lift(self.arms, |x| x.fold(f)),
+        }
+    }
+}
+impl<H> Hash for Match
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.expr.hash(h);
+        self.arms.hash(h);
     }
 }
 impl<V> Visit for Match
@@ -3071,6 +3770,24 @@ impl Clone for Method {
         }
     }
 }
+impl Debug for Method {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Method {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("receiver", &self.expr);
+                f.field("dot", &self.dot);
+                f.field("method", &self.method);
+                f.field("turbofish", &self.turbofish);
+                f.field("parenth", &self.parenth);
+                f.field("args", &self.args);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::Method")
+    }
+}
 impl Eq for Method {}
 impl PartialEq for Method {
     fn eq(&self, x: &Self) -> bool {
@@ -3079,6 +3796,32 @@ impl PartialEq for Method {
             && self.method == x.method
             && self.turbofish == x.turbofish
             && self.args == x.args
+    }
+}
+impl Pretty for Method {
+    fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
+        p.outer_attrs(&self.attrs);
+        p.cbox(INDENT);
+        let bol = pretty::Args::beg_line(x);
+        let unindent = bol && &self.expr.is_short_ident();
+        self.pretty_sub(p, bol, unindent);
+        p.end();
+    }
+}
+impl<F> Fold for Method
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Method {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            expr: Box::new(*self.expr.fold(f)),
+            dot: self.dot,
+            method: self.method.fold(f),
+            turbofish: (self.turbofish).map(|x| x.fold(f)),
+            parenth: self.parenth,
+            args: FoldHelper::lift(self.args, |x| x.fold(f)),
+        }
     }
 }
 impl<H> Hash for Method
@@ -3091,16 +3834,6 @@ where
         self.method.hash(h);
         self.turbofish.hash(h);
         self.args.hash(h);
-    }
-}
-impl Pretty for Method {
-    fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
-        p.outer_attrs(&self.attrs);
-        p.cbox(INDENT);
-        let bol = pretty::Args::beg_line(x);
-        let unindent = bol && &self.expr.is_short_ident();
-        self.pretty_sub(p, bol, unindent);
-        p.end();
     }
 }
 impl<V> Visit for Method
@@ -3164,10 +3897,44 @@ impl Clone for Parenth {
         }
     }
 }
+impl Debug for Parenth {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Parenth {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("parenth", &self.parenth);
+                f.field("expr", &self.expr);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::Parenth")
+    }
+}
 impl Eq for Parenth {}
 impl PartialEq for Parenth {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.expr == x.expr
+    }
+}
+impl Pretty for Parenth {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.word("(");
+        &self.expr.pretty(p);
+        p.word(")");
+    }
+}
+impl<F> Fold for Parenth
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Parenth {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            parenth: self.parenth,
+            expr: Box::new(*self.expr.fold(f)),
+        }
     }
 }
 impl<H> Hash for Parenth
@@ -3177,14 +3944,6 @@ where
     fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.expr.hash(h);
-    }
-}
-impl Pretty for Parenth {
-    fn pretty(&self, p: &mut Print) {
-        p.outer_attrs(&self.attrs);
-        p.word("(");
-        &self.expr.pretty(p);
-        p.word(")");
     }
 }
 impl<V> Visit for Parenth
@@ -3232,10 +3991,42 @@ impl Clone for Path {
         }
     }
 }
+impl Debug for Path {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Path {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("qself", &self.qself);
+                f.field("path", &self.path);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::Pathth")
+    }
+}
 impl Eq for Path {}
 impl PartialEq for Path {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.qself == x.qself && self.path == x.path
+    }
+}
+impl Pretty for Path {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        &self.path.pretty_qpath(p, &self.qself, path::Kind::Expr);
+    }
+}
+impl<F> Fold for Path
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Path {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            qself: (self.qself).map(|x| x.fold(f)),
+            path: self.path.fold(f),
+        }
     }
 }
 impl<H> Hash for Path
@@ -3246,12 +4037,6 @@ where
         self.attrs.hash(h);
         self.qself.hash(h);
         self.path.hash(h);
-    }
-}
-impl Pretty for Path {
-    fn pretty(&self, p: &mut Print) {
-        p.outer_attrs(&self.attrs);
-        &self.path.pretty_qpath(p, &self.qself, path::Kind::Expr);
     }
 }
 impl<V> Visit for Path
@@ -3302,21 +4087,25 @@ impl Clone for Range {
         }
     }
 }
+impl Debug for Range {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Range {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("start", &self.beg);
+                f.field("limits", &self.limits);
+                f.field("end", &self.end);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::Range")
+    }
+}
 impl Eq for Range {}
 impl PartialEq for Range {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.beg == x.beg && self.limits == x.limits && self.end == x.end
-    }
-}
-impl<H> Hash for Range
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.beg.hash(h);
-        self.limits.hash(h);
-        self.end.hash(h);
     }
 }
 impl Pretty for Range {
@@ -3332,6 +4121,30 @@ impl Pretty for Range {
         if let Some(x) = &self.end {
             x.pretty(p);
         }
+    }
+}
+impl<F> Fold for Range
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Range {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            beg: (self.beg).map(|x| Box::new(*x.fold(f))),
+            limits: self.limits.fold(f),
+            end: (self.end).map(|x| Box::new(*x.fold(f))),
+        }
+    }
+}
+impl<H> Hash for Range
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.beg.hash(h);
+        self.limits.hash(h);
+        self.end.hash(h);
     }
 }
 impl<V> Visit for Range
@@ -3399,20 +4212,25 @@ impl Clone for Ref {
         }
     }
 }
+impl Debug for Ref {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Ref {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("and", &self.and);
+                f.field("mut_", &self.mut_);
+                f.field("expr", &self.expr);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::Ref")
+    }
+}
 impl Eq for Ref {}
 impl PartialEq for Ref {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.mut_ == x.mut_ && self.expr == x.expr
-    }
-}
-impl<H> Hash for Ref
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.mut_.hash(h);
-        self.expr.hash(h);
     }
 }
 impl Pretty for Ref {
@@ -3423,6 +4241,29 @@ impl Pretty for Ref {
             p.word("mut ");
         }
         &self.expr.pretty(p);
+    }
+}
+impl<F> Fold for Ref
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Ref {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            and: self.and,
+            mut_: self.mut_,
+            expr: Box::new(*self.expr.fold(f)),
+        }
+    }
+}
+impl<H> Hash for Ref
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.mut_.hash(h);
+        self.expr.hash(h);
     }
 }
 impl<V> Visit for Ref
@@ -3483,20 +4324,26 @@ impl Clone for Repeat {
         }
     }
 }
+impl Debug for Repeat {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Repeat {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("bracket", &self.bracket);
+                f.field("expr", &self.expr);
+                f.field("semi", &self.semi);
+                f.field("len", &self.len);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::Repeat")
+    }
+}
 impl Eq for Repeat {}
 impl PartialEq for Repeat {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.expr == x.expr && self.len == x.len
-    }
-}
-impl<H> Hash for Repeat
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.expr.hash(h);
-        self.len.hash(h);
     }
 }
 impl Pretty for Repeat {
@@ -3507,6 +4354,30 @@ impl Pretty for Repeat {
         p.word("; ");
         &self.len.pretty(p);
         p.word("]");
+    }
+}
+impl<F> Fold for Repeat
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Repeat {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            bracket: self.bracket,
+            expr: Box::new(*self.expr.fold(f)),
+            semi: self.semi,
+            len: Box::new(*self.len.fold(f)),
+        }
+    }
+}
+impl<H> Hash for Repeat
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.expr.hash(h);
+        self.len.hash(h);
     }
 }
 impl<V> Visit for Repeat
@@ -3556,19 +4427,24 @@ impl Clone for Return {
         }
     }
 }
+impl Debug for Return {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Return {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("return_", &self.return_);
+                f.field("expr", &self.expr);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::Return")
+    }
+}
 impl Eq for Return {}
 impl PartialEq for Return {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.expr == x.expr
-    }
-}
-impl<H> Hash for Return
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.expr.hash(h);
     }
 }
 impl Pretty for Return {
@@ -3579,6 +4455,27 @@ impl Pretty for Return {
             p.nbsp();
             x.pretty(p);
         }
+    }
+}
+impl<F> Fold for Return
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Return {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            return_: self.return_,
+            expr: (self.expr).map(|x| Box::new(*x.fold(f))),
+        }
+    }
+}
+impl<H> Hash for Return
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.expr.hash(h);
     }
 }
 impl<V> Visit for Return
@@ -3646,6 +4543,24 @@ impl Clone for Struct {
         }
     }
 }
+impl Debug for Struct {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Struct {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("qself", &self.qself);
+                f.field("path", &self.path);
+                f.field("brace", &self.brace);
+                f.field("fields", &self.fields);
+                f.field("dot2", &self.dot2);
+                f.field("rest", &self.rest);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::Struct")
+    }
+}
 impl Eq for Struct {}
 impl PartialEq for Struct {
     fn eq(&self, x: &Self) -> bool {
@@ -3655,19 +4570,6 @@ impl PartialEq for Struct {
             && self.fields == x.fields
             && self.dot2 == x.dot2
             && self.rest == x.rest
-    }
-}
-impl<H> Hash for Struct
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.qself.hash(h);
-        self.path.hash(h);
-        self.fields.hash(h);
-        self.dot2.hash(h);
-        self.rest.hash(h);
     }
 }
 impl Pretty for Struct {
@@ -3691,6 +4593,35 @@ impl Pretty for Struct {
         p.offset(-INDENT);
         p.end_with_max_width(34);
         p.word("}");
+    }
+}
+impl<F> Fold for Struct
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Struct {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            qself: (self.qself).map(|x| x.fold(f)),
+            path: self.path.fold(f),
+            brace: self.brace,
+            fields: FoldHelper::lift(self.fields, |x| x.fold(f)),
+            dot2: self.dot2,
+            rest: (self.rest).map(|x| Box::new(*x.fold(f))),
+        }
+    }
+}
+impl<H> Hash for Struct
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.qself.hash(h);
+        self.path.hash(h);
+        self.fields.hash(h);
+        self.dot2.hash(h);
+        self.rest.hash(h);
     }
 }
 impl<V> Visit for Struct
@@ -3758,10 +4689,43 @@ impl Clone for Try {
         }
     }
 }
+impl Debug for Try {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Try {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("expr", &self.expr);
+                f.field("question", &self.question);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::Try")
+    }
+}
 impl Eq for Try {}
 impl PartialEq for Try {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.expr == x.expr
+    }
+}
+impl Pretty for Try {
+    fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
+        p.outer_attrs(&self.attrs);
+        &self.expr.pretty_beg_line(p, pretty::Args::beg_line(x));
+        p.word("?");
+    }
+}
+impl<F> Fold for Try
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Try {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            expr: Box::new(*self.expr.fold(f)),
+            question: self.question,
+        }
     }
 }
 impl<H> Hash for Try
@@ -3771,13 +4735,6 @@ where
     fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.expr.hash(h);
-    }
-}
-impl Pretty for Try {
-    fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
-        p.outer_attrs(&self.attrs);
-        &self.expr.pretty_beg_line(p, pretty::Args::beg_line(x));
-        p.word("?");
     }
 }
 impl<V> Visit for Try
@@ -3828,19 +4785,24 @@ impl Clone for TryBlock {
         }
     }
 }
+impl Debug for TryBlock {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl TryBlock {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("try_", &self.try_);
+                f.field("block", &self.block);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::TryBlock")
+    }
+}
 impl Eq for TryBlock {}
 impl PartialEq for TryBlock {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.block == x.block
-    }
-}
-impl<H> Hash for TryBlock
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.block.hash(h);
     }
 }
 impl Pretty for TryBlock {
@@ -3850,6 +4812,27 @@ impl Pretty for TryBlock {
         p.cbox(INDENT);
         p.small_block(&self.block, &self.attrs);
         p.end();
+    }
+}
+impl<F> Fold for TryBlock
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        TryBlock {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            try_: self.try_,
+            block: self.block.fold(f),
+        }
+    }
+}
+impl<H> Hash for TryBlock
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.block.hash(h);
     }
 }
 impl<V> Visit for TryBlock
@@ -3895,19 +4878,24 @@ impl Clone for Tuple {
         }
     }
 }
+impl Debug for Tuple {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Tuple {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("parenth", &self.parenth);
+                f.field("elems", &self.elems);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::Tuple")
+    }
+}
 impl Eq for Tuple {}
 impl PartialEq for Tuple {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.elems == x.elems
-    }
-}
-impl<H> Hash for Tuple
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.elems.hash(h);
     }
 }
 impl Pretty for Tuple {
@@ -3928,6 +4916,27 @@ impl Pretty for Tuple {
         p.offset(-INDENT);
         p.end();
         p.word(")");
+    }
+}
+impl<F> Fold for Tuple
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Tuple {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            parenth: self.parenth,
+            elems: FoldHelper::lift(self.elems, |x| x.fold(f)),
+        }
+    }
+}
+impl<H> Hash for Tuple
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.elems.hash(h);
     }
 }
 impl<V> Visit for Tuple
@@ -3982,10 +4991,43 @@ impl Clone for Unary {
         }
     }
 }
+impl Debug for Unary {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Unary {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("op", &self.op);
+                f.field("expr", &self.expr);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::Unary")
+    }
+}
 impl Eq for Unary {}
 impl PartialEq for Unary {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.op == x.op && self.expr == x.expr
+    }
+}
+impl Pretty for Unary {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        p.unary_operator(&self.op);
+        &self.expr.pretty(p);
+    }
+}
+impl<F> Fold for Unary
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Unary {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            op: self.op.fold(f),
+            expr: Box::new(*self.expr.fold(f)),
+        }
     }
 }
 impl<H> Hash for Unary
@@ -3996,13 +5038,6 @@ where
         self.attrs.hash(h);
         self.op.hash(h);
         self.expr.hash(h);
-    }
-}
-impl Pretty for Unary {
-    fn pretty(&self, p: &mut Print) {
-        p.outer_attrs(&self.attrs);
-        p.unary_operator(&self.op);
-        &self.expr.pretty(p);
     }
 }
 impl<V> Visit for Unary
@@ -4063,19 +5098,24 @@ impl Clone for Unsafe {
         }
     }
 }
+impl Debug for Unsafe {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Unsafe {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("unsafe_", &self.unsafe_);
+                f.field("block", &self.block);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::Unsafe")
+    }
+}
 impl Eq for Unsafe {}
 impl PartialEq for Unsafe {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.block == x.block
-    }
-}
-impl<H> Hash for Unsafe
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.block.hash(h);
     }
 }
 impl Pretty for Unsafe {
@@ -4085,6 +5125,27 @@ impl Pretty for Unsafe {
         p.cbox(INDENT);
         p.small_block(&self.block, &self.attrs);
         p.end();
+    }
+}
+impl<F> Fold for Unsafe
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Unsafe {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            unsafe_: self.unsafe_,
+            block: self.block.fold(f),
+        }
+    }
+}
+impl<H> Hash for Unsafe
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.block.hash(h);
     }
 }
 impl<V> Visit for Unsafe
@@ -4154,21 +5215,26 @@ impl Clone for While {
         }
     }
 }
+impl Debug for While {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl While {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("label", &self.label);
+                f.field("while_", &self.while_);
+                f.field("cond", &self.cond);
+                f.field("block", &self.block);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::While")
+    }
+}
 impl Eq for While {}
 impl PartialEq for While {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.label == x.label && self.cond == x.cond && self.block == x.block
-    }
-}
-impl<H> Hash for While
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.label.hash(h);
-        self.cond.hash(h);
-        self.block.hash(h);
     }
 }
 impl Pretty for While {
@@ -4190,6 +5256,31 @@ impl Pretty for While {
         p.offset(-INDENT);
         p.end();
         p.word("}");
+    }
+}
+impl<F> Fold for While
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        While {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            label: (self.label).map(|x| x.fold(f)),
+            while_: self.while_,
+            cond: Box::new(*self.cond.fold(f)),
+            block: self.block.fold(f),
+        }
+    }
+}
+impl<H> Hash for While
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.label.hash(h);
+        self.cond.hash(h);
+        self.block.hash(h);
     }
 }
 impl<V> Visit for While
@@ -4254,19 +5345,24 @@ impl Clone for Yield {
         }
     }
 }
+impl Debug for Yield {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Yield {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("yield_", &self.yield_);
+                f.field("expr", &self.expr);
+                f.finish()
+            }
+        }
+        self.debug(f, "expr::Yield")
+    }
+}
 impl Eq for Yield {}
 impl PartialEq for Yield {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.expr == x.expr
-    }
-}
-impl<H> Hash for Yield
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.expr.hash(h);
     }
 }
 impl Pretty for Yield {
@@ -4277,6 +5373,27 @@ impl Pretty for Yield {
             p.nbsp();
             x.pretty(p);
         }
+    }
+}
+impl<F> Fold for Yield
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Yield {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            yield_: self.yield_,
+            expr: (self.expr).map(|x| Box::new(*x.fold(f))),
+        }
+    }
+}
+impl<H> Hash for Yield
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.expr.hash(h);
     }
 }
 impl<V> Visit for Yield
@@ -4397,9 +5514,10 @@ pub enum Member {
 }
 impl Member {
     fn is_named(&self) -> bool {
+        use Member::*;
         match self {
-            Member::Named(_) => true,
-            Member::Unnamed(_) => false,
+            Named(_) => true,
+            Unnamed(_) => false,
         }
     }
 }
@@ -4465,10 +5583,11 @@ impl Fragment for Member {
 }
 impl Parse for Member {
     fn parse(s: Stream) -> Res<Self> {
+        use Member::*;
         if s.peek(ident::Ident) {
-            s.parse().map(Member::Named)
+            s.parse().map(Named)
         } else if s.peek(lit::Int) {
-            s.parse().map(Member::Unnamed)
+            s.parse().map(Unnamed)
         } else {
             Err(s.error("expected identifier or integer"))
         }
@@ -4476,17 +5595,19 @@ impl Parse for Member {
 }
 impl Lower for Member {
     fn lower(&self, s: &mut Stream) {
+        use Member::*;
         match self {
-            Member::Named(x) => x.lower(s),
-            Member::Unnamed(x) => x.lower(s),
+            Named(x) => x.lower(s),
+            Unnamed(x) => x.lower(s),
         }
     }
 }
 impl Pretty for Member {
     fn pretty(&self, p: &mut Print) {
+        use Member::*;
         match self {
-            Member::Named(x) => x.pretty(p),
-            Member::Unnamed(x) => x.pretty(p),
+            Named(x) => x.pretty(p),
+            Unnamed(x) => x.pretty(p),
         }
     }
 }
@@ -4679,6 +5800,154 @@ impl Copy for BinOp {}
 impl Clone for BinOp {
     fn clone(&self) -> Self {
         *self
+    }
+}
+impl Debug for BinOp {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("BinOp::")?;
+        use BinOp::*;
+        match self {
+            Add(x) => {
+                let mut f = f.debug_tuple("Add");
+                f.field(x);
+                f.finish()
+            },
+            Sub(x) => {
+                let mut f = f.debug_tuple("Sub");
+                f.field(x);
+                f.finish()
+            },
+            Mul(x) => {
+                let mut f = f.debug_tuple("Mul");
+                f.field(x);
+                f.finish()
+            },
+            Div(x) => {
+                let mut f = f.debug_tuple("Div");
+                f.field(x);
+                f.finish()
+            },
+            Rem(x) => {
+                let mut f = f.debug_tuple("Rem");
+                f.field(x);
+                f.finish()
+            },
+            And(x) => {
+                let mut f = f.debug_tuple("And");
+                f.field(x);
+                f.finish()
+            },
+            Or(x) => {
+                let mut f = f.debug_tuple("Or");
+                f.field(x);
+                f.finish()
+            },
+            BitXor(x) => {
+                let mut f = f.debug_tuple("BitXor");
+                f.field(x);
+                f.finish()
+            },
+            BitAnd(x) => {
+                let mut f = f.debug_tuple("BitAnd");
+                f.field(x);
+                f.finish()
+            },
+            BitOr(x) => {
+                let mut f = f.debug_tuple("BitOr");
+                f.field(x);
+                f.finish()
+            },
+            Shl(x) => {
+                let mut f = f.debug_tuple("Shl");
+                f.field(x);
+                f.finish()
+            },
+            Shr(x) => {
+                let mut f = f.debug_tuple("Shr");
+                f.field(x);
+                f.finish()
+            },
+            Eq(x) => {
+                let mut f = f.debug_tuple("Eq");
+                f.field(x);
+                f.finish()
+            },
+            Lt(x) => {
+                let mut f = f.debug_tuple("Lt");
+                f.field(x);
+                f.finish()
+            },
+            Le(x) => {
+                let mut f = f.debug_tuple("Le");
+                f.field(x);
+                f.finish()
+            },
+            Ne(x) => {
+                let mut f = f.debug_tuple("Ne");
+                f.field(x);
+                f.finish()
+            },
+            Ge(x) => {
+                let mut f = f.debug_tuple("Ge");
+                f.field(x);
+                f.finish()
+            },
+            Gt(x) => {
+                let mut f = f.debug_tuple("Gt");
+                f.field(x);
+                f.finish()
+            },
+            AddAssign(x) => {
+                let mut f = f.debug_tuple("AddAssign");
+                f.field(x);
+                f.finish()
+            },
+            SubAssign(x) => {
+                let mut f = f.debug_tuple("SubAssign");
+                f.field(x);
+                f.finish()
+            },
+            MulAssign(x) => {
+                let mut f = f.debug_tuple("MulAssign");
+                f.field(x);
+                f.finish()
+            },
+            DivAssign(x) => {
+                let mut f = f.debug_tuple("DivAssign");
+                f.field(x);
+                f.finish()
+            },
+            RemAssign(x) => {
+                let mut f = f.debug_tuple("RemAssign");
+                f.field(x);
+                f.finish()
+            },
+            BitXorAssign(x) => {
+                let mut f = f.debug_tuple("BitXorAssign");
+                f.field(x);
+                f.finish()
+            },
+            BitAndAssign(x) => {
+                let mut f = f.debug_tuple("BitAndAssign");
+                f.field(x);
+                f.finish()
+            },
+            BitOrAssign(x) => {
+                let mut f = f.debug_tuple("BitOrAssign");
+                f.field(x);
+                f.finish()
+            },
+            ShlAssign(x) => {
+                let mut f = f.debug_tuple("ShlAssign");
+                f.field(x);
+                f.finish()
+            },
+            ShrAssign(x) => {
+                let mut f = f.debug_tuple("ShrAssign");
+                f.field(x);
+                f.finish()
+            },
+        }
     }
 }
 impl Eq for BinOp {}
@@ -5252,6 +6521,18 @@ impl Clone for Arm {
         }
     }
 }
+impl Debug for Arm {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut f = f.debug_struct("Arm");
+        f.field("attrs", &self.attrs);
+        f.field("pat", &self.pat);
+        f.field("guard", &self.guard);
+        f.field("fat_arrow", &self.fat_arrow);
+        f.field("body", &self.body);
+        f.field("comma", &self.comma);
+        f.finish()
+    }
+}
 impl Eq for Arm {}
 impl PartialEq for Arm {
     fn eq(&self, x: &Self) -> bool {
@@ -5260,18 +6541,6 @@ impl PartialEq for Arm {
             && self.guard == x.guard
             && self.body == x.body
             && self.comma == x.comma
-    }
-}
-impl<H> Hash for Arm
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.pat.hash(h);
-        self.guard.hash(h);
-        self.body.hash(h);
-        self.comma.hash(h);
     }
 }
 impl Pretty for Arm {
@@ -5288,8 +6557,8 @@ impl Pretty for Arm {
         let mut body = &*self.body;
         while let Expr::Block(x) = body {
             if x.attrs.is_empty() && x.label.is_none() {
-                let mut stmts = x.block.stmts.iter();
-                if let (Some(stmt::Stmt::Expr(inner, None)), None) = (stmts.next(), stmts.next()) {
+                let mut ys = x.block.stmts.iter();
+                if let (Some(stmt::Stmt::Expr(inner, None)), None) = (ys.next(), ys.next()) {
                     body = inner;
                     continue;
                 }
@@ -5345,6 +6614,18 @@ impl Pretty for Arm {
             p.end();
             p.end();
         }
+    }
+}
+impl<H> Hash for Arm
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.pat.hash(h);
+        self.guard.hash(h);
+        self.body.hash(h);
+        self.comma.hash(h);
     }
 }
 impl<V> Visit for Arm
@@ -5424,6 +6705,24 @@ impl Clone for Limits {
         *self
     }
 }
+impl Debug for Limits {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("expr::Limits::")?;
+        use Limits::*;
+        match self {
+            HalfOpen(x) => {
+                let mut f = f.debug_tuple("HalfOpen");
+                f.field(x);
+                f.finish()
+            },
+            Closed(x) => {
+                let mut f = f.debug_tuple("Closed");
+                f.field(x);
+                f.finish()
+            },
+        }
+    }
+}
 impl Eq for Limits {}
 impl PartialEq for Limits {
     fn eq(&self, x: &Self) -> bool {
@@ -5432,6 +6731,18 @@ impl PartialEq for Limits {
             (Closed(_), Closed(_)) => true,
             (HalfOpen(_), HalfOpen(_)) => true,
             _ => false,
+        }
+    }
+}
+impl<F> Fold for Limits
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        use Limits::*;
+        match self {
+            HalfOpen(x) => HalfOpen(x),
+            Closed(x) => Closed(x),
         }
     }
 }
@@ -5626,16 +6937,17 @@ fn parse_expr(x: Stream, mut lhs: Expr, allow: AllowStruct, base: Precedence) ->
     Ok(lhs)
 }
 fn peek_precedence(x: Stream) -> Precedence {
+    use Precedence::*;
     if let Ok(op) = x.fork().parse() {
         Precedence::of(&op)
     } else if x.peek(Token![=]) && !x.peek(Token![=>]) {
-        Precedence::Assign
+        Assign
     } else if x.peek(Token![..]) {
-        Precedence::Range
+        Range
     } else if x.peek(Token![as]) {
-        Precedence::Cast
+        Cast
     } else {
-        Precedence::Any
+        Any
     }
 }
 fn ambiguous_expr(x: Stream, allow: AllowStruct) -> Res<Expr> {
