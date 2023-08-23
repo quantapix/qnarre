@@ -36,6 +36,12 @@ impl Clone for File {
         }
     }
 }
+impl Eq for File {}
+impl PartialEq for File {
+    fn eq(&self, x: &Self) -> bool {
+        self.shebang == x.shebang && self.attrs == x.attrs && self.items == x.items
+    }
+}
 impl<H> Hash for File
 where
     H: Hasher,
@@ -183,6 +189,31 @@ impl Clone for Item {
             Union(x) => Union(x.clone()),
             Use(x) => Use(x.clone()),
             Verbatim(x) => Verbatim(x.clone()),
+        }
+    }
+}
+impl Eq for Item {}
+impl PartialEq for Item {
+    fn eq(&self, x: &Self) -> bool {
+        use Item::*;
+        match (self, x) {
+            (Const(x), Const(y)) => x == y,
+            (Enum(x), Enum(y)) => x == y,
+            (Extern(x), Extern(y)) => x == y,
+            (Fn(x), Fn(y)) => x == y,
+            (Foreign(x), Foreign(y)) => x == y,
+            (Impl(x), Impl(y)) => x == y,
+            (Mac(x), Mac(y)) => x == y,
+            (Mod(x), Mod(y)) => x == y,
+            (Static(x), Static(y)) => x == y,
+            (Struct(x), Struct(y)) => x == y,
+            (Trait(x), Trait(y)) => x == y,
+            (Alias(x), Alias(y)) => x == y,
+            (Type(x), Type(y)) => x == y,
+            (Union(x), Union(y)) => x == y,
+            (Use(x), Use(y)) => x == y,
+            (Verbatim(x), Verbatim(y)) => StreamHelper(x) == StreamHelper(y),
+            _ => false,
         }
     }
 }
@@ -455,6 +486,17 @@ impl Clone for Const {
         }
     }
 }
+impl Eq for Const {}
+impl PartialEq for Const {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs
+            && self.vis == x.vis
+            && self.ident == x.ident
+            && self.gens == x.gens
+            && self.typ == x.typ
+            && self.expr == x.expr
+    }
+}
 impl<H> Hash for Const
 where
     H: Hasher,
@@ -579,6 +621,16 @@ impl Clone for Enum {
             brace: self.brace.clone(),
             variants: self.variants.clone(),
         }
+    }
+}
+impl Eq for Enum {}
+impl PartialEq for Enum {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs
+            && self.vis == x.vis
+            && self.ident == x.ident
+            && self.gens == x.gens
+            && self.variants == x.variants
     }
 }
 impl<H> Hash for Enum
@@ -712,6 +764,12 @@ impl Clone for Extern {
         }
     }
 }
+impl Eq for Extern {}
+impl PartialEq for Extern {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.vis == x.vis && self.ident == x.ident && self.rename == x.rename
+    }
+}
 impl<H> Hash for Extern
 where
     H: Hasher,
@@ -796,6 +854,12 @@ impl Clone for Fn {
             sig: self.sig.clone(),
             block: self.block.clone(),
         }
+    }
+}
+impl Eq for Fn {}
+impl PartialEq for Fn {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.vis == x.vis && self.sig == x.sig && self.block == x.block
     }
 }
 impl<H> Hash for Fn
@@ -898,6 +962,12 @@ impl Clone for Foreign {
             brace: self.brace.clone(),
             items: self.items.clone(),
         }
+    }
+}
+impl Eq for Foreign {}
+impl PartialEq for Foreign {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.unsafe_ == x.unsafe_ && self.abi == x.abi && self.items == x.items
     }
 }
 impl<H> Hash for Foreign
@@ -1005,6 +1075,18 @@ impl Clone for Impl {
             brace: self.brace.clone(),
             items: self.items.clone(),
         }
+    }
+}
+impl Eq for Impl {}
+impl PartialEq for Impl {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs
+            && self.default == x.default
+            && self.unsafe_ == x.unsafe_
+            && self.gens == x.gens
+            && self.trait_ == x.trait_
+            && self.typ == x.typ
+            && self.items == x.items
     }
 }
 impl<H> Hash for Impl
@@ -1153,6 +1235,12 @@ impl Clone for Mac {
         }
     }
 }
+impl Eq for Mac {}
+impl PartialEq for Mac {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.ident == x.ident && self.mac == x.mac && self.semi == x.semi
+    }
+}
 impl<H> Hash for Mac
 where
     H: Hasher,
@@ -1277,6 +1365,17 @@ impl Clone for Mod {
             items: self.items.clone(),
             semi: self.semi.clone(),
         }
+    }
+}
+impl Eq for Mod {}
+impl PartialEq for Mod {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs
+            && self.vis == x.vis
+            && self.unsafe_ == x.unsafe_
+            && self.ident == x.ident
+            && self.items == x.items
+            && self.semi == x.semi
     }
 }
 impl<H> Hash for Mod
@@ -1405,6 +1504,17 @@ impl Clone for Static {
             expr: self.expr.clone(),
             semi: self.semi.clone(),
         }
+    }
+}
+impl Eq for Static {}
+impl PartialEq for Static {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs
+            && self.vis == x.vis
+            && self.mut_ == x.mut_
+            && self.ident == x.ident
+            && self.typ == x.typ
+            && self.expr == x.expr
     }
 }
 impl<H> Hash for Static
@@ -1544,6 +1654,17 @@ impl Clone for Struct {
         }
     }
 }
+impl Eq for Struct {}
+impl PartialEq for Struct {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs
+            && self.vis == x.vis
+            && self.ident == x.ident
+            && self.gens == x.gens
+            && self.fields == x.fields
+            && self.semi == x.semi
+    }
+}
 impl<H> Hash for Struct
 where
     H: Hasher,
@@ -1679,6 +1800,21 @@ impl Clone for Trait {
             brace: self.brace.clone(),
             items: self.items.clone(),
         }
+    }
+}
+impl Eq for Trait {}
+impl PartialEq for Trait {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs
+            && self.vis == x.vis
+            && self.unsafe_ == x.unsafe_
+            && self.auto == x.auto
+            && self.restriction == x.restriction
+            && self.ident == x.ident
+            && self.gens == x.gens
+            && self.colon == x.colon
+            && self.supers == x.supers
+            && self.items == x.items
     }
 }
 impl<H> Hash for Trait
@@ -1818,6 +1954,16 @@ impl Clone for Alias {
         }
     }
 }
+impl Eq for Alias {}
+impl PartialEq for Alias {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs
+            && self.vis == x.vis
+            && self.ident == x.ident
+            && self.gens == x.gens
+            && self.bounds == x.bounds
+    }
+}
 impl<H> Hash for Alias
 where
     H: Hasher,
@@ -1935,6 +2081,12 @@ impl Clone for Type {
             typ: self.typ.clone(),
             semi: self.semi.clone(),
         }
+    }
+}
+impl Eq for Type {}
+impl PartialEq for Type {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.vis == x.vis && self.ident == x.ident && self.gens == x.gens && self.typ == x.typ
     }
 }
 impl<H> Hash for Type
@@ -2055,6 +2207,16 @@ impl Clone for Union {
         }
     }
 }
+impl Eq for Union {}
+impl PartialEq for Union {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs
+            && self.vis == x.vis
+            && self.ident == x.ident
+            && self.gens == x.gens
+            && self.fields == x.fields
+    }
+}
 impl<H> Hash for Union
 where
     H: Hasher,
@@ -2147,6 +2309,12 @@ impl Clone for Use {
             tree: self.tree.clone(),
             semi: self.semi.clone(),
         }
+    }
+}
+impl Eq for Use {}
+impl PartialEq for Use {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.vis == x.vis && self.colon == x.colon && self.tree == x.tree
     }
 }
 impl<H> Hash for Use
@@ -2625,6 +2793,16 @@ impl Clone for Receiver {
         }
     }
 }
+impl Eq for Receiver {}
+impl PartialEq for Receiver {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs
+            && self.ref_ == x.ref_
+            && self.mut_ == x.mut_
+            && self.colon == x.colon
+            && self.typ == x.typ
+    }
+}
 impl<H> Hash for Receiver
 where
     H: Hasher,
@@ -2724,6 +2902,17 @@ impl Clone for FnArg {
         match self {
             Receiver(x) => Receiver(x.clone()),
             Type(x) => Type(x.clone()),
+        }
+    }
+}
+impl Eq for FnArg {}
+impl PartialEq for FnArg {
+    fn eq(&self, x: &Self) -> bool {
+        use FnArg::*;
+        match (self, x) {
+            (Receiver(x), Receiver(y)) => x == y,
+            (Type(x), Type(y)) => x == y,
+            _ => false,
         }
     }
 }
@@ -2877,6 +3066,20 @@ impl Clone for Sig {
         }
     }
 }
+impl Eq for Sig {}
+impl PartialEq for Sig {
+    fn eq(&self, x: &Self) -> bool {
+        self.const_ == x.const_
+            && self.async_ == x.async_
+            && self.unsafe_ == x.unsafe_
+            && self.abi == x.abi
+            && self.ident == x.ident
+            && self.gens == x.gens
+            && self.args == x.args
+            && self.vari == x.vari
+            && self.ret == x.ret
+    }
+}
 impl<H> Hash for Sig
 where
     H: Hasher,
@@ -2994,6 +3197,17 @@ impl Clone for StaticMut {
         }
     }
 }
+impl Eq for StaticMut {}
+impl PartialEq for StaticMut {
+    fn eq(&self, x: &Self) -> bool {
+        use StaticMut::*;
+        match (self, x) {
+            (Mut(_), Mut(_)) => true,
+            (None, None) => true,
+            _ => false,
+        }
+    }
+}
 impl<H> Hash for StaticMut
 where
     H: Hasher,
@@ -3064,6 +3278,12 @@ impl Clone for Variadic {
             dots: self.dots.clone(),
             comma: self.comma.clone(),
         }
+    }
+}
+impl Eq for Variadic {}
+impl PartialEq for Variadic {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.pat == x.pat && self.comma == x.comma
     }
 }
 impl<H> Hash for Variadic
@@ -3204,6 +3424,20 @@ pub mod foreign {
             }
         }
     }
+    impl Eq for Item {}
+    impl PartialEq for Item {
+        fn eq(&self, x: &Self) -> bool {
+            use self::Item::*;
+            match (self, x) {
+                (Fn(x), Fn(y)) => x == y,
+                (Mac(x), Mac(y)) => x == y,
+                (Static(x), Static(y)) => x == y,
+                (Type(x), Type(y)) => x == y,
+                (Verbatim(x), Verbatim(y)) => StreamHelper(x) == StreamHelper(y),
+                _ => false,
+            }
+        }
+    }
     impl<H> Hash for Item
     where
         H: Hasher,
@@ -3321,6 +3555,12 @@ pub mod foreign {
             }
         }
     }
+    impl Eq for Fn {}
+    impl PartialEq for Fn {
+        fn eq(&self, x: &Self) -> bool {
+            self.attrs == x.attrs && self.vis == x.vis && self.sig == x.sig
+        }
+    }
     impl<H> Hash for Fn
     where
         H: Hasher,
@@ -3389,6 +3629,12 @@ pub mod foreign {
                 mac: self.mac.clone(),
                 semi: self.semi.clone(),
             }
+        }
+    }
+    impl Eq for Mac {}
+    impl PartialEq for Mac {
+        fn eq(&self, x: &Self) -> bool {
+            self.attrs == x.attrs && self.mac == x.mac && self.semi == x.semi
         }
     }
     impl<H> Hash for Mac
@@ -3475,6 +3721,16 @@ pub mod foreign {
                 typ: self.typ.clone(),
                 semi: self.semi.clone(),
             }
+        }
+    }
+    impl Eq for Static {}
+    impl PartialEq for Static {
+        fn eq(&self, x: &Self) -> bool {
+            self.attrs == x.attrs
+                && self.vis == x.vis
+                && self.mut_ == x.mut_
+                && self.ident == x.ident
+                && self.typ == x.typ
         }
     }
     impl<H> Hash for Static
@@ -3573,6 +3829,12 @@ pub mod foreign {
                 gens: self.gens.clone(),
                 semi: self.semi.clone(),
             }
+        }
+    }
+    impl Eq for Type {}
+    impl PartialEq for Type {
+        fn eq(&self, x: &Self) -> bool {
+            self.attrs == x.attrs && self.vis == x.vis && self.ident == x.ident && self.gens == x.gens
         }
     }
     impl<H> Hash for Type
@@ -3786,6 +4048,20 @@ pub mod impl_ {
             }
         }
     }
+    impl Eq for Item {}
+    impl PartialEq for Item {
+        fn eq(&self, x: &Self) -> bool {
+            use self::Item::*;
+            match (self, x) {
+                (Const(x), Const(y)) => x == y,
+                (Fn(x), Fn(y)) => x == y,
+                (Mac(x), Mac(y)) => x == y,
+                (Type(x), Type(y)) => x == y,
+                (Verbatim(x), Verbatim(y)) => StreamHelper(x) == StreamHelper(y),
+                _ => false,
+            }
+        }
+    }
     impl<H> Hash for Item
     where
         H: Hasher,
@@ -3938,6 +4214,18 @@ pub mod impl_ {
             }
         }
     }
+    impl Eq for Const {}
+    impl PartialEq for Const {
+        fn eq(&self, x: &Self) -> bool {
+            self.attrs == x.attrs
+                && self.vis == x.vis
+                && self.default == x.default
+                && self.ident == x.ident
+                && self.gens == x.gens
+                && self.typ == x.typ
+                && self.expr == x.expr
+        }
+    }
     impl<H> Hash for Const
     where
         H: Hasher,
@@ -4035,6 +4323,16 @@ pub mod impl_ {
             }
         }
     }
+    impl Eq for Fn {}
+    impl PartialEq for Fn {
+        fn eq(&self, x: &Self) -> bool {
+            self.attrs == x.attrs
+                && self.vis == x.vis
+                && self.default == x.default
+                && self.sig == x.sig
+                && self.block == x.block
+        }
+    }
     impl<H> Hash for Fn
     where
         H: Hasher,
@@ -4118,6 +4416,12 @@ pub mod impl_ {
                 mac: self.mac.clone(),
                 semi: self.semi.clone(),
             }
+        }
+    }
+    impl Eq for Mac {}
+    impl PartialEq for Mac {
+        fn eq(&self, x: &Self) -> bool {
+            self.attrs == x.attrs && self.mac == x.mac && self.semi == x.semi
         }
     }
     impl<H> Hash for Mac
@@ -4219,6 +4523,17 @@ pub mod impl_ {
                 typ: self.typ.clone(),
                 semi: self.semi.clone(),
             }
+        }
+    }
+    impl Eq for Type {}
+    impl PartialEq for Type {
+        fn eq(&self, x: &Self) -> bool {
+            self.attrs == x.attrs
+                && self.vis == x.vis
+                && self.default == x.default
+                && self.ident == x.ident
+                && self.gens == x.gens
+                && self.typ == x.typ
         }
     }
     impl<H> Hash for Type
@@ -4352,6 +4667,12 @@ pub mod impl_ {
             match *self {}
         }
     }
+    impl Eq for Restriction {}
+    impl PartialEq for Restriction {
+        fn eq(&self, _other: &Self) -> bool {
+            match *self {}
+        }
+    }
     impl<H> Hash for Restriction
     where
         H: Hasher,
@@ -4446,6 +4767,20 @@ pub mod trait_ {
                 Mac(x) => Mac(x.clone()),
                 Type(x) => Type(x.clone()),
                 Verbatim(x) => Verbatim(x.clone()),
+            }
+        }
+    }
+    impl Eq for Item {}
+    impl PartialEq for Item {
+        fn eq(&self, x: &Self) -> bool {
+            use self::Item::*;
+            match (self, x) {
+                (Const(x), Const(y)) => x == y,
+                (Fn(x), Fn(y)) => x == y,
+                (Mac(x), Mac(y)) => x == y,
+                (Type(x), Type(y)) => x == y,
+                (Verbatim(x), Verbatim(y)) => StreamHelper(x) == StreamHelper(y),
+                _ => false,
             }
         }
     }
@@ -4600,6 +4935,16 @@ pub mod trait_ {
             }
         }
     }
+    impl Eq for Const {}
+    impl PartialEq for Const {
+        fn eq(&self, x: &Self) -> bool {
+            self.attrs == x.attrs
+                && self.ident == x.ident
+                && self.gens == x.gens
+                && self.typ == x.typ
+                && self.default == x.default
+        }
+    }
     impl<H> Hash for Const
     where
         H: Hasher,
@@ -4717,6 +5062,12 @@ pub mod trait_ {
             }
         }
     }
+    impl Eq for Fn {}
+    impl PartialEq for Fn {
+        fn eq(&self, x: &Self) -> bool {
+            self.attrs == x.attrs && self.sig == x.sig && self.default == x.default && self.semi == x.semi
+        }
+    }
     impl<H> Hash for Fn
     where
         H: Hasher,
@@ -4802,6 +5153,12 @@ pub mod trait_ {
                 mac: self.mac.clone(),
                 semi: self.semi.clone(),
             }
+        }
+    }
+    impl Eq for Mac {}
+    impl PartialEq for Mac {
+        fn eq(&self, x: &Self) -> bool {
+            self.attrs == x.attrs && self.mac == x.mac && self.semi == x.semi
         }
     }
     impl<H> Hash for Mac
@@ -4902,6 +5259,17 @@ pub mod trait_ {
                 default: self.default.clone(),
                 semi: self.semi.clone(),
             }
+        }
+    }
+    impl Eq for Type {}
+    impl PartialEq for Type {
+        fn eq(&self, x: &Self) -> bool {
+            self.attrs == x.attrs
+                && self.ident == x.ident
+                && self.gens == x.gens
+                && self.colon == x.colon
+                && self.bounds == x.bounds
+                && self.default == x.default
         }
     }
     impl<H> Hash for Type
@@ -5084,6 +5452,20 @@ pub mod use_ {
             }
         }
     }
+    impl Eq for Tree {}
+    impl PartialEq for Tree {
+        fn eq(&self, x: &Self) -> bool {
+            use Tree::*;
+            match (self, x) {
+                (Glob(x), Glob(y)) => x == y,
+                (Group(x), Group(y)) => x == y,
+                (Name(x), Name(y)) => x == y,
+                (Path(x), Path(y)) => x == y,
+                (Rename(x), Rename(y)) => x == y,
+                _ => false,
+            }
+        }
+    }
     impl<H> Hash for Tree
     where
         H: Hasher,
@@ -5252,6 +5634,12 @@ pub mod use_ {
             }
         }
     }
+    impl Eq for Glob {}
+    impl PartialEq for Glob {
+        fn eq(&self, _other: &Self) -> bool {
+            true
+        }
+    }
     impl<H> Hash for Glob
     where
         H: Hasher,
@@ -5289,6 +5677,12 @@ pub mod use_ {
                 brace: self.brace.clone(),
                 trees: self.trees.clone(),
             }
+        }
+    }
+    impl Eq for Group {}
+    impl PartialEq for Group {
+        fn eq(&self, x: &Self) -> bool {
+            self.trees == x.trees
         }
     }
     impl<H> Hash for Group
@@ -5366,6 +5760,12 @@ pub mod use_ {
             }
         }
     }
+    impl Eq for Name {}
+    impl PartialEq for Name {
+        fn eq(&self, x: &Self) -> bool {
+            self.ident == x.ident
+        }
+    }
     impl<H> Hash for Name
     where
         H: Hasher,
@@ -5410,6 +5810,12 @@ pub mod use_ {
                 colon2: self.colon2.clone(),
                 tree: self.tree.clone(),
             }
+        }
+    }
+    impl Eq for Path {}
+    impl PartialEq for Path {
+        fn eq(&self, x: &Self) -> bool {
+            self.ident == x.ident && self.tree == x.tree
         }
     }
     impl<H> Hash for Path
@@ -5461,6 +5867,12 @@ pub mod use_ {
                 as_: self.as_.clone(),
                 rename: self.rename.clone(),
             }
+        }
+    }
+    impl Eq for Rename {}
+    impl PartialEq for Rename {
+        fn eq(&self, x: &Self) -> bool {
+            self.ident == x.ident && self.rename == x.rename
         }
     }
     impl<H> Hash for Rename

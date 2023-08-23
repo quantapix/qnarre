@@ -219,6 +219,22 @@ impl Lower for Mac {
         self.delim.surround(s, self.toks.clone());
     }
 }
+impl Clone for Mac {
+    fn clone(&self) -> Self {
+        Mac {
+            path: self.path.clone(),
+            bang: self.bang.clone(),
+            delim: self.delim.clone(),
+            toks: self.toks.clone(),
+        }
+    }
+}
+impl Eq for Mac {}
+impl PartialEq for Mac {
+    fn eq(&self, x: &Self) -> bool {
+        self.path == x.path && self.delim == x.delim && StreamHelper(&self.toks) == StreamHelper(&x.toks)
+    }
+}
 impl<H> Hash for Mac
 where
     H: Hasher,

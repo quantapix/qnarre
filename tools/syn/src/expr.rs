@@ -329,6 +329,100 @@ impl Parse for Expr {
         ambiguous_expr(s, AllowStruct(true))
     }
 }
+impl Clone for Expr {
+    fn clone(&self) -> Self {
+        use Expr::*;
+        match self {
+            Array(x) => Array(x.clone()),
+            Assign(x) => Assign(x.clone()),
+            Async(x) => Async(x.clone()),
+            Await(x) => Await(x.clone()),
+            Binary(x) => Binary(x.clone()),
+            Block(x) => Block(x.clone()),
+            Break(x) => Break(x.clone()),
+            Call(x) => Call(x.clone()),
+            Cast(x) => Cast(x.clone()),
+            Closure(x) => Closure(x.clone()),
+            Const(x) => Const(x.clone()),
+            Continue(x) => Continue(x.clone()),
+            Field(x) => Field(x.clone()),
+            For(x) => For(x.clone()),
+            Group(x) => Group(x.clone()),
+            If(x) => If(x.clone()),
+            Index(x) => Index(x.clone()),
+            Infer(x) => Infer(x.clone()),
+            Let(x) => Let(x.clone()),
+            Lit(x) => Lit(x.clone()),
+            Loop(x) => Loop(x.clone()),
+            Mac(x) => Mac(x.clone()),
+            Match(x) => Match(x.clone()),
+            Method(x) => Method(x.clone()),
+            Parenth(x) => Parenth(x.clone()),
+            Path(x) => Path(x.clone()),
+            Range(x) => Range(x.clone()),
+            Ref(x) => Ref(x.clone()),
+            Repeat(x) => Repeat(x.clone()),
+            Return(x) => Return(x.clone()),
+            Struct(x) => Struct(x.clone()),
+            Try(x) => Try(x.clone()),
+            TryBlock(x) => TryBlock(x.clone()),
+            Tuple(x) => Tuple(x.clone()),
+            Unary(x) => Unary(x.clone()),
+            Unsafe(x) => Unsafe(x.clone()),
+            Verbatim(x) => Verbatim(x.clone()),
+            While(x) => While(x.clone()),
+            Yield(x) => Yield(x.clone()),
+        }
+    }
+}
+impl Eq for Expr {}
+impl PartialEq for Expr {
+    fn eq(&self, x: &Self) -> bool {
+        use Expr::*;
+        match (self, x) {
+            (Array(x), Array(y)) => x == y,
+            (Assign(x), Assign(y)) => x == y,
+            (Async(x), Async(y)) => x == y,
+            (Await(x), Await(y)) => x == y,
+            (Binary(x), Binary(y)) => x == y,
+            (Block(x), Block(y)) => x == y,
+            (Break(x), Break(y)) => x == y,
+            (Call(x), Call(y)) => x == y,
+            (Cast(x), Cast(y)) => x == y,
+            (Closure(x), Closure(y)) => x == y,
+            (Const(x), Const(y)) => x == y,
+            (Continue(x), Continue(y)) => x == y,
+            (Field(x), Field(y)) => x == y,
+            (For(x), For(y)) => x == y,
+            (Group(x), Group(y)) => x == y,
+            (If(x), If(y)) => x == y,
+            (Index(x), Index(y)) => x == y,
+            (Infer(x), Infer(y)) => x == y,
+            (Let(x), Let(y)) => x == y,
+            (Lit(x), Lit(y)) => x == y,
+            (Loop(x), Loop(y)) => x == y,
+            (Mac(x), Mac(y)) => x == y,
+            (Match(x), Match(y)) => x == y,
+            (Method(x), Method(y)) => x == y,
+            (Parenth(x), Parenth(y)) => x == y,
+            (Path(x), Path(y)) => x == y,
+            (Range(x), Range(y)) => x == y,
+            (Ref(x), Ref(y)) => x == y,
+            (Repeat(x), Repeat(y)) => x == y,
+            (Return(x), Return(y)) => x == y,
+            (Struct(x), Struct(y)) => x == y,
+            (Try(x), Try(y)) => x == y,
+            (TryBlock(x), TryBlock(y)) => x == y,
+            (Tuple(x), Tuple(y)) => x == y,
+            (Unary(x), Unary(y)) => x == y,
+            (Unsafe(x), Unsafe(y)) => x == y,
+            (Verbatim(x), Verbatim(y)) => StreamHelper(x) == StreamHelper(y),
+            (While(x), While(y)) => x == y,
+            (Yield(x), Yield(y)) => x == y,
+            _ => false,
+        }
+    }
+}
 impl<H> Hash for Expr
 where
     H: Hasher,
@@ -857,6 +951,21 @@ impl Lower for Array {
         });
     }
 }
+impl Clone for Array {
+    fn clone(&self) -> Self {
+        Array {
+            attrs: self.attrs.clone(),
+            bracket: self.bracket.clone(),
+            elems: self.elems.clone(),
+        }
+    }
+}
+impl Eq for Array {}
+impl PartialEq for Array {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.elems == x.elems
+    }
+}
 impl<H> Hash for Array
 where
     H: Hasher,
@@ -917,6 +1026,22 @@ impl Lower for Assign {
         self.left.lower(s);
         self.eq.lower(s);
         self.right.lower(s);
+    }
+}
+impl Clone for Assign {
+    fn clone(&self) -> Self {
+        Assign {
+            attrs: self.attrs.clone(),
+            left: self.left.clone(),
+            eq: self.eq.clone(),
+            right: self.right.clone(),
+        }
+    }
+}
+impl Eq for Assign {}
+impl PartialEq for Assign {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.left == x.left && self.right == x.right
     }
 }
 impl<H> Hash for Assign
@@ -983,6 +1108,22 @@ impl Lower for Async {
         self.block.lower(s);
     }
 }
+impl Clone for Async {
+    fn clone(&self) -> Self {
+        Async {
+            attrs: self.attrs.clone(),
+            async_: self.async_.clone(),
+            move_: self.move_.clone(),
+            block: self.block.clone(),
+        }
+    }
+}
+impl Eq for Async {}
+impl PartialEq for Async {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.move_ == x.move_ && self.block == x.block
+    }
+}
 impl<H> Hash for Async
 where
     H: Hasher,
@@ -1044,6 +1185,22 @@ impl Lower for Await {
         self.await_.lower(s);
     }
 }
+impl Clone for Await {
+    fn clone(&self) -> Self {
+        Await {
+            attrs: self.attrs.clone(),
+            expr: self.expr.clone(),
+            dot: self.dot.clone(),
+            await_: self.await_.clone(),
+        }
+    }
+}
+impl Eq for Await {}
+impl PartialEq for Await {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.expr == x.expr
+    }
+}
 impl<H> Hash for Await
 where
     H: Hasher,
@@ -1091,6 +1248,22 @@ impl Lower for Binary {
         self.left.lower(s);
         self.op.lower(s);
         self.right.lower(s);
+    }
+}
+impl Clone for Binary {
+    fn clone(&self) -> Self {
+        Binary {
+            attrs: self.attrs.clone(),
+            left: self.left.clone(),
+            op: self.op.clone(),
+            right: self.right.clone(),
+        }
+    }
+}
+impl Eq for Binary {}
+impl PartialEq for Binary {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.left == x.left && self.op == x.op && self.right == x.right
     }
 }
 impl<H> Hash for Binary
@@ -1170,6 +1343,21 @@ impl Lower for Block {
         });
     }
 }
+impl Clone for Block {
+    fn clone(&self) -> Self {
+        Block {
+            attrs: self.attrs.clone(),
+            label: self.label.clone(),
+            block: self.block.clone(),
+        }
+    }
+}
+impl Eq for Block {}
+impl PartialEq for Block {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.label == x.label && self.block == x.block
+    }
+}
 impl<H> Hash for Block
 where
     H: Hasher,
@@ -1233,6 +1421,22 @@ impl Lower for Break {
         self.break_.lower(s);
         self.life.lower(s);
         self.val.lower(s);
+    }
+}
+impl Clone for Break {
+    fn clone(&self) -> Self {
+        Break {
+            attrs: self.attrs.clone(),
+            break_: self.break_.clone(),
+            life: self.life.clone(),
+            val: self.val.clone(),
+        }
+    }
+}
+impl Eq for Break {}
+impl PartialEq for Break {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.life == x.life && self.val == x.val
     }
 }
 impl<H> Hash for Break
@@ -1310,6 +1514,22 @@ impl Lower for Call {
         });
     }
 }
+impl Clone for Call {
+    fn clone(&self) -> Self {
+        Call {
+            attrs: self.attrs.clone(),
+            func: self.func.clone(),
+            parenth: self.parenth.clone(),
+            args: self.args.clone(),
+        }
+    }
+}
+impl Eq for Call {}
+impl PartialEq for Call {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.func == x.func && self.args == x.args
+    }
+}
 impl<H> Hash for Call
 where
     H: Hasher,
@@ -1367,6 +1587,22 @@ impl Lower for Cast {
         self.expr.lower(s);
         self.as_.lower(s);
         self.typ.lower(s);
+    }
+}
+impl Clone for Cast {
+    fn clone(&self) -> Self {
+        Cast {
+            attrs: self.attrs.clone(),
+            expr: self.expr.clone(),
+            as_: self.as_.clone(),
+            typ: self.typ.clone(),
+        }
+    }
+}
+impl Eq for Cast {}
+impl PartialEq for Cast {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.expr == x.expr && self.typ == x.typ
     }
 }
 impl<H> Hash for Cast
@@ -1444,6 +1680,37 @@ impl Lower for Closure {
         self.or2.lower(s);
         self.ret.lower(s);
         self.body.lower(s);
+    }
+}
+impl Clone for Closure {
+    fn clone(&self) -> Self {
+        Closure {
+            attrs: self.attrs.clone(),
+            lifes: self.lifes.clone(),
+            const_: self.const_.clone(),
+            static_: self.static_.clone(),
+            async_: self.async_.clone(),
+            move_: self.move_.clone(),
+            or1: self.or1.clone(),
+            ins: self.inputs.clone(),
+            or2: self.or2.clone(),
+            ret: self.ret.clone(),
+            body: self.body.clone(),
+        }
+    }
+}
+impl Eq for Closure {}
+impl PartialEq for Closure {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs
+            && self.lifes == x.lifes
+            && self.const_ == x.const_
+            && self.static_ == x.static_
+            && self.async_ == x.async_
+            && self.move_ == x.move_
+            && self.ins == x.ins
+            && self.ret == x.ret
+            && self.body == x.body
     }
 }
 impl<H> Hash for Closure
@@ -1603,6 +1870,21 @@ impl Lower for Const {
         });
     }
 }
+impl Clone for Const {
+    fn clone(&self) -> Self {
+        Const {
+            attrs: self.attrs.clone(),
+            const_: self.const_.clone(),
+            block: self.block.clone(),
+        }
+    }
+}
+impl Eq for Const {}
+impl PartialEq for Const {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.block == x.block
+    }
+}
 impl<H> Hash for Const
 where
     H: Hasher,
@@ -1658,6 +1940,21 @@ impl Lower for Continue {
         attr::lower_outers(&self.attrs, s);
         self.continue_.lower(s);
         self.life.lower(s);
+    }
+}
+impl Clone for Continue {
+    fn clone(&self) -> Self {
+        Continue {
+            attrs: self.attrs.clone(),
+            continue_: self.continue_.clone(),
+            life: self.life.clone(),
+        }
+    }
+}
+impl Eq for Continue {}
+impl PartialEq for Continue {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.life == x.life
     }
 }
 impl<H> Hash for Continue
@@ -1721,6 +2018,22 @@ impl Lower for Field {
         self.expr.lower(s);
         self.dot.lower(s);
         self.memb.lower(s);
+    }
+}
+impl Clone for Field {
+    fn clone(&self) -> Self {
+        Field {
+            attrs: self.attrs.clone(),
+            expr: self.expr.clone(),
+            dot: self.dot.clone(),
+            memb: self.memb.clone(),
+        }
+    }
+}
+impl Eq for Field {}
+impl PartialEq for Field {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.expr == x.expr && self.memb == x.memb
     }
 }
 impl<H> Hash for Field
@@ -1807,6 +2120,29 @@ impl Lower for For {
         });
     }
 }
+impl Clone for For {
+    fn clone(&self) -> Self {
+        For {
+            attrs: self.attrs.clone(),
+            label: self.label.clone(),
+            for_: self.for_.clone(),
+            pat: self.pat.clone(),
+            in_: self.in_.clone(),
+            expr: self.expr.clone(),
+            body: self.body.clone(),
+        }
+    }
+}
+impl Eq for For {}
+impl PartialEq for For {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs
+            && self.label == x.label
+            && self.pat == x.pat
+            && self.expr == x.expr
+            && self.body == x.body
+    }
+}
 impl<H> Hash for For
 where
     H: Hasher,
@@ -1886,6 +2222,21 @@ impl Lower for Group {
         });
     }
 }
+impl Clone for Group {
+    fn clone(&self) -> Self {
+        Group {
+            attrs: self.attrs.clone(),
+            group: self.group.clone(),
+            expr: self.expr.clone(),
+        }
+    }
+}
+impl Eq for Group {}
+impl PartialEq for Group {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.expr == x.expr
+    }
+}
 impl<H> Hash for Group
 where
     H: Hasher,
@@ -1957,6 +2308,23 @@ impl Lower for If {
                 _ => tok::Brace::default().surround(s, |s| x.lower(s)),
             }
         }
+    }
+}
+impl Clone for If {
+    fn clone(&self) -> Self {
+        If {
+            attrs: self.attrs.clone(),
+            if_: self.if_.clone(),
+            cond: self.cond.clone(),
+            then_: self.then_branch.clone(),
+            else_: self.else_branch.clone(),
+        }
+    }
+}
+impl Eq for If {}
+impl PartialEq for If {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.cond == x.cond && self.then_ == x.then_ && self.else_ == x.else_
     }
 }
 impl<H> Hash for If
@@ -2087,6 +2455,22 @@ impl Lower for Index {
         });
     }
 }
+impl Clone for Index {
+    fn clone(&self) -> Self {
+        Index {
+            attrs: self.attrs.clone(),
+            expr: self.expr.clone(),
+            bracket: self.bracket.clone(),
+            idx: self.idx.clone(),
+        }
+    }
+}
+impl Eq for Index {}
+impl PartialEq for Index {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.expr == x.expr && self.idx == x.idx
+    }
+}
 impl<H> Hash for Index
 where
     H: Hasher,
@@ -2142,6 +2526,20 @@ impl Lower for Infer {
     fn lower(&self, s: &mut Stream) {
         attr::lower_outers(&self.attrs, s);
         self.underscore.lower(s);
+    }
+}
+impl Clone for Infer {
+    fn clone(&self) -> Self {
+        Infer {
+            attrs: self.attrs.clone(),
+            underscore: self.underscore.clone(),
+        }
+    }
+}
+impl Eq for Infer {}
+impl PartialEq for Infer {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs
     }
 }
 impl<H> Hash for Infer
@@ -2203,6 +2601,23 @@ impl Lower for Let {
         self.pat.lower(s);
         self.eq.lower(s);
         &self.expr.lower_struct(s);
+    }
+}
+impl Clone for Let {
+    fn clone(&self) -> Self {
+        Let {
+            attrs: self.attrs.clone(),
+            let_: self.let_.clone(),
+            pat: self.pat.clone(),
+            eq: self.eq.clone(),
+            expr: self.expr.clone(),
+        }
+    }
+}
+impl Eq for Let {}
+impl PartialEq for Let {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.pat == x.pat && self.expr == x.expr
     }
 }
 impl<H> Hash for Let
@@ -2274,6 +2689,20 @@ impl Lower for Lit {
         self.lit.lower(s);
     }
 }
+impl Clone for Lit {
+    fn clone(&self) -> Self {
+        Lit {
+            attrs: self.attrs.clone(),
+            lit: self.lit.clone(),
+        }
+    }
+}
+impl Eq for Lit {}
+impl PartialEq for Lit {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.lit == x.lit
+    }
+}
 impl<H> Hash for Lit
 where
     H: Hasher,
@@ -2339,6 +2768,22 @@ impl Lower for Loop {
             attr::lower_inners(&self.attrs, s);
             s.append_all(&self.body.stmts);
         });
+    }
+}
+impl Clone for Loop {
+    fn clone(&self) -> Self {
+        Loop {
+            attrs: self.attrs.clone(),
+            label: self.label.clone(),
+            loop_: self.loop_.clone(),
+            body: self.body.clone(),
+        }
+    }
+}
+impl Eq for Loop {}
+impl PartialEq for Loop {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.label == x.label && self.body == x.body
     }
 }
 impl<H> Hash for Loop
@@ -2409,6 +2854,20 @@ impl Lower for Mac {
     fn lower(&self, s: &mut Stream) {
         attr::lower_outers(&self.attrs, s);
         self.mac.lower(s);
+    }
+}
+impl Clone for Mac {
+    fn clone(&self) -> Self {
+        Mac {
+            attrs: self.attrs.clone(),
+            mac: self.mac.clone(),
+        }
+    }
+}
+impl Eq for Mac {}
+impl PartialEq for Mac {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.mac == x.mac
     }
 }
 impl<H> Hash for Mac
@@ -2488,6 +2947,23 @@ impl Lower for Match {
                 }
             }
         });
+    }
+}
+impl Clone for Match {
+    fn clone(&self) -> Self {
+        Match {
+            attrs: self.attrs.clone(),
+            match_: self.match_.clone(),
+            expr: self.expr.clone(),
+            brace: self.brace.clone(),
+            arms: self.arms.clone(),
+        }
+    }
+}
+impl Eq for Match {}
+impl PartialEq for Match {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.expr == x.expr && self.arms == x.arms
     }
 }
 impl<H> Hash for Match
@@ -2582,6 +3058,29 @@ impl Lower for Method {
         });
     }
 }
+impl Clone for Method {
+    fn clone(&self) -> Self {
+        Method {
+            attrs: self.attrs.clone(),
+            expr: self.expr.clone(),
+            dot: self.dot.clone(),
+            method: self.method.clone(),
+            turbofish: self.turbofish.clone(),
+            parenth: self.parenth.clone(),
+            args: self.args.clone(),
+        }
+    }
+}
+impl Eq for Method {}
+impl PartialEq for Method {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs
+            && self.expr == x.expr
+            && self.method == x.method
+            && self.turbofish == x.turbofish
+            && self.args == x.args
+    }
+}
 impl<H> Hash for Method
 where
     H: Hasher,
@@ -2656,6 +3155,21 @@ impl Lower for Parenth {
         });
     }
 }
+impl Clone for Parenth {
+    fn clone(&self) -> Self {
+        Parenth {
+            attrs: self.attrs.clone(),
+            parenth: self.parenth.clone(),
+            expr: self.expr.clone(),
+        }
+    }
+}
+impl Eq for Parenth {}
+impl PartialEq for Parenth {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.expr == x.expr
+    }
+}
 impl<H> Hash for Parenth
 where
     H: Hasher,
@@ -2707,6 +3221,21 @@ impl Lower for Path {
     fn lower(&self, s: &mut Stream) {
         attr::lower_outers(&self.attrs, s);
         path::path_lower(s, &self.qself, &self.path);
+    }
+}
+impl Clone for Path {
+    fn clone(&self) -> Self {
+        Path {
+            attrs: self.attrs.clone(),
+            qself: self.qself.clone(),
+            path: self.path.clone(),
+        }
+    }
+}
+impl Eq for Path {}
+impl PartialEq for Path {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.qself == x.qself && self.path == x.path
     }
 }
 impl<H> Hash for Path
@@ -2761,6 +3290,22 @@ impl Lower for Range {
         self.beg.lower(s);
         self.limits.lower(s);
         self.end.lower(s);
+    }
+}
+impl Clone for Range {
+    fn clone(&self) -> Self {
+        Range {
+            attrs: self.attrs.clone(),
+            beg: self.beg.clone(),
+            limits: self.limits.clone(),
+            end: self.end.clone(),
+        }
+    }
+}
+impl Eq for Range {}
+impl PartialEq for Range {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.beg == x.beg && self.limits == x.limits && self.end == x.end
     }
 }
 impl<H> Hash for Range
@@ -2844,6 +3389,22 @@ impl Lower for Ref {
         self.expr.lower(s);
     }
 }
+impl Clone for Ref {
+    fn clone(&self) -> Self {
+        Ref {
+            attrs: self.attrs.clone(),
+            and: self.and.clone(),
+            mut_: self.mut_.clone(),
+            expr: self.expr.clone(),
+        }
+    }
+}
+impl Eq for Ref {}
+impl PartialEq for Ref {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.mut_ == x.mut_ && self.expr == x.expr
+    }
+}
 impl<H> Hash for Ref
 where
     H: Hasher,
@@ -2911,6 +3472,23 @@ impl Lower for Repeat {
         });
     }
 }
+impl Clone for Repeat {
+    fn clone(&self) -> Self {
+        Repeat {
+            attrs: self.attrs.clone(),
+            bracket: self.bracket.clone(),
+            expr: self.expr.clone(),
+            semi: self.semi.clone(),
+            len: self.len.clone(),
+        }
+    }
+}
+impl Eq for Repeat {}
+impl PartialEq for Repeat {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.expr == x.expr && self.len == x.len
+    }
+}
 impl<H> Hash for Repeat
 where
     H: Hasher,
@@ -2967,6 +3545,21 @@ impl Lower for Return {
         attr::lower_outers(&self.attrs, s);
         self.return_.lower(s);
         self.expr.lower(s);
+    }
+}
+impl Clone for Return {
+    fn clone(&self) -> Self {
+        Return {
+            attrs: self.attrs.clone(),
+            return_: self.return_.clone(),
+            expr: self.expr.clone(),
+        }
+    }
+}
+impl Eq for Return {}
+impl PartialEq for Return {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.expr == x.expr
     }
 }
 impl<H> Hash for Return
@@ -3038,6 +3631,30 @@ impl Lower for Struct {
             }
             self.rest.lower(s);
         });
+    }
+}
+impl Clone for Struct {
+    fn clone(&self) -> Self {
+        Struct {
+            attrs: self.attrs.clone(),
+            qself: self.qself.clone(),
+            path: self.path.clone(),
+            brace: self.brace.clone(),
+            fields: self.fields.clone(),
+            dot2: self.dot2.clone(),
+            rest: self.rest.clone(),
+        }
+    }
+}
+impl Eq for Struct {}
+impl PartialEq for Struct {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs
+            && self.qself == x.qself
+            && self.path == x.path
+            && self.fields == x.fields
+            && self.dot2 == x.dot2
+            && self.rest == x.rest
     }
 }
 impl<H> Hash for Struct
@@ -3132,6 +3749,21 @@ impl Lower for Try {
         self.question.lower(s);
     }
 }
+impl Clone for Try {
+    fn clone(&self) -> Self {
+        Try {
+            attrs: self.attrs.clone(),
+            expr: self.expr.clone(),
+            question: self.question.clone(),
+        }
+    }
+}
+impl Eq for Try {}
+impl PartialEq for Try {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.expr == x.expr
+    }
+}
 impl<H> Hash for Try
 where
     H: Hasher,
@@ -3187,6 +3819,21 @@ impl Lower for TryBlock {
         self.block.lower(s);
     }
 }
+impl Clone for TryBlock {
+    fn clone(&self) -> Self {
+        TryBlock {
+            attrs: self.attrs.clone(),
+            try_: self.try_.clone(),
+            block: self.block.clone(),
+        }
+    }
+}
+impl Eq for TryBlock {}
+impl PartialEq for TryBlock {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.block == x.block
+    }
+}
 impl<H> Hash for TryBlock
 where
     H: Hasher,
@@ -3237,6 +3884,21 @@ impl Lower for Tuple {
                 <Token![,]>::default().lower(s);
             }
         });
+    }
+}
+impl Clone for Tuple {
+    fn clone(&self) -> Self {
+        Tuple {
+            attrs: self.attrs.clone(),
+            parenth: self.parenth.clone(),
+            elems: self.elems.clone(),
+        }
+    }
+}
+impl Eq for Tuple {}
+impl PartialEq for Tuple {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.elems == x.elems
     }
 }
 impl<H> Hash for Tuple
@@ -3311,6 +3973,21 @@ impl Lower for Unary {
         self.expr.lower(s);
     }
 }
+impl Clone for Unary {
+    fn clone(&self) -> Self {
+        Unary {
+            attrs: self.attrs.clone(),
+            op: self.op.clone(),
+            expr: self.expr.clone(),
+        }
+    }
+}
+impl Eq for Unary {}
+impl PartialEq for Unary {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.op == x.op && self.expr == x.expr
+    }
+}
 impl<H> Hash for Unary
 where
     H: Hasher,
@@ -3375,6 +4052,21 @@ impl Lower for Unsafe {
             attr::lower_inners(&self.attrs, s);
             s.append_all(&self.block.stmts);
         });
+    }
+}
+impl Clone for Unsafe {
+    fn clone(&self) -> Self {
+        Unsafe {
+            attrs: self.attrs.clone(),
+            unsafe_: self.unsafe_.clone(),
+            block: self.block.clone(),
+        }
+    }
+}
+impl Eq for Unsafe {}
+impl PartialEq for Unsafe {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.block == x.block
     }
 }
 impl<H> Hash for Unsafe
@@ -3449,6 +4141,23 @@ impl Lower for While {
             attr::lower_inners(&self.attrs, s);
             s.append_all(&self.block.stmts);
         });
+    }
+}
+impl Clone for While {
+    fn clone(&self) -> Self {
+        While {
+            attrs: self.attrs.clone(),
+            label: self.label.clone(),
+            while_: self.while_.clone(),
+            cond: self.cond.clone(),
+            block: self.block.clone(),
+        }
+    }
+}
+impl Eq for While {}
+impl PartialEq for While {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.label == x.label && self.cond == x.cond && self.block == x.block
     }
 }
 impl<H> Hash for While
@@ -3534,6 +4243,21 @@ impl Lower for Yield {
         attr::lower_outers(&self.attrs, s);
         self.yield_.lower(s);
         self.expr.lower(s);
+    }
+}
+impl Clone for Yield {
+    fn clone(&self) -> Self {
+        Yield {
+            attrs: self.attrs.clone(),
+            yield_: self.yield_.clone(),
+            expr: self.expr.clone(),
+        }
+    }
+}
+impl Eq for Yield {}
+impl PartialEq for Yield {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.expr == x.expr
     }
 }
 impl<H> Hash for Yield
@@ -3694,6 +4418,15 @@ impl From<usize> for Member {
         Member::Unnamed(Idx::from(x))
     }
 }
+impl Clone for Member {
+    fn clone(&self) -> Self {
+        use Member::*;
+        match self {
+            Named(x) => Named(x.clone()),
+            Unnamed(x) => Unnamed(x.clone()),
+        }
+    }
+}
 impl Eq for Member {}
 impl PartialEq for Member {
     fn eq(&self, y: &Self) -> bool {
@@ -3795,6 +4528,14 @@ impl From<usize> for Idx {
         Idx {
             idx: x as u32,
             span: pm2::Span::call_site(),
+        }
+    }
+}
+impl Clone for Idx {
+    fn clone(&self) -> Self {
+        Idx {
+            idx: self.idx.clone(),
+            span: self.span.clone(),
         }
     }
 }
@@ -3931,6 +4672,49 @@ impl Lower for BinOp {
             BitOrAssign(x) => x.lower(s),
             ShlAssign(x) => x.lower(s),
             ShrAssign(x) => x.lower(s),
+        }
+    }
+}
+impl Copy for BinOp {}
+impl Clone for BinOp {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+impl Eq for BinOp {}
+impl PartialEq for BinOp {
+    fn eq(&self, x: &Self) -> bool {
+        use BinOp::*;
+        match (self, x) {
+            (Add(_), Add(_)) => true,
+            (Sub(_), Sub(_)) => true,
+            (Mul(_), Mul(_)) => true,
+            (Div(_), Div(_)) => true,
+            (Rem(_), Rem(_)) => true,
+            (And(_), And(_)) => true,
+            (Or(_), Or(_)) => true,
+            (BitXor(_), BitXor(_)) => true,
+            (BitAnd(_), BitAnd(_)) => true,
+            (BitOr(_), BitOr(_)) => true,
+            (Shl(_), Shl(_)) => true,
+            (Shr(_), Shr(_)) => true,
+            (Eq(_), Eq(_)) => true,
+            (Lt(_), Lt(_)) => true,
+            (Le(_), Le(_)) => true,
+            (Ne(_), Ne(_)) => true,
+            (Ge(_), Ge(_)) => true,
+            (Gt(_), Gt(_)) => true,
+            (AddAssign(_), AddAssign(_)) => true,
+            (SubAssign(_), SubAssign(_)) => true,
+            (MulAssign(_), MulAssign(_)) => true,
+            (DivAssign(_), DivAssign(_)) => true,
+            (RemAssign(_), RemAssign(_)) => true,
+            (BitXorAssign(_), BitXorAssign(_)) => true,
+            (BitAndAssign(_), BitAndAssign(_)) => true,
+            (BitOrAssign(_), BitOrAssign(_)) => true,
+            (ShlAssign(_), ShlAssign(_)) => true,
+            (ShrAssign(_), ShrAssign(_)) => true,
+            _ => false,
         }
     }
 }
@@ -4165,6 +4949,24 @@ impl Lower for UnOp {
         }
     }
 }
+impl Copy for UnOp {}
+impl Clone for UnOp {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+impl Eq for UnOp {}
+impl PartialEq for UnOp {
+    fn eq(&self, x: &Self) -> bool {
+        use UnOp::*;
+        match (self, x) {
+            (Deref(_), Deref(_)) => true,
+            (Neg(_), Neg(_)) => true,
+            (Not(_), Not(_)) => true,
+            _ => false,
+        }
+    }
+}
 impl<H> Hash for UnOp
 where
     H: Hasher,
@@ -4260,6 +5062,22 @@ impl Lower for FieldValue {
         }
     }
 }
+impl Clone for FieldValue {
+    fn clone(&self) -> Self {
+        FieldValue {
+            attrs: self.attrs.clone(),
+            memb: self.memb.clone(),
+            colon: self.colon.clone(),
+            expr: self.expr.clone(),
+        }
+    }
+}
+impl Eq for FieldValue {}
+impl PartialEq for FieldValue {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs && self.memb == x.memb && self.colon == x.colon && self.expr == x.expr
+    }
+}
 impl<H> Hash for FieldValue
 where
     H: Hasher,
@@ -4328,6 +5146,20 @@ impl Lower for Label {
     fn lower(&self, s: &mut Stream) {
         self.name.lower(s);
         self.colon.lower(s);
+    }
+}
+impl Clone for Label {
+    fn clone(&self) -> Self {
+        Label {
+            name: self.name.clone(),
+            colon: self.colon.clone(),
+        }
+    }
+}
+impl Eq for Label {}
+impl PartialEq for Label {
+    fn eq(&self, x: &Self) -> bool {
+        self.name == x.name
     }
 }
 impl<H> Hash for Label
@@ -4406,6 +5238,28 @@ impl Lower for Arm {
         self.fat_arrow.lower(s);
         self.body.lower(s);
         self.comma.lower(s);
+    }
+}
+impl Clone for Arm {
+    fn clone(&self) -> Self {
+        Arm {
+            attrs: self.attrs.clone(),
+            pat: self.pat.clone(),
+            guard: self.guard.clone(),
+            fat_arrow: self.fat_arrow.clone(),
+            body: self.body.clone(),
+            comma: self.comma.clone(),
+        }
+    }
+}
+impl Eq for Arm {}
+impl PartialEq for Arm {
+    fn eq(&self, x: &Self) -> bool {
+        self.attrs == x.attrs
+            && self.pat == x.pat
+            && self.guard == x.guard
+            && self.body == x.body
+            && self.comma == x.comma
     }
 }
 impl<H> Hash for Arm
@@ -4561,6 +5415,23 @@ impl Lower for Limits {
         match self {
             Limits::HalfOpen(x) => x.lower(s),
             Limits::Closed(x) => x.lower(s),
+        }
+    }
+}
+impl Copy for Limits {}
+impl Clone for Limits {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+impl Eq for Limits {}
+impl PartialEq for Limits {
+    fn eq(&self, x: &Self) -> bool {
+        use Limits::*;
+        match (self, x) {
+            (Closed(_), Closed(_)) => true,
+            (HalfOpen(_), HalfOpen(_)) => true,
+            _ => false,
         }
     }
 }
