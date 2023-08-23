@@ -66,22 +66,6 @@ impl PartialEq for expr::BinOp {
         }
     }
 }
-impl Eq for gen::bound::Lifes {}
-impl PartialEq for gen::bound::Lifes {
-    fn eq(&self, x: &Self) -> bool {
-        self.lifes == x.lifes
-    }
-}
-impl Eq for gen::param::Const {}
-impl PartialEq for gen::param::Const {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs
-            && self.ident == x.ident
-            && self.typ == x.typ
-            && self.eq == x.eq
-            && self.default == x.default
-    }
-}
 impl Eq for expr::Expr {}
 impl PartialEq for expr::Expr {
     fn eq(&self, x: &Self) -> bool {
@@ -440,24 +424,6 @@ impl PartialEq for item::foreign::Type {
         self.attrs == x.attrs && self.vis == x.vis && self.ident == x.ident && self.gens == x.gens
     }
 }
-impl Eq for gen::Param {}
-impl PartialEq for gen::Param {
-    fn eq(&self, x: &Self) -> bool {
-        use gen::Param::*;
-        match (self, x) {
-            (Const(x), Const(y)) => x == y,
-            (Life(x), Life(y)) => x == y,
-            (Type(x), Type(y)) => x == y,
-            _ => false,
-        }
-    }
-}
-impl Eq for gen::Gens {}
-impl PartialEq for gen::Gens {
-    fn eq(&self, x: &Self) -> bool {
-        self.lt == x.lt && self.params == x.params && self.gt == x.gt && self.where_ == x.where_
-    }
-}
 impl Eq for item::impl_::Item {}
 impl PartialEq for item::impl_::Item {
     fn eq(&self, x: &Self) -> bool {
@@ -685,28 +651,10 @@ impl PartialEq for expr::Label {
         self.name == x.name
     }
 }
-impl Eq for gen::param::Life {}
-impl PartialEq for gen::param::Life {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs && self.life == x.life && self.colon == x.colon && self.bounds == x.bounds
-    }
-}
 impl Eq for mac::Mac {}
 impl PartialEq for mac::Mac {
     fn eq(&self, x: &Self) -> bool {
         self.path == x.path && self.delim == x.delim && StreamHelper(&self.toks) == StreamHelper(&x.toks)
-    }
-}
-impl Eq for gen::where_::Life {}
-impl PartialEq for gen::where_::Life {
-    fn eq(&self, x: &Self) -> bool {
-        self.life == x.life && self.bounds == x.bounds
-    }
-}
-impl Eq for gen::where_::Type {}
-impl PartialEq for gen::where_::Type {
-    fn eq(&self, x: &Self) -> bool {
-        self.lifes == x.lifes && self.typ == x.typ && self.bounds == x.bounds
     }
 }
 impl Eq for expr::Limits {}
@@ -761,23 +709,6 @@ impl PartialEq for item::StaticMut {
         use item::StaticMut::*;
         match (self, x) {
             (Mut(_), Mut(_)) => true,
-            (None, None) => true,
-            _ => false,
-        }
-    }
-}
-impl Eq for gen::bound::Trait {}
-impl PartialEq for gen::bound::Trait {
-    fn eq(&self, x: &Self) -> bool {
-        self.parenth == x.parenth && self.modif == x.modif && self.lifes == x.lifes && self.path == x.path
-    }
-}
-impl Eq for gen::bound::Modifier {}
-impl PartialEq for gen::bound::Modifier {
-    fn eq(&self, x: &Self) -> bool {
-        use gen::bound::Modifier::*;
-        match (self, x) {
-            (Maybe(_), Maybe(_)) => true,
             (None, None) => true,
             _ => false,
         }
@@ -901,29 +832,6 @@ impl PartialEq for typ::Never {
         true
     }
 }
-impl Eq for gen::param::Type {}
-impl PartialEq for gen::param::Type {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs
-            && self.ident == x.ident
-            && self.colon == x.colon
-            && self.bounds == x.bounds
-            && self.eq == x.eq
-            && self.default == x.default
-    }
-}
-impl Eq for gen::bound::Type {}
-impl PartialEq for gen::bound::Type {
-    fn eq(&self, x: &Self) -> bool {
-        use gen::bound::Type::*;
-        match (self, x) {
-            (Life(x), Life(y)) => x == y,
-            (Trait(x), Trait(y)) => x == y,
-            (Verbatim(x), Verbatim(y)) => StreamHelper(x) == StreamHelper(y),
-            _ => false,
-        }
-    }
-}
 impl Eq for typ::Parenth {}
 impl PartialEq for typ::Parenth {
     fn eq(&self, x: &Self) -> bool {
@@ -1026,22 +934,5 @@ impl Eq for item::Variadic {}
 impl PartialEq for item::Variadic {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.pat == x.pat && self.comma == x.comma
-    }
-}
-impl Eq for gen::Where {}
-impl PartialEq for gen::Where {
-    fn eq(&self, x: &Self) -> bool {
-        self.preds == x.preds
-    }
-}
-impl Eq for gen::where_::Pred {}
-impl PartialEq for gen::where_::Pred {
-    fn eq(&self, x: &Self) -> bool {
-        use gen::where_::Pred::*;
-        match (self, x) {
-            (Life(x), Life(y)) => x == y,
-            (Type(x), Type(y)) => x == y,
-            _ => false,
-        }
     }
 }

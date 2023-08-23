@@ -60,6 +60,50 @@ pub mod bound {
             }
         }
     }
+    impl Clone for Type {
+        fn clone(&self) -> Self {
+            use self::Type::*;
+            match self {
+                Life(x) => Life(x.clone()),
+                Trait(x) => Trait(x.clone()),
+                Verbatim(x) => Verbatim(x.clone()),
+            }
+        }
+    }
+    impl Eq for Type {}
+    impl PartialEq for Type {
+        fn eq(&self, x: &Self) -> bool {
+            use self::Type::*;
+            match (self, x) {
+                (Life(x), Life(y)) => x == y,
+                (Trait(x), Trait(y)) => x == y,
+                (Verbatim(x), Verbatim(y)) => StreamHelper(x) == StreamHelper(y),
+                _ => false,
+            }
+        }
+    }
+    impl<H> Hash for Type
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            use self::Type::*;
+            match self {
+                Trait(x) => {
+                    h.write_u8(0u8);
+                    x.hash(h);
+                },
+                Life(x) => {
+                    h.write_u8(1u8);
+                    x.hash(h);
+                },
+                Verbatim(x) => {
+                    h.write_u8(2u8);
+                    StreamHelper(x).hash(h);
+                },
+            }
+        }
+    }
     impl Pretty for Type {
         fn pretty(&self, p: &mut Print) {
             match self {
@@ -142,6 +186,33 @@ pub mod bound {
             }
         }
     }
+    impl Clone for Trait {
+        fn clone(&self) -> Self {
+            Trait {
+                parenth: self.parenth.clone(),
+                modif: self.modif.clone(),
+                lifes: self.lifes.clone(),
+                path: self.path.clone(),
+            }
+        }
+    }
+    impl Eq for Trait {}
+    impl PartialEq for Trait {
+        fn eq(&self, x: &Self) -> bool {
+            self.parenth == x.parenth && self.modif == x.modif && self.lifes == x.lifes && self.path == x.path
+        }
+    }
+    impl<H> Hash for Trait
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.parenth.hash(h);
+            self.modif.hash(h);
+            self.lifes.hash(h);
+            self.path.hash(h);
+        }
+    }
     impl Pretty for Trait {
         fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
             if self.parenth.is_some() {
@@ -204,6 +275,39 @@ pub mod bound {
             match self {
                 Maybe(x) => x.lower(s),
                 None => {},
+            }
+        }
+    }
+    impl Copy for Modifier {}
+    impl Clone for Modifier {
+        fn clone(&self) -> Self {
+            *self
+        }
+    }
+    impl Eq for Modifier {}
+    impl PartialEq for Modifier {
+        fn eq(&self, x: &Self) -> bool {
+            use Modifier::*;
+            match (self, x) {
+                (Maybe(_), Maybe(_)) => true,
+                (None, None) => true,
+                _ => false,
+            }
+        }
+    }
+    impl<H> Hash for Modifier
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            use Modifier::*;
+            match self {
+                None => {
+                    h.write_u8(0u8);
+                },
+                Maybe(_) => {
+                    h.write_u8(1u8);
+                },
             }
         }
     }
@@ -294,6 +398,30 @@ pub mod bound {
             self.lt.lower(s);
             self.lifes.lower(s);
             self.gt.lower(s);
+        }
+    }
+    impl Clone for Lifes {
+        fn clone(&self) -> Self {
+            Lifes {
+                for_: self.for_.clone(),
+                lt: self.lt.clone(),
+                lifes: self.lifes.clone(),
+                gt: self.gt.clone(),
+            }
+        }
+    }
+    impl Eq for Lifes {}
+    impl PartialEq for Lifes {
+        fn eq(&self, x: &Self) -> bool {
+            self.lifes == x.lifes
+        }
+    }
+    impl<H> Hash for Lifes
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.lifes.hash(h);
         }
     }
     impl Pretty for Lifes {
@@ -393,6 +521,50 @@ pub mod param {
                 Ok(Param::Const(Const { attrs, ..s.parse()? }))
             } else {
                 Err(look.error())
+            }
+        }
+    }
+    impl Clone for Param {
+        fn clone(&self) -> Self {
+            use Param::*;
+            match self {
+                Const(x) => Const(x.clone()),
+                Life(x) => Life(x.clone()),
+                Type(x) => Type(x.clone()),
+            }
+        }
+    }
+    impl Eq for Param {}
+    impl PartialEq for Param {
+        fn eq(&self, x: &Self) -> bool {
+            use Param::*;
+            match (self, x) {
+                (Const(x), Const(y)) => x == y,
+                (Life(x), Life(y)) => x == y,
+                (Type(x), Type(y)) => x == y,
+                _ => false,
+            }
+        }
+    }
+    impl<H> Hash for Param
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            use Param::*;
+            match self {
+                Life(x) => {
+                    h.write_u8(0u8);
+                    x.hash(h);
+                },
+                Type(x) => {
+                    h.write_u8(1u8);
+                    x.hash(h);
+                },
+                Const(x) => {
+                    h.write_u8(2u8);
+                    x.hash(h);
+                },
             }
         }
     }
@@ -500,6 +672,33 @@ pub mod param {
                 ToksOrDefault(&self.colon).lower(s);
                 self.bounds.lower(s);
             }
+        }
+    }
+    impl Clone for Life {
+        fn clone(&self) -> Self {
+            Life {
+                attrs: self.attrs.clone(),
+                life: self.life.clone(),
+                colon: self.colon.clone(),
+                bounds: self.bounds.clone(),
+            }
+        }
+    }
+    impl Eq for Life {}
+    impl PartialEq for Life {
+        fn eq(&self, x: &Self) -> bool {
+            self.attrs == x.attrs && self.life == x.life && self.colon == x.colon && self.bounds == x.bounds
+        }
+    }
+    impl<H> Hash for Life
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.attrs.hash(h);
+            self.life.hash(h);
+            self.colon.hash(h);
+            self.bounds.hash(h);
         }
     }
     impl Pretty for Life {
@@ -644,6 +843,42 @@ pub mod param {
             }
         }
     }
+    impl Clone for Type {
+        fn clone(&self) -> Self {
+            Type {
+                attrs: self.attrs.clone(),
+                ident: self.ident.clone(),
+                colon: self.colon.clone(),
+                bounds: self.bounds.clone(),
+                eq: self.eq.clone(),
+                default: self.default.clone(),
+            }
+        }
+    }
+    impl Eq for Type {}
+    impl PartialEq for Type {
+        fn eq(&self, x: &Self) -> bool {
+            self.attrs == x.attrs
+                && self.ident == x.ident
+                && self.colon == x.colon
+                && self.bounds == x.bounds
+                && self.eq == x.eq
+                && self.default == x.default
+        }
+    }
+    impl<H> Hash for Type
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.attrs.hash(h);
+            self.ident.hash(h);
+            self.colon.hash(h);
+            self.bounds.hash(h);
+            self.eq.hash(h);
+            self.default.hash(h);
+        }
+    }
     impl Pretty for Type {
         fn pretty(&self, p: &mut Print) {
             p.outer_attrs(&self.attrs);
@@ -774,6 +1009,41 @@ pub mod param {
             }
         }
     }
+    impl Clone for Const {
+        fn clone(&self) -> Self {
+            Const {
+                attrs: self.attrs.clone(),
+                const_: self.const_.clone(),
+                ident: self.ident.clone(),
+                colon: self.colon.clone(),
+                typ: self.typ.clone(),
+                eq: self.eq.clone(),
+                default: self.default.clone(),
+            }
+        }
+    }
+    impl Eq for Const {}
+    impl PartialEq for Const {
+        fn eq(&self, x: &Self) -> bool {
+            self.attrs == x.attrs
+                && self.ident == x.ident
+                && self.typ == x.typ
+                && self.eq == x.eq
+                && self.default == x.default
+        }
+    }
+    impl<H> Hash for Const
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.attrs.hash(h);
+            self.ident.hash(h);
+            self.typ.hash(h);
+            self.eq.hash(h);
+            self.default.hash(h);
+        }
+    }
     impl Pretty for Const {
         fn pretty(&self, p: &mut Print) {
             p.outer_attrs(&self.attrs);
@@ -886,6 +1156,28 @@ impl Lower for Where {
             self.where_.lower(s);
             self.preds.lower(s);
         }
+    }
+}
+impl Clone for Where {
+    fn clone(&self) -> Self {
+        Where {
+            where_: self.where_.clone(),
+            preds: self.preds.clone(),
+        }
+    }
+}
+impl Eq for Where {}
+impl PartialEq for Where {
+    fn eq(&self, x: &Self) -> bool {
+        self.preds == x.preds
+    }
+}
+impl<H> Hash for Where
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.preds.hash(h);
     }
 }
 impl Pretty for Where {
@@ -1062,6 +1354,44 @@ pub mod where_ {
             }
         }
     }
+    impl Clone for Pred {
+        fn clone(&self) -> Self {
+            use Pred::*;
+            match self {
+                Life(x) => Life(x.clone()),
+                Type(x) => Type(x.clone()),
+            }
+        }
+    }
+    impl Eq for Pred {}
+    impl PartialEq for Pred {
+        fn eq(&self, x: &Self) -> bool {
+            use Pred::*;
+            match (self, x) {
+                (Life(x), Life(y)) => x == y,
+                (Type(x), Type(y)) => x == y,
+                _ => false,
+            }
+        }
+    }
+    impl<H> Hash for Pred
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            use Pred::*;
+            match self {
+                Life(v0) => {
+                    h.write_u8(0u8);
+                    v0.hash(h);
+                },
+                Type(v0) => {
+                    h.write_u8(1u8);
+                    v0.hash(h);
+                },
+            }
+        }
+    }
     impl Pretty for Pred {
         fn pretty(&self, p: &mut Print) {
             use Pred::*;
@@ -1109,6 +1439,30 @@ pub mod where_ {
             self.life.lower(s);
             self.colon.lower(s);
             self.bounds.lower(s);
+        }
+    }
+    impl Clone for Life {
+        fn clone(&self) -> Self {
+            Life {
+                life: self.life.clone(),
+                colon: self.colon.clone(),
+                bounds: self.bounds.clone(),
+            }
+        }
+    }
+    impl Eq for Life {}
+    impl PartialEq for Life {
+        fn eq(&self, x: &Self) -> bool {
+            self.life == x.life && self.bounds == x.bounds
+        }
+    }
+    impl<H> Hash for Life
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.life.hash(h);
+            self.bounds.hash(h);
         }
     }
     impl Pretty for Life {
@@ -1160,6 +1514,32 @@ pub mod where_ {
             self.typ.lower(s);
             self.colon.lower(s);
             self.bounds.lower(s);
+        }
+    }
+    impl Clone for Type {
+        fn clone(&self) -> Self {
+            Type {
+                lifes: self.lifes.clone(),
+                typ: self.typ.clone(),
+                colon: self.colon.clone(),
+                bounds: self.bounds.clone(),
+            }
+        }
+    }
+    impl Eq for Type {}
+    impl PartialEq for Type {
+        fn eq(&self, x: &Self) -> bool {
+            self.lifes == x.lifes && self.typ == x.typ && self.bounds == x.bounds
+        }
+    }
+    impl<H> Hash for Type
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.lifes.hash(h);
+            self.typ.hash(h);
+            self.bounds.hash(h);
         }
     }
     impl Pretty for Type {
@@ -1330,6 +1710,33 @@ impl Lower for Gens {
             }
         }
         ToksOrDefault(&self.gt).lower(s);
+    }
+}
+impl Clone for Gens {
+    fn clone(&self) -> Self {
+        Gens {
+            lt: self.lt.clone(),
+            params: self.params.clone(),
+            gt: self.gt.clone(),
+            where_: self.where_.clone(),
+        }
+    }
+}
+impl Eq for Gens {}
+impl PartialEq for Gens {
+    fn eq(&self, x: &Self) -> bool {
+        self.lt == x.lt && self.params == x.params && self.gt == x.gt && self.where_ == x.where_
+    }
+}
+impl<H> Hash for Gens
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.lt.hash(h);
+        self.params.hash(h);
+        self.gt.hash(h);
+        self.where_.hash(h);
     }
 }
 impl Pretty for Gens {

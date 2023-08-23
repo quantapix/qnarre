@@ -46,29 +46,6 @@ impl Clone for expr::BinOp {
         *self
     }
 }
-impl Clone for gen::bound::Lifes {
-    fn clone(&self) -> Self {
-        gen::bound::Lifes {
-            for_: self.for_.clone(),
-            lt: self.lt.clone(),
-            lifes: self.lifes.clone(),
-            gt: self.gt.clone(),
-        }
-    }
-}
-impl Clone for gen::param::Const {
-    fn clone(&self) -> Self {
-        gen::param::Const {
-            attrs: self.attrs.clone(),
-            const_: self.const_.clone(),
-            ident: self.ident.clone(),
-            colon: self.colon.clone(),
-            typ: self.typ.clone(),
-            eq: self.eq.clone(),
-            default: self.default.clone(),
-        }
-    }
-}
 impl Clone for expr::Expr {
     fn clone(&self) -> Self {
         use expr::Expr::*;
@@ -506,26 +483,6 @@ impl Clone for expr::FieldValue {
         }
     }
 }
-impl Clone for gen::Param {
-    fn clone(&self) -> Self {
-        use gen::Param::*;
-        match self {
-            Const(x) => Const(x.clone()),
-            Life(x) => Life(x.clone()),
-            Type(x) => Type(x.clone()),
-        }
-    }
-}
-impl Clone for gen::Gens {
-    fn clone(&self) -> Self {
-        gen::Gens {
-            lt: self.lt.clone(),
-            params: self.params.clone(),
-            gt: self.gt.clone(),
-            where_: self.where_.clone(),
-        }
-    }
-}
 impl Clone for expr::Idx {
     fn clone(&self) -> Self {
         expr::Idx {
@@ -539,16 +496,6 @@ impl Clone for expr::Label {
         expr::Label {
             name: self.name.clone(),
             colon: self.colon.clone(),
-        }
-    }
-}
-impl Clone for gen::param::Life {
-    fn clone(&self) -> Self {
-        gen::param::Life {
-            attrs: self.attrs.clone(),
-            life: self.life.clone(),
-            colon: self.colon.clone(),
-            bounds: self.bounds.clone(),
         }
     }
 }
@@ -571,25 +518,6 @@ impl Clone for expr::Member {
         }
     }
 }
-impl Clone for gen::where_::Life {
-    fn clone(&self) -> Self {
-        gen::where_::Life {
-            life: self.life.clone(),
-            colon: self.colon.clone(),
-            bounds: self.bounds.clone(),
-        }
-    }
-}
-impl Clone for gen::where_::Type {
-    fn clone(&self) -> Self {
-        gen::where_::Type {
-            lifes: self.lifes.clone(),
-            typ: self.typ.clone(),
-            colon: self.colon.clone(),
-            bounds: self.bounds.clone(),
-        }
-    }
-}
 impl Copy for expr::Limits {}
 impl Clone for expr::Limits {
     fn clone(&self) -> Self {
@@ -603,22 +531,6 @@ impl Clone for typ::Ret {
             Default => Default,
             Type(x, v1) => Type(x.clone(), v1.clone()),
         }
-    }
-}
-impl Clone for gen::bound::Trait {
-    fn clone(&self) -> Self {
-        gen::bound::Trait {
-            parenth: self.parenth.clone(),
-            modif: self.modif.clone(),
-            lifes: self.lifes.clone(),
-            path: self.path.clone(),
-        }
-    }
-}
-impl Copy for gen::bound::Modifier {}
-impl Clone for gen::bound::Modifier {
-    fn clone(&self) -> Self {
-        *self
     }
 }
 impl Clone for typ::Type {
@@ -702,28 +614,6 @@ impl Clone for typ::Never {
         }
     }
 }
-impl Clone for gen::param::Type {
-    fn clone(&self) -> Self {
-        gen::param::Type {
-            attrs: self.attrs.clone(),
-            ident: self.ident.clone(),
-            colon: self.colon.clone(),
-            bounds: self.bounds.clone(),
-            eq: self.eq.clone(),
-            default: self.default.clone(),
-        }
-    }
-}
-impl Clone for gen::bound::Type {
-    fn clone(&self) -> Self {
-        use gen::bound::Type::*;
-        match self {
-            Life(x) => Life(x.clone()),
-            Trait(x) => Trait(x.clone()),
-            Verbatim(x) => Verbatim(x.clone()),
-        }
-    }
-}
 impl Clone for typ::Parenth {
     fn clone(&self) -> Self {
         typ::Parenth {
@@ -788,22 +678,5 @@ impl Copy for expr::UnOp {}
 impl Clone for expr::UnOp {
     fn clone(&self) -> Self {
         *self
-    }
-}
-impl Clone for gen::Where {
-    fn clone(&self) -> Self {
-        gen::Where {
-            where_: self.where_.clone(),
-            preds: self.preds.clone(),
-        }
-    }
-}
-impl Clone for gen::where_::Pred {
-    fn clone(&self) -> Self {
-        use gen::where_::Pred::*;
-        match self {
-            Life(x) => Life(x.clone()),
-            Type(x) => Type(x.clone()),
-        }
     }
 }

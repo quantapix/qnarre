@@ -219,6 +219,16 @@ impl Lower for Mac {
         self.delim.surround(s, self.toks.clone());
     }
 }
+impl<H> Hash for Mac
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.path.hash(h);
+        self.delim.hash(h);
+        StreamHelper(&self.toks).hash(h);
+    }
+}
 impl Pretty for Mac {
     fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
         let Some(x, semi) = pretty::Args::ident_semi(x);
