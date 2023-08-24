@@ -51,16 +51,6 @@ impl PartialEq for File {
         self.shebang == x.shebang && self.attrs == x.attrs && self.items == x.items
     }
 }
-impl<H> Hash for File
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.shebang.hash(h);
-        self.attrs.hash(h);
-        self.items.hash(h);
-    }
-}
 impl Pretty for File {
     fn pretty(&self, p: &mut Print) {
         p.cbox(0);
@@ -73,6 +63,28 @@ impl Pretty for File {
             x.pretty(p);
         }
         p.end();
+    }
+}
+impl<F> Fold for File
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        File {
+            shebang: self.shebang,
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            items: FoldHelper::lift(self.items, |x| x.fold(f)),
+        }
+    }
+}
+impl<H> Hash for File
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.shebang.hash(h);
+        self.attrs.hash(h);
+        self.items.hash(h);
     }
 }
 impl<V> Visit for File
@@ -254,6 +266,55 @@ impl PartialEq for Item {
         }
     }
 }
+impl Pretty for Item {
+    fn pretty(&self, p: &mut Print) {
+        use Item::*;
+        match self {
+            Const(x) => x.pretty(p),
+            Enum(x) => x.pretty(p),
+            Extern(x) => x.pretty(p),
+            Fn(x) => x.pretty(p),
+            Foreign(x) => x.pretty(p),
+            Impl(x) => x.pretty(p),
+            Mac(x) => x.pretty(p),
+            Mod(x) => x.pretty(p),
+            Static(x) => x.pretty(p),
+            Struct(x) => x.pretty(p),
+            Trait(x) => x.pretty(p),
+            Alias(x) => x.pretty(p),
+            Type(x) => x.pretty(p),
+            Union(x) => x.pretty(p),
+            Use(x) => x.pretty(p),
+            Verbatim(x) => x.pretty(p),
+        }
+    }
+}
+impl<F> Fold for Item
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        use Item::*;
+        match self {
+            Const(x) => Const(x.fold(f)),
+            Enum(x) => Enum(x.fold(f)),
+            Extern(x) => Extern(x.fold(f)),
+            Fn(x) => Fn(x.fold(f)),
+            Foreign(x) => Foreign(x.fold(f)),
+            Impl(x) => Impl(x.fold(f)),
+            Mac(x) => Mac(x.fold(f)),
+            Mod(x) => Mod(x.fold(f)),
+            Static(x) => Static(x.fold(f)),
+            Struct(x) => Struct(x.fold(f)),
+            Trait(x) => Trait(x.fold(f)),
+            Alias(x) => Alias(x.fold(f)),
+            Type(x) => Type(x.fold(f)),
+            Union(x) => Union(x.fold(f)),
+            Use(x) => Use(x.fold(f)),
+            Verbatim(x) => Verbatim(x),
+        }
+    }
+}
 impl<H> Hash for Item
 where
     H: Hasher,
@@ -325,29 +386,6 @@ where
                 h.write_u8(15u8);
                 StreamHelper(x).hash(h);
             },
-        }
-    }
-}
-impl Pretty for Item {
-    fn pretty(&self, p: &mut Print) {
-        use Item::*;
-        match self {
-            Const(x) => x.pretty(p),
-            Enum(x) => x.pretty(p),
-            Extern(x) => x.pretty(p),
-            Fn(x) => x.pretty(p),
-            Foreign(x) => x.pretty(p),
-            Impl(x) => x.pretty(p),
-            Mac(x) => x.pretty(p),
-            Mod(x) => x.pretty(p),
-            Static(x) => x.pretty(p),
-            Struct(x) => x.pretty(p),
-            Trait(x) => x.pretty(p),
-            Alias(x) => x.pretty(p),
-            Type(x) => x.pretty(p),
-            Union(x) => x.pretty(p),
-            Use(x) => x.pretty(p),
-            Verbatim(x) => x.pretty(p),
         }
     }
 }
@@ -555,19 +593,6 @@ impl PartialEq for Const {
             && self.expr == x.expr
     }
 }
-impl<H> Hash for Const
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.vis.hash(h);
-        self.ident.hash(h);
-        self.gens.hash(h);
-        self.typ.hash(h);
-        self.expr.hash(h);
-    }
-}
 impl Pretty for Const {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -584,6 +609,38 @@ impl Pretty for Const {
         p.word(";");
         p.end();
         p.hardbreak();
+    }
+}
+impl<F> Fold for Const
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Const {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            vis: self.vis.fold(f),
+            const_: self.const_,
+            ident: self.ident.fold(f),
+            gens: self.gens.fold(f),
+            colon: self.colon,
+            typ: Box::new(*self.typ.fold(f)),
+            eq: self.eq,
+            expr: Box::new(*self.expr.fold(f)),
+            semi: self.semi,
+        }
+    }
+}
+impl<H> Hash for Const
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.ident.hash(h);
+        self.gens.hash(h);
+        self.typ.hash(h);
+        self.expr.hash(h);
     }
 }
 impl<V> Visit for Const
@@ -709,18 +766,6 @@ impl PartialEq for Enum {
             && self.variants == x.variants
     }
 }
-impl<H> Hash for Enum
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.vis.hash(h);
-        self.ident.hash(h);
-        self.gens.hash(h);
-        self.variants.hash(h);
-    }
-}
 impl Pretty for Enum {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -741,6 +786,34 @@ impl Pretty for Enum {
         p.end();
         p.word("}");
         p.hardbreak();
+    }
+}
+impl<F> Fold for Enum
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Enum {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            vis: self.vis.fold(f),
+            enum_: self.enum_,
+            ident: self.ident.fold(f),
+            gens: self.gens.fold(f),
+            brace: self.brace,
+            variants: FoldHelper::lift(self.variants, |x| x.fold(f)),
+        }
+    }
+}
+impl<H> Hash for Enum
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.ident.hash(h);
+        self.gens.hash(h);
+        self.variants.hash(h);
     }
 }
 impl<V> Visit for Enum
@@ -864,17 +937,6 @@ impl PartialEq for Extern {
         self.attrs == x.attrs && self.vis == x.vis && self.ident == x.ident && self.rename == x.rename
     }
 }
-impl<H> Hash for Extern
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.vis.hash(h);
-        self.ident.hash(h);
-        self.rename.hash(h);
-    }
-}
 impl Pretty for Extern {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -887,6 +949,33 @@ impl Pretty for Extern {
         }
         p.word(";");
         p.hardbreak();
+    }
+}
+impl<F> Fold for Extern
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Extern {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            vis: self.vis.fold(f),
+            extern_: self.extern_,
+            crate_: self.crate_,
+            ident: self.ident.fold(f),
+            rename: (self.rename).map(|x| ((x).0, (x).1.fold(f))),
+            semi: self.semi,
+        }
+    }
+}
+impl<H> Hash for Extern
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.ident.hash(h);
+        self.rename.hash(h);
     }
 }
 impl<V> Visit for Extern
@@ -971,17 +1060,6 @@ impl PartialEq for Fn {
         self.attrs == x.attrs && self.vis == x.vis && self.sig == x.sig && self.block == x.block
     }
 }
-impl<H> Hash for Fn
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.vis.hash(h);
-        self.sig.hash(h);
-        self.block.hash(h);
-    }
-}
 impl Pretty for Fn {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -999,6 +1077,30 @@ impl Pretty for Fn {
         p.end();
         p.word("}");
         p.hardbreak();
+    }
+}
+impl<F> Fold for Fn
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Fn {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            vis: self.vis.fold(f),
+            sig: self.sig.fold(f),
+            block: Box::new(*self.block.fold(f)),
+        }
+    }
+}
+impl<H> Hash for Fn
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.sig.hash(h);
+        self.block.hash(h);
     }
 }
 impl<V> Visit for Fn
@@ -1095,17 +1197,6 @@ impl PartialEq for Foreign {
         self.attrs == x.attrs && self.unsafe_ == x.unsafe_ && self.abi == x.abi && self.items == x.items
     }
 }
-impl<H> Hash for Foreign
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.unsafe_.hash(h);
-        self.abi.hash(h);
-        self.items.hash(h);
-    }
-}
 impl Pretty for Foreign {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -1124,6 +1215,31 @@ impl Pretty for Foreign {
         p.end();
         p.word("}");
         p.hardbreak();
+    }
+}
+impl<F> Fold for Foreign
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Foreign {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            unsafe_: self.unsafe_,
+            abi: self.abi.fold(f),
+            brace: self.brace,
+            items: FoldHelper::lift(self.items, |x| x.fold(f)),
+        }
+    }
+}
+impl<H> Hash for Foreign
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.unsafe_.hash(h);
+        self.abi.hash(h);
+        self.items.hash(h);
     }
 }
 impl<V> Visit for Foreign
@@ -1234,20 +1350,6 @@ impl PartialEq for Impl {
             && self.items == x.items
     }
 }
-impl<H> Hash for Impl
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.default.hash(h);
-        self.unsafe_.hash(h);
-        self.gens.hash(h);
-        self.trait_.hash(h);
-        self.typ.hash(h);
-        self.items.hash(h);
-    }
-}
 impl Pretty for Impl {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -1285,6 +1387,38 @@ impl Pretty for Impl {
         p.end();
         p.word("}");
         p.hardbreak();
+    }
+}
+impl<F> Fold for Impl
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Impl {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            default: self.default,
+            unsafe_: self.unsafe_,
+            impl_: self.impl_,
+            gens: self.gens.fold(f),
+            trait_: (self.trait_).map(|x| ((x).0, (x).1.fold(f), (x).2)),
+            typ: Box::new(*self.typ.fold(f)),
+            brace: self.brace,
+            items: FoldHelper::lift(self.items, |x| x.fold(f)),
+        }
+    }
+}
+impl<H> Hash for Impl
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.default.hash(h);
+        self.unsafe_.hash(h);
+        self.gens.hash(h);
+        self.trait_.hash(h);
+        self.typ.hash(h);
+        self.items.hash(h);
     }
 }
 impl<V> Visit for Impl
@@ -1401,6 +1535,27 @@ impl PartialEq for Mac {
         self.attrs == x.attrs && self.ident == x.ident && self.mac == x.mac && self.semi == x.semi
     }
 }
+impl Pretty for Mac {
+    fn pretty(&self, p: &mut Print) {
+        p.outer_attrs(&self.attrs);
+        let semi = true;
+        &self.mac.pretty_with_args(p, (self.ident.as_ref(), semi));
+        p.hardbreak();
+    }
+}
+impl<F> Fold for Mac
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Mac {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            ident: (self.ident).map(|x| x.fold(f)),
+            mac: self.mac.fold(f),
+            semi: self.semi,
+        }
+    }
+}
 impl<H> Hash for Mac
 where
     H: Hasher,
@@ -1410,14 +1565,6 @@ where
         self.ident.hash(h);
         self.mac.hash(h);
         self.semi.hash(h);
-    }
-}
-impl Pretty for Mac {
-    fn pretty(&self, p: &mut Print) {
-        p.outer_attrs(&self.attrs);
-        let semi = true;
-        &self.mac.pretty_with_args(p, (self.ident.as_ref(), semi));
-        p.hardbreak();
     }
 }
 impl<V> Visit for Mac
@@ -1556,19 +1703,6 @@ impl PartialEq for Mod {
             && self.semi == x.semi
     }
 }
-impl<H> Hash for Mod
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.vis.hash(h);
-        self.unsafe_.hash(h);
-        self.ident.hash(h);
-        self.items.hash(h);
-        self.semi.hash(h);
-    }
-}
 impl Pretty for Mod {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -1594,6 +1728,35 @@ impl Pretty for Mod {
             p.end();
         }
         p.hardbreak();
+    }
+}
+impl<F> Fold for Mod
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Mod {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            vis: self.vis.fold(f),
+            unsafe_: self.unsafe_,
+            mod_: self.mod_,
+            ident: self.ident.fold(f),
+            items: (self.items).map(|x| ((x).0, FoldHelper::lift((x).1, |x| x.fold(f)))),
+            semi: self.semi,
+        }
+    }
+}
+impl<H> Hash for Mod
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.unsafe_.hash(h);
+        self.ident.hash(h);
+        self.items.hash(h);
+        self.semi.hash(h);
     }
 }
 impl<V> Visit for Mod
@@ -1716,19 +1879,6 @@ impl PartialEq for Static {
             && self.expr == x.expr
     }
 }
-impl<H> Hash for Static
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.vis.hash(h);
-        self.mut_.hash(h);
-        self.ident.hash(h);
-        self.typ.hash(h);
-        self.expr.hash(h);
-    }
-}
 impl Pretty for Static {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -1745,6 +1895,38 @@ impl Pretty for Static {
         p.word(";");
         p.end();
         p.hardbreak();
+    }
+}
+impl<F> Fold for Static
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Static {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            vis: self.vis.fold(f),
+            static_: self.static_,
+            mut_: self.mut_.fold(f),
+            ident: self.ident.fold(f),
+            colon: self.colon,
+            typ: Box::new(*self.typ.fold(f)),
+            eq: self.eq,
+            expr: Box::new(*self.expr.fold(f)),
+            semi: self.semi,
+        }
+    }
+}
+impl<H> Hash for Static
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.mut_.hash(h);
+        self.ident.hash(h);
+        self.typ.hash(h);
+        self.expr.hash(h);
     }
 }
 impl<V> Visit for Static
@@ -1882,19 +2064,6 @@ impl PartialEq for Struct {
             && self.semi == x.semi
     }
 }
-impl<H> Hash for Struct
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.vis.hash(h);
-        self.ident.hash(h);
-        self.gens.hash(h);
-        self.fields.hash(h);
-        self.semi.hash(h);
-    }
-}
 impl Pretty for Struct {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -1929,6 +2098,35 @@ impl Pretty for Struct {
             },
         }
         p.hardbreak();
+    }
+}
+impl<F> Fold for Struct
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Struct {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            vis: self.vis.fold(f),
+            struct_: self.struct_,
+            ident: self.ident.fold(f),
+            gens: self.gens.fold(f),
+            fields: self.fields.fold(f),
+            semi: self.semi,
+        }
+    }
+}
+impl<H> Hash for Struct
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.ident.hash(h);
+        self.gens.hash(h);
+        self.fields.hash(h);
+        self.semi.hash(h);
     }
 }
 impl<V> Visit for Struct
@@ -2057,23 +2255,6 @@ impl PartialEq for Trait {
             && self.items == x.items
     }
 }
-impl<H> Hash for Trait
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.vis.hash(h);
-        self.unsafe_.hash(h);
-        self.auto.hash(h);
-        self.restriction.hash(h);
-        self.ident.hash(h);
-        self.gens.hash(h);
-        self.colon.hash(h);
-        self.supers.hash(h);
-        self.items.hash(h);
-    }
-}
 impl Pretty for Trait {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -2107,6 +2288,44 @@ impl Pretty for Trait {
         p.end();
         p.word("}");
         p.hardbreak();
+    }
+}
+impl<F> Fold for Trait
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Trait {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            vis: self.vis.fold(f),
+            unsafe_: self.unsafe_,
+            auto: self.auto,
+            restriction: (self.restriction).map(|x| x.fold(f)),
+            trait_: self.trait_,
+            ident: self.ident.fold(f),
+            gens: self.gens.fold(f),
+            colon: self.colon,
+            supers: FoldHelper::lift(self.supers, |x| x.fold(f)),
+            brace: self.brace,
+            items: FoldHelper::lift(self.items, |x| x.fold(f)),
+        }
+    }
+}
+impl<H> Hash for Trait
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.unsafe_.hash(h);
+        self.auto.hash(h);
+        self.restriction.hash(h);
+        self.ident.hash(h);
+        self.gens.hash(h);
+        self.colon.hash(h);
+        self.supers.hash(h);
+        self.items.hash(h);
     }
 }
 impl<V> Visit for Trait
@@ -2223,18 +2442,6 @@ impl PartialEq for Alias {
             && self.bounds == x.bounds
     }
 }
-impl<H> Hash for Alias
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.vis.hash(h);
-        self.ident.hash(h);
-        self.gens.hash(h);
-        self.bounds.hash(h);
-    }
-}
 impl Pretty for Alias {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -2255,6 +2462,35 @@ impl Pretty for Alias {
         p.where_with_semi(&self.gens.where_);
         p.end();
         p.hardbreak();
+    }
+}
+impl<F> Fold for Alias
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Alias {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            vis: self.vis.fold(f),
+            trait_: self.trait_,
+            ident: self.ident.fold(f),
+            gens: self.gens.fold(f),
+            eq: self.eq,
+            bounds: FoldHelper::lift(self.bounds, |x| x.fold(f)),
+            semi: self.semi,
+        }
+    }
+}
+impl<H> Hash for Alias
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.ident.hash(h);
+        self.gens.hash(h);
+        self.bounds.hash(h);
     }
 }
 impl<V> Visit for Alias
@@ -2367,18 +2603,6 @@ impl PartialEq for Type {
         self.attrs == x.attrs && self.vis == x.vis && self.ident == x.ident && self.gens == x.gens && self.typ == x.typ
     }
 }
-impl<H> Hash for Type
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.vis.hash(h);
-        self.ident.hash(h);
-        self.gens.hash(h);
-        self.typ.hash(h);
-    }
-}
 impl Pretty for Type {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -2396,6 +2620,35 @@ impl Pretty for Type {
         p.word(";");
         p.end();
         p.hardbreak();
+    }
+}
+impl<F> Fold for Type
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Type {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            vis: self.vis.fold(f),
+            type_: self.type_,
+            ident: self.ident.fold(f),
+            gens: self.gens.fold(f),
+            eq: self.eq,
+            typ: Box::new(*self.typ.fold(f)),
+            semi: self.semi,
+        }
+    }
+}
+impl<H> Hash for Type
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.ident.hash(h);
+        self.gens.hash(h);
+        self.typ.hash(h);
     }
 }
 impl<V> Visit for Type
@@ -2512,18 +2765,6 @@ impl PartialEq for Union {
             && self.fields == x.fields
     }
 }
-impl<H> Hash for Union
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.vis.hash(h);
-        self.ident.hash(h);
-        self.gens.hash(h);
-        self.fields.hash(h);
-    }
-}
 impl Pretty for Union {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -2544,6 +2785,33 @@ impl Pretty for Union {
         p.end();
         p.word("}");
         p.hardbreak();
+    }
+}
+impl<F> Fold for Union
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Union {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            vis: self.vis.fold(f),
+            union_: self.union_,
+            ident: self.ident.fold(f),
+            gens: self.gens.fold(f),
+            fields: self.fields.fold(f),
+        }
+    }
+}
+impl<H> Hash for Union
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.ident.hash(h);
+        self.gens.hash(h);
+        self.fields.hash(h);
     }
 }
 impl<V> Visit for Union
@@ -2629,17 +2897,6 @@ impl PartialEq for Use {
         self.attrs == x.attrs && self.vis == x.vis && self.colon == x.colon && self.tree == x.tree
     }
 }
-impl<H> Hash for Use
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.vis.hash(h);
-        self.colon.hash(h);
-        self.tree.hash(h);
-    }
-}
 impl Pretty for Use {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -2651,6 +2908,32 @@ impl Pretty for Use {
         &self.tree.pretty(p);
         p.word(";");
         p.hardbreak();
+    }
+}
+impl<F> Fold for Use
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Use {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            vis: self.vis.fold(f),
+            use_: self.use_,
+            colon: self.colon,
+            tree: self.tree.fold(f),
+            semi: self.semi,
+        }
+    }
+}
+impl<H> Hash for Use
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.vis.hash(h);
+        self.colon.hash(h);
+        self.tree.hash(h);
     }
 }
 impl<V> Visit for Use
@@ -3127,18 +3410,6 @@ impl PartialEq for Receiver {
             && self.typ == x.typ
     }
 }
-impl<H> Hash for Receiver
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.ref_.hash(h);
-        self.mut_.hash(h);
-        self.colon.hash(h);
-        self.typ.hash(h);
-    }
-}
 impl Pretty for Receiver {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -3173,6 +3444,33 @@ impl Pretty for Receiver {
                 &self.typ.pretty(p);
             }
         }
+    }
+}
+impl<F> Fold for Receiver
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Receiver {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            ref_: (self.ref_).map(|x| ((x).0, ((x).1).map(|x| x.fold(f)))),
+            mut_: self.mut_,
+            self_: self.self_,
+            colon: self.colon,
+            typ: Box::new(*self.typ.fold(f)),
+        }
+    }
+}
+impl<H> Hash for Receiver
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.ref_.hash(h);
+        self.mut_.hash(h);
+        self.colon.hash(h);
+        self.typ.hash(h);
     }
 }
 impl<V> Visit for Receiver
@@ -3258,6 +3556,27 @@ impl PartialEq for FnArg {
         }
     }
 }
+impl Pretty for FnArg {
+    fn pretty(&self, p: &mut Print) {
+        use FnArg::*;
+        match self {
+            Receiver(x) => x.pretty(p),
+            Type(x) => x.pretty(p),
+        }
+    }
+}
+impl<F> Fold for FnArg
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        use FnArg::*;
+        match self {
+            Receiver(x) => Receiver(x.fold(f)),
+            Type(x) => Type(x.fold(f)),
+        }
+    }
+}
 impl<H> Hash for FnArg
 where
     H: Hasher,
@@ -3273,15 +3592,6 @@ where
                 h.write_u8(1u8);
                 x.hash(h);
             },
-        }
-    }
-}
-impl Pretty for FnArg {
-    fn pretty(&self, p: &mut Print) {
-        use FnArg::*;
-        match self {
-            Receiver(x) => x.pretty(p),
-            Type(x) => x.pretty(p),
         }
     }
 }
@@ -3439,22 +3749,6 @@ impl PartialEq for Sig {
             && self.ret == x.ret
     }
 }
-impl<H> Hash for Sig
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.const_.hash(h);
-        self.async_.hash(h);
-        self.unsafe_.hash(h);
-        self.abi.hash(h);
-        self.ident.hash(h);
-        self.gens.hash(h);
-        self.args.hash(h);
-        self.vari.hash(h);
-        self.ret.hash(h);
-    }
-}
 impl Pretty for Sig {
     fn pretty(&self, p: &mut Print) {
         if self.const_.is_some() {
@@ -3491,6 +3785,42 @@ impl Pretty for Sig {
         p.cbox(-INDENT);
         &self.ret.pretty(p);
         p.end();
+    }
+}
+impl<F> Fold for Sig
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Sig {
+            const_: self.const_,
+            async_: self.async_,
+            unsafe_: self.unsafe_,
+            abi: (self.abi).map(|x| x.fold(f)),
+            fn_: self.fn_,
+            ident: self.ident.fold(f),
+            gens: self.gens.fold(f),
+            parenth: self.parenth,
+            args: FoldHelper::lift(self.args, |x| x.fold(f)),
+            vari: (self.vari).map(|x| x.fold(f)),
+            ret: self.ret.fold(f),
+        }
+    }
+}
+impl<H> Hash for Sig
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.const_.hash(h);
+        self.async_.hash(h);
+        self.unsafe_.hash(h);
+        self.abi.hash(h);
+        self.ident.hash(h);
+        self.gens.hash(h);
+        self.args.hash(h);
+        self.vari.hash(h);
+        self.ret.hash(h);
     }
 }
 impl<V> Visit for Sig
@@ -3669,16 +3999,6 @@ impl PartialEq for Variadic {
         self.attrs == x.attrs && self.pat == x.pat && self.comma == x.comma
     }
 }
-impl<H> Hash for Variadic
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.pat.hash(h);
-        self.comma.hash(h);
-    }
-}
 impl Pretty for Variadic {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -3687,6 +4007,29 @@ impl Pretty for Variadic {
             p.word(": ");
         }
         p.word("...");
+    }
+}
+impl<F> Fold for Variadic
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Variadic {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            pat: (self.pat).map(|x| (Box::new(*(x).0.fold(f), (x).1))),
+            dots: self.dots,
+            comma: self.comma,
+        }
+    }
+}
+impl<H> Hash for Variadic
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.attrs.hash(h);
+        self.pat.hash(h);
+        self.comma.hash(h);
     }
 }
 impl<V> Visit for Variadic
@@ -3838,6 +4181,33 @@ pub mod foreign {
             }
         }
     }
+    impl Pretty for Item {
+        fn pretty(&self, p: &mut Print) {
+            use self::Item::*;
+            match self {
+                Fn(x) => x.pretty(p),
+                Mac(x) => x.pretty(p),
+                Static(x) => x.pretty(p),
+                Type(x) => x.pretty(p),
+                Verbatim(x) => x.pretty(p),
+            }
+        }
+    }
+    impl<F> Fold for Item
+    where
+        F: Folder + ?Sized,
+    {
+        fn fold(&self, f: &mut F) {
+            use self::Item::*;
+            match self {
+                Fn(x) => Fn(x.fold(f)),
+                Static(x) => Static(x.fold(f)),
+                Type(x) => Type(x.fold(f)),
+                Mac(x) => Mac(x.fold(f)),
+                Verbatim(x) => Verbatim(x),
+            }
+        }
+    }
     impl<H> Hash for Item
     where
         H: Hasher,
@@ -3865,18 +4235,6 @@ pub mod foreign {
                     h.write_u8(4u8);
                     StreamHelper(x).hash(h);
                 },
-            }
-        }
-    }
-    impl Pretty for Item {
-        fn pretty(&self, p: &mut Print) {
-            use self::Item::*;
-            match self {
-                Fn(x) => x.pretty(p),
-                Mac(x) => x.pretty(p),
-                Static(x) => x.pretty(p),
-                Type(x) => x.pretty(p),
-                Verbatim(x) => x.pretty(p),
             }
         }
     }
@@ -3976,16 +4334,6 @@ pub mod foreign {
             self.attrs == x.attrs && self.vis == x.vis && self.sig == x.sig
         }
     }
-    impl<H> Hash for Fn
-    where
-        H: Hasher,
-    {
-        fn hash(&self, h: &mut H) {
-            self.attrs.hash(h);
-            self.vis.hash(h);
-            self.sig.hash(h);
-        }
-    }
     impl Pretty for Fn {
         fn pretty(&self, p: &mut Print) {
             p.outer_attrs(&self.attrs);
@@ -3995,6 +4343,29 @@ pub mod foreign {
             p.where_with_semi(&self.sig.gens.where_);
             p.end();
             p.hardbreak();
+        }
+    }
+    impl<F> Fold for Fn
+    where
+        F: Folder + ?Sized,
+    {
+        fn fold(&self, f: &mut F) {
+            Fn {
+                attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+                vis: self.vis.fold(f),
+                sig: self.sig.fold(f),
+                semi: self.semi,
+            }
+        }
+    }
+    impl<H> Hash for Fn
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.attrs.hash(h);
+            self.vis.hash(h);
+            self.sig.hash(h);
         }
     }
     impl<V> Visit for Fn
@@ -4066,6 +4437,26 @@ pub mod foreign {
             self.attrs == x.attrs && self.mac == x.mac && self.semi == x.semi
         }
     }
+    impl Pretty for Mac {
+        fn pretty(&self, p: &mut Print) {
+            p.outer_attrs(&self.attrs);
+            let semi = true;
+            &self.mac.pretty_with_args(p, (None, semi));
+            p.hardbreak();
+        }
+    }
+    impl<F> Fold for Mac
+    where
+        F: Folder + ?Sized,
+    {
+        fn fold(&self, f: &mut F) {
+            Mac {
+                attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+                mac: self.mac.fold(f),
+                semi: self.semi,
+            }
+        }
+    }
     impl<H> Hash for Mac
     where
         H: Hasher,
@@ -4074,14 +4465,6 @@ pub mod foreign {
             self.attrs.hash(h);
             self.mac.hash(h);
             self.semi.hash(h);
-        }
-    }
-    impl Pretty for Mac {
-        fn pretty(&self, p: &mut Print) {
-            p.outer_attrs(&self.attrs);
-            let semi = true;
-            &self.mac.pretty_with_args(p, (None, semi));
-            p.hardbreak();
         }
     }
     impl<V> Visit for Mac
@@ -4181,18 +4564,6 @@ pub mod foreign {
                 && self.typ == x.typ
         }
     }
-    impl<H> Hash for Static
-    where
-        H: Hasher,
-    {
-        fn hash(&self, h: &mut H) {
-            self.attrs.hash(h);
-            self.vis.hash(h);
-            self.mut_.hash(h);
-            self.ident.hash(h);
-            self.typ.hash(h);
-        }
-    }
     impl Pretty for Static {
         fn pretty(&self, p: &mut Print) {
             p.outer_attrs(&self.attrs);
@@ -4206,6 +4577,35 @@ pub mod foreign {
             p.word(";");
             p.end();
             p.hardbreak();
+        }
+    }
+    impl<F> Fold for Static
+    where
+        F: Folder + ?Sized,
+    {
+        fn fold(&self, f: &mut F) {
+            Static {
+                attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+                vis: self.vis.fold(f),
+                static_: self.static_,
+                mut_: self.mut_.fold(f),
+                ident: self.ident.fold(f),
+                colon: self.colon,
+                typ: Box::new(*self.typ.fold(f)),
+                semi: self.semi,
+            }
+        }
+    }
+    impl<H> Hash for Static
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.attrs.hash(h);
+            self.vis.hash(h);
+            self.mut_.hash(h);
+            self.ident.hash(h);
+            self.typ.hash(h);
         }
     }
     impl<V> Visit for Static
@@ -4302,17 +4702,6 @@ pub mod foreign {
             self.attrs == x.attrs && self.vis == x.vis && self.ident == x.ident && self.gens == x.gens
         }
     }
-    impl<H> Hash for Type
-    where
-        H: Hasher,
-    {
-        fn hash(&self, h: &mut H) {
-            self.attrs.hash(h);
-            self.vis.hash(h);
-            self.ident.hash(h);
-            self.gens.hash(h);
-        }
-    }
     impl Pretty for Type {
         fn pretty(&self, p: &mut Print) {
             p.outer_attrs(&self.attrs);
@@ -4324,6 +4713,32 @@ pub mod foreign {
             p.word(";");
             p.end();
             p.hardbreak();
+        }
+    }
+    impl<F> Fold for Type
+    where
+        F: Folder + ?Sized,
+    {
+        fn fold(&self, f: &mut F) {
+            Type {
+                attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+                vis: self.vis.fold(f),
+                type_: self.type_,
+                ident: self.ident.fold(f),
+                gens: self.gens.fold(f),
+                semi: self.semi,
+            }
+        }
+    }
+    impl<H> Hash for Type
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.attrs.hash(h);
+            self.vis.hash(h);
+            self.ident.hash(h);
+            self.gens.hash(h);
         }
     }
     impl<V> Visit for Type
@@ -4545,6 +4960,33 @@ pub mod impl_ {
             }
         }
     }
+    impl Pretty for Item {
+        fn pretty(&self, p: &mut Print) {
+            use self::Item::*;
+            match self {
+                Const(x) => x.pretty(p),
+                Fn(x) => x.pretty(p),
+                Mac(x) => x.pretty(p),
+                Type(x) => x.pretty(p),
+                Verbatim(x) => x.pretty(p),
+            }
+        }
+    }
+    impl<F> Fold for Item
+    where
+        F: Folder + ?Sized,
+    {
+        fn fold(&self, f: &mut F) {
+            use self::Item::*;
+            match self {
+                Const(x) => Const(x.fold(f)),
+                Fn(x) => Fn(x.fold(f)),
+                Type(x) => Type(x.fold(f)),
+                Mac(x) => Mac(x.fold(f)),
+                Verbatim(x) => Verbatim(x),
+            }
+        }
+    }
     impl<H> Hash for Item
     where
         H: Hasher,
@@ -4572,18 +5014,6 @@ pub mod impl_ {
                     h.write_u8(4u8);
                     StreamHelper(x).hash(h);
                 },
-            }
-        }
-    }
-    impl Pretty for Item {
-        fn pretty(&self, p: &mut Print) {
-            use self::Item::*;
-            match self {
-                Const(x) => x.pretty(p),
-                Fn(x) => x.pretty(p),
-                Mac(x) => x.pretty(p),
-                Type(x) => x.pretty(p),
-                Verbatim(x) => x.pretty(p),
             }
         }
     }
@@ -4731,20 +5161,6 @@ pub mod impl_ {
                 && self.expr == x.expr
         }
     }
-    impl<H> Hash for Const
-    where
-        H: Hasher,
-    {
-        fn hash(&self, h: &mut H) {
-            self.attrs.hash(h);
-            self.vis.hash(h);
-            self.default.hash(h);
-            self.ident.hash(h);
-            self.gens.hash(h);
-            self.typ.hash(h);
-            self.expr.hash(h);
-        }
-    }
     impl Pretty for Const {
         fn pretty(&self, p: &mut Print) {
             p.outer_attrs(&self.attrs);
@@ -4764,6 +5180,40 @@ pub mod impl_ {
             p.word(";");
             p.end();
             p.hardbreak();
+        }
+    }
+    impl<F> Fold for Const
+    where
+        F: Folder + ?Sized,
+    {
+        fn fold(&self, f: &mut F) {
+            Const {
+                attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+                vis: self.vis.fold(f),
+                default: self.default,
+                const_: self.const_,
+                ident: self.ident.fold(f),
+                gens: self.gens.fold(f),
+                colon: self.colon,
+                typ: self.typ.fold(f),
+                eq: self.eq,
+                expr: self.expr.fold(f),
+                semi: self.semi,
+            }
+        }
+    }
+    impl<H> Hash for Const
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.attrs.hash(h);
+            self.vis.hash(h);
+            self.default.hash(h);
+            self.ident.hash(h);
+            self.gens.hash(h);
+            self.typ.hash(h);
+            self.expr.hash(h);
         }
     }
     impl<V> Visit for Const
@@ -4854,18 +5304,6 @@ pub mod impl_ {
                 && self.block == x.block
         }
     }
-    impl<H> Hash for Fn
-    where
-        H: Hasher,
-    {
-        fn hash(&self, h: &mut H) {
-            self.attrs.hash(h);
-            self.vis.hash(h);
-            self.default.hash(h);
-            self.sig.hash(h);
-            self.block.hash(h);
-        }
-    }
     impl Pretty for Fn {
         fn pretty(&self, p: &mut Print) {
             p.outer_attrs(&self.attrs);
@@ -4886,6 +5324,32 @@ pub mod impl_ {
             p.end();
             p.word("}");
             p.hardbreak();
+        }
+    }
+    impl<F> Fold for Fn
+    where
+        F: Folder + ?Sized,
+    {
+        fn fold(&self, f: &mut F) {
+            Fn {
+                attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+                vis: self.vis.fold(f),
+                default: self.default,
+                sig: self.sig.fold(f),
+                block: self.block.fold(f),
+            }
+        }
+    }
+    impl<H> Hash for Fn
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.attrs.hash(h);
+            self.vis.hash(h);
+            self.default.hash(h);
+            self.sig.hash(h);
+            self.block.hash(h);
         }
     }
     impl<V> Visit for Fn
@@ -4959,6 +5423,26 @@ pub mod impl_ {
             self.attrs == x.attrs && self.mac == x.mac && self.semi == x.semi
         }
     }
+    impl Pretty for Mac {
+        fn pretty(&self, p: &mut Print) {
+            p.outer_attrs(&self.attrs);
+            let semi = true;
+            &self.mac.pretty_with_args(p, (None, semi));
+            p.hardbreak();
+        }
+    }
+    impl<F> Fold for Mac
+    where
+        F: Folder + ?Sized,
+    {
+        fn fold(&self, f: &mut F) {
+            Mac {
+                attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+                mac: self.mac.fold(f),
+                semi: self.semi,
+            }
+        }
+    }
     impl<H> Hash for Mac
     where
         H: Hasher,
@@ -4967,14 +5451,6 @@ pub mod impl_ {
             self.attrs.hash(h);
             self.mac.hash(h);
             self.semi.hash(h);
-        }
-    }
-    impl Pretty for Mac {
-        fn pretty(&self, p: &mut Print) {
-            p.outer_attrs(&self.attrs);
-            let semi = true;
-            &self.mac.pretty_with_args(p, (None, semi));
-            p.hardbreak();
         }
     }
     impl<V> Visit for Mac
@@ -5091,19 +5567,6 @@ pub mod impl_ {
                 && self.typ == x.typ
         }
     }
-    impl<H> Hash for Type
-    where
-        H: Hasher,
-    {
-        fn hash(&self, h: &mut H) {
-            self.attrs.hash(h);
-            self.vis.hash(h);
-            self.default.hash(h);
-            self.ident.hash(h);
-            self.gens.hash(h);
-            self.typ.hash(h);
-        }
-    }
     impl Pretty for Type {
         fn pretty(&self, p: &mut Print) {
             p.outer_attrs(&self.attrs);
@@ -5123,6 +5586,37 @@ pub mod impl_ {
             p.where_oneline_with_semi(&self.gens.where_);
             p.end();
             p.hardbreak();
+        }
+    }
+    impl<F> Fold for Type
+    where
+        F: Folder + ?Sized,
+    {
+        fn fold(&self, f: &mut F) {
+            Type {
+                attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+                vis: self.vis.fold(f),
+                default: self.default,
+                type_: self.type_,
+                ident: self.ident.fold(f),
+                gens: self.gens.fold(f),
+                eq: self.eq,
+                typ: self.typ.fold(f),
+                semi: self.semi,
+            }
+        }
+    }
+    impl<H> Hash for Type
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.attrs.hash(h);
+            self.vis.hash(h);
+            self.default.hash(h);
+            self.ident.hash(h);
+            self.gens.hash(h);
+            self.typ.hash(h);
         }
     }
     impl<V> Visit for Type
@@ -5230,6 +5724,14 @@ pub mod impl_ {
     impl Eq for Restriction {}
     impl PartialEq for Restriction {
         fn eq(&self, _other: &Self) -> bool {
+            match *self {}
+        }
+    }
+    impl<F> Fold for Restriction
+    where
+        F: Folder + ?Sized,
+    {
+        fn fold(&self, f: &mut F) {
             match *self {}
         }
     }
@@ -5361,6 +5863,33 @@ pub mod trait_ {
             }
         }
     }
+    impl Pretty for Item {
+        fn pretty(&self, p: &mut Print) {
+            use self::Item::*;
+            match self {
+                Const(x) => x.pretty(p),
+                Fn(x) => x.pretty(p),
+                Mac(x) => x.pretty(p),
+                Type(x) => x.pretty(p),
+                Verbatim(x) => x.pretty(p),
+            }
+        }
+    }
+    impl<F> Fold for Item
+    where
+        F: Folder + ?Sized,
+    {
+        fn fold(&self, f: &mut F) {
+            use self::Item::*;
+            match self {
+                Const(x) => Const(x.fold(f)),
+                Fn(x) => Fn(x.fold(f)),
+                Type(x) => Type(x.fold(f)),
+                Mac(x) => Mac(x.fold(f)),
+                Verbatim(x) => Verbatim(x),
+            }
+        }
+    }
     impl<H> Hash for Item
     where
         H: Hasher,
@@ -5388,18 +5917,6 @@ pub mod trait_ {
                     h.write_u8(4u8);
                     StreamHelper(x).hash(h);
                 },
-            }
-        }
-    }
-    impl Pretty for Item {
-        fn pretty(&self, p: &mut Print) {
-            use self::Item::*;
-            match self {
-                Const(x) => x.pretty(p),
-                Fn(x) => x.pretty(p),
-                Mac(x) => x.pretty(p),
-                Type(x) => x.pretty(p),
-                Verbatim(x) => x.pretty(p),
             }
         }
     }
@@ -5541,18 +6058,6 @@ pub mod trait_ {
                 && self.default == x.default
         }
     }
-    impl<H> Hash for Const
-    where
-        H: Hasher,
-    {
-        fn hash(&self, h: &mut H) {
-            self.attrs.hash(h);
-            self.ident.hash(h);
-            self.gens.hash(h);
-            self.typ.hash(h);
-            self.default.hash(h);
-        }
-    }
     impl Pretty for Const {
         fn pretty(&self, p: &mut Print) {
             p.outer_attrs(&self.attrs);
@@ -5570,6 +6075,35 @@ pub mod trait_ {
             p.word(";");
             p.end();
             p.hardbreak();
+        }
+    }
+    impl<F> Fold for Const
+    where
+        F: Folder + ?Sized,
+    {
+        fn fold(&self, f: &mut F) {
+            Const {
+                attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+                const_: self.const_,
+                ident: self.ident.fold(f),
+                gens: self.gens.fold(f),
+                colon: self.colon,
+                typ: self.typ.fold(f),
+                default: (self.default).map(|x| ((x).0, (x).1.fold(f))),
+                semi: self.semi,
+            }
+        }
+    }
+    impl<H> Hash for Const
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.attrs.hash(h);
+            self.ident.hash(h);
+            self.gens.hash(h);
+            self.typ.hash(h);
+            self.default.hash(h);
         }
     }
     impl<V> Visit for Const
@@ -5679,17 +6213,6 @@ pub mod trait_ {
             self.attrs == x.attrs && self.sig == x.sig && self.default == x.default && self.semi == x.semi
         }
     }
-    impl<H> Hash for Fn
-    where
-        H: Hasher,
-    {
-        fn hash(&self, h: &mut H) {
-            self.attrs.hash(h);
-            self.sig.hash(h);
-            self.default.hash(h);
-            self.semi.hash(h);
-        }
-    }
     impl Pretty for Fn {
         fn pretty(&self, p: &mut Print) {
             p.outer_attrs(&self.attrs);
@@ -5711,6 +6234,30 @@ pub mod trait_ {
                 p.end();
             }
             p.hardbreak();
+        }
+    }
+    impl<F> Fold for Fn
+    where
+        F: Folder + ?Sized,
+    {
+        fn fold(&self, f: &mut F) {
+            Fn {
+                attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+                sig: self.sig.fold(f),
+                default: (self.default).map(|x| x.fold(f)),
+                semi: self.semi,
+            }
+        }
+    }
+    impl<H> Hash for Fn
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.attrs.hash(h);
+            self.sig.hash(h);
+            self.default.hash(h);
+            self.semi.hash(h);
         }
     }
     impl<V> Visit for Fn
@@ -5786,6 +6333,26 @@ pub mod trait_ {
             self.attrs == x.attrs && self.mac == x.mac && self.semi == x.semi
         }
     }
+    impl Pretty for Mac {
+        fn pretty(&self, p: &mut Print) {
+            p.outer_attrs(&self.attrs);
+            let semi = true;
+            &self.mac.pretty_with_args(p, (None, semi));
+            p.hardbreak();
+        }
+    }
+    impl<F> Fold for Mac
+    where
+        F: Folder + ?Sized,
+    {
+        fn fold(&self, f: &mut F) {
+            Mac {
+                attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+                mac: self.mac.fold(f),
+                semi: self.semi,
+            }
+        }
+    }
     impl<H> Hash for Mac
     where
         H: Hasher,
@@ -5794,14 +6361,6 @@ pub mod trait_ {
             self.attrs.hash(h);
             self.mac.hash(h);
             self.semi.hash(h);
-        }
-    }
-    impl Pretty for Mac {
-        fn pretty(&self, p: &mut Print) {
-            p.outer_attrs(&self.attrs);
-            let semi = true;
-            &self.mac.pretty_with_args(p, (None, semi));
-            p.hardbreak();
         }
     }
     impl<V> Visit for Mac
@@ -5916,19 +6475,6 @@ pub mod trait_ {
                 && self.default == x.default
         }
     }
-    impl<H> Hash for Type
-    where
-        H: Hasher,
-    {
-        fn hash(&self, h: &mut H) {
-            self.attrs.hash(h);
-            self.ident.hash(h);
-            self.gens.hash(h);
-            self.colon.hash(h);
-            self.bounds.hash(h);
-            self.default.hash(h);
-        }
-    }
     impl Pretty for Type {
         fn pretty(&self, p: &mut Print) {
             p.outer_attrs(&self.attrs);
@@ -5955,6 +6501,36 @@ pub mod trait_ {
             p.where_oneline_with_semi(&self.gens.where_);
             p.end();
             p.hardbreak();
+        }
+    }
+    impl<F> Fold for Type
+    where
+        F: Folder + ?Sized,
+    {
+        fn fold(&self, f: &mut F) {
+            Type {
+                attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+                type_: self.type_,
+                ident: self.ident.fold(f),
+                gens: self.gens.fold(f),
+                colon: self.colon,
+                bounds: FoldHelper::lift(self.bounds, |x| x.fold(f)),
+                default: (self.default).map(|x| ((x).0, (x).1.fold(f))),
+                semi: self.semi,
+            }
+        }
+    }
+    impl<H> Hash for Type
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.attrs.hash(h);
+            self.ident.hash(h);
+            self.gens.hash(h);
+            self.colon.hash(h);
+            self.bounds.hash(h);
+            self.default.hash(h);
         }
     }
     impl<V> Visit for Type
@@ -6143,6 +6719,33 @@ pub mod use_ {
             }
         }
     }
+    impl Pretty for Tree {
+        fn pretty(&self, p: &mut Print) {
+            use Tree::*;
+            match self {
+                Glob(x) => x.pretty(p),
+                Group(x) => x.pretty(p),
+                Name(x) => x.pretty(p),
+                Path(x) => x.pretty(p),
+                Rename(x) => x.pretty(p),
+            }
+        }
+    }
+    impl<F> Fold for Tree
+    where
+        F: Folder + ?Sized,
+    {
+        fn fold(&self, f: &mut F) {
+            use Tree::*;
+            match self {
+                Path(x) => Path(x.fold(f)),
+                Name(x) => Name(x.fold(f)),
+                Rename(x) => Rename(x.fold(f)),
+                Glob(x) => Glob(x.fold(f)),
+                Group(x) => Group(x.fold(f)),
+            }
+        }
+    }
     impl<H> Hash for Tree
     where
         H: Hasher,
@@ -6170,18 +6773,6 @@ pub mod use_ {
                     h.write_u8(4u8);
                     x.hash(h);
                 },
-            }
-        }
-    }
-    impl Pretty for Tree {
-        fn pretty(&self, p: &mut Print) {
-            use Tree::*;
-            match self {
-                Glob(x) => x.pretty(p),
-                Group(x) => x.pretty(p),
-                Name(x) => x.pretty(p),
-                Path(x) => x.pretty(p),
-                Rename(x) => x.pretty(p),
             }
         }
     }
@@ -6324,17 +6915,25 @@ pub mod use_ {
             true
         }
     }
-    impl<H> Hash for Glob
-    where
-        H: Hasher,
-    {
-        fn hash(&self, h: &mut H) {}
-    }
     impl Pretty for Glob {
         fn pretty(&self, p: &mut Print) {
             let _ = self;
             p.word("*");
         }
+    }
+    impl<F> Fold for Glob
+    where
+        F: Folder + ?Sized,
+    {
+        fn fold(&self, f: &mut F) {
+            Glob { star: self.star }
+        }
+    }
+    impl<H> Hash for Glob
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {}
     }
     impl<V> Visit for Glob
     where
@@ -6377,14 +6976,6 @@ pub mod use_ {
             self.trees == x.trees
         }
     }
-    impl<H> Hash for Group
-    where
-        H: Hasher,
-    {
-        fn hash(&self, h: &mut H) {
-            self.trees.hash(h);
-        }
-    }
     impl Pretty for Group {
         fn pretty(&self, p: &mut Print) {
             if self.trees.is_empty() {
@@ -6417,6 +7008,25 @@ pub mod use_ {
                 p.word("}");
                 p.end();
             }
+        }
+    }
+    impl<F> Fold for Group
+    where
+        F: Folder + ?Sized,
+    {
+        fn fold(&self, f: &mut F) {
+            Group {
+                brace: self.brace,
+                trees: FoldHelper::lift(self.trees, |x| x.fold(f)),
+            }
+        }
+    }
+    impl<H> Hash for Group
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.trees.hash(h);
         }
     }
     impl<V> Visit for Group
@@ -6465,17 +7075,27 @@ pub mod use_ {
             self.ident == x.ident
         }
     }
+    impl Pretty for Name {
+        fn pretty(&self, p: &mut Print) {
+            &self.ident.pretty(p);
+        }
+    }
+    impl<F> Fold for Name
+    where
+        F: Folder + ?Sized,
+    {
+        fn fold(&self, f: &mut F) {
+            Name {
+                ident: self.ident.fold(f),
+            }
+        }
+    }
     impl<H> Hash for Name
     where
         H: Hasher,
     {
         fn hash(&self, h: &mut H) {
             self.ident.hash(h);
-        }
-    }
-    impl Pretty for Name {
-        fn pretty(&self, p: &mut Print) {
-            &self.ident.pretty(p);
         }
     }
     impl<V> Visit for Name
@@ -6526,6 +7146,25 @@ pub mod use_ {
             self.ident == x.ident && self.tree == x.tree
         }
     }
+    impl Pretty for Path {
+        fn pretty(&self, p: &mut Print) {
+            &self.ident.pretty(p);
+            p.word("::");
+            &self.tree.pretty(p);
+        }
+    }
+    impl<F> Fold for Path
+    where
+        F: Folder + ?Sized,
+    {
+        fn fold(&self, f: &mut F) {
+            Path {
+                ident: self.ident.fold(f),
+                colon2: self.colon2,
+                tree: Box::new(*self.tree.fold(f)),
+            }
+        }
+    }
     impl<H> Hash for Path
     where
         H: Hasher,
@@ -6533,13 +7172,6 @@ pub mod use_ {
         fn hash(&self, h: &mut H) {
             self.ident.hash(h);
             self.tree.hash(h);
-        }
-    }
-    impl Pretty for Path {
-        fn pretty(&self, p: &mut Print) {
-            &self.ident.pretty(p);
-            p.word("::");
-            &self.tree.pretty(p);
         }
     }
     impl<V> Visit for Path
@@ -6592,6 +7224,25 @@ pub mod use_ {
             self.ident == x.ident && self.rename == x.rename
         }
     }
+    impl Pretty for Rename {
+        fn pretty(&self, p: &mut Print) {
+            &self.ident.pretty(p);
+            p.word(" as ");
+            &self.rename.pretty(p);
+        }
+    }
+    impl<F> Fold for Rename
+    where
+        F: Folder + ?Sized,
+    {
+        fn fold(&self, f: &mut F) {
+            Rename {
+                ident: self.ident.fold(f),
+                as_: self.as_,
+                rename: self.rename.fold(f),
+            }
+        }
+    }
     impl<H> Hash for Rename
     where
         H: Hasher,
@@ -6599,13 +7250,6 @@ pub mod use_ {
         fn hash(&self, h: &mut H) {
             self.ident.hash(h);
             self.rename.hash(h);
-        }
-    }
-    impl Pretty for Rename {
-        fn pretty(&self, p: &mut Print) {
-            &self.ident.pretty(p);
-            p.word(" as ");
-            &self.rename.pretty(p);
         }
     }
     impl<V> Visit for Rename
