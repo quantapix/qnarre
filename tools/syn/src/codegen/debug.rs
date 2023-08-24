@@ -1,18 +1,10 @@
 use crate::*;
 
-impl Debug for typ::Abi {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("Abi");
-        f.field("extern_", &self.extern_);
-        f.field("name", &self.name);
-        f.finish()
-    }
-}
 impl Debug for path::Angle {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         impl path::Angle {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut f = f.debug_struct(name);
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
                 f.field("colon2", &self.colon2);
                 f.field("lt", &self.lt);
                 f.field("args", &self.args);
@@ -40,25 +32,6 @@ impl Debug for AssocType {
         f.field("gens", &self.gnrs);
         f.field("eq", &self.eq);
         f.field("ty", &self.ty);
-        f.finish()
-    }
-}
-impl Debug for typ::FnArg {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("typ::FnArg");
-        f.field("attrs", &self.attrs);
-        f.field("name", &self.name);
-        f.field("ty", &self.typ);
-        f.finish()
-    }
-}
-impl Debug for typ::Variadic {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("typ::Variadic");
-        f.field("attrs", &self.attrs);
-        f.field("name", &self.name);
-        f.field("dots", &self.dots);
-        f.field("comma", &self.comma);
         f.finish()
     }
 }
@@ -211,8 +184,8 @@ impl Debug for Label {
 impl Debug for Life {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         impl Life {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut f = f.debug_struct(name);
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
                 f.field("apos", &self.apos);
                 f.field("ident", &self.ident);
                 f.finish()
@@ -253,8 +226,8 @@ impl Debug for Lit {
 impl Debug for stmt::Local {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         impl stmt::Local {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut f = f.debug_struct(name);
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
                 f.field("attrs", &self.attrs);
                 f.field("let_", &self.let_);
                 f.field("pat", &self.pat);
@@ -327,8 +300,8 @@ impl Debug for Member {
 impl Debug for path::Parenth {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         impl path::Parenth {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut f = f.debug_struct(name);
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
                 f.field("parenth", &self.parenth);
                 f.field("args", &self.args);
                 f.field("ret", &self.ret);
@@ -369,8 +342,8 @@ impl Debug for pat::Pat {
 impl Debug for pat::Ident {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         impl pat::Ident {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut f = f.debug_struct(name);
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
                 f.field("attrs", &self.attrs);
                 f.field("by_ref", &self.ref_);
                 f.field("mut_", &self.mut_);
@@ -385,8 +358,8 @@ impl Debug for pat::Ident {
 impl Debug for pat::Or {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         impl pat::Or {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut f = f.debug_struct(name);
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
                 f.field("attrs", &self.attrs);
                 f.field("leading_vert", &self.vert);
                 f.field("cases", &self.cases);
@@ -399,8 +372,8 @@ impl Debug for pat::Or {
 impl Debug for pat::Parenth {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         impl pat::Parenth {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut f = f.debug_struct(name);
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
                 f.field("attrs", &self.attrs);
                 f.field("parenth", &self.parenth);
                 f.field("pat", &self.pat);
@@ -413,8 +386,8 @@ impl Debug for pat::Parenth {
 impl Debug for pat::Ref {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         impl pat::Ref {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut f = f.debug_struct(name);
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
                 f.field("attrs", &self.attrs);
                 f.field("and", &self.and);
                 f.field("mut_", &self.mut_);
@@ -428,8 +401,8 @@ impl Debug for pat::Ref {
 impl Debug for pat::Rest {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         impl pat::Rest {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut f = f.debug_struct(name);
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
                 f.field("attrs", &self.attrs);
                 f.field("dot2", &self.dot2);
                 f.finish()
@@ -441,8 +414,8 @@ impl Debug for pat::Rest {
 impl Debug for pat::Slice {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         impl pat::Slice {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut f = f.debug_struct(name);
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
                 f.field("attrs", &self.attrs);
                 f.field("bracket", &self.bracket);
                 f.field("elems", &self.pats);
@@ -455,8 +428,8 @@ impl Debug for pat::Slice {
 impl Debug for pat::Struct {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         impl pat::Struct {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut f = f.debug_struct(name);
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
                 f.field("attrs", &self.attrs);
                 f.field("qself", &self.qself);
                 f.field("path", &self.path);
@@ -472,8 +445,8 @@ impl Debug for pat::Struct {
 impl Debug for pat::Tuple {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         impl pat::Tuple {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut f = f.debug_struct(name);
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
                 f.field("attrs", &self.attrs);
                 f.field("parenth", &self.parenth);
                 f.field("elems", &self.pats);
@@ -486,8 +459,8 @@ impl Debug for pat::Tuple {
 impl Debug for pat::TupleStructuct {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         impl pat::TupleStructuct {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut f = f.debug_struct(name);
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
                 f.field("attrs", &self.attrs);
                 f.field("qself", &self.qself);
                 f.field("path", &self.path);
@@ -502,8 +475,8 @@ impl Debug for pat::TupleStructuct {
 impl Debug for pat::Type {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         impl pat::Type {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut f = f.debug_struct(name);
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
                 f.field("attrs", &self.attrs);
                 f.field("pat", &self.pat);
                 f.field("colon", &self.colon);
@@ -517,8 +490,8 @@ impl Debug for pat::Type {
 impl Debug for pat::Wild {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         impl pat::Wild {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut f = f.debug_struct(name);
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
                 f.field("attrs", &self.attrs);
                 f.field("underscore", &self.underscore);
                 f.finish()
@@ -530,8 +503,8 @@ impl Debug for pat::Wild {
 impl Debug for Path {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         impl Path {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut f = f.debug_struct(name);
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
                 f.field("colon", &self.colon);
                 f.field("segs", &self.segs);
                 f.finish()
@@ -589,20 +562,6 @@ impl Debug for QSelf {
         f.finish()
     }
 }
-impl Debug for typ::Ret {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("typ::Ret::")?;
-        match self {
-            typ::Ret::Default => f.write_str("Default"),
-            typ::Ret::Type(x, v1) => {
-                let mut f = f.debug_tuple("Type");
-                f.field(x);
-                f.field(v1);
-                f.finish()
-            },
-        }
-    }
-}
 impl Debug for stmt::Stmt {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("stmt::Stmt::")?;
@@ -626,8 +585,8 @@ impl Debug for stmt::Stmt {
 impl Debug for stmt::Mac {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         impl stmt::Mac {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut f = f.debug_struct(name);
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
                 f.field("attrs", &self.attrs);
                 f.field("mac", &self.mac);
                 f.field("semi", &self.semi);
@@ -660,128 +619,6 @@ impl Debug for gen::bound::Modifier {
         }
     }
 }
-impl Debug for typ::Type {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("Type::")?;
-        match self {
-            typ::Type::Array(x) => x.debug(f, "Array"),
-            typ::Type::Fn(x) => x.debug(f, "Fn"),
-            typ::Type::Group(x) => x.debug(f, "Group"),
-            typ::Type::Impl(x) => x.debug(f, "ImplTrait"),
-            typ::Type::Infer(x) => x.debug(f, "Infer"),
-            typ::Type::Mac(x) => x.debug(f, "Macro"),
-            typ::Type::Never(x) => x.debug(f, "Never"),
-            typ::Type::Parenth(x) => x.debug(f, "Parenth"),
-            typ::Type::Path(x) => x.debug(f, "Path"),
-            typ::Type::Ptr(x) => x.debug(f, "Ptr"),
-            typ::Type::Ref(x) => x.debug(f, "Reference"),
-            typ::Type::Slice(x) => x.debug(f, "Slice"),
-            typ::Type::Trait(x) => x.debug(f, "TraitObject"),
-            typ::Type::Tuple(x) => x.debug(f, "Tuple"),
-            typ::Type::Stream(x) => {
-                let mut y = f.debug_tuple("Stream");
-                y.field(x);
-                y.finish()
-            },
-        }
-    }
-}
-impl Debug for typ::Array {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl typ::Array {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut y = f.debug_struct(name);
-                y.field("bracket", &self.bracket);
-                y.field("elem", &self.elem);
-                y.field("semi", &self.semi);
-                y.field("len", &self.len);
-                y.finish()
-            }
-        }
-        self.debug(f, "typ::Array")
-    }
-}
-impl Debug for typ::Fn {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl typ::Fn {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut y = f.debug_struct(name);
-                y.field("lifes", &self.lifes);
-                y.field("unsafe_", &self.unsafe_);
-                y.field("abi", &self.abi);
-                y.field("fn_", &self.fn_);
-                y.field("parenth", &self.parenth);
-                y.field("inputs", &self.args);
-                y.field("vari", &self.vari);
-                y.field("output", &self.ret);
-                y.finish()
-            }
-        }
-        self.debug(f, "typ::Fn")
-    }
-}
-impl Debug for typ::Group {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl typ::Group {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut y = f.debug_struct(name);
-                y.field("group", &self.group);
-                y.field("elem", &self.elem);
-                y.finish()
-            }
-        }
-        self.debug(f, "typ::Group")
-    }
-}
-impl Debug for typ::Impl {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl typ::Impl {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut y = f.debug_struct(name);
-                y.field("impl_", &self.impl_);
-                y.field("bounds", &self.bounds);
-                y.finish()
-            }
-        }
-        self.debug(f, "typ::Impl")
-    }
-}
-impl Debug for typ::Infer {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl typ::Infer {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut f = f.debug_struct(name);
-                f.field("underscore", &self.underscore);
-                f.finish()
-            }
-        }
-        self.debug(f, "typ::Infer")
-    }
-}
-impl Debug for typ::Mac {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl typ::Mac {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut f = f.debug_struct(name);
-                f.field("mac", &self.mac);
-                f.finish()
-            }
-        }
-        self.debug(f, "typ::Mac")
-    }
-}
-impl Debug for typ::Never {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl typ::Never {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut f = f.debug_struct(name);
-                f.field("bang", &self.bang);
-                f.finish()
-            }
-        }
-        self.debug(f, "typ::Never")
-    }
-}
 impl Debug for gen::param::Type {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut f = f.debug_struct("gen::param::Type");
@@ -810,101 +647,6 @@ impl Debug for gen::bound::Type {
                 f.finish()
             },
         }
-    }
-}
-impl Debug for typ::Parenth {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl typ::Parenth {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut f = f.debug_struct(name);
-                f.field("parenth", &self.parenth);
-                f.field("elem", &self.elem);
-                f.finish()
-            }
-        }
-        self.debug(f, "typ::Parenth")
-    }
-}
-impl Debug for typ::Path {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl typ::Path {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut f = f.debug_struct(name);
-                f.field("qself", &self.qself);
-                f.field("path", &self.path);
-                f.finish()
-            }
-        }
-        self.debug(f, "typ::Path")
-    }
-}
-impl Debug for typ::Ptr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl typ::Ptr {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut f = f.debug_struct(name);
-                f.field("star", &self.star);
-                f.field("const_", &self.const_);
-                f.field("mut_", &self.mut_);
-                f.field("elem", &self.elem);
-                f.finish()
-            }
-        }
-        self.debug(f, "typ::Ptr")
-    }
-}
-impl Debug for typ::Ref {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl typ::Ref {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut f = f.debug_struct(name);
-                f.field("and", &self.and);
-                f.field("life", &self.life);
-                f.field("mut_", &self.mut_);
-                f.field("elem", &self.elem);
-                f.finish()
-            }
-        }
-        self.debug(f, "typ::Ref")
-    }
-}
-impl Debug for typ::Slice {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl typ::Slice {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut f = f.debug_struct(name);
-                f.field("bracket", &self.bracket);
-                f.field("elem", &self.elem);
-                f.finish()
-            }
-        }
-        self.debug(f, "typ::Slice")
-    }
-}
-impl Debug for typ::Trait {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl typ::Trait {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut f = f.debug_struct(name);
-                f.field("dyn_", &self.dyn_);
-                f.field("bounds", &self.bounds);
-                f.finish()
-            }
-        }
-        self.debug(f, "typ::Trait")
-    }
-}
-impl Debug for typ::Tuple {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl typ::Tuple {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut f = f.debug_struct(name);
-                f.field("parenth", &self.parenth);
-                f.field("elems", &self.elems);
-                f.finish()
-            }
-        }
-        self.debug(f, "typ::Tuple")
     }
 }
 impl Debug for UnOp {

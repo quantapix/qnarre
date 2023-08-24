@@ -638,8 +638,8 @@ impl Clone for List {
 impl Debug for List {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         impl List {
-            fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-                let mut f = f.debug_struct(name);
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
                 f.field("path", &self.path);
                 f.field("delim", &self.delim);
                 f.field("toks", &self.toks);

@@ -362,7 +362,7 @@ where
 impl Debug for Bool {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         impl Bool {
-            pub fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+            pub fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
                 f.debug_struct(name).field("value", &self.val).finish()
             }
         }
@@ -462,7 +462,7 @@ where
 impl Debug for Byte {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         impl Byte {
-            pub fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+            pub fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
                 f.debug_struct(name)
                     .field("token", &format_args!("{}", self.repr.tok))
                     .finish()
@@ -535,7 +535,7 @@ where
 impl Debug for ByteStr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         impl ByteStr {
-            pub fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+            pub fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
                 f.debug_struct(name)
                     .field("token", &format_args!("{}", self.repr.tok))
                     .finish()
@@ -608,7 +608,7 @@ where
 impl Debug for Char {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         impl Char {
-            pub fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+            pub fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
                 f.debug_struct(name)
                     .field("token", &format_args!("{}", self.repr.tok))
                     .finish()
@@ -699,7 +699,7 @@ where
 impl Debug for Float {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         impl Float {
-            pub fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+            pub fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
                 f.debug_struct(name)
                     .field("token", &format_args!("{}", self.repr.tok))
                     .finish()
@@ -795,7 +795,7 @@ where
 impl Debug for Int {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         impl Int {
-            pub fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+            pub fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
                 f.debug_struct(name)
                     .field("token", &format_args!("{}", self.repr.tok))
                     .finish()
@@ -896,7 +896,7 @@ where
 impl Debug for Str {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         impl Str {
-            pub fn debug(&self, f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+            pub fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
                 f.debug_struct(name)
                     .field("token", &format_args!("{}", self.repr.tok))
                     .finish()

@@ -63,31 +63,6 @@ where
         }
     }
 }
-impl<F> Fold for typ::FnArg
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        typ::FnArg {
-            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
-            name: (self.name).map(|x| ((x).0.fold(f), (x).1)),
-            typ: self.typ.fold(f),
-        }
-    }
-}
-impl<F> Fold for typ::Variadic
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        typ::Variadic {
-            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
-            name: (self.name).map(|x| ((x).0.fold(f), (x).1)),
-            dots: self.dots,
-            comma: self.comma,
-        }
-    }
-}
 impl<F> Fold for BinOp
 where
     F: Folder + ?Sized,
@@ -756,17 +731,6 @@ where
         }
     }
 }
-impl<F> Fold for typ::Ret
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        match self {
-            typ::Ret::Default => typ::Ret::Default,
-            typ::Ret::Type(x, y) => typ::Ret::Type(x, Box::new(*y.fold(f))),
-        }
-    }
-}
 impl<F> Fold for pm2::Span
 where
     F: Folder + ?Sized,
@@ -835,108 +799,6 @@ where
         }
     }
 }
-impl<F> Fold for typ::Type
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        match self {
-            typ::Type::Array(x) => typ::Type::Array(x.fold(f)),
-            typ::Type::Fn(x) => typ::Type::Fn(x.fold(f)),
-            typ::Type::Group(x) => typ::Type::Group(x.fold(f)),
-            typ::Type::Impl(x) => typ::Type::Impl(x.fold(f)),
-            typ::Type::Infer(x) => typ::Type::Infer(x.fold(f)),
-            typ::Type::Mac(x) => typ::Type::Mac(x.fold(f)),
-            typ::Type::Never(x) => typ::Type::Never(x.fold(f)),
-            typ::Type::Parenth(x) => typ::Type::Parenth(x.fold(f)),
-            typ::Type::Path(x) => typ::Type::Path(x.fold(f)),
-            typ::Type::Ptr(x) => typ::Type::Ptr(x.fold(f)),
-            typ::Type::Ref(x) => typ::Type::Ref(x.fold(f)),
-            typ::Type::Slice(x) => typ::Type::Slice(x.fold(f)),
-            typ::Type::Trait(x) => typ::Type::Trait(x.fold(f)),
-            typ::Type::Tuple(x) => typ::Type::Tuple(x.fold(f)),
-            typ::Type::Stream(x) => typ::Type::Stream(x),
-        }
-    }
-}
-impl<F> Fold for typ::Array
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        typ::Array {
-            bracket: self.bracket,
-            elem: Box::new(*self.elem.fold(f)),
-            semi: self.semi,
-            len: self.len.fold(f),
-        }
-    }
-}
-impl<F> Fold for typ::Fn
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        typ::Fn {
-            lifes: (self.lifes).map(|x| x.fold(f)),
-            unsafe_: self.unsafe_,
-            abi: (self.abi).map(|x| x.fold(f)),
-            fn_: self.fn_,
-            parenth: self.parenth,
-            args: FoldHelper::lift(self.args, |x| x.fold(f)),
-            vari: (self.vari).map(|x| x.fold(f)),
-            ret: self.ret.fold(f),
-        }
-    }
-}
-impl<F> Fold for typ::Group
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        typ::Group {
-            group: self.group,
-            elem: Box::new(*self.elem.fold(f)),
-        }
-    }
-}
-impl<F> Fold for typ::Impl
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        typ::Impl {
-            impl_: self.impl_,
-            bounds: FoldHelper::lift(self.bounds, |x| x.fold(f)),
-        }
-    }
-}
-impl<F> Fold for typ::Infer
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        typ::Infer {
-            underscore: self.underscore,
-        }
-    }
-}
-impl<F> Fold for typ::Mac
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        typ::Mac { mac: self.mac.fold(f) }
-    }
-}
-impl<F> Fold for typ::Never
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        typ::Never { bang: self.bang }
-    }
-}
 impl<F> Fold for gen::param::Type
 where
     F: Folder + ?Sized,
@@ -961,87 +823,6 @@ where
             gen::bound::Type::Trait(x) => gen::bound::Type::Trait(x.fold(f)),
             gen::bound::Type::Life(x) => gen::bound::Type::Life(x.fold(f)),
             gen::bound::Type::Verbatim(x) => gen::bound::Type::Verbatim(x),
-        }
-    }
-}
-impl<F> Fold for typ::Parenth
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        typ::Parenth {
-            parenth: self.parenth,
-            elem: Box::new(*self.elem.fold(f)),
-        }
-    }
-}
-impl<F> Fold for typ::Path
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        typ::Path {
-            qself: (self.qself).map(|x| x.fold(f)),
-            path: self.path.fold(f),
-        }
-    }
-}
-impl<F> Fold for typ::Ptr
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        typ::Ptr {
-            star: self.star,
-            const_: self.const_,
-            mut_: self.mut_,
-            elem: Box::new(*self.elem.fold(f)),
-        }
-    }
-}
-impl<F> Fold for typ::Ref
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        typ::Ref {
-            and: self.and,
-            life: (self.life).map(|x| x.fold(f)),
-            mut_: self.mut_,
-            elem: Box::new(*self.elem.fold(f)),
-        }
-    }
-}
-impl<F> Fold for typ::Slice
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        typ::Slice {
-            bracket: self.bracket,
-            elem: Box::new(*self.elem.fold(f)),
-        }
-    }
-}
-impl<F> Fold for typ::Trait
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        typ::Trait {
-            dyn_: self.dyn_,
-            bounds: FoldHelper::lift(self.bounds, |x| x.fold(f)),
-        }
-    }
-}
-impl<F> Fold for typ::Tuple
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        typ::Tuple {
-            parenth: self.parenth,
-            elems: FoldHelper::lift(self.elems, |x| x.fold(f)),
         }
     }
 }

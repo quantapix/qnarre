@@ -995,7 +995,7 @@ mod debug {
         if is_syntax_tree_variant {
             quote! {
                 impl #ident {
-                    fn debug(&self, formatter: &mut fmt::Formatter, name: &str) -> fmt::Result {
+                    fn debug(&self, formatter: &mut fmt::Formatter, x: &str) -> fmt::Result {
                         #body
                     }
                 }
