@@ -36,6 +36,15 @@ impl Clone for File {
         }
     }
 }
+impl Debug for File {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut f = f.debug_struct("item::File");
+        f.field("shebang", &self.shebang);
+        f.field("attrs", &self.attrs);
+        f.field("items", &self.items);
+        f.finish()
+    }
+}
 impl Eq for File {}
 impl PartialEq for File {
     fn eq(&self, x: &Self) -> bool {
@@ -189,6 +198,34 @@ impl Clone for Item {
             Union(x) => Union(x.clone()),
             Use(x) => Use(x.clone()),
             Verbatim(x) => Verbatim(x.clone()),
+        }
+    }
+}
+impl Debug for Item {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("Item::")?;
+        use Item::*;
+        match self {
+            Const(x) => x.debug(f, "Const"),
+            Enum(x) => x.debug(f, "Enum"),
+            Extern(x) => x.debug(f, "Extern"),
+            Fn(x) => x.debug(f, "Fn"),
+            Foreign(x) => x.debug(f, "Foreign"),
+            Impl(x) => x.debug(f, "Impl"),
+            Mac(x) => x.debug(f, "Mac"),
+            Mod(x) => x.debug(f, "Mod"),
+            Static(x) => x.debug(f, "Static"),
+            Struct(x) => x.debug(f, "Struct"),
+            Trait(x) => x.debug(f, "Trait"),
+            Alias(x) => x.debug(f, "Alias"),
+            Type(x) => x.debug(f, "Type"),
+            Union(x) => x.debug(f, "Union"),
+            Use(x) => x.debug(f, "Use"),
+            Verbatim(x) => {
+                let mut f = f.debug_tuple("Verbatim");
+                f.field(x);
+                f.finish()
+            },
         }
     }
 }
@@ -486,6 +523,27 @@ impl Clone for Const {
         }
     }
 }
+impl Debug for Const {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Const {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("vis", &self.vis);
+                f.field("const_", &self.const_);
+                f.field("ident", &self.ident);
+                f.field("gens", &self.gens);
+                f.field("colon", &self.colon);
+                f.field("ty", &self.typ);
+                f.field("eq", &self.eq);
+                f.field("expr", &self.expr);
+                f.field("semi", &self.semi);
+                f.finish()
+            }
+        }
+        self.debug(f, "item::Const")
+    }
+}
 impl Eq for Const {}
 impl PartialEq for Const {
     fn eq(&self, x: &Self) -> bool {
@@ -621,6 +679,24 @@ impl Clone for Enum {
             brace: self.brace.clone(),
             variants: self.variants.clone(),
         }
+    }
+}
+impl Debug for Enum {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Enum {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("vis", &self.vis);
+                f.field("enum_", &self.enum_);
+                f.field("ident", &self.ident);
+                f.field("gens", &self.gens);
+                f.field("brace", &self.brace);
+                f.field("variants", &self.variants);
+                f.finish()
+            }
+        }
+        self.debug(f, "item::Enum")
     }
 }
 impl Eq for Enum {}
@@ -764,6 +840,24 @@ impl Clone for Extern {
         }
     }
 }
+impl Debug for Extern {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Extern {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("vis", &self.vis);
+                f.field("extern_", &self.extern_);
+                f.field("crate_", &self.crate_);
+                f.field("ident", &self.ident);
+                f.field("rename", &self.rename);
+                f.field("semi", &self.semi);
+                f.finish()
+            }
+        }
+        self.debug(f, "item::Extern")
+    }
+}
 impl Eq for Extern {}
 impl PartialEq for Extern {
     fn eq(&self, x: &Self) -> bool {
@@ -854,6 +948,21 @@ impl Clone for Fn {
             sig: self.sig.clone(),
             block: self.block.clone(),
         }
+    }
+}
+impl Debug for Fn {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Fn {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("vis", &self.vis);
+                f.field("sig", &self.sig);
+                f.field("block", &self.block);
+                f.finish()
+            }
+        }
+        self.debug(f, "item::Fn")
     }
 }
 impl Eq for Fn {}
@@ -962,6 +1071,22 @@ impl Clone for Foreign {
             brace: self.brace.clone(),
             items: self.items.clone(),
         }
+    }
+}
+impl Debug for Foreign {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Foreign {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("unsafe_", &self.unsafe_);
+                f.field("abi", &self.abi);
+                f.field("brace", &self.brace);
+                f.field("items", &self.items);
+                f.finish()
+            }
+        }
+        self.debug(f, "item::Foreign")
     }
 }
 impl Eq for Foreign {}
@@ -1075,6 +1200,26 @@ impl Clone for Impl {
             brace: self.brace.clone(),
             items: self.items.clone(),
         }
+    }
+}
+impl Debug for Impl {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Impl {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("default", &self.default);
+                f.field("unsafe_", &self.unsafe_);
+                f.field("impl_", &self.impl_);
+                f.field("gens", &self.gens);
+                f.field("trait_", &self.trait_);
+                f.field("typ", &self.typ);
+                f.field("brace", &self.brace);
+                f.field("items", &self.items);
+                f.finish()
+            }
+        }
+        self.debug(f, "item::Impl")
     }
 }
 impl Eq for Impl {}
@@ -1235,6 +1380,21 @@ impl Clone for Mac {
         }
     }
 }
+impl Debug for Mac {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Mac {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("ident", &self.ident);
+                f.field("mac", &self.mac);
+                f.field("semi", &self.semi);
+                f.finish()
+            }
+        }
+        self.debug(f, "item::Mac")
+    }
+}
 impl Eq for Mac {}
 impl PartialEq for Mac {
     fn eq(&self, x: &Self) -> bool {
@@ -1365,6 +1525,24 @@ impl Clone for Mod {
             items: self.items.clone(),
             semi: self.semi.clone(),
         }
+    }
+}
+impl Debug for Mod {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Mod {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("vis", &self.vis);
+                f.field("unsafe_", &self.unsafe_);
+                f.field("mod_", &self.mod_);
+                f.field("ident", &self.ident);
+                f.field("content", &self.items);
+                f.field("semi", &self.semi);
+                f.finish()
+            }
+        }
+        self.debug(f, "item::Mod")
     }
 }
 impl Eq for Mod {}
@@ -1504,6 +1682,27 @@ impl Clone for Static {
             expr: self.expr.clone(),
             semi: self.semi.clone(),
         }
+    }
+}
+impl Debug for Static {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Static {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("vis", &self.vis);
+                f.field("static_", &self.static_);
+                f.field("mut_", &self.mut_);
+                f.field("ident", &self.ident);
+                f.field("colon", &self.colon);
+                f.field("ty", &self.typ);
+                f.field("eq", &self.eq);
+                f.field("expr", &self.expr);
+                f.field("semi", &self.semi);
+                f.finish()
+            }
+        }
+        self.debug(f, "item::Static")
     }
 }
 impl Eq for Static {}
@@ -1654,6 +1853,24 @@ impl Clone for Struct {
         }
     }
 }
+impl Debug for Struct {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Struct {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("vis", &self.vis);
+                f.field("struct_", &self.struct_);
+                f.field("ident", &self.ident);
+                f.field("gens", &self.gens);
+                f.field("fields", &self.fields);
+                f.field("semi", &self.semi);
+                f.finish()
+            }
+        }
+        self.debug(f, "item::Struct")
+    }
+}
 impl Eq for Struct {}
 impl PartialEq for Struct {
     fn eq(&self, x: &Self) -> bool {
@@ -1800,6 +2017,29 @@ impl Clone for Trait {
             brace: self.brace.clone(),
             items: self.items.clone(),
         }
+    }
+}
+impl Debug for Trait {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Trait {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("vis", &self.vis);
+                f.field("unsafe_", &self.unsafe_);
+                f.field("auto_", &self.auto);
+                f.field("restriction", &self.restriction);
+                f.field("trait_", &self.trait_);
+                f.field("ident", &self.ident);
+                f.field("gens", &self.gens);
+                f.field("colon", &self.colon);
+                f.field("supers", &self.supers);
+                f.field("brace", &self.brace);
+                f.field("items", &self.items);
+                f.finish()
+            }
+        }
+        self.debug(f, "item::Trait")
     }
 }
 impl Eq for Trait {}
@@ -1954,6 +2194,25 @@ impl Clone for Alias {
         }
     }
 }
+impl Debug for Alias {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Alias {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("vis", &self.vis);
+                f.field("trait_", &self.trait_);
+                f.field("ident", &self.ident);
+                f.field("gens", &self.gens);
+                f.field("eq", &self.eq);
+                f.field("bounds", &self.bounds);
+                f.field("semi", &self.semi);
+                f.finish()
+            }
+        }
+        self.debug(f, "item::Alias")
+    }
+}
 impl Eq for Alias {}
 impl PartialEq for Alias {
     fn eq(&self, x: &Self) -> bool {
@@ -2083,6 +2342,25 @@ impl Clone for Type {
         }
     }
 }
+impl Debug for Type {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Type {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("vis", &self.vis);
+                f.field("type", &self.type_);
+                f.field("ident", &self.ident);
+                f.field("gens", &self.gens);
+                f.field("eq", &self.eq);
+                f.field("ty", &self.typ);
+                f.field("semi", &self.semi);
+                f.finish()
+            }
+        }
+        self.debug(f, "item::Type")
+    }
+}
 impl Eq for Type {}
 impl PartialEq for Type {
     fn eq(&self, x: &Self) -> bool {
@@ -2207,6 +2485,23 @@ impl Clone for Union {
         }
     }
 }
+impl Debug for Union {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Union {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("vis", &self.vis);
+                f.field("union_", &self.union_);
+                f.field("ident", &self.ident);
+                f.field("gens", &self.gens);
+                f.field("fields", &self.fields);
+                f.finish()
+            }
+        }
+        self.debug(f, "item::Union")
+    }
+}
 impl Eq for Union {}
 impl PartialEq for Union {
     fn eq(&self, x: &Self) -> bool {
@@ -2309,6 +2604,23 @@ impl Clone for Use {
             tree: self.tree.clone(),
             semi: self.semi.clone(),
         }
+    }
+}
+impl Debug for Use {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Use {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("vis", &self.vis);
+                f.field("use_", &self.use_);
+                f.field("colon", &self.colon);
+                f.field("tree", &self.tree);
+                f.field("semi", &self.semi);
+                f.finish()
+            }
+        }
+        self.debug(f, "item::Use")
     }
 }
 impl Eq for Use {}
@@ -2793,6 +3105,18 @@ impl Clone for Receiver {
         }
     }
 }
+impl Debug for Receiver {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut f = f.debug_struct("item::Receiver");
+        f.field("attrs", &self.attrs);
+        f.field("reference", &self.ref_);
+        f.field("mut_", &self.mut_);
+        f.field("self_", &self.self_);
+        f.field("colon", &self.colon);
+        f.field("ty", &self.typ);
+        f.finish()
+    }
+}
 impl Eq for Receiver {}
 impl PartialEq for Receiver {
     fn eq(&self, x: &Self) -> bool {
@@ -2902,6 +3226,24 @@ impl Clone for FnArg {
         match self {
             Receiver(x) => Receiver(x.clone()),
             Type(x) => Type(x.clone()),
+        }
+    }
+}
+impl Debug for FnArg {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("item::FnArg::")?;
+        use FnArg::*;
+        match self {
+            Receiver(x) => {
+                let mut f = f.debug_tuple("Receiver");
+                f.field(x);
+                f.finish()
+            },
+            Type(x) => {
+                let mut f = f.debug_tuple("Type");
+                f.field(x);
+                f.finish()
+            },
         }
     }
 }
@@ -3066,6 +3408,23 @@ impl Clone for Sig {
         }
     }
 }
+impl Debug for Sig {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut f = f.debug_struct("item::Sig");
+        f.field("const_", &self.const_);
+        f.field("asyncness", &self.async_);
+        f.field("unsafe_", &self.unsafe_);
+        f.field("abi", &self.abi);
+        f.field("fn_", &self.fn_);
+        f.field("ident", &self.ident);
+        f.field("gens", &self.gens);
+        f.field("parenth", &self.parenth);
+        f.field("inputs", &self.args);
+        f.field("vari", &self.vari);
+        f.field("output", &self.ret);
+        f.finish()
+    }
+}
 impl Eq for Sig {}
 impl PartialEq for Sig {
     fn eq(&self, x: &Self) -> bool {
@@ -3197,6 +3556,20 @@ impl Clone for StaticMut {
         }
     }
 }
+impl Debug for StaticMut {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("item::StaticMut::")?;
+        use StaticMut::*;
+        match self {
+            Mut(x) => {
+                let mut f = f.debug_tuple("Mut");
+                f.field(x);
+                f.finish()
+            },
+            None => f.write_str("None"),
+        }
+    }
+}
 impl Eq for StaticMut {}
 impl PartialEq for StaticMut {
     fn eq(&self, x: &Self) -> bool {
@@ -3278,6 +3651,16 @@ impl Clone for Variadic {
             dots: self.dots.clone(),
             comma: self.comma.clone(),
         }
+    }
+}
+impl Debug for Variadic {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut f = f.debug_struct("item::Variadic");
+        f.field("attrs", &self.attrs);
+        f.field("pat", &self.pat);
+        f.field("dots", &self.dots);
+        f.field("comma", &self.comma);
+        f.finish()
     }
 }
 impl Eq for Variadic {}
@@ -3424,6 +3807,23 @@ pub mod foreign {
             }
         }
     }
+    impl Debug for Item {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            f.write_str("item::foreign::Item::")?;
+            use self::Item::*;
+            match self {
+                Fn(x) => x.debug(f, "Fn"),
+                Static(x) => x.debug(f, "Static"),
+                Type(x) => x.debug(f, "Type"),
+                Mac(x) => x.debug(f, "Mac"),
+                Verbatim(x) => {
+                    let mut f = f.debug_tuple("Verbatim");
+                    f.field(x);
+                    f.finish()
+                },
+            }
+        }
+    }
     impl Eq for Item {}
     impl PartialEq for Item {
         fn eq(&self, x: &Self) -> bool {
@@ -3555,6 +3955,21 @@ pub mod foreign {
             }
         }
     }
+    impl Debug for Fn {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            impl Fn {
+                fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                    let mut f = f.debug_struct(x);
+                    f.field("attrs", &self.attrs);
+                    f.field("vis", &self.vis);
+                    f.field("sig", &self.sig);
+                    f.field("semi", &self.semi);
+                    f.finish()
+                }
+            }
+            self.debug(f, "item::foreign::Fn")
+        }
+    }
     impl Eq for Fn {}
     impl PartialEq for Fn {
         fn eq(&self, x: &Self) -> bool {
@@ -3629,6 +4044,20 @@ pub mod foreign {
                 mac: self.mac.clone(),
                 semi: self.semi.clone(),
             }
+        }
+    }
+    impl Debug for Mac {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            impl Mac {
+                fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                    let mut f = f.debug_struct(x);
+                    f.field("attrs", &self.attrs);
+                    f.field("mac", &self.mac);
+                    f.field("semi", &self.semi);
+                    f.finish()
+                }
+            }
+            self.debug(f, "item::foreign::Mac")
         }
     }
     impl Eq for Mac {}
@@ -3721,6 +4150,25 @@ pub mod foreign {
                 typ: self.typ.clone(),
                 semi: self.semi.clone(),
             }
+        }
+    }
+    impl Debug for Static {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            impl Static {
+                fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                    let mut f = f.debug_struct(x);
+                    f.field("attrs", &self.attrs);
+                    f.field("vis", &self.vis);
+                    f.field("static_", &self.static_);
+                    f.field("mut_", &self.mut_);
+                    f.field("ident", &self.ident);
+                    f.field("colon", &self.colon);
+                    f.field("ty", &self.typ);
+                    f.field("semi", &self.semi);
+                    f.finish()
+                }
+            }
+            self.debug(f, "item::foreign::Static")
         }
     }
     impl Eq for Static {}
@@ -3831,6 +4279,23 @@ pub mod foreign {
             }
         }
     }
+    impl Debug for Type {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            impl Type {
+                fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                    let mut f = f.debug_struct(x);
+                    f.field("attrs", &self.attrs);
+                    f.field("vis", &self.vis);
+                    f.field("type", &self.type_);
+                    f.field("ident", &self.ident);
+                    f.field("gens", &self.gens);
+                    f.field("semi", &self.semi);
+                    f.finish()
+                }
+            }
+            self.debug(f, "item::foreign::Type")
+        }
+    }
     impl Eq for Type {}
     impl PartialEq for Type {
         fn eq(&self, x: &Self) -> bool {
@@ -3928,21 +4393,22 @@ pub mod foreign {
                 Ok(x) => x,
                 Err(_) => unimplemented!("foreign::Item::Verbatim `{}`", self),
             };
+            use Type::*;
             match y {
-                Type::Empty => {
+                Empty => {
                     p.hardbreak();
                 },
-                Type::Ellipsis => {
+                Ellipsis => {
                     p.word("...");
                     p.hardbreak();
                 },
-                Type::FlexFn(x) => {
+                FlexFn(x) => {
                     p.flexible_item_fn(&x);
                 },
-                Type::FlexStatic(x) => {
+                FlexStatic(x) => {
                     p.flexible_item_static(&x);
                 },
-                Type::FlexType(x) => {
+                FlexType(x) => {
                     p.flexible_item_type(&x);
                 },
             }
@@ -4045,6 +4511,23 @@ pub mod impl_ {
                 Mac(x) => Mac(x.clone()),
                 Type(x) => Type(x.clone()),
                 Verbatim(x) => Verbatim(x.clone()),
+            }
+        }
+    }
+    impl Debug for Item {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            f.write_str("item::impl_::Item::")?;
+            use self::Item::*;
+            match self {
+                Const(x) => x.debug(f, "Const"),
+                Fn(x) => x.debug(f, "Fn"),
+                Type(x) => x.debug(f, "Type"),
+                Mac(x) => x.debug(f, "Macro"),
+                Verbatim(x) => {
+                    let mut f = f.debug_tuple("Verbatim");
+                    f.field(x);
+                    f.finish()
+                },
             }
         }
     }
@@ -4214,6 +4697,28 @@ pub mod impl_ {
             }
         }
     }
+    impl Debug for Const {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            impl Const {
+                fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                    let mut f = f.debug_struct(x);
+                    f.field("attrs", &self.attrs);
+                    f.field("vis", &self.vis);
+                    f.field("default", &self.default);
+                    f.field("const_", &self.const_);
+                    f.field("ident", &self.ident);
+                    f.field("gens", &self.gens);
+                    f.field("colon", &self.colon);
+                    f.field("ty", &self.typ);
+                    f.field("eq", &self.eq);
+                    f.field("expr", &self.expr);
+                    f.field("semi", &self.semi);
+                    f.finish()
+                }
+            }
+            self.debug(f, "item::impl_::Const")
+        }
+    }
     impl Eq for Const {}
     impl PartialEq for Const {
         fn eq(&self, x: &Self) -> bool {
@@ -4323,6 +4828,22 @@ pub mod impl_ {
             }
         }
     }
+    impl Debug for Fn {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            impl Fn {
+                fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                    let mut f = f.debug_struct(x);
+                    f.field("attrs", &self.attrs);
+                    f.field("vis", &self.vis);
+                    f.field("default", &self.default);
+                    f.field("sig", &self.sig);
+                    f.field("block", &self.block);
+                    f.finish()
+                }
+            }
+            self.debug(f, "item::impl_::Fn")
+        }
+    }
     impl Eq for Fn {}
     impl PartialEq for Fn {
         fn eq(&self, x: &Self) -> bool {
@@ -4416,6 +4937,20 @@ pub mod impl_ {
                 mac: self.mac.clone(),
                 semi: self.semi.clone(),
             }
+        }
+    }
+    impl Debug for Mac {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            impl Mac {
+                fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                    let mut f = f.debug_struct(x);
+                    f.field("attrs", &self.attrs);
+                    f.field("mac", &self.mac);
+                    f.field("semi", &self.semi);
+                    f.finish()
+                }
+            }
+            self.debug(f, "item::impl_::Mac")
         }
     }
     impl Eq for Mac {}
@@ -4523,6 +5058,26 @@ pub mod impl_ {
                 typ: self.typ.clone(),
                 semi: self.semi.clone(),
             }
+        }
+    }
+    impl Debug for Type {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            impl Type {
+                fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                    let mut f = f.debug_struct(x);
+                    f.field("attrs", &self.attrs);
+                    f.field("vis", &self.vis);
+                    f.field("default", &self.default);
+                    f.field("type", &self.type_);
+                    f.field("ident", &self.ident);
+                    f.field("gens", &self.gens);
+                    f.field("eq", &self.eq);
+                    f.field("ty", &self.typ);
+                    f.field("semi", &self.semi);
+                    f.finish()
+                }
+            }
+            self.debug(f, "item::impl_::Type")
         }
     }
     impl Eq for Type {}
@@ -4667,6 +5222,11 @@ pub mod impl_ {
             match *self {}
         }
     }
+    impl Debug for Restriction {
+        fn fmt(&self, _f: &mut fmt::Formatter) -> fmt::Result {
+            match *self {}
+        }
+    }
     impl Eq for Restriction {}
     impl PartialEq for Restriction {
         fn eq(&self, _other: &Self) -> bool {
@@ -4767,6 +5327,23 @@ pub mod trait_ {
                 Mac(x) => Mac(x.clone()),
                 Type(x) => Type(x.clone()),
                 Verbatim(x) => Verbatim(x.clone()),
+            }
+        }
+    }
+    impl Debug for Item {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            f.write_str("item::trait_::Item::")?;
+            use self::Item::*;
+            match self {
+                Const(x) => x.debug(f, "Const"),
+                Fn(x) => x.debug(f, "Fn"),
+                Type(x) => x.debug(f, "Type"),
+                Mac(x) => x.debug(f, "Mac"),
+                Verbatim(x) => {
+                    let mut f = f.debug_tuple("Verbatim");
+                    f.field(x);
+                    f.finish()
+                },
             }
         }
     }
@@ -4935,6 +5512,25 @@ pub mod trait_ {
             }
         }
     }
+    impl Debug for Const {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            impl Const {
+                fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                    let mut f = f.debug_struct(x);
+                    f.field("attrs", &self.attrs);
+                    f.field("const_", &self.const_);
+                    f.field("ident", &self.ident);
+                    f.field("gens", &self.gens);
+                    f.field("colon", &self.colon);
+                    f.field("ty", &self.typ);
+                    f.field("default", &self.default);
+                    f.field("semi", &self.semi);
+                    f.finish()
+                }
+            }
+            self.debug(f, "item::trait_::Const")
+        }
+    }
     impl Eq for Const {}
     impl PartialEq for Const {
         fn eq(&self, x: &Self) -> bool {
@@ -5062,6 +5658,21 @@ pub mod trait_ {
             }
         }
     }
+    impl Debug for Fn {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            impl Fn {
+                fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                    let mut f = f.debug_struct(x);
+                    f.field("attrs", &self.attrs);
+                    f.field("sig", &self.sig);
+                    f.field("default", &self.default);
+                    f.field("semi", &self.semi);
+                    f.finish()
+                }
+            }
+            self.debug(f, "item::trait_::Fn")
+        }
+    }
     impl Eq for Fn {}
     impl PartialEq for Fn {
         fn eq(&self, x: &Self) -> bool {
@@ -5153,6 +5764,20 @@ pub mod trait_ {
                 mac: self.mac.clone(),
                 semi: self.semi.clone(),
             }
+        }
+    }
+    impl Debug for Mac {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            impl Mac {
+                fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                    let mut f = f.debug_struct(x);
+                    f.field("attrs", &self.attrs);
+                    f.field("mac", &self.mac);
+                    f.field("semi", &self.semi);
+                    f.finish()
+                }
+            }
+            self.debug(f, "item::trait_::Mac")
         }
     }
     impl Eq for Mac {}
@@ -5259,6 +5884,25 @@ pub mod trait_ {
                 default: self.default.clone(),
                 semi: self.semi.clone(),
             }
+        }
+    }
+    impl Debug for Type {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            impl Type {
+                fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                    let mut y = f.debug_struct(x);
+                    y.field("attrs", &self.attrs);
+                    y.field("type", &self.type_);
+                    y.field("ident", &self.ident);
+                    y.field("gens", &self.gens);
+                    y.field("colon", &self.colon);
+                    y.field("bounds", &self.bounds);
+                    y.field("default", &self.default);
+                    y.field("semi", &self.semi);
+                    y.finish()
+                }
+            }
+            self.debug(f, "item::trait_::Type")
         }
     }
     impl Eq for Type {}
@@ -5452,6 +6096,39 @@ pub mod use_ {
             }
         }
     }
+    impl Debug for Tree {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            f.write_str("item::use_::Tree::")?;
+            use Tree::*;
+            match self {
+                Path(x) => {
+                    let mut f = f.debug_tuple("Path");
+                    f.field(x);
+                    f.finish()
+                },
+                Name(x) => {
+                    let mut f = f.debug_tuple("Name");
+                    f.field(x);
+                    f.finish()
+                },
+                Rename(x) => {
+                    let mut f = f.debug_tuple("Rename");
+                    f.field(x);
+                    f.finish()
+                },
+                Glob(x) => {
+                    let mut f = f.debug_tuple("Glob");
+                    f.field(x);
+                    f.finish()
+                },
+                Group(x) => {
+                    let mut f = f.debug_tuple("Group");
+                    f.field(x);
+                    f.finish()
+                },
+            }
+        }
+    }
     impl Eq for Tree {}
     impl PartialEq for Tree {
         fn eq(&self, x: &Self) -> bool {
@@ -5634,6 +6311,13 @@ pub mod use_ {
             }
         }
     }
+    impl Debug for Glob {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            let mut f = f.debug_struct("item::use_::Glob");
+            f.field("star", &self.star);
+            f.finish()
+        }
+    }
     impl Eq for Glob {}
     impl PartialEq for Glob {
         fn eq(&self, _other: &Self) -> bool {
@@ -5677,6 +6361,14 @@ pub mod use_ {
                 brace: self.brace.clone(),
                 trees: self.trees.clone(),
             }
+        }
+    }
+    impl Debug for Group {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            let mut f = f.debug_struct("item::use_::Group");
+            f.field("brace", &self.brace);
+            f.field("items", &self.trees);
+            f.finish()
         }
     }
     impl Eq for Group {}
@@ -5760,6 +6452,13 @@ pub mod use_ {
             }
         }
     }
+    impl Debug for Name {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            let mut f = f.debug_struct("item::use_::Name");
+            f.field("ident", &self.ident);
+            f.finish()
+        }
+    }
     impl Eq for Name {}
     impl PartialEq for Name {
         fn eq(&self, x: &Self) -> bool {
@@ -5810,6 +6509,15 @@ pub mod use_ {
                 colon2: self.colon2.clone(),
                 tree: self.tree.clone(),
             }
+        }
+    }
+    impl Debug for Path {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            let mut f = f.debug_struct("item::use_::Path");
+            f.field("ident", &self.ident);
+            f.field("colon2", &self.colon2);
+            f.field("tree", &self.tree);
+            f.finish()
         }
     }
     impl Eq for Path {}
@@ -5867,6 +6575,15 @@ pub mod use_ {
                 as_: self.as_.clone(),
                 rename: self.rename.clone(),
             }
+        }
+    }
+    impl Debug for Rename {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            let mut f = f.debug_struct("item::use_::Rename");
+            f.field("ident", &self.ident);
+            f.field("as_", &self.as_);
+            f.field("rename", &self.rename);
+            f.finish()
         }
     }
     impl Eq for Rename {}
