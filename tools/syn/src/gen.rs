@@ -1438,10 +1438,7 @@ impl Pretty for Where {
         }
     }
 }
-impl<F> Fold for Where
-where
-    F: Folder + ?Sized,
-{
+impl<F: Folder + ?Sized> Fold for Where {
     fn fold(&self, f: &mut F) {
         Where {
             where_: self.where_,
@@ -1449,18 +1446,12 @@ where
         }
     }
 }
-impl<H> Hash for Where
-where
-    H: Hasher,
-{
+impl<H: Hasher> Hash for Where {
     fn hash(&self, h: &mut H) {
         self.preds.hash(h);
     }
 }
-impl<V> Visit for Where
-where
-    V: Visitor + ?Sized,
-{
+impl<V: Visitor + ?Sized> Visit for Where {
     fn visit(&self, v: &mut V) {
         for y in Puncted::pairs(&self.preds) {
             let x = y.value();
@@ -2084,10 +2075,7 @@ impl Pretty for Gens {
         p.word(">");
     }
 }
-impl<F> Fold for Gens
-where
-    F: Folder + ?Sized,
-{
+impl<F: Folder + ?Sized> Fold for Gens {
     fn fold(&self, f: &mut F) {
         Gens {
             lt: self.lt,
@@ -2097,10 +2085,7 @@ where
         }
     }
 }
-impl<H> Hash for Gens
-where
-    H: Hasher,
-{
+impl<H: Hasher> Hash for Gens {
     fn hash(&self, h: &mut H) {
         self.lt.hash(h);
         self.params.hash(h);
@@ -2108,10 +2093,7 @@ where
         self.where_.hash(h);
     }
 }
-impl<V> Visit for Gens
-where
-    V: Visitor + ?Sized,
-{
+impl<V: Visitor + ?Sized> Visit for Gens {
     fn visit(&self, v: &mut V) {
         for y in Puncted::pairs(&self.params) {
             let x = y.value();

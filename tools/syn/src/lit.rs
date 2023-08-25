@@ -203,10 +203,7 @@ impl Pretty for Lit {
         }
     }
 }
-impl<F> Fold for Lit
-where
-    F: Folder + ?Sized,
-{
+impl<F: Folder + ?Sized> Fold for Lit {
     fn fold(&self, f: &mut F) {
         use Lit::*;
         match self {
@@ -221,10 +218,7 @@ where
         }
     }
 }
-impl<H> Hash for Lit
-where
-    H: Hasher,
-{
+impl<H: Hasher> Hash for Lit {
     fn hash(&self, h: &mut H) {
         use Lit::*;
         match self {
@@ -263,10 +257,7 @@ where
         }
     }
 }
-impl<V> Visit for Lit
-where
-    V: Visitor + ?Sized,
-{
+impl<V: Visitor + ?Sized> Visit for Lit {
     fn visit(&self, v: &mut V) {
         use Lit::*;
         match self {
@@ -378,10 +369,7 @@ impl Pretty for Bool {
         p.word(if self.val { "true" } else { "false" });
     }
 }
-impl<F> Fold for Bool
-where
-    F: Folder + ?Sized,
-{
+impl<F: Folder + ?Sized> Fold for Bool {
     fn fold(&self, f: &mut F) {
         Bool {
             val: self.val,
@@ -389,18 +377,12 @@ where
         }
     }
 }
-impl<H> Hash for Bool
-where
-    H: Hasher,
-{
+impl<H: Hasher> Hash for Bool {
     fn hash(&self, h: &mut H) {
         self.val.hash(h);
     }
 }
-impl<V> Visit for Bool
-where
-    V: Visitor + ?Sized,
-{
+impl<V: Visitor + ?Sized> Visit for Bool {
     fn visit(&self, v: &mut V) {
         &self.span.visit(v);
     }
@@ -513,10 +495,7 @@ impl Pretty for Byte {
         p.word(self.token().to_string());
     }
 }
-impl<F> Fold for Byte
-where
-    F: Folder + ?Sized,
-{
+impl<F: Folder + ?Sized> Fold for Byte {
     fn fold(&self, f: &mut F) {
         let span = self.span().fold(f);
         let mut y = self;
@@ -524,10 +503,7 @@ where
         y
     }
 }
-impl<V> Visit for Byte
-where
-    V: Visitor + ?Sized,
-{
+impl<V: Visitor + ?Sized> Visit for Byte {
     fn visit(&self, v: &mut V) {}
     fn visit_mut(&mut self, v: &mut V) {}
 }
@@ -597,10 +573,7 @@ impl Pretty for ByteStr {
         p.word(self.token().to_string());
     }
 }
-impl<F> Fold for ByteStr
-where
-    F: Folder + ?Sized,
-{
+impl<F: Folder + ?Sized> Fold for ByteStr {
     fn fold(&self, f: &mut F) {
         let span = self.span().fold(f);
         let mut y = self;
@@ -608,10 +581,7 @@ where
         y
     }
 }
-impl<V> Visit for ByteStr
-where
-    V: Visitor + ?Sized,
-{
+impl<V: Visitor + ?Sized> Visit for ByteStr {
     fn visit(&self, v: &mut V) {}
     fn visit_mut(&mut self, v: &mut V) {}
 }
@@ -681,10 +651,7 @@ impl Pretty for Char {
         p.word(self.token().to_string());
     }
 }
-impl<F> Fold for Char
-where
-    F: Folder + ?Sized,
-{
+impl<F: Folder + ?Sized> Fold for Char {
     fn fold(&self, f: &mut F) {
         let span = self.span().fold(f);
         let mut y = self;
@@ -692,10 +659,7 @@ where
         y
     }
 }
-impl<V> Visit for Char
-where
-    V: Visitor + ?Sized,
-{
+impl<V: Visitor + ?Sized> Visit for Char {
     fn visit(&self, v: &mut V) {}
     fn visit_mut(&mut self, v: &mut V) {}
 }
@@ -788,10 +752,7 @@ impl Pretty for Float {
         p.word(self.token().to_string());
     }
 }
-impl<F> Fold for Float
-where
-    F: Folder + ?Sized,
-{
+impl<F: Folder + ?Sized> Fold for Float {
     fn fold(&self, f: &mut F) {
         let span = self.span().fold(f);
         let mut y = self;
@@ -799,10 +760,7 @@ where
         y
     }
 }
-impl<V> Visit for Float
-where
-    V: Visitor + ?Sized,
-{
+impl<V: Visitor + ?Sized> Visit for Float {
     fn visit(&self, v: &mut V) {}
     fn visit_mut(&mut self, v: &mut V) {}
 }
@@ -895,10 +853,7 @@ impl Pretty for Int {
         p.word(self.token().to_string());
     }
 }
-impl<F> Fold for Int
-where
-    F: Folder + ?Sized,
-{
+impl<F: Folder + ?Sized> Fold for Int {
     fn fold(&self, f: &mut F) {
         let span = self.span().fold(f);
         let mut y = self;
@@ -906,10 +861,7 @@ where
         y
     }
 }
-impl<V> Visit for Int
-where
-    V: Visitor + ?Sized,
-{
+impl<V: Visitor + ?Sized> Visit for Int {
     fn visit(&self, v: &mut V) {}
     fn visit_mut(&mut self, v: &mut V) {}
 }
@@ -1002,10 +954,7 @@ impl Pretty for Str {
         p.word(self.token().to_string());
     }
 }
-impl<F> Fold for Str
-where
-    F: Folder + ?Sized,
-{
+impl<F: Folder + ?Sized> Fold for Str {
     fn fold(&self, f: &mut F) {
         let span = self.span().fold(f);
         let mut y = self;
@@ -1013,10 +962,7 @@ where
         y
     }
 }
-impl<V> Visit for Str
-where
-    V: Visitor + ?Sized,
-{
+impl<V: Visitor + ?Sized> Visit for Str {
     fn visit(&self, v: &mut V) {}
     fn visit_mut(&mut self, v: &mut V) {}
 }

@@ -573,10 +573,7 @@ impl PartialEq for Delim {
         }
     }
 }
-impl<F> Fold for tok::Delim
-where
-    F: Folder + ?Sized,
-{
+impl<F: Folder + ?Sized> Fold for tok::Delim {
     fn fold(&self, f: &mut F) {
         use Delim::*;
         match self {
@@ -586,10 +583,7 @@ where
         }
     }
 }
-impl<H> Hash for Delim
-where
-    H: Hasher,
-{
+impl<H: Hasher> Hash for Delim {
     fn hash(&self, h: &mut H) {
         use Delim::*;
         match self {
@@ -605,10 +599,7 @@ where
         }
     }
 }
-impl<V> Visit for Delim
-where
-    V: Visitor + ?Sized,
-{
+impl<V: Visitor + ?Sized> Visit for Delim {
     fn visit(&self, v: &mut V) {
         use Delim::*;
         match self {

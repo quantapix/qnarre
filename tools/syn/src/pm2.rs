@@ -658,18 +658,12 @@ impl Debug for Span {
         }
     }
 }
-impl<F> Fold for Span
-where
-    F: Folder + ?Sized,
-{
+impl<F: Folder + ?Sized> Fold for Span {
     fn fold(&self, f: &mut F) {
         self
     }
 }
-impl<V> Visit for Span
-where
-    V: Visitor + ?Sized,
-{
+impl<V: Visitor + ?Sized> Visit for Span {
     fn visit(&self, v: &mut V) {}
     fn visit_mut(&mut self, v: &mut V) {}
 }

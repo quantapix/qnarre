@@ -36,10 +36,7 @@ impl PartialEq for Style {
         }
     }
 }
-impl<F> Fold for Style
-where
-    F: Folder + ?Sized,
-{
+impl<F: Folder + ?Sized> Fold for Style {
     fn fold(&self, f: &mut F) {
         use Style::*;
         match self {
@@ -48,10 +45,7 @@ where
         }
     }
 }
-impl<H> Hash for Style
-where
-    H: Hasher,
-{
+impl<H: Hasher> Hash for Style {
     fn hash(&self, h: &mut H) {
         use Style::*;
         match self {
@@ -64,10 +58,7 @@ where
         }
     }
 }
-impl<V> Visit for Style
-where
-    V: Visitor + ?Sized,
-{
+impl<V: Visitor + ?Sized> Visit for Style {
     fn visit(&self, v: &mut V) {
         use Style::*;
         match self {
@@ -247,10 +238,7 @@ impl Pretty for Attr {
         p.space();
     }
 }
-impl<F> Fold for Attr
-where
-    F: Folder + ?Sized,
-{
+impl<F: Folder + ?Sized> Fold for Attr {
     fn fold(&self, f: &mut F) {
         Attr {
             pound: self.pound,
@@ -260,19 +248,13 @@ where
         }
     }
 }
-impl<H> Hash for Attr
-where
-    H: Hasher,
-{
+impl<H: Hasher> Hash for Attr {
     fn hash(&self, h: &mut H) {
         self.style.hash(h);
         self.meta.hash(h);
     }
 }
-impl<V> Visit for Attr
-where
-    V: Visitor + ?Sized,
-{
+impl<V: Visitor + ?Sized> Visit for Attr {
     fn visit(&self, v: &mut V) {
         &self.style.visit(v);
         &self.meta.visit(v);
@@ -528,10 +510,7 @@ impl Pretty for Meta {
         }
     }
 }
-impl<F> Fold for Meta
-where
-    F: Folder + ?Sized,
-{
+impl<F: Folder + ?Sized> Fold for Meta {
     fn fold(&self, f: &mut F) {
         use Meta::*;
         match self {
@@ -541,10 +520,7 @@ where
         }
     }
 }
-impl<H> Hash for Meta
-where
-    H: Hasher,
-{
+impl<H: Hasher> Hash for Meta {
     fn hash(&self, h: &mut H) {
         use Meta::*;
         match self {
@@ -563,10 +539,7 @@ where
         }
     }
 }
-impl<V> Visit for Meta
-where
-    V: Visitor + ?Sized,
-{
+impl<V: Visitor + ?Sized> Visit for Meta {
     fn visit(&self, v: &mut V) {
         use Meta::*;
         match self {
@@ -769,10 +742,7 @@ impl Pretty for List {
         }
     }
 }
-impl<F> Fold for List
-where
-    F: Folder + ?Sized,
-{
+impl<F: Folder + ?Sized> Fold for List {
     fn fold(&self, f: &mut F) {
         List {
             path: self.path.fold(f),
@@ -781,20 +751,14 @@ where
         }
     }
 }
-impl<H> Hash for List
-where
-    H: Hasher,
-{
+impl<H: Hasher> Hash for List {
     fn hash(&self, h: &mut H) {
         self.path.hash(h);
         self.delim.hash(h);
         StreamHelper(&self.toks).hash(h);
     }
 }
-impl<V> Visit for List
-where
-    V: Visitor + ?Sized,
-{
+impl<V: Visitor + ?Sized> Visit for List {
     fn visit(&self, v: &mut V) {
         &self.path.visit(v);
         &self.delim.visit(v);
@@ -859,10 +823,7 @@ impl Pretty for NameValue {
         p.expr(&self.val);
     }
 }
-impl<F> Fold for NameValue
-where
-    F: Folder + ?Sized,
-{
+impl<F: Folder + ?Sized> Fold for NameValue {
     fn fold(&self, f: &mut F) {
         NameValue {
             name: self.name.fold(f),
@@ -871,19 +832,13 @@ where
         }
     }
 }
-impl<H> Hash for NameValue
-where
-    H: Hasher,
-{
+impl<H: Hasher> Hash for NameValue {
     fn hash(&self, h: &mut H) {
         self.name.hash(h);
         self.val.hash(h);
     }
 }
-impl<V> Visit for NameValue
-where
-    V: Visitor + ?Sized,
-{
+impl<V: Visitor + ?Sized> Visit for NameValue {
     fn visit(&self, v: &mut V) {
         &self.name.visit(v);
         &self.val.visit(v);

@@ -179,10 +179,7 @@ impl Pretty for Path {
         }
     }
 }
-impl<F> Fold for Path
-where
-    F: Folder + ?Sized,
-{
+impl<F: Folder + ?Sized> Fold for Path {
     fn fold(&self, f: &mut F) {
         Path {
             colon: self.colon,
@@ -190,19 +187,13 @@ where
         }
     }
 }
-impl<H> Hash for Path
-where
-    H: Hasher,
-{
+impl<H: Hasher> Hash for Path {
     fn hash(&self, h: &mut H) {
         self.colon.hash(h);
         self.segs.hash(h);
     }
 }
-impl<V> Visit for Path
-where
-    V: Visitor + ?Sized,
-{
+impl<V: Visitor + ?Sized> Visit for Path {
     fn visit(&self, v: &mut V) {
         for y in Puncted::pairs(&self.segs) {
             let x = y.value();
@@ -292,10 +283,7 @@ impl Pretty for Segment {
         &self.args.pretty_with_args(p, x);
     }
 }
-impl<F> Fold for Segment
-where
-    F: Folder + ?Sized,
-{
+impl<F: Folder + ?Sized> Fold for Segment {
     fn fold(&self, f: &mut F) {
         Segment {
             ident: self.ident.fold(f),
@@ -303,19 +291,13 @@ where
         }
     }
 }
-impl<H> Hash for Segment
-where
-    H: Hasher,
-{
+impl<H: Hasher> Hash for Segment {
     fn hash(&self, h: &mut H) {
         self.ident.hash(h);
         self.args.hash(h);
     }
 }
-impl<V> Visit for Segment
-where
-    V: Visitor + ?Sized,
-{
+impl<V: Visitor + ?Sized> Visit for Segment {
     fn visit(&self, v: &mut V) {
         &self.ident.visit(v);
         &self.args.visit(v);
@@ -414,10 +396,7 @@ impl Pretty for Args {
         }
     }
 }
-impl<F> Fold for path::Args
-where
-    F: Folder + ?Sized,
-{
+impl<F: Folder + ?Sized> Fold for path::Args {
     fn fold(&self, f: &mut F) {
         use path::Args::*;
         match self {
@@ -427,10 +406,7 @@ where
         }
     }
 }
-impl<H> Hash for Args
-where
-    H: Hasher,
-{
+impl<H: Hasher> Hash for Args {
     fn hash(&self, h: &mut H) {
         use Args::*;
         match self {
@@ -448,10 +424,7 @@ where
         }
     }
 }
-impl<V> Visit for Args
-where
-    V: Visitor + ?Sized,
-{
+impl<V: Visitor + ?Sized> Visit for Args {
     fn visit(&self, v: &mut V) {
         use Args::*;
         match self {
@@ -671,10 +644,7 @@ impl Pretty for Arg {
         }
     }
 }
-impl<F> Fold for Arg
-where
-    F: Folder + ?Sized,
-{
+impl<F: Folder + ?Sized> Fold for Arg {
     fn fold(&self, f: &mut F) {
         use Arg::*;
         match self {
@@ -687,10 +657,7 @@ where
         }
     }
 }
-impl<H> Hash for Arg
-where
-    H: Hasher,
-{
+impl<H: Hasher> Hash for Arg {
     fn hash(&self, h: &mut H) {
         use Arg::*;
         match self {
@@ -721,10 +688,7 @@ where
         }
     }
 }
-impl<V> Visit for Arg
-where
-    V: Visitor + ?Sized,
-{
+impl<V: Visitor + ?Sized> Visit for Arg {
     fn visit(&self, v: &mut V) {
         use Arg::*;
         match self {
@@ -916,10 +880,7 @@ impl Pretty for Angle {
         p.word(">");
     }
 }
-impl<F> Fold for path::Angle
-where
-    F: Folder + ?Sized,
-{
+impl<F: Folder + ?Sized> Fold for path::Angle {
     fn fold(&self, f: &mut F) {
         path::Angle {
             colon2: self.colon2,
@@ -929,19 +890,13 @@ where
         }
     }
 }
-impl<H> Hash for Angle
-where
-    H: Hasher,
-{
+impl<H: Hasher> Hash for Angle {
     fn hash(&self, h: &mut H) {
         self.colon2.hash(h);
         self.args.hash(h);
     }
 }
-impl<V> Visit for Angle
-where
-    V: Visitor + ?Sized,
-{
+impl<V: Visitor + ?Sized> Visit for Angle {
     fn visit<'a>(&self, v: &mut V) {
         for y in Puncted::pairs(&self.args) {
             let x = y.value();
@@ -1023,10 +978,7 @@ impl Pretty for Parenth {
         p.end();
     }
 }
-impl<F> Fold for path::Parenth
-where
-    F: Folder + ?Sized,
-{
+impl<F: Folder + ?Sized> Fold for path::Parenth {
     fn fold(&self, f: &mut F) {
         path::Parenth {
             parenth: self.parenth,
@@ -1035,19 +987,13 @@ where
         }
     }
 }
-impl<H> Hash for Parenth
-where
-    H: Hasher,
-{
+impl<H: Hasher> Hash for Parenth {
     fn hash(&self, h: &mut H) {
         self.args.hash(h);
         self.ret.hash(h);
     }
 }
-impl<V> Visit for Parenth
-where
-    V: Visitor + ?Sized,
-{
+impl<V: Visitor + ?Sized> Visit for Parenth {
     fn visit(&self, v: &mut V) {
         for y in Puncted::pairs(&self.ins) {
             let x = y.value();
@@ -1114,10 +1060,7 @@ impl Pretty for AssocType {
         &self.typ.pretty(p);
     }
 }
-impl<F> Fold for path::AssocType
-where
-    F: Folder + ?Sized,
-{
+impl<F: Folder + ?Sized> Fold for path::AssocType {
     fn fold(&self, f: &mut F) {
         path::AssocType {
             ident: self.ident.fold(f),
@@ -1127,20 +1070,14 @@ where
         }
     }
 }
-impl<H> Hash for AssocType
-where
-    H: Hasher,
-{
+impl<H: Hasher> Hash for AssocType {
     fn hash(&self, h: &mut H) {
         self.ident.hash(h);
         self.args.hash(h);
         self.typ.hash(h);
     }
 }
-impl<V> Visit for AssocType
-where
-    V: Visitor + ?Sized,
-{
+impl<V: Visitor + ?Sized> Visit for AssocType {
     fn visit(&self, v: &mut V) {
         &self.ident.visit(v);
         if let Some(x) = &self.args {
@@ -1207,10 +1144,7 @@ impl Pretty for AssocConst {
         &self.val.pretty(p);
     }
 }
-impl<F> Fold for path::AssocConst
-where
-    F: Folder + ?Sized,
-{
+impl<F: Folder + ?Sized> Fold for path::AssocConst {
     fn fold(&self, f: &mut F) {
         path::AssocConst {
             ident: self.ident.fold(f),
@@ -1220,20 +1154,14 @@ where
         }
     }
 }
-impl<H> Hash for AssocConst
-where
-    H: Hasher,
-{
+impl<H: Hasher> Hash for AssocConst {
     fn hash(&self, h: &mut H) {
         self.ident.hash(h);
         self.args.hash(h);
         self.val.hash(h);
     }
 }
-impl<V> Visit for AssocConst
-where
-    V: Visitor + ?Sized,
-{
+impl<V: Visitor + ?Sized> Visit for AssocConst {
     fn visit(&self, v: &mut V) {
         &self.ident.visit(v);
         if let Some(x) = &self.args {
@@ -1309,10 +1237,7 @@ impl Pretty for Constraint {
         p.end();
     }
 }
-impl<F> Fold for Constraint
-where
-    F: Folder + ?Sized,
-{
+impl<F: Folder + ?Sized> Fold for Constraint {
     fn fold(&self, f: &mut F) {
         Constraint {
             ident: self.ident.fold(f),
@@ -1322,20 +1247,14 @@ where
         }
     }
 }
-impl<H> Hash for Constraint
-where
-    H: Hasher,
-{
+impl<H: Hasher> Hash for Constraint {
     fn hash(&self, h: &mut H) {
         self.ident.hash(h);
         self.args.hash(h);
         self.bounds.hash(h);
     }
 }
-impl<V> Visit for Constraint
-where
-    V: Visitor + ?Sized,
-{
+impl<V: Visitor + ?Sized> Visit for Constraint {
     fn visit(&self, v: &mut V) {
         &self.ident.visit(v);
         if let Some(x) = &self.args {
@@ -1393,10 +1312,7 @@ impl PartialEq for QSelf {
         self.ty == x.ty && self.pos == x.pos && self.as_ == x.as_
     }
 }
-impl<F> Fold for path::QSelf
-where
-    F: Folder + ?Sized,
-{
+impl<F: Folder + ?Sized> Fold for path::QSelf {
     fn fold(&self, f: &mut F) {
         path::QSelf {
             lt: self.lt,
@@ -1407,20 +1323,14 @@ where
         }
     }
 }
-impl<H> Hash for QSelf
-where
-    H: Hasher,
-{
+impl<H: Hasher> Hash for QSelf {
     fn hash(&self, h: &mut H) {
         self.typ.hash(h);
         self.pos.hash(h);
         self.as_.hash(h);
     }
 }
-impl<V> Visit for QSelf
-where
-    V: Visitor + ?Sized,
-{
+impl<V: Visitor + ?Sized> Visit for QSelf {
     fn visit(&self, v: &mut V) {
         &*self.typ.visit(v);
     }

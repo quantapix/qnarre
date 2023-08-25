@@ -289,10 +289,7 @@ impl Pretty for Mac {
         }
     }
 }
-impl<F> Fold for Mac
-where
-    F: Folder + ?Sized,
-{
+impl<F: Folder + ?Sized> Fold for Mac {
     fn fold(&self, f: &mut F) {
         Mac {
             path: self.path.fold(f),
@@ -302,20 +299,14 @@ where
         }
     }
 }
-impl<H> Hash for Mac
-where
-    H: Hasher,
-{
+impl<H: Hasher> Hash for Mac {
     fn hash(&self, h: &mut H) {
         self.path.hash(h);
         self.delim.hash(h);
         StreamHelper(&self.toks).hash(h);
     }
 }
-impl<V> Visit for Mac
-where
-    V: Visitor + ?Sized,
-{
+impl<V: Visitor + ?Sized> Visit for Mac {
     fn visit(&self, v: &mut V) {
         &self.path.visit(v);
         &self.delim.visit(v);

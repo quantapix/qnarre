@@ -15,10 +15,7 @@ impl Parse for Ident {
         })
     }
 }
-impl<F> Fold for Ident
-where
-    F: Folder + ?Sized,
-{
+impl<F: Folder + ?Sized> Fold for Ident {
     fn fold(&self, f: &mut F) {
         let mut y = self;
         let span = self.span().fold(f);
@@ -26,10 +23,7 @@ where
         y
     }
 }
-impl<V> Visit for Ident
-where
-    V: Visitor + ?Sized,
-{
+impl<V: Visitor + ?Sized> Visit for Ident {
     fn visit(&self, v: &mut V) {
         &self.span().visit(v);
     }
@@ -163,10 +157,7 @@ impl Pretty for Life {
         p.ident(&self.ident);
     }
 }
-impl<F> Fold for Life
-where
-    F: Folder + ?Sized,
-{
+impl<F: Folder + ?Sized> Fold for Life {
     fn fold(&self, f: &mut F) {
         Life {
             apos: self.apos.fold(f),
@@ -179,10 +170,7 @@ impl<H: Hasher> Hash for Life {
         self.ident.hash(x);
     }
 }
-impl<V> Visit for Life
-where
-    V: Visitor + ?Sized,
-{
+impl<V: Visitor + ?Sized> Visit for Life {
     fn visit(&self, v: &mut V) {
         &self.apos.visit(v);
         &self.ident.visit(v);

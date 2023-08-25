@@ -143,10 +143,7 @@ impl Pretty for Stmt {
         }
     }
 }
-impl<F> Fold for Stmt
-where
-    F: Folder + ?Sized,
-{
+impl<F: Folder + ?Sized> Fold for Stmt {
     fn fold(&self, f: &mut F) {
         use Stmt::*;
         match self {
@@ -157,10 +154,7 @@ where
         }
     }
 }
-impl<H> Hash for Stmt
-where
-    H: Hasher,
-{
+impl<H: Hasher> Hash for Stmt {
     fn hash(&self, h: &mut H) {
         use Stmt::*;
         match self {
@@ -184,10 +178,7 @@ where
         }
     }
 }
-impl<V> Visit for Stmt
-where
-    V: Visitor + ?Sized,
-{
+impl<V: Visitor + ?Sized> Visit for Stmt {
     fn visit(&self, v: &mut V) {
         use Stmt::*;
         match self {
@@ -283,10 +274,7 @@ impl PartialEq for Local {
         self.attrs == x.attrs && self.pat == x.pat && self.init == x.init
     }
 }
-impl<F> Fold for Local
-where
-    F: Folder + ?Sized,
-{
+impl<F: Folder + ?Sized> Fold for Local {
     fn fold(&self, f: &mut F) {
         Local {
             attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
@@ -297,20 +285,14 @@ where
         }
     }
 }
-impl<H> Hash for Local
-where
-    H: Hasher,
-{
+impl<H: Hasher> Hash for Local {
     fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.pat.hash(h);
         self.init.hash(h);
     }
 }
-impl<V> Visit for Local
-where
-    V: Visitor + ?Sized,
-{
+impl<V: Visitor + ?Sized> Visit for Local {
     fn visit(&self, v: &mut V) {
         for x in &self.attrs {
             x.visit(v);
@@ -372,10 +354,7 @@ impl PartialEq for Mac {
         self.attrs == x.attrs && self.mac == x.mac && self.semi == x.semi
     }
 }
-impl<F> Fold for Mac
-where
-    F: Folder + ?Sized,
-{
+impl<F: Folder + ?Sized> Fold for Mac {
     fn fold(&self, f: &mut F) {
         Mac {
             attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
@@ -384,20 +363,14 @@ where
         }
     }
 }
-impl<H> Hash for Mac
-where
-    H: Hasher,
-{
+impl<H: Hasher> Hash for Mac {
     fn hash(&self, h: &mut H) {
         self.attrs.hash(h);
         self.mac.hash(h);
         self.semi.hash(h);
     }
 }
-impl<V> Visit for Mac
-where
-    V: Visitor + ?Sized,
-{
+impl<V: Visitor + ?Sized> Visit for Mac {
     fn visit(&self, v: &mut V) {
         for x in &self.attrs {
             x.visit(v);
@@ -481,10 +454,7 @@ impl PartialEq for Block {
         self.stmts == x.stmts
     }
 }
-impl<F> Fold for Block
-where
-    F: Folder + ?Sized,
-{
+impl<F: Folder + ?Sized> Fold for Block {
     fn fold(&self, f: &mut F) {
         Block {
             brace: self.brace,
@@ -492,18 +462,12 @@ where
         }
     }
 }
-impl<H> Hash for Block
-where
-    H: Hasher,
-{
+impl<H: Hasher> Hash for Block {
     fn hash(&self, h: &mut H) {
         self.stmts.hash(h);
     }
 }
-impl<V> Visit for Block
-where
-    V: Visitor + ?Sized,
-{
+impl<V: Visitor + ?Sized> Visit for Block {
     fn visit(&self, v: &mut V) {
         for x in &self.stmts {
             x.visit(v);
@@ -545,10 +509,7 @@ impl PartialEq for Init {
         self.expr == x.expr && self.diverge == x.diverge
     }
 }
-impl<F> Fold for Init
-where
-    F: Folder + ?Sized,
-{
+impl<F: Folder + ?Sized> Fold for Init {
     fn fold(&self, f: &mut F) {
         Init {
             eq: self.eq,
@@ -557,19 +518,13 @@ where
         }
     }
 }
-impl<H> Hash for Init
-where
-    H: Hasher,
-{
+impl<H: Hasher> Hash for Init {
     fn hash(&self, h: &mut H) {
         self.expr.hash(h);
         self.diverge.hash(h);
     }
 }
-impl<V> Visit for Init
-where
-    V: Visitor + ?Sized,
-{
+impl<V: Visitor + ?Sized> Visit for Init {
     fn visit(&self, v: &mut V) {
         &*self.expr.visit(v);
         if let Some(x) = &self.diverge {
