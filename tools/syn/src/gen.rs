@@ -70,6 +70,25 @@ pub mod bound {
             }
         }
     }
+    impl Debug for Type {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            f.write_str("gen::bound::Type::")?;
+            use Type::*;
+            match self {
+                Trait(x) => {
+                    let mut f = f.debug_tuple("Trait");
+                    f.field(x);
+                    f.finish()
+                },
+                Life(x) => x.debug(f, "Life"),
+                Verbatim(x) => {
+                    let mut f = f.debug_tuple("Verbatim");
+                    f.field(x);
+                    f.finish()
+                },
+            }
+        }
+    }
     impl Eq for Type {}
     impl PartialEq for Type {
         fn eq(&self, x: &Self) -> bool {
@@ -79,6 +98,31 @@ pub mod bound {
                 (Trait(x), Trait(y)) => x == y,
                 (Verbatim(x), Verbatim(y)) => StreamHelper(x) == StreamHelper(y),
                 _ => false,
+            }
+        }
+    }
+    impl Pretty for Type {
+        fn pretty(&self, p: &mut Print) {
+            match self {
+                Type::Trait(x) => {
+                    let tilde = false;
+                    x.pretty_with_args(p, tilde);
+                },
+                Type::Life(x) => x.pretty(p),
+                Type::Verbatim(x) => x.pretty(p),
+            }
+        }
+    }
+    impl<F> Fold for Type
+    where
+        F: Folder + ?Sized,
+    {
+        fn fold(&self, f: &mut F) {
+            use self::Type::*;
+            match self {
+                Life(x) => Life(x.fold(f)),
+                Trait(x) => Trait(x.fold(f)),
+                Verbatim(x) => Verbatim(x),
             }
         }
     }
@@ -101,18 +145,6 @@ pub mod bound {
                     h.write_u8(2u8);
                     StreamHelper(x).hash(h);
                 },
-            }
-        }
-    }
-    impl Pretty for Type {
-        fn pretty(&self, p: &mut Print) {
-            match self {
-                Type::Trait(x) => {
-                    let tilde = false;
-                    x.pretty_with_args(p, tilde);
-                },
-                Type::Life(x) => x.pretty(p),
-                Type::Verbatim(x) => x.pretty(p),
             }
         }
     }
@@ -196,21 +228,20 @@ pub mod bound {
             }
         }
     }
+    impl Debug for Trait {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            let mut f = f.debug_struct("gen::bound::Trait");
+            f.field("parenth", &self.parenth);
+            f.field("modif", &self.modif);
+            f.field("lifes", &self.lifes);
+            f.field("path", &self.path);
+            f.finish()
+        }
+    }
     impl Eq for Trait {}
     impl PartialEq for Trait {
         fn eq(&self, x: &Self) -> bool {
             self.parenth == x.parenth && self.modif == x.modif && self.lifes == x.lifes && self.path == x.path
-        }
-    }
-    impl<H> Hash for Trait
-    where
-        H: Hasher,
-    {
-        fn hash(&self, h: &mut H) {
-            self.parenth.hash(h);
-            self.modif.hash(h);
-            self.lifes.hash(h);
-            self.path.hash(h);
         }
     }
     impl Pretty for Trait {
@@ -234,6 +265,30 @@ pub mod bound {
             if self.parenth.is_some() {
                 p.word(")");
             }
+        }
+    }
+    impl<F> Fold for Trait
+    where
+        F: Folder + ?Sized,
+    {
+        fn fold(&self, f: &mut F) {
+            Trait {
+                parenth: self.parenth,
+                modif: self.modif.fold(f),
+                lifes: (self.lifes).map(|x| x.fold(f)),
+                path: self.path.fold(f),
+            }
+        }
+    }
+    impl<H> Hash for Trait
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.parenth.hash(h);
+            self.modif.hash(h);
+            self.lifes.hash(h);
+            self.path.hash(h);
         }
     }
     impl<V> Visit for Trait
@@ -284,6 +339,20 @@ pub mod bound {
             *self
         }
     }
+    impl Debug for Modifier {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            f.write_str("gen::bound::Modifier::")?;
+            use Modifier::*;
+            match self {
+                Maybe(x) => {
+                    let mut f = f.debug_tuple("Maybe");
+                    f.field(x);
+                    f.finish()
+                },
+                None => f.write_str("None"),
+            }
+        }
+    }
     impl Eq for Modifier {}
     impl PartialEq for Modifier {
         fn eq(&self, x: &Self) -> bool {
@@ -295,6 +364,27 @@ pub mod bound {
             }
         }
     }
+    impl Pretty for Modifier {
+        fn pretty(&self, p: &mut Print) {
+            use Modifier::*;
+            match self {
+                Maybe(_) => p.word("?"),
+                None => {},
+            }
+        }
+    }
+    impl<F> Fold for Modifier
+    where
+        F: Folder + ?Sized,
+    {
+        fn fold(&self, f: &mut F) {
+            use Modifier::*;
+            match self {
+                Maybe(x) => Maybe(x),
+                None => None,
+            }
+        }
+    }
     impl<H> Hash for Modifier
     where
         H: Hasher,
@@ -302,21 +392,12 @@ pub mod bound {
         fn hash(&self, h: &mut H) {
             use Modifier::*;
             match self {
-                None => {
-                    h.write_u8(0u8);
-                },
                 Maybe(_) => {
                     h.write_u8(1u8);
                 },
-            }
-        }
-    }
-    impl Pretty for Modifier {
-        fn pretty(&self, p: &mut Print) {
-            use Modifier::*;
-            match self {
-                Maybe(_) => p.word("?"),
-                None => {},
+                None => {
+                    h.write_u8(0u8);
+                },
             }
         }
     }
@@ -410,18 +491,20 @@ pub mod bound {
             }
         }
     }
+    impl Debug for Lifes {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            let mut f = f.debug_struct("gen::bound::Lifes");
+            f.field("for_", &self.for_);
+            f.field("lt", &self.lt);
+            f.field("lifes", &self.lifes);
+            f.field("gt", &self.gt);
+            f.finish()
+        }
+    }
     impl Eq for Lifes {}
     impl PartialEq for Lifes {
         fn eq(&self, x: &Self) -> bool {
             self.lifes == x.lifes
-        }
-    }
-    impl<H> Hash for Lifes
-    where
-        H: Hasher,
-    {
-        fn hash(&self, h: &mut H) {
-            self.lifes.hash(h);
         }
     }
     impl Pretty for Lifes {
@@ -434,6 +517,27 @@ pub mod bound {
                 }
             }
             p.word("> ");
+        }
+    }
+    impl<F> Fold for Lifes
+    where
+        F: Folder + ?Sized,
+    {
+        fn fold(&self, f: &mut F) {
+            Lifes {
+                for_: self.for_,
+                lt: self.lt,
+                lifes: FoldHelper::lift(self.lifes, |x| x.fold(f)),
+                gt: self.gt,
+            }
+        }
+    }
+    impl<H> Hash for Lifes
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.lifes.hash(h);
         }
     }
     impl<V> Visit for Lifes
@@ -534,6 +638,29 @@ pub mod param {
             }
         }
     }
+    impl Debug for Param {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            f.write_str("gen::param::Param::")?;
+            use Param::*;
+            match self {
+                Life(x) => {
+                    let mut f = f.debug_tuple("Life");
+                    f.field(x);
+                    f.finish()
+                },
+                Type(x) => {
+                    let mut f = f.debug_tuple("Type");
+                    f.field(x);
+                    f.finish()
+                },
+                Const(x) => {
+                    let mut f = f.debug_tuple("Const");
+                    f.field(x);
+                    f.finish()
+                },
+            }
+        }
+    }
     impl Eq for Param {}
     impl PartialEq for Param {
         fn eq(&self, x: &Self) -> bool {
@@ -575,6 +702,19 @@ pub mod param {
                 Const(x) => x.pretty(p),
                 Life(x) => x.pretty(p),
                 Type(x) => x.pretty(p),
+            }
+        }
+    }
+    impl<F> Fold for Param
+    where
+        F: Folder + ?Sized,
+    {
+        fn fold(&self, f: &mut F) {
+            use Param::*;
+            match self {
+                Const(x) => Const(x.fold(f)),
+                Life(x) => Life(x.fold(f)),
+                Type(x) => Type(x.fold(f)),
             }
         }
     }
@@ -684,21 +824,20 @@ pub mod param {
             }
         }
     }
+    impl Debug for Life {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            let mut f = f.debug_struct("gen::param::Life");
+            f.field("attrs", &self.attrs);
+            f.field("life", &self.life);
+            f.field("colon", &self.colon);
+            f.field("bounds", &self.bounds);
+            f.finish()
+        }
+    }
     impl Eq for Life {}
     impl PartialEq for Life {
         fn eq(&self, x: &Self) -> bool {
             self.attrs == x.attrs && self.life == x.life && self.colon == x.colon && self.bounds == x.bounds
-        }
-    }
-    impl<H> Hash for Life
-    where
-        H: Hasher,
-    {
-        fn hash(&self, h: &mut H) {
-            self.attrs.hash(h);
-            self.life.hash(h);
-            self.colon.hash(h);
-            self.bounds.hash(h);
         }
     }
     impl Pretty for Life {
@@ -713,6 +852,30 @@ pub mod param {
                 }
                 &x.pretty(p);
             }
+        }
+    }
+    impl<F> Fold for Life
+    where
+        F: Folder + ?Sized,
+    {
+        fn fold(&self, f: &mut F) {
+            Life {
+                attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+                life: self.life.fold(f),
+                colon: self.colon,
+                bounds: FoldHelper::lift(self.bounds, |x| x.fold(f)),
+            }
+        }
+    }
+    impl<H> Hash for Life
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.attrs.hash(h);
+            self.life.hash(h);
+            self.colon.hash(h);
+            self.bounds.hash(h);
         }
     }
     impl<V> Visit for Life
@@ -855,6 +1018,18 @@ pub mod param {
             }
         }
     }
+    impl Debug for Type {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            let mut f = f.debug_struct("gen::param::Type");
+            f.field("attrs", &self.attrs);
+            f.field("ident", &self.ident);
+            f.field("colon", &self.colon);
+            f.field("bounds", &self.bounds);
+            f.field("eq", &self.eq);
+            f.field("default", &self.default);
+            f.finish()
+        }
+    }
     impl Eq for Type {}
     impl PartialEq for Type {
         fn eq(&self, x: &Self) -> bool {
@@ -864,19 +1039,6 @@ pub mod param {
                 && self.bounds == x.bounds
                 && self.eq == x.eq
                 && self.default == x.default
-        }
-    }
-    impl<H> Hash for Type
-    where
-        H: Hasher,
-    {
-        fn hash(&self, h: &mut H) {
-            self.attrs.hash(h);
-            self.ident.hash(h);
-            self.colon.hash(h);
-            self.bounds.hash(h);
-            self.eq.hash(h);
-            self.default.hash(h);
         }
     }
     impl Pretty for Type {
@@ -899,6 +1061,34 @@ pub mod param {
                 x.pretty(p);
             }
             p.end();
+        }
+    }
+    impl<F> Fold for Type
+    where
+        F: Folder + ?Sized,
+    {
+        fn fold(&self, f: &mut F) {
+            Type {
+                attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+                ident: self.ident.fold(f),
+                colon: self.colon,
+                bounds: FoldHelper::lift(self.bounds, |x| x.fold(f)),
+                eq: self.eq,
+                default: (self.default).map(|x| x.fold(f)),
+            }
+        }
+    }
+    impl<H> Hash for Type
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.attrs.hash(h);
+            self.ident.hash(h);
+            self.colon.hash(h);
+            self.bounds.hash(h);
+            self.eq.hash(h);
+            self.default.hash(h);
         }
     }
     impl<V> Visit for Type
@@ -1022,6 +1212,19 @@ pub mod param {
             }
         }
     }
+    impl Debug for Const {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            let mut f = f.debug_struct("gen::param::Const");
+            f.field("attrs", &self.attrs);
+            f.field("const_", &self.const_);
+            f.field("ident", &self.ident);
+            f.field("colon", &self.colon);
+            f.field("typ", &self.typ);
+            f.field("eq", &self.eq);
+            f.field("default", &self.default);
+            f.finish()
+        }
+    }
     impl Eq for Const {}
     impl PartialEq for Const {
         fn eq(&self, x: &Self) -> bool {
@@ -1030,18 +1233,6 @@ pub mod param {
                 && self.typ == x.typ
                 && self.eq == x.eq
                 && self.default == x.default
-        }
-    }
-    impl<H> Hash for Const
-    where
-        H: Hasher,
-    {
-        fn hash(&self, h: &mut H) {
-            self.attrs.hash(h);
-            self.ident.hash(h);
-            self.typ.hash(h);
-            self.eq.hash(h);
-            self.default.hash(h);
         }
     }
     impl Pretty for Const {
@@ -1055,6 +1246,34 @@ pub mod param {
                 p.word(" = ");
                 x.pretty(p);
             }
+        }
+    }
+    impl<F> Fold for Const
+    where
+        F: Folder + ?Sized,
+    {
+        fn fold(&self, f: &mut F) {
+            Const {
+                attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+                const_: self.const_,
+                ident: self.ident.fold(f),
+                colon: self.colon,
+                typ: self.typ.fold(f),
+                eq: self.eq,
+                default: (self.default).map(|x| x.fold(f)),
+            }
+        }
+    }
+    impl<H> Hash for Const
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.attrs.hash(h);
+            self.ident.hash(h);
+            self.typ.hash(h);
+            self.eq.hash(h);
+            self.default.hash(h);
         }
     }
     impl<V> Visit for Const
@@ -1166,18 +1385,18 @@ impl Clone for Where {
         }
     }
 }
+impl Debug for Where {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut f = f.debug_struct("gen::Where");
+        f.field("where_", &self.where_);
+        f.field("preds", &self.preds);
+        f.finish()
+    }
+}
 impl Eq for Where {}
 impl PartialEq for Where {
     fn eq(&self, x: &Self) -> bool {
         self.preds == x.preds
-    }
-}
-impl<H> Hash for Where
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.preds.hash(h);
     }
 }
 impl Pretty for Where {
@@ -1217,6 +1436,25 @@ impl Pretty for Where {
                 p.offset(-INDENT);
             }
         }
+    }
+}
+impl<F> Fold for Where
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Where {
+            where_: self.where_,
+            preds: FoldHelper::lift(self.preds, |x| x.fold(f)),
+        }
+    }
+}
+impl<H> Hash for Where
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.preds.hash(h);
     }
 }
 impl<V> Visit for Where
@@ -1363,6 +1601,24 @@ pub mod where_ {
             }
         }
     }
+    impl Debug for Pred {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            f.write_str("gen::where_::Pred::")?;
+            use Pred::*;
+            match self {
+                Life(x) => {
+                    let mut f = f.debug_tuple("Life");
+                    f.field(x);
+                    f.finish()
+                },
+                Type(x) => {
+                    let mut f = f.debug_tuple("Type");
+                    f.field(x);
+                    f.finish()
+                },
+            }
+        }
+    }
     impl Eq for Pred {}
     impl PartialEq for Pred {
         fn eq(&self, x: &Self) -> bool {
@@ -1371,6 +1627,27 @@ pub mod where_ {
                 (Life(x), Life(y)) => x == y,
                 (Type(x), Type(y)) => x == y,
                 _ => false,
+            }
+        }
+    }
+    impl Pretty for Pred {
+        fn pretty(&self, p: &mut Print) {
+            use Pred::*;
+            match self {
+                Life(x) => x.pretty(p),
+                Type(x) => x.pretty(p),
+            }
+        }
+    }
+    impl<F> Fold for Pred
+    where
+        F: Folder + ?Sized,
+    {
+        fn fold(&self, f: &mut F) {
+            use Pred::*;
+            match self {
+                Life(x) => Life(x.fold(f)),
+                Type(x) => Type(x.fold(f)),
             }
         }
     }
@@ -1389,15 +1666,6 @@ pub mod where_ {
                     h.write_u8(1u8);
                     v0.hash(h);
                 },
-            }
-        }
-    }
-    impl Pretty for Pred {
-        fn pretty(&self, p: &mut Print) {
-            use Pred::*;
-            match self {
-                Life(x) => x.pretty(p),
-                Type(x) => x.pretty(p),
             }
         }
     }
@@ -1450,19 +1718,19 @@ pub mod where_ {
             }
         }
     }
+    impl Debug for Life {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            let mut f = f.debug_struct("gen::where_::Life");
+            f.field("life", &self.life);
+            f.field("colon", &self.colon);
+            f.field("bounds", &self.bounds);
+            f.finish()
+        }
+    }
     impl Eq for Life {}
     impl PartialEq for Life {
         fn eq(&self, x: &Self) -> bool {
             self.life == x.life && self.bounds == x.bounds
-        }
-    }
-    impl<H> Hash for Life
-    where
-        H: Hasher,
-    {
-        fn hash(&self, h: &mut H) {
-            self.life.hash(h);
-            self.bounds.hash(h);
         }
     }
     impl Pretty for Life {
@@ -1480,6 +1748,27 @@ pub mod where_ {
                 &x.pretty(p);
             }
             p.end();
+        }
+    }
+    impl<F> Fold for Life
+    where
+        F: Folder + ?Sized,
+    {
+        fn fold(&self, f: &mut F) {
+            Life {
+                life: self.life.fold(f),
+                colon: self.colon,
+                bounds: FoldHelper::lift(self.bounds, |x| x.fold(f)),
+            }
+        }
+    }
+    impl<H> Hash for Life
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.life.hash(h);
+            self.bounds.hash(h);
         }
     }
     impl<V> Visit for Life
@@ -1526,20 +1815,20 @@ pub mod where_ {
             }
         }
     }
+    impl Debug for Type {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            let mut f = f.debug_struct("gen::where_::Type");
+            f.field("lifes", &self.lifes);
+            f.field("typ", &self.typ);
+            f.field("colon", &self.colon);
+            f.field("bounds", &self.bounds);
+            f.finish()
+        }
+    }
     impl Eq for Type {}
     impl PartialEq for Type {
         fn eq(&self, x: &Self) -> bool {
             self.lifes == x.lifes && self.typ == x.typ && self.bounds == x.bounds
-        }
-    }
-    impl<H> Hash for Type
-    where
-        H: Hasher,
-    {
-        fn hash(&self, h: &mut H) {
-            self.lifes.hash(h);
-            self.typ.hash(h);
-            self.bounds.hash(h);
         }
     }
     impl Pretty for Type {
@@ -1564,6 +1853,29 @@ pub mod where_ {
                 &x.pretty(p);
             }
             p.end();
+        }
+    }
+    impl<F> Fold for Type
+    where
+        F: Folder + ?Sized,
+    {
+        fn fold(&self, f: &mut F) {
+            Type {
+                lifes: (self.lifes).map(|x| x.fold(f)),
+                typ: self.typ.fold(f),
+                colon: self.colon,
+                bounds: FoldHelper::lift(self.bounds, |x| x.fold(f)),
+            }
+        }
+    }
+    impl<H> Hash for Type
+    where
+        H: Hasher,
+    {
+        fn hash(&self, h: &mut H) {
+            self.lifes.hash(h);
+            self.typ.hash(h);
+            self.bounds.hash(h);
         }
     }
     impl<V> Visit for Type
@@ -1722,21 +2034,20 @@ impl Clone for Gens {
         }
     }
 }
+impl Debug for Gens {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut f = f.debug_struct("gen::Gens");
+        f.field("lt", &self.lt);
+        f.field("params", &self.params);
+        f.field("gt", &self.gt);
+        f.field("where_", &self.where_);
+        f.finish()
+    }
+}
 impl Eq for Gens {}
 impl PartialEq for Gens {
     fn eq(&self, x: &Self) -> bool {
         self.lt == x.lt && self.params == x.params && self.gt == x.gt && self.where_ == x.where_
-    }
-}
-impl<H> Hash for Gens
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.lt.hash(h);
-        self.params.hash(h);
-        self.gt.hash(h);
-        self.where_.hash(h);
     }
 }
 impl Pretty for Gens {
@@ -1771,6 +2082,30 @@ impl Pretty for Gens {
         p.offset(-INDENT);
         p.end();
         p.word(">");
+    }
+}
+impl<F> Fold for Gens
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Gens {
+            lt: self.lt,
+            params: FoldHelper::lift(self.params, |x| x.fold(f)),
+            gt: self.gt,
+            where_: (self.where_).map(|x| x.fold(f)),
+        }
+    }
+}
+impl<H> Hash for Gens
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.lt.hash(h);
+        self.params.hash(h);
+        self.gt.hash(h);
+        self.where_.hash(h);
     }
 }
 impl<V> Visit for Gens
