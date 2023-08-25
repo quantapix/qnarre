@@ -229,20 +229,20 @@ impl Clone for Mac {
         }
     }
 }
+impl Debug for Mac {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut f = f.debug_struct("Macro");
+        f.field("path", &self.path);
+        f.field("bang", &self.bang);
+        f.field("delimiter", &self.delim);
+        f.field("toks", &self.toks);
+        f.finish()
+    }
+}
 impl Eq for Mac {}
 impl PartialEq for Mac {
     fn eq(&self, x: &Self) -> bool {
         self.path == x.path && self.delim == x.delim && StreamHelper(&self.toks) == StreamHelper(&x.toks)
-    }
-}
-impl<H> Hash for Mac
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.path.hash(h);
-        self.delim.hash(h);
-        StreamHelper(&self.toks).hash(h);
     }
 }
 impl Pretty for Mac {
@@ -287,6 +287,29 @@ impl Pretty for Mac {
                 Brace(_) => {},
             }
         }
+    }
+}
+impl<F> Fold for Mac
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Mac {
+            path: self.path.fold(f),
+            bang: self.bang,
+            delim: self.delim.fold(f),
+            toks: self.toks,
+        }
+    }
+}
+impl<H> Hash for Mac
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.path.hash(h);
+        self.delim.hash(h);
+        StreamHelper(&self.toks).hash(h);
     }
 }
 impl<V> Visit for Mac

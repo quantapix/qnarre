@@ -15,6 +15,17 @@ impl Parse for Ident {
         })
     }
 }
+impl<F> Fold for Ident
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        let mut y = self;
+        let span = self.span().fold(f);
+        self.set_span(span);
+        y
+    }
+}
 impl<V> Visit for Ident
 where
     V: Visitor + ?Sized,
@@ -90,12 +101,6 @@ impl Life {
         self.ident.set_span(s);
     }
 }
-impl Display for Life {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        "'".fmt(f)?;
-        self.ident.fmt(f)
-    }
-}
 impl Clone for Life {
     fn clone(&self) -> Self {
         Life {
@@ -104,12 +109,31 @@ impl Clone for Life {
         }
     }
 }
+impl Debug for Life {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Life {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("apos", &self.apos);
+                f.field("ident", &self.ident);
+                f.finish()
+            }
+        }
+        self.debug(f, "ident::Life")
+    }
+}
+impl Display for Life {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        "'".fmt(f)?;
+        self.ident.fmt(f)
+    }
+}
+impl Eq for Life {}
 impl PartialEq for Life {
     fn eq(&self, x: &Life) -> bool {
         self.ident.eq(&x.ident)
     }
 }
-impl Eq for Life {}
 impl PartialOrd for Life {
     fn partial_cmp(&self, x: &Life) -> Option<Ordering> {
         Some(self.cmp(x))
@@ -118,11 +142,6 @@ impl PartialOrd for Life {
 impl Ord for Life {
     fn cmp(&self, x: &Life) -> Ordering {
         self.ident.cmp(&x.ident)
-    }
-}
-impl Hash for Life {
-    fn hash<H: Hasher>(&self, x: &mut H) {
-        self.ident.hash(x);
     }
 }
 impl Parse for Life {
@@ -142,6 +161,22 @@ impl Pretty for Life {
     fn pretty(&self, p: &mut Print) {
         p.word("'");
         p.ident(&self.ident);
+    }
+}
+impl<F> Fold for Life
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Life {
+            apos: self.apos.fold(f),
+            ident: self.ident.fold(f),
+        }
+    }
+}
+impl<H: Hasher> Hash for Life {
+    fn hash(&self, x: &mut H) {
+        self.ident.hash(x);
     }
 }
 impl<V> Visit for Life

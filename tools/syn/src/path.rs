@@ -148,19 +148,23 @@ impl Clone for Path {
         }
     }
 }
+impl Debug for Path {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Path {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("colon", &self.colon);
+                f.field("segs", &self.segs);
+                f.finish()
+            }
+        }
+        self.debug(f, "Path")
+    }
+}
 impl Eq for Path {}
 impl PartialEq for Path {
     fn eq(&self, x: &Self) -> bool {
         self.colon == x.colon && self.segs == x.segs
-    }
-}
-impl<H> Hash for Path
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.colon.hash(h);
-        self.segs.hash(h);
     }
 }
 impl Pretty for Path {
@@ -173,6 +177,26 @@ impl Pretty for Path {
             }
             p.path_segment(&x, kind);
         }
+    }
+}
+impl<F> Fold for Path
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Path {
+            colon: self.colon,
+            segs: FoldHelper::lift(self.segs, |x| x.fold(f)),
+        }
+    }
+}
+impl<H> Hash for Path
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.colon.hash(h);
+        self.segs.hash(h);
     }
 }
 impl<V> Visit for Path
@@ -248,10 +272,35 @@ impl Clone for Segment {
         }
     }
 }
+impl Debug for path::Segment {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut f = f.debug_struct("path::Segment");
+        f.field("ident", &self.ident);
+        f.field("args", &self.args);
+        f.finish()
+    }
+}
 impl Eq for Segment {}
 impl PartialEq for Segment {
     fn eq(&self, x: &Self) -> bool {
         self.ident == x.ident && self.args == x.args
+    }
+}
+impl Pretty for Segment {
+    fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
+        &self.ident.pretty(p);
+        &self.args.pretty_with_args(p, x);
+    }
+}
+impl<F> Fold for Segment
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Segment {
+            ident: self.ident.fold(f),
+            args: self.args.fold(f),
+        }
     }
 }
 impl<H> Hash for Segment
@@ -261,12 +310,6 @@ where
     fn hash(&self, h: &mut H) {
         self.ident.hash(h);
         self.args.hash(h);
-    }
-}
-impl Pretty for Segment {
-    fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
-        &self.ident.pretty(p);
-        &self.args.pretty_with_args(p, x);
     }
 }
 impl<V> Visit for Segment
@@ -334,6 +377,17 @@ impl Clone for Args {
         }
     }
 }
+impl Debug for path::Args {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("path::Args::")?;
+        use path::Args::*;
+        match self {
+            None => f.write_str("None"),
+            Angle(x) => x.debug(f, "Angle"),
+            Parenth(x) => x.debug(f, "Parenth"),
+        }
+    }
+}
 impl Eq for Args {}
 impl PartialEq for Args {
     fn eq(&self, x: &Self) -> bool {
@@ -343,6 +397,33 @@ impl PartialEq for Args {
             (Angle(x), Angle(y)) => x == y,
             (Parenth(x), Parenth(y)) => x == y,
             _ => false,
+        }
+    }
+}
+impl Pretty for Args {
+    fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
+        use Args::*;
+        match self {
+            None => {},
+            Angle(x) => {
+                x.pretty_with_args(p, x);
+            },
+            Parenth(x) => {
+                x.pretty(p);
+            },
+        }
+    }
+}
+impl<F> Fold for path::Args
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        use path::Args::*;
+        match self {
+            None => Args::None,
+            Angle(x) => Angle(x.fold(f)),
+            Parenth(x) => arenthed(x.fold(f)),
         }
     }
 }
@@ -363,20 +444,6 @@ where
             Parenth(x) => {
                 h.write_u8(2u8);
                 x.hash(h);
-            },
-        }
-    }
-}
-impl Pretty for Args {
-    fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
-        use Args::*;
-        match self {
-            None => {},
-            Angle(x) => {
-                x.pretty_with_args(p, x);
-            },
-            Parenth(x) => {
-                x.pretty(p);
             },
         }
     }
@@ -530,6 +597,44 @@ impl Clone for Arg {
         }
     }
 }
+impl Debug for Arg {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("path::Arg::")?;
+        use Arg::*;
+        match self {
+            Life(x) => {
+                let mut f = f.debug_tuple("Life");
+                f.field(x);
+                f.finish()
+            },
+            Type(x) => {
+                let mut f = f.debug_tuple("Type");
+                f.field(x);
+                f.finish()
+            },
+            Const(x) => {
+                let mut f = f.debug_tuple("Const");
+                f.field(x);
+                f.finish()
+            },
+            AssocType(x) => {
+                let mut f = f.debug_tuple("AssocType");
+                f.field(x);
+                f.finish()
+            },
+            AssocConst(x) => {
+                let mut f = f.debug_tuple("AssocConst");
+                f.field(x);
+                f.finish()
+            },
+            Constraint(x) => {
+                let mut f = f.debug_tuple("Constraint");
+                f.field(x);
+                f.finish()
+            },
+        }
+    }
+}
 impl Eq for Arg {}
 impl PartialEq for Arg {
     fn eq(&self, x: &Self) -> bool {
@@ -542,6 +647,43 @@ impl PartialEq for Arg {
             (Life(x), Life(y)) => x == y,
             (Type(x), Type(y)) => x == y,
             _ => false,
+        }
+    }
+}
+impl Pretty for Arg {
+    fn pretty(&self, p: &mut Print) {
+        use Arg::*;
+        match self {
+            Life(x) => p.lifetime(x),
+            Type(x) => p.ty(x),
+            Const(x) => match x {
+                expr::Expr::Lit(x) => x.pretty(p),
+                expr::Expr::Block(x) => x.pretty(p),
+                _ => {
+                    p.word("{");
+                    x.pretty(p);
+                    p.word("}");
+                },
+            },
+            AssocType(x) => p.assoc_type(x),
+            AssocConst(x) => p.assoc_const(x),
+            Constraint(x) => p.constraint(x),
+        }
+    }
+}
+impl<F> Fold for Arg
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        use Arg::*;
+        match self {
+            AssocConst(x) => AssocConst(x.fold(f)),
+            AssocType(x) => AssocType(x.fold(f)),
+            Const(x) => Const(x.fold(f)),
+            Constraint(x) => Constraint(x.fold(f)),
+            Life(x) => Life(x.fold(f)),
+            Type(x) => Type(x.fold(f)),
         }
     }
 }
@@ -576,27 +718,6 @@ where
                 h.write_u8(5u8);
                 x.hash(h);
             },
-        }
-    }
-}
-impl Pretty for Arg {
-    fn pretty(&self, p: &mut Print) {
-        use Arg::*;
-        match self {
-            Life(x) => p.lifetime(x),
-            Type(x) => p.ty(x),
-            Const(x) => match x {
-                expr::Expr::Lit(x) => x.pretty(p),
-                expr::Expr::Block(x) => x.pretty(p),
-                _ => {
-                    p.word("{");
-                    x.pretty(p);
-                    p.word("}");
-                },
-            },
-            AssocType(x) => p.assoc_type(x),
-            AssocConst(x) => p.assoc_const(x),
-            Constraint(x) => p.constraint(x),
         }
     }
 }
@@ -736,19 +857,25 @@ impl Clone for Angle {
         }
     }
 }
+impl Debug for path::Angle {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl path::Angle {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("colon2", &self.colon2);
+                f.field("lt", &self.lt);
+                f.field("args", &self.args);
+                f.field("gt", &self.gt);
+                f.finish()
+            }
+        }
+        self.debug(f, "path::Angle")
+    }
+}
 impl Eq for Angle {}
 impl PartialEq for Angle {
     fn eq(&self, x: &Self) -> bool {
         self.colon2 == x.colon2 && self.args == x.args
-    }
-}
-impl<H> Hash for Angle
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.colon2.hash(h);
-        self.args.hash(h);
     }
 }
 impl Pretty for Angle {
@@ -787,6 +914,28 @@ impl Pretty for Angle {
         p.offset(-INDENT);
         p.end();
         p.word(">");
+    }
+}
+impl<F> Fold for path::Angle
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        path::Angle {
+            colon2: self.colon2,
+            lt: self.lt,
+            args: FoldHelper::lift(self.args, |x| x.fold(f)),
+            gt: self.gt,
+        }
+    }
+}
+impl<H> Hash for Angle
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.colon2.hash(h);
+        self.args.hash(h);
     }
 }
 impl<V> Visit for Angle
@@ -839,19 +988,24 @@ impl Clone for Parenth {
         }
     }
 }
+impl Debug for path::Parenth {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl path::Parenth {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("parenth", &self.parenth);
+                f.field("args", &self.args);
+                f.field("ret", &self.ret);
+                f.finish()
+            }
+        }
+        self.debug(f, "path::Parenth")
+    }
+}
 impl Eq for Parenth {}
 impl PartialEq for Parenth {
     fn eq(&self, x: &Self) -> bool {
         self.args == x.args && self.ret == x.ret
-    }
-}
-impl<H> Hash for Parenth
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.args.hash(h);
-        self.ret.hash(h);
     }
 }
 impl Pretty for Parenth {
@@ -867,6 +1021,27 @@ impl Pretty for Parenth {
         p.word(")");
         &self.ret.pretty(p);
         p.end();
+    }
+}
+impl<F> Fold for path::Parenth
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        path::Parenth {
+            parenth: self.parenth,
+            args: FoldHelper::lift(self.args, |ixt| x.fold(f)),
+            ret: self.ret.fold(f),
+        }
+    }
+}
+impl<H> Hash for Parenth
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.args.hash(h);
+        self.ret.hash(h);
     }
 }
 impl<V> Visit for Parenth
@@ -913,20 +1088,20 @@ impl Clone for AssocType {
         }
     }
 }
+impl Debug for AssocType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut f = f.debug_struct("path::AssocType");
+        f.field("ident", &self.ident);
+        f.field("args", &self.args);
+        f.field("eq", &self.eq);
+        f.field("typ", &self.typ);
+        f.finish()
+    }
+}
 impl Eq for AssocType {}
 impl PartialEq for AssocType {
     fn eq(&self, x: &Self) -> bool {
         self.ident == x.ident && self.args == x.args && self.typ == x.typ
-    }
-}
-impl<H> Hash for AssocType
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.ident.hash(h);
-        self.args.hash(h);
-        self.typ.hash(h);
     }
 }
 impl Pretty for AssocType {
@@ -937,6 +1112,29 @@ impl Pretty for AssocType {
         }
         p.word(" = ");
         &self.typ.pretty(p);
+    }
+}
+impl<F> Fold for path::AssocType
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        path::AssocType {
+            ident: self.ident.fold(f),
+            args: (self.args).map(|x| x.fold(f)),
+            eq: self.eq,
+            typ: self.typ.fold(f),
+        }
+    }
+}
+impl<H> Hash for AssocType
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.ident.hash(h);
+        self.args.hash(h);
+        self.typ.hash(h);
     }
 }
 impl<V> Visit for AssocType
@@ -983,20 +1181,20 @@ impl Clone for AssocConst {
         }
     }
 }
+impl Debug for AssocConst {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut f = f.debug_struct("path::AssocConst");
+        f.field("ident", &self.ident);
+        f.field("args", &self.args);
+        f.field("eq", &self.eq);
+        f.field("val", &self.val);
+        f.finish()
+    }
+}
 impl Eq for AssocConst {}
 impl PartialEq for AssocConst {
     fn eq(&self, x: &Self) -> bool {
         self.ident == x.ident && self.args == x.args && self.val == x.val
-    }
-}
-impl<H> Hash for AssocConst
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.ident.hash(h);
-        self.args.hash(h);
-        self.val.hash(h);
     }
 }
 impl Pretty for AssocConst {
@@ -1007,6 +1205,29 @@ impl Pretty for AssocConst {
         }
         p.word(" = ");
         &self.val.pretty(p);
+    }
+}
+impl<F> Fold for path::AssocConst
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        path::AssocConst {
+            ident: self.ident.fold(f),
+            args: (self.args).map(|x| x.fold(f)),
+            eq: self.eq,
+            val: self.val.fold(f),
+        }
+    }
+}
+impl<H> Hash for AssocConst
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.ident.hash(h);
+        self.args.hash(h);
+        self.val.hash(h);
     }
 }
 impl<V> Visit for AssocConst
@@ -1053,20 +1274,20 @@ impl Clone for Constraint {
         }
     }
 }
+impl Debug for path::Constraint {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut f = f.debug_struct("Constraint");
+        f.field("ident", &self.ident);
+        f.field("args", &self.args);
+        f.field("colon", &self.colon);
+        f.field("bounds", &self.bounds);
+        f.finish()
+    }
+}
 impl Eq for Constraint {}
 impl PartialEq for Constraint {
     fn eq(&self, x: &Self) -> bool {
         self.ident == x.ident && self.args == x.args && self.bounds == x.bounds
-    }
-}
-impl<H> Hash for Constraint
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        self.ident.hash(h);
-        self.args.hash(h);
-        self.bounds.hash(h);
     }
 }
 impl Pretty for Constraint {
@@ -1086,6 +1307,29 @@ impl Pretty for Constraint {
             &x.pretty(p);
         }
         p.end();
+    }
+}
+impl<F> Fold for Constraint
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Constraint {
+            ident: self.ident.fold(f),
+            args: (self.args).map(|x| x.fold(f)),
+            colon: self.colon,
+            bounds: FoldHelper::lift(self.bounds, |x| x.fold(f)),
+        }
+    }
+}
+impl<H> Hash for Constraint
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        self.ident.hash(h);
+        self.args.hash(h);
+        self.bounds.hash(h);
     }
 }
 impl<V> Visit for Constraint
@@ -1132,10 +1376,35 @@ impl Clone for QSelf {
         }
     }
 }
+impl Debug for QSelf {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut f = f.debug_struct("QSelf");
+        f.field("lt", &self.lt);
+        f.field("typ", &self.typ);
+        f.field("pos", &self.pos);
+        f.field("as_", &self.as_);
+        f.field("gt", &self.gt);
+        f.finish()
+    }
+}
 impl Eq for QSelf {}
 impl PartialEq for QSelf {
     fn eq(&self, x: &Self) -> bool {
         self.ty == x.ty && self.pos == x.pos && self.as_ == x.as_
+    }
+}
+impl<F> Fold for path::QSelf
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        path::QSelf {
+            lt: self.lt,
+            typ: Box::new(*self.typ.fold(f)),
+            pos: self.pos,
+            as_: self.as_,
+            gt: self.gt,
+        }
     }
 }
 impl<H> Hash for QSelf

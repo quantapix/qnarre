@@ -151,6 +151,26 @@ impl Clone for Lit {
         }
     }
 }
+impl Debug for Lit {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("Lit::")?;
+        use Lit::*;
+        match self {
+            Bool(x) => x.debug(f, "Bool"),
+            Byte(x) => x.debug(f, "Byte"),
+            ByteStr(x) => x.debug(f, "ByteStr"),
+            Char(x) => x.debug(f, "Char"),
+            Float(x) => x.debug(f, "Float"),
+            Int(x) => x.debug(f, "Int"),
+            Str(x) => x.debug(f, "Str"),
+            Verbatim(x) => {
+                let mut f = f.debug_tuple("Verbatim");
+                f.field(x);
+                f.finish()
+            },
+        }
+    }
+}
 impl Eq for Lit {}
 impl PartialEq for Lit {
     fn eq(&self, x: &Self) -> bool {
@@ -165,6 +185,39 @@ impl PartialEq for Lit {
             (Bool(x), Bool(y)) => x == y,
             (Verbatim(x), Verbatim(y)) => x.to_string() == y.to_string(),
             _ => false,
+        }
+    }
+}
+impl Pretty for Lit {
+    fn pretty(&self, p: &mut Print) {
+        use Lit::*;
+        match self {
+            Str(x) => x.pretty(p),
+            ByteStr(x) => x.pretty(p),
+            Byte(x) => x.pretty(p),
+            Char(x) => x.pretty(p),
+            Int(x) => x.pretty(p),
+            Float(x) => x.pretty(p),
+            Bool(x) => x.pretty(p),
+            Verbatim(x) => x.pretty(p),
+        }
+    }
+}
+impl<F> Fold for Lit
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        use Lit::*;
+        match self {
+            Bool(x) => Bool(x.fold(f)),
+            Byte(x) => Byte(x.fold(f)),
+            ByteStr(x) => ByteStr(x.fold(f)),
+            Char(x) => Char(x.fold(f)),
+            Float(x) => Float(x.fold(f)),
+            Int(x) => Int(x.fold(f)),
+            Str(x) => Str(x.fold(f)),
+            Verbatim(x) => Verbatim(x),
         }
     }
 }
@@ -207,21 +260,6 @@ where
                 h.write_u8(7u8);
                 x.to_string().hash(h);
             },
-        }
-    }
-}
-impl Pretty for Lit {
-    fn pretty(&self, p: &mut Print) {
-        use Lit::*;
-        match self {
-            Str(x) => x.pretty(p),
-            ByteStr(x) => x.pretty(p),
-            Byte(x) => x.pretty(p),
-            Char(x) => x.pretty(p),
-            Int(x) => x.pretty(p),
-            Float(x) => x.pretty(p),
-            Bool(x) => x.pretty(p),
-            Verbatim(x) => x.pretty(p),
         }
     }
 }
@@ -335,17 +373,28 @@ impl PartialEq for Bool {
         self.val == x.val
     }
 }
+impl Pretty for Bool {
+    fn pretty(&self, p: &mut Print) {
+        p.word(if self.val { "true" } else { "false" });
+    }
+}
+impl<F> Fold for Bool
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Bool {
+            val: self.val,
+            span: self.span.fold(f),
+        }
+    }
+}
 impl<H> Hash for Bool
 where
     H: Hasher,
 {
     fn hash(&self, h: &mut H) {
         self.val.hash(h);
-    }
-}
-impl Pretty for Bool {
-    fn pretty(&self, p: &mut Print) {
-        p.word(if self.val { "true" } else { "false" });
     }
 }
 impl<V> Visit for Bool
@@ -446,10 +495,33 @@ impl Lower for Byte {
         self.repr.tok.lower(s);
     }
 }
-impl Eq for lit::Byte {}
+impl Debug for Byte {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Byte {
+            pub fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                f.debug_struct(name)
+                    .field("tok", &format_args!("{}", self.repr.tok))
+                    .finish()
+            }
+        }
+        self.debug(f, "lit::Byte")
+    }
+}
+impl Eq for Byte {}
 impl Pretty for Byte {
     fn pretty(&self, p: &mut Print) {
         p.word(self.token().to_string());
+    }
+}
+impl<F> Fold for Byte
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        let span = self.span().fold(f);
+        let mut y = self;
+        self.set_span(span);
+        y
     }
 }
 impl<V> Visit for Byte
@@ -458,18 +530,6 @@ where
 {
     fn visit(&self, v: &mut V) {}
     fn visit_mut(&mut self, v: &mut V) {}
-}
-impl Debug for Byte {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Byte {
-            pub fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                f.debug_struct(name)
-                    .field("token", &format_args!("{}", self.repr.tok))
-                    .finish()
-            }
-        }
-        self.debug(f, "LitByte")
-    }
 }
 
 pub struct ByteStr {
@@ -519,10 +579,33 @@ impl Lower for ByteStr {
         self.repr.tok.lower(s);
     }
 }
-impl Eq for lit::ByteStr {}
+impl Debug for ByteStr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl ByteStr {
+            pub fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                f.debug_struct(x)
+                    .field("tok", &format_args!("{}", self.repr.tok))
+                    .finish()
+            }
+        }
+        self.debug(f, "lit::ByteStr")
+    }
+}
+impl Eq for ByteStr {}
 impl Pretty for ByteStr {
     fn pretty(&self, p: &mut Print) {
         p.word(self.token().to_string());
+    }
+}
+impl<F> Fold for ByteStr
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        let span = self.span().fold(f);
+        let mut y = self;
+        self.set_span(span);
+        y
     }
 }
 impl<V> Visit for ByteStr
@@ -531,18 +614,6 @@ where
 {
     fn visit(&self, v: &mut V) {}
     fn visit_mut(&mut self, v: &mut V) {}
-}
-impl Debug for ByteStr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl ByteStr {
-            pub fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                f.debug_struct(name)
-                    .field("token", &format_args!("{}", self.repr.tok))
-                    .finish()
-            }
-        }
-        self.debug(f, "lit::ByteStr")
-    }
 }
 
 pub struct Char {
@@ -592,10 +663,33 @@ impl Lower for Char {
         self.repr.tok.lower(s);
     }
 }
-impl Eq for lit::Char {}
+impl Debug for Char {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Char {
+            pub fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                f.debug_struct(x)
+                    .field("tok", &format_args!("{}", self.repr.tok))
+                    .finish()
+            }
+        }
+        self.debug(f, "lit::Char")
+    }
+}
+impl Eq for Char {}
 impl Pretty for Char {
     fn pretty(&self, p: &mut Print) {
         p.word(self.token().to_string());
+    }
+}
+impl<F> Fold for Char
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        let span = self.span().fold(f);
+        let mut y = self;
+        self.set_span(span);
+        y
     }
 }
 impl<V> Visit for Char
@@ -604,18 +698,6 @@ where
 {
     fn visit(&self, v: &mut V) {}
     fn visit_mut(&mut self, v: &mut V) {}
-}
-impl Debug for Char {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Char {
-            pub fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                f.debug_struct(name)
-                    .field("token", &format_args!("{}", self.repr.tok))
-                    .finish()
-            }
-        }
-        self.debug(f, "lit::Char")
-    }
 }
 
 pub struct Float {
@@ -683,25 +765,12 @@ impl Lower for Float {
         self.repr.tok.lower(s);
     }
 }
-impl Eq for lit::Float {}
-impl Pretty for Float {
-    fn pretty(&self, p: &mut Print) {
-        p.word(self.token().to_string());
-    }
-}
-impl<V> Visit for Float
-where
-    V: Visitor + ?Sized,
-{
-    fn visit(&self, v: &mut V) {}
-    fn visit_mut(&mut self, v: &mut V) {}
-}
 impl Debug for Float {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         impl Float {
             pub fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                f.debug_struct(name)
-                    .field("token", &format_args!("{}", self.repr.tok))
+                f.debug_struct(x)
+                    .field("tok", &format_args!("{}", self.repr.tok))
                     .finish()
             }
         }
@@ -712,6 +781,30 @@ impl Display for Float {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.repr.tok.fmt(f)
     }
+}
+impl Eq for Float {}
+impl Pretty for Float {
+    fn pretty(&self, p: &mut Print) {
+        p.word(self.token().to_string());
+    }
+}
+impl<F> Fold for Float
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        let span = self.span().fold(f);
+        let mut y = self;
+        self.set_span(span);
+        y
+    }
+}
+impl<V> Visit for Float
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {}
+    fn visit_mut(&mut self, v: &mut V) {}
 }
 
 pub struct Int {
@@ -779,25 +872,12 @@ impl Lower for Int {
         self.repr.tok.lower(s);
     }
 }
-impl Eq for lit::Int {}
-impl Pretty for Int {
-    fn pretty(&self, p: &mut Print) {
-        p.word(self.token().to_string());
-    }
-}
-impl<V> Visit for Int
-where
-    V: Visitor + ?Sized,
-{
-    fn visit(&self, v: &mut V) {}
-    fn visit_mut(&mut self, v: &mut V) {}
-}
 impl Debug for Int {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         impl Int {
             pub fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                f.debug_struct(name)
-                    .field("token", &format_args!("{}", self.repr.tok))
+                f.debug_struct(x)
+                    .field("tok", &format_args!("{}", self.repr.tok))
                     .finish()
             }
         }
@@ -808,6 +888,30 @@ impl Display for Int {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.repr.tok.fmt(f)
     }
+}
+impl Eq for Int {}
+impl Pretty for Int {
+    fn pretty(&self, p: &mut Print) {
+        p.word(self.token().to_string());
+    }
+}
+impl<F> Fold for Int
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        let span = self.span().fold(f);
+        let mut y = self;
+        self.set_span(span);
+        y
+    }
+}
+impl<V> Visit for Int
+where
+    V: Visitor + ?Sized,
+{
+    fn visit(&self, v: &mut V) {}
+    fn visit_mut(&mut self, v: &mut V) {}
 }
 
 pub struct Str {
@@ -880,10 +984,33 @@ impl Lower for Str {
         self.repr.tok.lower(s);
     }
 }
-impl Eq for lit::Str {}
+impl Debug for Str {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Str {
+            pub fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                f.debug_struct(x)
+                    .field("tok", &format_args!("{}", self.repr.tok))
+                    .finish()
+            }
+        }
+        self.debug(f, "lit::Str")
+    }
+}
+impl Eq for Str {}
 impl Pretty for Str {
     fn pretty(&self, p: &mut Print) {
         p.word(self.token().to_string());
+    }
+}
+impl<F> Fold for Str
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        let span = self.span().fold(f);
+        let mut y = self;
+        self.set_span(span);
+        y
     }
 }
 impl<V> Visit for Str
@@ -892,18 +1019,6 @@ where
 {
     fn visit(&self, v: &mut V) {}
     fn visit_mut(&mut self, v: &mut V) {}
-}
-impl Debug for Str {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Str {
-            pub fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                f.debug_struct(name)
-                    .field("token", &format_args!("{}", self.repr.tok))
-                    .finish()
-            }
-        }
-        self.debug(f, "lit::Str")
-    }
 }
 
 struct Repr {

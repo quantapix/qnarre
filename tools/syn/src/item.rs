@@ -3911,6 +3911,27 @@ impl PartialEq for StaticMut {
         }
     }
 }
+impl Pretty for StaticMut {
+    fn pretty(&self, p: &mut Print) {
+        use StaticMut::*;
+        match self {
+            Mut(_) => p.word("mut "),
+            None => {},
+        }
+    }
+}
+impl<F> Fold for StaticMut
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        use StaticMut::*;
+        match self {
+            Mut(x) => Mut(x),
+            None => None,
+        }
+    }
+}
 impl<H> Hash for StaticMut
 where
     H: Hasher,
@@ -3924,15 +3945,6 @@ where
             None => {
                 h.write_u8(1u8);
             },
-        }
-    }
-}
-impl Pretty for StaticMut {
-    fn pretty(&self, p: &mut Print) {
-        use StaticMut::*;
-        match self {
-            Mut(_) => p.word("mut "),
-            None => {},
         }
     }
 }
