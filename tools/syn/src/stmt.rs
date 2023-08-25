@@ -39,6 +39,27 @@ impl Clone for Stmt {
         }
     }
 }
+impl Debug for Stmt {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("stmt::Stmt::")?;
+        use Stmt::*;
+        match self {
+            Local(x) => x.debug(f, "Local"),
+            Item(x) => {
+                let mut f = f.debug_tuple("Item");
+                f.field(x);
+                f.finish()
+            },
+            Expr(x, v1) => {
+                let mut f = f.debug_tuple("Expr");
+                f.field(x);
+                f.field(v1);
+                f.finish()
+            },
+            Mac(x) => x.debug(f, "Mac"),
+        }
+    }
+}
 impl Eq for Stmt {}
 impl PartialEq for Stmt {
     fn eq(&self, x: &Self) -> bool {
@@ -49,33 +70,6 @@ impl PartialEq for Stmt {
             (Local(x), Local(y)) => x == y,
             (Mac(x), Mac(y)) => x == y,
             _ => false,
-        }
-    }
-}
-impl<H> Hash for Stmt
-where
-    H: Hasher,
-{
-    fn hash(&self, h: &mut H) {
-        use Stmt::*;
-        match self {
-            Local(x) => {
-                h.write_u8(0u8);
-                x.hash(h);
-            },
-            Item(x) => {
-                h.write_u8(1u8);
-                x.hash(h);
-            },
-            Expr(x, v1) => {
-                h.write_u8(2u8);
-                x.hash(h);
-                v1.hash(h);
-            },
-            Mac(x) => {
-                h.write_u8(3u8);
-                x.hash(h);
-            },
         }
     }
 }
@@ -145,6 +139,47 @@ impl Pretty for Stmt {
                 let semi = true;
                 &x.mac.pretty_with_args(p, (None, semi));
                 p.hardbreak();
+            },
+        }
+    }
+}
+impl<F> Fold for Stmt
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        use Stmt::*;
+        match self {
+            Expr(x, y) => Expr(x.fold(f), y),
+            Item(x) => Item(x.fold(f)),
+            Local(x) => Local(x.fold(f)),
+            Mac(x) => Mac(x.fold(f)),
+        }
+    }
+}
+impl<H> Hash for Stmt
+where
+    H: Hasher,
+{
+    fn hash(&self, h: &mut H) {
+        use Stmt::*;
+        match self {
+            Local(x) => {
+                h.write_u8(0u8);
+                x.hash(h);
+            },
+            Item(x) => {
+                h.write_u8(1u8);
+                x.hash(h);
+            },
+            Expr(x, v1) => {
+                h.write_u8(2u8);
+                x.hash(h);
+                v1.hash(h);
+            },
+            Mac(x) => {
+                h.write_u8(3u8);
+                x.hash(h);
             },
         }
     }
@@ -226,10 +261,40 @@ impl Clone for Local {
         }
     }
 }
+impl Debug for Local {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Local {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("let_", &self.let_);
+                f.field("pat", &self.pat);
+                f.field("init", &self.init);
+                f.field("semi", &self.semi);
+                f.finish()
+            }
+        }
+        self.debug(f, "stmt::Local")
+    }
+}
 impl Eq for Local {}
 impl PartialEq for Local {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.pat == x.pat && self.init == x.init
+    }
+}
+impl<F> Fold for Local
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Local {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            let_: self.let_,
+            pat: self.pat.fold(f),
+            init: (self.init).map(|x| x.fold(f)),
+            semi: self.semi,
+        }
     }
 }
 impl<H> Hash for Local
@@ -287,10 +352,36 @@ impl Clone for Mac {
         }
     }
 }
+impl Debug for Mac {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl Mac {
+            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
+                let mut f = f.debug_struct(x);
+                f.field("attrs", &self.attrs);
+                f.field("mac", &self.mac);
+                f.field("semi", &self.semi);
+                f.finish()
+            }
+        }
+        self.debug(f, "stmt::Mac")
+    }
+}
 impl Eq for Mac {}
 impl PartialEq for Mac {
     fn eq(&self, x: &Self) -> bool {
         self.attrs == x.attrs && self.mac == x.mac && self.semi == x.semi
+    }
+}
+impl<F> Fold for Mac
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Mac {
+            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
+            mac: self.mac.fold(f),
+            semi: self.semi,
+        }
     }
 }
 impl<H> Hash for Mac
@@ -376,10 +467,29 @@ impl Clone for Block {
         }
     }
 }
+impl Debug for Block {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut f = f.debug_struct("Block");
+        f.field("brace", &self.brace);
+        f.field("stmts", &self.stmts);
+        f.finish()
+    }
+}
 impl Eq for Block {}
 impl PartialEq for Block {
     fn eq(&self, x: &Self) -> bool {
         self.stmts == x.stmts
+    }
+}
+impl<F> Fold for Block
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Block {
+            brace: self.brace,
+            stmts: FoldHelper::lift(self.stmts, |x| x.fold(f)),
+        }
     }
 }
 impl<H> Hash for Block
@@ -420,10 +530,31 @@ impl Clone for Init {
         }
     }
 }
+impl Debug for Init {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut f = f.debug_struct("stmt::Init");
+        f.field("eq", &self.eq);
+        f.field("expr", &self.expr);
+        f.field("diverge", &self.diverge);
+        f.finish()
+    }
+}
 impl Eq for Init {}
 impl PartialEq for Init {
     fn eq(&self, x: &Self) -> bool {
         self.expr == x.expr && self.diverge == x.diverge
+    }
+}
+impl<F> Fold for Init
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        Init {
+            eq: self.eq,
+            expr: Box::new(*self.expr.fold(f)),
+            diverge: (self.diverge).map(|x| ((x).0, Box::new(*(x).1.fold(f)))),
+        }
     }
 }
 impl<H> Hash for Init

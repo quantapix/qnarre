@@ -100,17 +100,6 @@ where
         }
     }
 }
-impl<F> Fold for Block
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        Block {
-            brace: self.brace,
-            stmts: FoldHelper::lift(self.stmts, |x| x.fold(f)),
-        }
-    }
-}
 impl<F> Fold for Bgen::bound::Lifes
 where
     F: Folder + ?Sized,
@@ -418,32 +407,6 @@ where
         y
     }
 }
-impl<F> Fold for stmt::Local
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        stmt::Local {
-            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
-            let_: self.let_,
-            pat: self.pat.fold(f),
-            init: (self.init).map(|x| x.fold(f)),
-            semi: self.semi,
-        }
-    }
-}
-impl<F> Fold for stmt::Init
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        stmt::Init {
-            eq: self.eq,
-            expr: Box::new(*self.expr.fold(f)),
-            diverge: (self.diverge).map(|x| ((x).0, Box::new(*(x).1.fold(f)))),
-        }
-    }
-}
 impl<F> Fold for Macro
 where
     F: Folder + ?Sized,
@@ -454,18 +417,6 @@ where
             bang: self.bang,
             delim: self.delim.fold(f),
             toks: self.toks,
-        }
-    }
-}
-impl<F> Fold for tok::Delim
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        match self {
-            tok::Delim::Parenth(x) => tok::Delim::Parenth(x),
-            tok::Delim::Brace(x) => tok::Delim::Brace(x),
-            tok::Delim::Bracket(x) => tok::Delim::Bracket(x),
         }
     }
 }
@@ -747,31 +698,6 @@ where
         match self {
             StaticMut::Mut(x) => StaticMut::Mut(x),
             StaticMut::None => StaticMut::None,
-        }
-    }
-}
-impl<F> Fold for stmt::Stmt
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        match self {
-            stmt::Stmt::stmt::Local(x) => stmt::Stmt::stmt::Local(x.fold(f)),
-            stmt::Stmt::Item(x) => stmt::Stmt::Item(x.fold(f)),
-            stmt::Stmt::Expr(x, y) => stmt::Stmt::Expr(x.fold(f), y),
-            stmt::Stmt::Mac(x) => stmt::Stmt::Mac(x.fold(f)),
-        }
-    }
-}
-impl<F> Fold for stmt::Mac
-where
-    F: Folder + ?Sized,
-{
-    fn fold(&self, f: &mut F) {
-        stmt::Mac {
-            attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
-            mac: self.mac.fold(f),
-            semi: self.semi,
         }
     }
 }

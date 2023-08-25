@@ -202,6 +202,19 @@ where
         }
     }
 }
+impl<T: Debug, P: Debug> Debug for Puncted<T, P> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut list = f.debug_list();
+        for (t, p) in &self.inner {
+            list.entry(t);
+            list.entry(p);
+        }
+        if let Some(last) = &self.last {
+            list.entry(last);
+        }
+        list.finish()
+    }
+}
 impl<T, P> Eq for Puncted<T, P>
 where
     T: Eq,
@@ -227,19 +240,6 @@ where
         let Puncted { inner, last } = self;
         inner.hash(state);
         last.hash(state);
-    }
-}
-impl<T: Debug, P: Debug> Debug for Puncted<T, P> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut list = f.debug_list();
-        for (t, p) in &self.inner {
-            list.entry(t);
-            list.entry(p);
-        }
-        if let Some(last) = &self.last {
-            list.entry(last);
-        }
-        list.finish()
     }
 }
 impl<T, P> FromIterator<T> for Puncted<T, P>

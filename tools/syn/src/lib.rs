@@ -45,7 +45,7 @@ use parse::{Parse, Parser, Stream};
 use path::Path;
 use pm2::{Ident, Punct};
 use pretty::{Pretty, Print};
-use punct::Puncted;
+use punct::{Pair, Puncted};
 use tok::Tok;
 
 mod look {

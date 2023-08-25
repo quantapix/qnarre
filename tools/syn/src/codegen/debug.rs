@@ -35,14 +35,6 @@ impl Debug for AssocType {
         f.finish()
     }
 }
-impl Debug for stmt::Block {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("Block");
-        f.field("brace", &self.brace);
-        f.field("stmts", &self.stmts);
-        f.finish()
-    }
-}
 impl Debug for gen::bound::Lifes {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut f = f.debug_struct("Bgen::bound::Lifes");
@@ -223,31 +215,6 @@ impl Debug for Lit {
         }
     }
 }
-impl Debug for stmt::Local {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl stmt::Local {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("let_", &self.let_);
-                f.field("pat", &self.pat);
-                f.field("init", &self.init);
-                f.field("semi", &self.semi);
-                f.finish()
-            }
-        }
-        self.debug(f, "stmt::Local")
-    }
-}
-impl Debug for stmt::Init {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("stmt::Init");
-        f.field("eq", &self.eq);
-        f.field("expr", &self.expr);
-        f.field("diverge", &self.diverge);
-        f.finish()
-    }
-}
 impl Debug for Macro {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut f = f.debug_struct("Macro");
@@ -256,28 +223,6 @@ impl Debug for Macro {
         f.field("delimiter", &self.delim);
         f.field("tokens", &self.toks);
         f.finish()
-    }
-}
-impl Debug for tok::Delim {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("MacroDelimiter::")?;
-        match self {
-            tok::Delim::Parenth(x) => {
-                let mut f = f.debug_tuple("Parenth");
-                f.field(x);
-                f.finish()
-            },
-            tok::Delim::Brace(x) => {
-                let mut f = f.debug_tuple("Brace");
-                f.field(x);
-                f.finish()
-            },
-            tok::Delim::Bracket(x) => {
-                let mut f = f.debug_tuple("Bracket");
-                f.field(x);
-                f.finish()
-            },
-        }
     }
 }
 impl Debug for Member {
@@ -560,40 +505,6 @@ impl Debug for QSelf {
         f.field("as_", &self.as_);
         f.field("gt", &self.gt_);
         f.finish()
-    }
-}
-impl Debug for stmt::Stmt {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("stmt::Stmt::")?;
-        match self {
-            stmt::Stmt::stmt::Local(x) => x.debug(f, "stmt::Local"),
-            stmt::Stmt::Item(x) => {
-                let mut f = f.debug_tuple("Item");
-                f.field(x);
-                f.finish()
-            },
-            stmt::Stmt::Expr(x, v1) => {
-                let mut f = f.debug_tuple("Expr");
-                f.field(x);
-                f.field(v1);
-                f.finish()
-            },
-            stmt::Stmt::Mac(x) => x.debug(f, "Macro"),
-        }
-    }
-}
-impl Debug for stmt::Mac {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl stmt::Mac {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("mac", &self.mac);
-                f.field("semi", &self.semi);
-                f.finish()
-            }
-        }
-        self.debug(f, "stmt::Mac")
     }
 }
 impl Debug for gen::bound::Trait {

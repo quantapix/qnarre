@@ -112,7 +112,7 @@ macro_rules! def_keywords {
                     f.write_str(stringify!($n))
                 }
             }
-            impl cmp::Eq for $n {}
+            impl std::cmp::Eq for $n {}
             impl PartialEq for $n {
                 fn eq(&self, _: &$n) -> bool {
                     true
@@ -246,7 +246,7 @@ macro_rules! def_punct_structs {
                     f.write_str(stringify!($n))
                 }
             }
-            impl cmp::Eq for $n {}
+            impl std::cmp::Eq for $n {}
             impl PartialEq for $n {
                 fn eq(&self, _: &$n) -> bool {
                     true
@@ -437,7 +437,7 @@ macro_rules! def_delims {
                     f.write_str(stringify!($n))
                 }
             }
-            impl cmp::Eq for $n {}
+            impl std::cmp::Eq for $n {}
             impl PartialEq for $n {
                 fn eq(&self, _: &$n) -> bool {
                     true
@@ -538,7 +538,30 @@ impl Clone for Delim {
         }
     }
 }
-impl Eq for Delim {}
+impl Debug for tok::Delim {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("Delim::")?;
+        use Delim::*;
+        match self {
+            Brace(x) => {
+                let mut f = f.debug_tuple("Brace");
+                f.field(x);
+                f.finish()
+            },
+            Bracket(x) => {
+                let mut f = f.debug_tuple("Bracket");
+                f.field(x);
+                f.finish()
+            },
+            Parenth(x) => {
+                let mut f = f.debug_tuple("Parenth");
+                f.field(x);
+                f.finish()
+            },
+        }
+    }
+}
+impl std::cmp::Eq for Delim {}
 impl PartialEq for Delim {
     fn eq(&self, x: &Self) -> bool {
         use Delim::*;
@@ -547,6 +570,19 @@ impl PartialEq for Delim {
             (Bracket(_), Bracket(_)) => true,
             (Parenth(_), Parenth(_)) => true,
             _ => false,
+        }
+    }
+}
+impl<F> Fold for tok::Delim
+where
+    F: Folder + ?Sized,
+{
+    fn fold(&self, f: &mut F) {
+        use Delim::*;
+        match self {
+            Brace(x) => Brace(x),
+            Bracket(x) => Bracket(x),
+            Parenth(x) => Parenth(x),
         }
     }
 }
@@ -622,7 +658,7 @@ impl Debug for Group {
         f.write_str("Group")
     }
 }
-impl cmp::Eq for Group {}
+impl std::cmp::Eq for Group {}
 impl PartialEq for Group {
     fn eq(&self, _: &Group) -> bool {
         true
