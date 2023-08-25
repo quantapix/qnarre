@@ -4007,10 +4007,7 @@ pub mod foreign {
             }
         }
     }
-    impl<F> Fold for Item
-    where
-        F: Folder + ?Sized,
-    {
+    impl<F: Folder + ?Sized> Fold for Item {
         fn fold(&self, f: &mut F) {
             use self::Item::*;
             match self {
@@ -4022,10 +4019,7 @@ pub mod foreign {
             }
         }
     }
-    impl<H> Hash for Item
-    where
-        H: Hasher,
-    {
+    impl<H: Hasher> Hash for Item {
         fn hash(&self, h: &mut H) {
             use self::Item::*;
             match self {
@@ -4052,10 +4046,7 @@ pub mod foreign {
             }
         }
     }
-    impl<V> Visit for Item
-    where
-        V: Visitor + ?Sized,
-    {
+    impl<V: Visitor + ?Sized> Visit for Item {
         fn visit(&self, v: &mut V) {
             use self::Item::*;
             match self {
@@ -4159,10 +4150,7 @@ pub mod foreign {
             p.hardbreak();
         }
     }
-    impl<F> Fold for Fn
-    where
-        F: Folder + ?Sized,
-    {
+    impl<F: Folder + ?Sized> Fold for Fn {
         fn fold(&self, f: &mut F) {
             Fn {
                 attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
@@ -4172,20 +4160,14 @@ pub mod foreign {
             }
         }
     }
-    impl<H> Hash for Fn
-    where
-        H: Hasher,
-    {
+    impl<H: Hasher> Hash for Fn {
         fn hash(&self, h: &mut H) {
             self.attrs.hash(h);
             self.vis.hash(h);
             self.sig.hash(h);
         }
     }
-    impl<V> Visit for Fn
-    where
-        V: Visitor + ?Sized,
-    {
+    impl<V: Visitor + ?Sized> Visit for Fn {
         fn visit(&self, v: &mut V) {
             for x in &self.attrs {
                 x.visit(v);
@@ -4259,10 +4241,7 @@ pub mod foreign {
             p.hardbreak();
         }
     }
-    impl<F> Fold for Mac
-    where
-        F: Folder + ?Sized,
-    {
+    impl<F: Folder + ?Sized> Fold for Mac {
         fn fold(&self, f: &mut F) {
             Mac {
                 attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
@@ -4271,20 +4250,14 @@ pub mod foreign {
             }
         }
     }
-    impl<H> Hash for Mac
-    where
-        H: Hasher,
-    {
+    impl<H: Hasher> Hash for Mac {
         fn hash(&self, h: &mut H) {
             self.attrs.hash(h);
             self.mac.hash(h);
             self.semi.hash(h);
         }
     }
-    impl<V> Visit for Mac
-    where
-        V: Visitor + ?Sized,
-    {
+    impl<V: Visitor + ?Sized> Visit for Mac {
         fn visit(&self, v: &mut V) {
             for x in &self.attrs {
                 x.visit(v);
@@ -4393,10 +4366,7 @@ pub mod foreign {
             p.hardbreak();
         }
     }
-    impl<F> Fold for Static
-    where
-        F: Folder + ?Sized,
-    {
+    impl<F: Folder + ?Sized> Fold for Static {
         fn fold(&self, f: &mut F) {
             Static {
                 attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
@@ -4410,10 +4380,7 @@ pub mod foreign {
             }
         }
     }
-    impl<H> Hash for Static
-    where
-        H: Hasher,
-    {
+    impl<H: Hasher> Hash for Static {
         fn hash(&self, h: &mut H) {
             self.attrs.hash(h);
             self.vis.hash(h);
@@ -4422,10 +4389,7 @@ pub mod foreign {
             self.typ.hash(h);
         }
     }
-    impl<V> Visit for Static
-    where
-        V: Visitor + ?Sized,
-    {
+    impl<V: Visitor + ?Sized> Visit for Static {
         fn visit(&self, v: &mut V) {
             for x in &self.attrs {
                 x.visit(v);
@@ -4529,10 +4493,7 @@ pub mod foreign {
             p.hardbreak();
         }
     }
-    impl<F> Fold for Type
-    where
-        F: Folder + ?Sized,
-    {
+    impl<F: Folder + ?Sized> Fold for Type {
         fn fold(&self, f: &mut F) {
             Type {
                 attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
@@ -4544,10 +4505,7 @@ pub mod foreign {
             }
         }
     }
-    impl<H> Hash for Type
-    where
-        H: Hasher,
-    {
+    impl<H: Hasher> Hash for Type {
         fn hash(&self, h: &mut H) {
             self.attrs.hash(h);
             self.vis.hash(h);
@@ -4555,10 +4513,7 @@ pub mod foreign {
             self.gens.hash(h);
         }
     }
-    impl<V> Visit for Type
-    where
-        V: Visitor + ?Sized,
-    {
+    impl<V: Visitor + ?Sized> Visit for Type {
         fn visit(&self, v: &mut V) {
             for x in &self.attrs {
                 x.visit(v);
@@ -4786,10 +4741,7 @@ pub mod impl_ {
             }
         }
     }
-    impl<F> Fold for Item
-    where
-        F: Folder + ?Sized,
-    {
+    impl<F: Folder + ?Sized> Fold for Item {
         fn fold(&self, f: &mut F) {
             use self::Item::*;
             match self {
@@ -4801,10 +4753,7 @@ pub mod impl_ {
             }
         }
     }
-    impl<H> Hash for Item
-    where
-        H: Hasher,
-    {
+    impl<H: Hasher> Hash for Item {
         fn hash(&self, h: &mut H) {
             use self::Item::*;
             match self {
@@ -4831,10 +4780,7 @@ pub mod impl_ {
             }
         }
     }
-    impl<V> Visit for Item
-    where
-        V: Visitor + ?Sized,
-    {
+    impl<V: Visitor + ?Sized> Visit for Item {
         fn visit(&self, v: &mut V) {
             use self::Item::*;
             match self {
@@ -4996,10 +4942,7 @@ pub mod impl_ {
             p.hardbreak();
         }
     }
-    impl<F> Fold for Const
-    where
-        F: Folder + ?Sized,
-    {
+    impl<F: Folder + ?Sized> Fold for Const {
         fn fold(&self, f: &mut F) {
             Const {
                 attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
@@ -5016,10 +4959,7 @@ pub mod impl_ {
             }
         }
     }
-    impl<H> Hash for Const
-    where
-        H: Hasher,
-    {
+    impl<H: Hasher> Hash for Const {
         fn hash(&self, h: &mut H) {
             self.attrs.hash(h);
             self.vis.hash(h);
@@ -5030,10 +4970,7 @@ pub mod impl_ {
             self.expr.hash(h);
         }
     }
-    impl<V> Visit for Const
-    where
-        V: Visitor + ?Sized,
-    {
+    impl<V: Visitor + ?Sized> Visit for Const {
         fn visit(&self, v: &mut V) {
             for x in &self.attrs {
                 x.visit(v);
@@ -5140,10 +5077,7 @@ pub mod impl_ {
             p.hardbreak();
         }
     }
-    impl<F> Fold for Fn
-    where
-        F: Folder + ?Sized,
-    {
+    impl<F: Folder + ?Sized> Fold for Fn {
         fn fold(&self, f: &mut F) {
             Fn {
                 attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
@@ -5154,10 +5088,7 @@ pub mod impl_ {
             }
         }
     }
-    impl<H> Hash for Fn
-    where
-        H: Hasher,
-    {
+    impl<H: Hasher> Hash for Fn {
         fn hash(&self, h: &mut H) {
             self.attrs.hash(h);
             self.vis.hash(h);
@@ -5166,10 +5097,7 @@ pub mod impl_ {
             self.block.hash(h);
         }
     }
-    impl<V> Visit for Fn
-    where
-        V: Visitor + ?Sized,
-    {
+    impl<V: Visitor + ?Sized> Visit for Fn {
         fn visit(&self, v: &mut V) {
             for x in &self.attrs {
                 x.visit(v);
@@ -5245,10 +5173,7 @@ pub mod impl_ {
             p.hardbreak();
         }
     }
-    impl<F> Fold for Mac
-    where
-        F: Folder + ?Sized,
-    {
+    impl<F: Folder + ?Sized> Fold for Mac {
         fn fold(&self, f: &mut F) {
             Mac {
                 attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
@@ -5257,20 +5182,14 @@ pub mod impl_ {
             }
         }
     }
-    impl<H> Hash for Mac
-    where
-        H: Hasher,
-    {
+    impl<H: Hasher> Hash for Mac {
         fn hash(&self, h: &mut H) {
             self.attrs.hash(h);
             self.mac.hash(h);
             self.semi.hash(h);
         }
     }
-    impl<V> Visit for Mac
-    where
-        V: Visitor + ?Sized,
-    {
+    impl<V: Visitor + ?Sized> Visit for Mac {
         fn visit(&self, v: &mut V) {
             for x in &self.attrs {
                 x.visit(v);
@@ -5402,10 +5321,7 @@ pub mod impl_ {
             p.hardbreak();
         }
     }
-    impl<F> Fold for Type
-    where
-        F: Folder + ?Sized,
-    {
+    impl<F: Folder + ?Sized> Fold for Type {
         fn fold(&self, f: &mut F) {
             Type {
                 attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
@@ -5420,10 +5336,7 @@ pub mod impl_ {
             }
         }
     }
-    impl<H> Hash for Type
-    where
-        H: Hasher,
-    {
+    impl<H: Hasher> Hash for Type {
         fn hash(&self, h: &mut H) {
             self.attrs.hash(h);
             self.vis.hash(h);
@@ -5433,10 +5346,7 @@ pub mod impl_ {
             self.typ.hash(h);
         }
     }
-    impl<V> Visit for Type
-    where
-        V: Visitor + ?Sized,
-    {
+    impl<V: Visitor + ?Sized> Visit for Type {
         fn visit(&self, v: &mut V) {
             for x in &self.attrs {
                 x.visit(v);
@@ -5541,26 +5451,17 @@ pub mod impl_ {
             match *self {}
         }
     }
-    impl<F> Fold for Restriction
-    where
-        F: Folder + ?Sized,
-    {
+    impl<F: Folder + ?Sized> Fold for Restriction {
         fn fold(&self, f: &mut F) {
             match *self {}
         }
     }
-    impl<H> Hash for Restriction
-    where
-        H: Hasher,
-    {
+    impl<H: Hasher> Hash for Restriction {
         fn hash(&self, _h: &mut H) {
             match *self {}
         }
     }
-    impl<V> Visit for Restriction
-    where
-        V: Visitor + ?Sized,
-    {
+    impl<V: Visitor + ?Sized> Visit for Restriction {
         fn visit(&self, v: &mut V) {
             match *self {}
         }
@@ -5689,10 +5590,7 @@ pub mod trait_ {
             }
         }
     }
-    impl<F> Fold for Item
-    where
-        F: Folder + ?Sized,
-    {
+    impl<F: Folder + ?Sized> Fold for Item {
         fn fold(&self, f: &mut F) {
             use self::Item::*;
             match self {
@@ -5704,10 +5602,7 @@ pub mod trait_ {
             }
         }
     }
-    impl<H> Hash for Item
-    where
-        H: Hasher,
-    {
+    impl<H: Hasher> Hash for Item {
         fn hash(&self, h: &mut H) {
             use self::Item::*;
             match self {
@@ -5734,10 +5629,7 @@ pub mod trait_ {
             }
         }
     }
-    impl<V> Visit for Item
-    where
-        V: Visitor + ?Sized,
-    {
+    impl<V: Visitor + ?Sized> Visit for Item {
         fn visit(&self, v: &mut V) {
             use self::Item::*;
             match self {
@@ -5891,10 +5783,7 @@ pub mod trait_ {
             p.hardbreak();
         }
     }
-    impl<F> Fold for Const
-    where
-        F: Folder + ?Sized,
-    {
+    impl<F: Folder + ?Sized> Fold for Const {
         fn fold(&self, f: &mut F) {
             Const {
                 attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
@@ -5908,10 +5797,7 @@ pub mod trait_ {
             }
         }
     }
-    impl<H> Hash for Const
-    where
-        H: Hasher,
-    {
+    impl<H: Hasher> Hash for Const {
         fn hash(&self, h: &mut H) {
             self.attrs.hash(h);
             self.ident.hash(h);
@@ -5920,10 +5806,7 @@ pub mod trait_ {
             self.default.hash(h);
         }
     }
-    impl<V> Visit for Const
-    where
-        V: Visitor + ?Sized,
-    {
+    impl<V: Visitor + ?Sized> Visit for Const {
         fn visit(&self, v: &mut V) {
             for x in &self.attrs {
                 x.visit(v);
@@ -6050,10 +5933,7 @@ pub mod trait_ {
             p.hardbreak();
         }
     }
-    impl<F> Fold for Fn
-    where
-        F: Folder + ?Sized,
-    {
+    impl<F: Folder + ?Sized> Fold for Fn {
         fn fold(&self, f: &mut F) {
             Fn {
                 attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
@@ -6063,10 +5943,7 @@ pub mod trait_ {
             }
         }
     }
-    impl<H> Hash for Fn
-    where
-        H: Hasher,
-    {
+    impl<H: Hasher> Hash for Fn {
         fn hash(&self, h: &mut H) {
             self.attrs.hash(h);
             self.sig.hash(h);
@@ -6074,10 +5951,7 @@ pub mod trait_ {
             self.semi.hash(h);
         }
     }
-    impl<V> Visit for Fn
-    where
-        V: Visitor + ?Sized,
-    {
+    impl<V: Visitor + ?Sized> Visit for Fn {
         fn visit(&self, v: &mut V) {
             for x in &self.attrs {
                 x.visit(v);
@@ -6155,10 +6029,7 @@ pub mod trait_ {
             p.hardbreak();
         }
     }
-    impl<F> Fold for Mac
-    where
-        F: Folder + ?Sized,
-    {
+    impl<F: Folder + ?Sized> Fold for Mac {
         fn fold(&self, f: &mut F) {
             Mac {
                 attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
@@ -6167,20 +6038,14 @@ pub mod trait_ {
             }
         }
     }
-    impl<H> Hash for Mac
-    where
-        H: Hasher,
-    {
+    impl<H: Hasher> Hash for Mac {
         fn hash(&self, h: &mut H) {
             self.attrs.hash(h);
             self.mac.hash(h);
             self.semi.hash(h);
         }
     }
-    impl<V> Visit for Mac
-    where
-        V: Visitor + ?Sized,
-    {
+    impl<V: Visitor + ?Sized> Visit for Mac {
         fn visit(&self, v: &mut V) {
             for x in &self.attrs {
                 x.visit(v);
@@ -6317,10 +6182,7 @@ pub mod trait_ {
             p.hardbreak();
         }
     }
-    impl<F> Fold for Type
-    where
-        F: Folder + ?Sized,
-    {
+    impl<F: Folder + ?Sized> Fold for Type {
         fn fold(&self, f: &mut F) {
             Type {
                 attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
@@ -6334,10 +6196,7 @@ pub mod trait_ {
             }
         }
     }
-    impl<H> Hash for Type
-    where
-        H: Hasher,
-    {
+    impl<H: Hasher> Hash for Type {
         fn hash(&self, h: &mut H) {
             self.attrs.hash(h);
             self.ident.hash(h);
@@ -6347,10 +6206,7 @@ pub mod trait_ {
             self.default.hash(h);
         }
     }
-    impl<V> Visit for Type
-    where
-        V: Visitor + ?Sized,
-    {
+    impl<V: Visitor + ?Sized> Visit for Type {
         fn visit(&self, v: &mut V) {
             for x in &self.attrs {
                 x.visit(v);
@@ -6545,10 +6401,7 @@ pub mod use_ {
             }
         }
     }
-    impl<F> Fold for Tree
-    where
-        F: Folder + ?Sized,
-    {
+    impl<F: Folder + ?Sized> Fold for Tree {
         fn fold(&self, f: &mut F) {
             use Tree::*;
             match self {
@@ -6560,10 +6413,7 @@ pub mod use_ {
             }
         }
     }
-    impl<H> Hash for Tree
-    where
-        H: Hasher,
-    {
+    impl<H: Hasher> Hash for Tree {
         fn hash(&self, h: &mut H) {
             use Tree::*;
             match self {
@@ -6590,10 +6440,7 @@ pub mod use_ {
             }
         }
     }
-    impl<V> Visit for Tree
-    where
-        V: Visitor + ?Sized,
-    {
+    impl<V: Visitor + ?Sized> Visit for Tree {
         fn visit(&self, v: &mut V) {
             use Tree::*;
             match self {
@@ -6735,24 +6582,15 @@ pub mod use_ {
             p.word("*");
         }
     }
-    impl<F> Fold for Glob
-    where
-        F: Folder + ?Sized,
-    {
+    impl<F: Folder + ?Sized> Fold for Glob {
         fn fold(&self, f: &mut F) {
             Glob { star: self.star }
         }
     }
-    impl<H> Hash for Glob
-    where
-        H: Hasher,
-    {
+    impl<H: Hasher> Hash for Glob {
         fn hash(&self, h: &mut H) {}
     }
-    impl<V> Visit for Glob
-    where
-        V: Visitor + ?Sized,
-    {
+    impl<V: Visitor + ?Sized> Visit for Glob {
         fn visit(&self, v: &mut V) {}
         fn visit_mut(&mut self, v: &mut V) {}
     }
@@ -6824,10 +6662,7 @@ pub mod use_ {
             }
         }
     }
-    impl<F> Fold for Group
-    where
-        F: Folder + ?Sized,
-    {
+    impl<F: Folder + ?Sized> Fold for Group {
         fn fold(&self, f: &mut F) {
             Group {
                 brace: self.brace,
@@ -6835,18 +6670,12 @@ pub mod use_ {
             }
         }
     }
-    impl<H> Hash for Group
-    where
-        H: Hasher,
-    {
+    impl<H: Hasher> Hash for Group {
         fn hash(&self, h: &mut H) {
             self.trees.hash(h);
         }
     }
-    impl<V> Visit for Group
-    where
-        V: Visitor + ?Sized,
-    {
+    impl<V: Visitor + ?Sized> Visit for Group {
         fn visit(&self, v: &mut V) {
             for y in Puncted::pairs(&self.trees) {
                 let x = y.value();
@@ -6894,28 +6723,19 @@ pub mod use_ {
             &self.ident.pretty(p);
         }
     }
-    impl<F> Fold for Name
-    where
-        F: Folder + ?Sized,
-    {
+    impl<F: Folder + ?Sized> Fold for Name {
         fn fold(&self, f: &mut F) {
             Name {
                 ident: self.ident.fold(f),
             }
         }
     }
-    impl<H> Hash for Name
-    where
-        H: Hasher,
-    {
+    impl<H: Hasher> Hash for Name {
         fn hash(&self, h: &mut H) {
             self.ident.hash(h);
         }
     }
-    impl<V> Visit for Name
-    where
-        V: Visitor + ?Sized,
-    {
+    impl<V: Visitor + ?Sized> Visit for Name {
         fn visit(&self, v: &mut V) {
             &self.ident.visit(v);
         }
@@ -6967,10 +6787,7 @@ pub mod use_ {
             &self.tree.pretty(p);
         }
     }
-    impl<F> Fold for Path
-    where
-        F: Folder + ?Sized,
-    {
+    impl<F: Folder + ?Sized> Fold for Path {
         fn fold(&self, f: &mut F) {
             Path {
                 ident: self.ident.fold(f),
@@ -6979,19 +6796,13 @@ pub mod use_ {
             }
         }
     }
-    impl<H> Hash for Path
-    where
-        H: Hasher,
-    {
+    impl<H: Hasher> Hash for Path {
         fn hash(&self, h: &mut H) {
             self.ident.hash(h);
             self.tree.hash(h);
         }
     }
-    impl<V> Visit for Path
-    where
-        V: Visitor + ?Sized,
-    {
+    impl<V: Visitor + ?Sized> Visit for Path {
         fn visit(&self, v: &mut V) {
             &self.ident.visit(v);
             &*self.tree.visit(v);
@@ -7045,10 +6856,7 @@ pub mod use_ {
             &self.rename.pretty(p);
         }
     }
-    impl<F> Fold for Rename
-    where
-        F: Folder + ?Sized,
-    {
+    impl<F: Folder + ?Sized> Fold for Rename {
         fn fold(&self, f: &mut F) {
             Rename {
                 ident: self.ident.fold(f),
@@ -7057,19 +6865,13 @@ pub mod use_ {
             }
         }
     }
-    impl<H> Hash for Rename
-    where
-        H: Hasher,
-    {
+    impl<H: Hasher> Hash for Rename {
         fn hash(&self, h: &mut H) {
             self.ident.hash(h);
             self.rename.hash(h);
         }
     }
-    impl<V> Visit for Rename
-    where
-        V: Visitor + ?Sized,
-    {
+    impl<V: Visitor + ?Sized> Visit for Rename {
         fn visit(&self, v: &mut V) {
             &self.ident.visit(v);
             &self.rename.visit(v);

@@ -247,8 +247,8 @@ impl Ord for Ident {
         self.to_string().cmp(&x.to_string())
     }
 }
-impl Hash for Ident {
-    fn hash<H: Hasher>(&self, x: &mut H) {
+impl<H: Hasher> Hash for Ident {
+    fn hash(&self, x: &mut H) {
         self.to_string().hash(x);
     }
 }

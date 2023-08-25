@@ -390,8 +390,8 @@ impl PartialEq for Nothing {
         true
     }
 }
-impl Hash for Nothing {
-    fn hash<H: Hasher>(&self, _: &mut H) {}
+impl<H: Hasher> Hash for Nothing {
+    fn hash(&self, _: &mut H) {}
 }
 
 pub mod discouraged {

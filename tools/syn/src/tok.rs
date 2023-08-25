@@ -118,8 +118,8 @@ macro_rules! def_keywords {
                     true
                 }
             }
-            impl Hash for $n {
-                fn hash<H: Hasher>(&self, _: &mut H) {}
+            impl<H: Hasher> Hash for $n {
+                fn hash(&self, _: &mut H) {}
             }
             impl Parse for $n {
                 fn parse(s: parse::Stream) -> Res<Self> {
@@ -252,8 +252,8 @@ macro_rules! def_punct_structs {
                     true
                 }
             }
-            impl Hash for $n {
-                fn hash<H: Hasher>(&self, _: &mut H) {}
+            impl<H: Hasher> Hash for $n {
+                fn hash(&self, _: &mut H) {}
             }
             impl_deref_len_1!($n/$len);
         )*
@@ -443,8 +443,8 @@ macro_rules! def_delims {
                     true
                 }
             }
-            impl Hash for $n {
-                fn hash<H: Hasher>(&self, _: &mut H) {}
+            impl<H: Hasher> Hash for $n {
+                fn hash(&self, _: &mut H) {}
             }
         )*
     };
@@ -655,8 +655,8 @@ impl PartialEq for Group {
         true
     }
 }
-impl Hash for Group {
-    fn hash<H: Hasher>(&self, _: &mut H) {}
+impl<H: Hasher> Hash for Group {
+    fn hash(&self, _: &mut H) {}
 }
 impl Tok for Group {
     fn peek(x: Cursor) -> bool {

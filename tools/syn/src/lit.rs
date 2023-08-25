@@ -415,11 +415,8 @@ macro_rules! extra_traits {
                 self.repr.tok.to_string() == x.repr.tok.to_string()
             }
         }
-        impl Hash for $ty {
-            fn hash<H>(&self, x: &mut H)
-            where
-                H: Hasher,
-            {
+        impl<H: Hasher> Hash for $ty {
+            fn hash(&self, x: &mut H) {
                 self.repr.tok.to_string().hash(x);
             }
         }

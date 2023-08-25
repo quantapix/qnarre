@@ -1190,10 +1190,8 @@ mod hash {
         quote! {
             #cfg_features
             #[cfg_attr(doc_cfg, doc(cfg(feature = "extra-traits")))]
-            impl Hash for #ident {
-                fn hash<H>(&self, #hasher: &mut H)
-                where
-                    H: Hasher,
+            impl<H: Hasher> Hash for #ident {
+                fn hash(&self, #hasher: &mut H)
                 {
                     #body
                 }

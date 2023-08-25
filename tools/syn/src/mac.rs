@@ -495,8 +495,8 @@ macro_rules! traits_for_kw {
                 true
             }
         }
-        impl Hash for $n {
-            fn hash<H: Hasher>(&self, _: &mut H) {}
+        impl<H: Hasher> Hash for $n {
+            fn hash(&self, _: &mut H) {}
         }
     };
 }
@@ -650,8 +650,8 @@ macro_rules! traits_for_punct {
                 true
             }
         }
-        impl Hash for $n {
-            fn hash<H: Hasher>(&self, _: &mut H) {}
+        impl<H: Hasher> Hash for $n {
+            fn hash(&self, _: &mut H) {}
         }
     };
 }
