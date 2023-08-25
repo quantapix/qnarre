@@ -73,14 +73,14 @@ pub mod bound {
     impl Debug for Type {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             f.write_str("gen::bound::Type::")?;
-            use Type::*;
+            use self::Type::*;
             match self {
+                Life(x) => x.debug(f, "Life"),
                 Trait(x) => {
                     let mut f = f.debug_tuple("Trait");
                     f.field(x);
                     f.finish()
                 },
-                Life(x) => x.debug(f, "Life"),
                 Verbatim(x) => {
                     let mut f = f.debug_tuple("Verbatim");
                     f.field(x);
@@ -103,13 +103,14 @@ pub mod bound {
     }
     impl Pretty for Type {
         fn pretty(&self, p: &mut Print) {
+            use self::Type::*;
             match self {
-                Type::Trait(x) => {
+                Life(x) => x.pretty(p),
+                Trait(x) => {
                     let tilde = false;
                     x.pretty_with_args(p, tilde);
                 },
-                Type::Life(x) => x.pretty(p),
-                Type::Verbatim(x) => x.pretty(p),
+                Verbatim(x) => x.pretty(p),
             }
         }
     }
@@ -127,12 +128,12 @@ pub mod bound {
         fn hash(&self, h: &mut H) {
             use self::Type::*;
             match self {
-                Trait(x) => {
-                    h.write_u8(0u8);
-                    x.hash(h);
-                },
                 Life(x) => {
                     h.write_u8(1u8);
+                    x.hash(h);
+                },
+                Trait(x) => {
+                    h.write_u8(0u8);
                     x.hash(h);
                 },
                 Verbatim(x) => {
