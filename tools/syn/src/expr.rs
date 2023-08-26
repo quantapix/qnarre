@@ -6476,8 +6476,8 @@ impl<V: Visitor + ?Sized> Visit for Arm {
 }
 
 pub enum Limits {
-    HalfOpen(Token![..]),
     Closed(Token![..=]),
+    HalfOpen(Token![..]),
 }
 impl Limits {
     pub fn parse_obsolete(x: Stream) -> Res<Self> {
@@ -6485,13 +6485,14 @@ impl Limits {
         let dot2 = look.peek(Token![..]);
         let dot2_eq = dot2 && look.peek(Token![..=]);
         let dot3 = dot2 && x.peek(Token![...]);
+        use Limits::*;
         if dot2_eq {
-            x.parse().map(Limits::Closed)
+            x.parse().map(Closed)
         } else if dot3 {
             let y: Token![...] = x.parse()?;
-            Ok(Limits::Closed(Token![..=](y.spans)))
+            Ok(Closed(Token![..=](y.spans)))
         } else if dot2 {
-            x.parse().map(Limits::HalfOpen)
+            x.parse().map(HalfOpen)
         } else {
             Err(look.err())
         }
@@ -6503,10 +6504,11 @@ impl Parse for Limits {
         let dot2 = look.peek(Token![..]);
         let eq = dot2 && look.peek(Token![..=]);
         let dot3 = dot2 && s.peek(Token![...]);
+        use Limits::*;
         if eq {
-            s.parse().map(Limits::Closed)
+            s.parse().map(Closed)
         } else if dot2 && !dot3 {
-            s.parse().map(Limits::HalfOpen)
+            s.parse().map(HalfOpen)
         } else {
             Err(look.err())
         }
@@ -6514,9 +6516,10 @@ impl Parse for Limits {
 }
 impl Lower for Limits {
     fn lower(&self, s: &mut Stream) {
+        use Limits::*;
         match self {
-            Limits::HalfOpen(x) => x.lower(s),
-            Limits::Closed(x) => x.lower(s),
+            Closed(x) => x.lower(s),
+            HalfOpen(x) => x.lower(s),
         }
     }
 }
@@ -6531,13 +6534,13 @@ impl Debug for Limits {
         f.write_str("expr::Limits::")?;
         use Limits::*;
         match self {
-            HalfOpen(x) => {
-                let mut f = f.debug_tuple("HalfOpen");
+            Closed(x) => {
+                let mut f = f.debug_tuple("Closed");
                 f.field(x);
                 f.finish()
             },
-            Closed(x) => {
-                let mut f = f.debug_tuple("Closed");
+            HalfOpen(x) => {
+                let mut f = f.debug_tuple("HalfOpen");
                 f.field(x);
                 f.finish()
             },
@@ -6559,8 +6562,8 @@ impl<F: Folder + ?Sized> Fold for Limits {
     fn fold(&self, f: &mut F) {
         use Limits::*;
         match self {
-            HalfOpen(x) => HalfOpen(x),
             Closed(x) => Closed(x),
+            HalfOpen(x) => HalfOpen(x),
         }
     }
 }
@@ -6568,11 +6571,11 @@ impl<H: Hasher> Hash for Limits {
     fn hash(&self, h: &mut H) {
         use Limits::*;
         match self {
-            HalfOpen(_) => {
-                h.write_u8(0u8);
-            },
             Closed(_) => {
                 h.write_u8(1u8);
+            },
+            HalfOpen(_) => {
+                h.write_u8(0u8);
             },
         }
     }

@@ -336,78 +336,64 @@ pub fn parse_delim(s: Stream) -> Res<(tok::Delim, pm2::Stream)> {
     })
 }
 
-macro_rules! enum_from {
-    ($n:ident::Verbatim, $($s:ident)::+) => {};
-    ($n:ident::$v:ident, $($s:ident)::+) => {
-        impl From<$($s)::+> for $n {
-            fn from(x: $($s)::+) -> $n {
-                $n::$v(x)
+macro_rules! impl_From {
+    ($n:ident::Verbatim, $($y:ident)::+) => {};
+    ($n:ident::$x:ident, $($y:ident)::+) => {
+        impl From<$($y)::+> for $n {
+            fn from(x: $($y)::+) -> $n {
+                $n::$x(x)
             }
         }
     };
 }
-macro_rules! lower_of {
+macro_rules! impl_Lower {
     (
-        ($($x:tt)*) $n:ident {
-            $v:ident,
-            $($rest:tt)*
-        }
+        ($($ys:tt)*)
+        $n:ident { $x:ident, $($xs:tt)* }
     ) => {
-        lower_of!(
-            ($($x)* $n::$v => {})
-            $n { $($rest)* }
+        impl_Lower!(
+            ($($ys)* $n::$x => {})
+            $n { $($xs)* }
         );
     };
     (
-        ($($x:tt)*) $n:ident {
-            $v:ident $($s:ident)::+,
-            $($rest:tt)*
+        ($($ys:tt)*) $n:ident {
+            $x:ident $($s:ident)::+,
+            $($xs:tt)*
         }
     ) => {
-        lower_of!(
-            ($($x)* $n::$v(x) => x.lower(s),)
-            $n { $($rest)* }
+        impl_Lower!(
+            ( $($ys)* $n::$x(x) => x.lower(s), )
+            $n { $($xs)* }
         );
     };
-    (($($x:tt)*) $n:ident {}) => {
+    (($($ys:tt)*) $n:ident {}) => {
         impl Lower for $n {
             fn lower(&self, s: &mut pm2::Stream) {
                 match self {
-                    $($x)*
+                    $($ys)*
                 }
             }
         }
     };
 }
-macro_rules! enum_of_impl {
+macro_rules! impl_enum {
     (
         $n:ident {
-            $(
-                $v:ident $( ($($s:ident)::+) )*,
-            )*
+            $( $x:ident $( ($($xs:ident)::+) )*, )*
         }
     ) => {
-        $($(
-            enum_from!($n::$v, $($s)::+);
-        )*)*
-        $(lower_of! {
-            ()
-            $n {
-                $(
-                    $v $($s)::+,
-                )*
-            }
-        })*
+        $( $( impl_From!($n::$x, $($xs)::+); )* )*
+        $( impl_Lower! { () $n { $( $x $($xs)::+, )* } } )*
     };
 }
 #[macro_export]
 macro_rules! enum_of_structs {
     (
-        pub enum $n:ident $tt:tt
-        $($rest:tt)*
+        pub enum $n:ident $x:tt $($xs:tt)*
     ) => {
-        pub enum $n $tt
-        enum_of_impl!($n $tt $($rest)*);
+        pub enum $n $x
+        impl_enum!($n $x $($xs)*);
     };
 }
 
