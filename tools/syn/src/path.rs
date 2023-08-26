@@ -402,7 +402,7 @@ impl<F: Folder + ?Sized> Fold for path::Args {
         match self {
             None => Args::None,
             Angle(x) => Angle(x.fold(f)),
-            Parenth(x) => arenthed(x.fold(f)),
+            Parenth(x) => Parenth(x.fold(f)),
         }
     }
 }
@@ -982,7 +982,7 @@ impl<F: Folder + ?Sized> Fold for path::Parenth {
     fn fold(&self, f: &mut F) {
         path::Parenth {
             parenth: self.parenth,
-            args: FoldHelper::lift(self.args, |ixt| x.fold(f)),
+            args: FoldHelper::lift(self.args, |x| x.fold(f)),
             ret: self.ret.fold(f),
         }
     }

@@ -3836,7 +3836,7 @@ impl<F: Folder + ?Sized> Fold for Variadic {
     fn fold(&self, f: &mut F) {
         Variadic {
             attrs: FoldHelper::lift(self.attrs, |x| x.fold(f)),
-            pat: (self.pat).map(|x| (Box::new(*(x).0.fold(f), (x).1))),
+            pat: (self.pat).map(|x| (Box::new((*(x).0.fold(f), (x).1)))),
             dots: self.dots,
             comma: self.comma,
         }

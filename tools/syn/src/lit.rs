@@ -394,7 +394,7 @@ impl Debug for Bool {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         impl Bool {
             pub fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                f.debug_struct(name).field("value", &self.val).finish()
+                f.debug_struct(x).field("value", &self.val).finish()
             }
         }
         self.debug(f, "lit::Bool")
@@ -478,7 +478,7 @@ impl Debug for Byte {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         impl Byte {
             pub fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                f.debug_struct(name)
+                f.debug_struct(x)
                     .field("tok", &format_args!("{}", self.repr.tok))
                     .finish()
             }

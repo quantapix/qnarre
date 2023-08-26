@@ -349,7 +349,10 @@ macro_rules! impl_From {
 macro_rules! impl_Lower {
     (
         ($($ys:tt)*)
-        $n:ident { $x:ident, $($xs:tt)* }
+        $n:ident {
+            $x:ident ()
+            $($xs:tt)*
+        }
     ) => {
         impl_Lower!(
             ($($ys)* $n::$x => {})
@@ -357,13 +360,14 @@ macro_rules! impl_Lower {
         );
     };
     (
-        ($($ys:tt)*) $n:ident {
-            $x:ident $($s:ident)::+,
+        ($($ys:tt)*)
+        $n:ident {
+            $x:ident ( $($s:ident)::+, )
             $($xs:tt)*
         }
     ) => {
         impl_Lower!(
-            ( $($ys)* $n::$x(x) => x.lower(s), )
+            ($($ys)* $n::$x(x) => x.lower(s), )
             $n { $($xs)* }
         );
     };
@@ -379,12 +383,10 @@ macro_rules! impl_Lower {
 }
 macro_rules! impl_enum {
     (
-        $n:ident {
-            $( $x:ident $( ($($xs:ident)::+) )*, )*
-        }
+        $n:ident { $( $x:ident $( ($($xs:ident)::+) )*, )* }
     ) => {
         $( $( impl_From!($n::$x, $($xs)::+); )* )*
-        $( impl_Lower! { () $n { $( $x $($xs)::+, )* } } )*
+        impl_Lower!{ () $n { $( $x ( $( $($xs)::+, )* ) )* } }
     };
 }
 #[macro_export]
