@@ -903,7 +903,7 @@ pub fn parse_after_path(p: Path, s: Stream) -> Res<Meta> {
     }
 }
 pub fn parse_list_after_path(path: Path, s: Stream) -> Res<List> {
-    let (delim, toks) = mac::parse_delim(s)?;
+    let (delim, toks) = tok::parse_delim(s)?;
     Ok(List { path, delim, toks })
 }
 pub fn parse_name_value_after_path(path: Path, s: Stream) -> Res<NameValue> {

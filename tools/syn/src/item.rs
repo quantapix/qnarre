@@ -1397,7 +1397,7 @@ impl Parse for Mac {
         } else {
             s.parse()
         }?;
-        let (delim, toks) = s.call(mac::parse_delim)?;
+        let (delim, toks) = s.call(tok::parse_delim)?;
         let semi: Option<Token![;]> = if !delim.is_brace() { Some(s.parse()?) } else { None };
         Ok(Mac {
             attrs,

@@ -7012,7 +7012,7 @@ fn path_or_macro_or_struct(x: Stream, allow: AllowStruct) -> Res<Expr> {
     let (qself, path) = path::qpath(x, true)?;
     if qself.is_none() && x.peek(Token![!]) && !x.peek(Token![!=]) && path.is_mod_style() {
         let bang: Token![!] = x.parse()?;
-        let (delim, toks) = mac::parse_delim(x)?;
+        let (delim, toks) = tok::parse_delim(x)?;
         return Ok(Expr::Mac(Mac {
             attrs: Vec::new(),
             mac: mac::Mac {

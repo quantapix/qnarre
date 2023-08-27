@@ -1,5 +1,10 @@
 use super::*;
-use std::iter;
+use std::{
+    collections::btree_set::{self, BTreeSet},
+    iter,
+    ops::BitOr,
+    slice,
+};
 
 macro_rules! Token {
     [abstract]    => { tok::Abstract };
@@ -238,50 +243,50 @@ macro_rules! parse_mac_input {
 }
 
 macro_rules! format_ident_impl {
-    ([$span:expr, $($fmt:tt)*]) => {
-        quote::mk_ident(
+    ([$s:expr, $($fmt:tt)*]) => {
+        ident::make(
             format!($($fmt)*),
-            $span,
+            $s,
         )
     };
-    ([$old:expr, $($fmt:tt)*] span = $span:expr) => {
-        format_ident_impl!([$old, $($fmt)*] span = $span,)
+    ([$old:expr, $($fmt:tt)*] span = $s:expr) => {
+        format_ident_impl!([$old, $($fmt)*] span = $s,)
     };
-    ([$old:expr, $($fmt:tt)*] span = $span:expr, $($rest:tt)*) => {
+    ([$old:expr, $($fmt:tt)*] span = $s:expr, $($rest:tt)*) => {
         format_ident_impl!([
-            Option::Some::<$crate::Span>($span),
+            Option::Some::<Span>($s),
             $($fmt)*
         ] $($rest)*)
     };
-    ([$span:expr, $($fmt:tt)*] $name:ident = $arg:expr) => {
-        format_ident_impl!([$span, $($fmt)*] $name = $arg,)
+    ([$s:expr, $($fmt:tt)*] $name:ident = $arg:expr) => {
+        format_ident_impl!([$s, $($fmt)*] $name = $arg,)
     };
-    ([$span:expr, $($fmt:tt)*] $name:ident = $arg:expr, $($rest:tt)*) => {
-        match $crate::IdentFragmentAdapter(&$arg) {
-            arg => format_ident_impl!([$span.or(arg.span()), $($fmt)*, $name = arg] $($rest)*),
+    ([$s:expr, $($fmt:tt)*] $name:ident = $arg:expr, $($rest:tt)*) => {
+        match lower::FragAdaptor(&$arg) {
+            arg => format_ident_impl!([$s.or(arg.span()), $($fmt)*, $name = arg] $($rest)*),
         }
     };
-    ([$span:expr, $($fmt:tt)*] $arg:expr) => {
-        format_ident_impl!([$span, $($fmt)*] $arg,)
+    ([$s:expr, $($fmt:tt)*] $arg:expr) => {
+        format_ident_impl!([$s, $($fmt)*] $arg,)
     };
-    ([$span:expr, $($fmt:tt)*] $arg:expr, $($rest:tt)*) => {
-        match $crate::IdentFragmentAdapter(&$arg) {
-            arg => format_ident_impl!([$span.or(arg.span()), $($fmt)*, arg] $($rest)*),
+    ([$s:expr, $($fmt:tt)*] $arg:expr, $($rest:tt)*) => {
+        match lower::FragAdaptor(&$arg) {
+            arg => format_ident_impl!([$s.or(arg.span()), $($fmt)*, arg] $($rest)*),
         }
     };
 }
 macro_rules! format_ident {
-    ($fmt:expr) => {
+    ($x:expr) => {
         format_ident_impl!([
             Option::None,
-            $fmt
+            $x
         ])
     };
-    ($fmt:expr, $($rest:tt)*) => {
+    ($x:expr, $($xs:tt)*) => {
         format_ident_impl!([
             Option::None,
-            $fmt
-        ] $($rest)*)
+            $x
+        ] $($xs)*)
     };
 }
 
@@ -431,7 +436,7 @@ macro_rules! punct_len {
 }
 macro_rules! punct_repr {
     ($($tt:tt)+) => {
-        [$crate::Span; 0 $(+ punct_len!(lenient, $tt))+]
+        [Span; 0 $(+ punct_len!(lenient, $tt))+]
     };
 }
 macro_rules! stringify_punct {
@@ -573,6 +578,8 @@ macro_rules! decl_attr {
         }
     };
 }
+
+#[macro_export]
 macro_rules! test_derive {
     ($n:path { $($i:tt)* } expands to { $($o:tt)* }) => {
         {
@@ -581,11 +588,9 @@ macro_rules! test_derive {
                 $($i)*
                 $($o)*
             }
-
-            $crate::test_derive!($n { $($i)* } expands to { $($o)* } no_build);
+            test_derive!($n { $($i)* } expands to { $($o)* } no_build);
         }
     };
-
     ($n:path { $($i:tt)* } expands to { $($o:tt)* } no_build) => {
         {
             let i = ::core::stringify!( $($i)* );
@@ -629,6 +634,24 @@ got:
     };
 }
 
+#[macro_export]
+macro_rules! bind_into_iter {
+    ($has_iter:ident $x:ident) => {
+        #[allow(unused_mut)]
+        let (mut $x, y) = $x.quote_into_iter();
+        let $has_iter = $has_iter | y;
+    };
+}
+#[macro_export]
+macro_rules! bind_next_or_break {
+    ($x:ident) => {
+        let $x = match $x.next() {
+            Some(x) => mac::RepInterp(x),
+            None => break,
+        };
+    };
+}
+
 macro_rules! pounded_names_with_context {
     ($call:ident! $x:tt ($($b1:tt)*) ($($curr:tt)*)) => {
         $(
@@ -646,19 +669,19 @@ macro_rules! pounded_names {
 }
 #[macro_export]
 macro_rules! pounded_with_context {
-    ($call:ident! $extra:tt $b1:tt ( $($inner:tt)* )) => {
-        pounded_names!{$call! $extra $($inner)*}
+    ($call:ident! $x:tt $b1:tt ( $($inner:tt)* )) => {
+        pounded_names!{$call! $x $($inner)*}
     };
-    ($call:ident! $extra:tt $b1:tt [ $($inner:tt)* ]) => {
-        pounded_names!{$call! $extra $($inner)*}
+    ($call:ident! $x:tt $b1:tt [ $($inner:tt)* ]) => {
+        pounded_names!{$call! $x $($inner)*}
     };
-    ($call:ident! $extra:tt $b1:tt { $($inner:tt)* }) => {
-        pounded_names!{$call! $extra $($inner)*}
+    ($call:ident! $x:tt $b1:tt { $($inner:tt)* }) => {
+        pounded_names!{$call! $x $($inner)*}
     };
-    ($call:ident!($($extra:tt)*) # $var:ident) => {
-        $crate::$call!($($extra)* $var);
+    ($call:ident!($($x:tt)*) # $var:ident) => {
+        $crate::$call!($($x)* $var);
     };
-    ($call:ident! $extra:tt $b1:tt $curr:tt) => {};
+    ($call:ident! $x:tt $b1:tt $curr:tt) => {};
 }
 
 macro_rules! quote_token {
@@ -672,7 +695,7 @@ macro_rules! quote_token {
         lower::push_group(
             &mut $ys,
             pm2::Delim::Parenthesis,
-            $crate::quote!($($x)*),
+            quote!($($x)*),
         );
     };
     ([ $($x:tt)* ] $ys:ident) => {
@@ -825,9 +848,75 @@ macro_rules! quote_token {
         lower::push_underscore(&mut $ys);
     };
     ($x:tt $ys:ident) => {
-        $crate::parse(&mut $ys, stringify!($x));
+        parse(&mut $ys, stringify!($x));
     };
 }
+macro_rules! quote_with_context {
+    ($ys:ident $b3:tt $b2:tt $b1:tt @ $a1:tt $a2:tt $a3:tt) => {};
+    ($ys:ident $b3:tt $b2:tt $b1:tt (#) ( $($x:tt)* ) * $a3:tt) => {{
+        let has_iter = mac::HasNoIter;
+        pounded_names!{bind_into_iter!(has_iter) () $($x)*}
+        let _: mac::HasIter = has_iter;
+        while true {
+            pounded_names!{bind_next_or_break!() () $($x)*}
+            quote_each!{$ys $($x)*}
+        }
+    }};
+    ($ys:ident $b3:tt $b2:tt # (( $($x:tt)* )) * $a2:tt $a3:tt) => {};
+    ($ys:ident $b3:tt # ( $($x:tt)* ) (*) $a1:tt $a2:tt $a3:tt) => {};
+    ($ys:ident $b3:tt $b2:tt $b1:tt (#) ( $($x:tt)* ) $sep:tt *) => {{
+        let mut _i = 0usize;
+        let has_iter = mac::HasNoIter;
+        pounded_names!{bind_into_iter!(has_iter) () $($x)*}
+        let _: mac::HasIter = has_iter;
+        while true {
+            pounded_names!{bind_next_or_break!() () $($x)*}
+            if _i > 0 {
+                quote_token!{$sep $ys}
+            }
+            _i += 1;
+            quote_each!{$ys $($x)*}
+        }
+    }};
+    ($ys:ident $b3:tt $b2:tt # (( $($x:tt)* )) $sep:tt * $a3:tt) => {};
+    ($ys:ident $b3:tt # ( $($x:tt)* ) ($sep:tt) * $a2:tt $a3:tt) => {};
+    ($ys:ident # ( $($x:tt)* ) * (*) $a1:tt $a2:tt $a3:tt) => {
+        quote_token!{* $ys}
+    };
+    ($ys:ident # ( $($x:tt)* ) $sep:tt (*) $a1:tt $a2:tt $a3:tt) => {};
+    ($ys:ident $b3:tt $b2:tt $b1:tt (#) $x:ident $a2:tt $a3:tt) => {
+        Lower::lower(&$x, &mut $ys);
+    };
+    ($ys:ident $b3:tt $b2:tt # ($x:ident) $a1:tt $a2:tt $a3:tt) => {};
+    ($ys:ident $b3:tt $b2:tt $b1:tt ($x:tt) $a1:tt $a2:tt $a3:tt) => {
+        quote_token!{$x $ys}
+    };
+}
+macro_rules! quote_all {
+    ($ys:ident
+        ($($b3:tt)*) ($($b2:tt)*) ($($b1:tt)*)
+        ($($x:tt)*)
+        ($($a1:tt)*) ($($a2:tt)*) ($($a3:tt)*)
+    ) => {
+        $(
+            quote_with_context!{$ys $b3 $b2 $b1 $x $a1 $a2 $a3}
+        )*
+    };
+}
+macro_rules! quote_each {
+    ($ys:ident $($xs:tt)*) => {
+        quote_all!{$ys
+            (@ @ @ @ @ @ $($xs)*)
+            (@ @ @ @ @ $($xs)* @)
+            (@ @ @ @ $($xs)* @ @)
+            (@ @ @ $(($xs))* @ @ @)
+            (@ @ $($xs)* @ @ @ @)
+            (@ $($xs)* @ @ @ @ @)
+            ($($xs)* @ @ @ @ @ @)
+        }
+    };
+}
+
 macro_rules! quote_token_spanned {
     ($x:ident $ys:ident $s:ident) => {
         lower::push_ident_spanned(&mut $ys, $s, stringify!($x));
@@ -998,22 +1087,61 @@ macro_rules! quote_token_spanned {
         $crate::parse_spanned(&mut $ys, $s, stringify!($x));
     };
 }
-macro_rules! quote_each_token {
-    ($ys:ident $($xs:tt)*) => {
-        quote_tokens_with_context!{$ys
-            (@ @ @ @ @ @ $($xs)*)
-            (@ @ @ @ @ $($xs)* @)
-            (@ @ @ @ $($xs)* @ @)
-            (@ @ @ $(($xs))* @ @ @)
-            (@ @ $($xs)* @ @ @ @)
-            (@ $($xs)* @ @ @ @ @)
-            ($($xs)* @ @ @ @ @ @)
+macro_rules! quote_with_context_spanned {
+    ($ys:ident $s:ident $b3:tt $b2:tt $b1:tt @ $a1:tt $a2:tt $a3:tt) => {};
+    ($ys:ident $s:ident $b3:tt $b2:tt $b1:tt (#) ( $($x:tt)* ) * $a3:tt) => {{
+        let has_iter = mac::HasNoIter;
+        pounded_names!{bind_into_iter!(has_iter) () $($x)*}
+        let _: mac::HasIter = has_iter;
+        while true {
+            pounded_names!{bind_next_or_break!() () $($x)*}
+            quote_each_spanned!{$ys $s $($x)*}
         }
+    }};
+    ($ys:ident $s:ident $b3:tt $b2:tt # (( $($x:tt)* )) * $a2:tt $a3:tt) => {};
+    ($ys:ident $s:ident $b3:tt # ( $($x:tt)* ) (*) $a1:tt $a2:tt $a3:tt) => {};
+    ($ys:ident $s:ident $b3:tt $b2:tt $b1:tt (#) ( $($x:tt)* ) $sep:tt *) => {{
+        let mut _i = 0usize;
+        let has_iter = mac::HasNoIter;
+        pounded_names!{bind_into_iter!(has_iter) () $($x)*}
+        let _: mac::HasIter = has_iter;
+        while true {
+            pounded_names!{bind_next_or_break!() () $($x)*}
+            if _i > 0 {
+                quote_token_spanned!{$sep $ys $s}
+            }
+            _i += 1;
+            quote_each_spanned!{$ys $s $($x)*}
+        }
+    }};
+    ($ys:ident $s:ident $b3:tt $b2:tt # (( $($x:tt)* )) $sep:tt * $a3:tt) => {};
+    ($ys:ident $s:ident $b3:tt # ( $($x:tt)* ) ($sep:tt) * $a2:tt $a3:tt) => {};
+    ($ys:ident $s:ident # ( $($x:tt)* ) * (*) $a1:tt $a2:tt $a3:tt) => {
+        quote_token_spanned!{* $ys $s}
+    };
+    ($ys:ident $s:ident # ( $($x:tt)* ) $sep:tt (*) $a1:tt $a2:tt $a3:tt) => {};
+    ($ys:ident $s:ident $b3:tt $b2:tt $b1:tt (#) $var:ident $a2:tt $a3:tt) => {
+        Lower::lower(&$var, &mut $ys);
+    };
+    ($ys:ident $s:ident $b3:tt $b2:tt # ($var:ident) $a1:tt $a2:tt $a3:tt) => {};
+    ($ys:ident $s:ident $b3:tt $b2:tt $b1:tt ($curr:tt) $a1:tt $a2:tt $a3:tt) => {
+        quote_token_spanned!{$curr $ys $s}
     };
 }
-macro_rules! quote_each_token_spanned {
+macro_rules! quote_all_spanned {
+    ($ys:ident $s:ident
+        ($($b3:tt)*) ($($b2:tt)*) ($($b1:tt)*)
+        ($($curr:tt)*)
+        ($($a1:tt)*) ($($a2:tt)*) ($($a3:tt)*)
+    ) => {
+        $(
+            quote_with_context_spanned!{$ys $s $b3 $b2 $b1 $curr $a1 $a2 $a3}
+        )*
+    };
+}
+macro_rules! quote_each_spanned {
     ($ys:ident $s:ident $($xs:tt)*) => {
-        quote_tokens_with_context_spanned!{$ys $s
+        quote_all_spanned!{$ys $s
             (@ @ @ @ @ @ $($xs)*)
             (@ @ @ @ @ $($xs)* @)
             (@ @ @ @ $($xs)* @ @)
@@ -1028,181 +1156,61 @@ macro_rules! quote_each_token_spanned {
 #[macro_export]
 macro_rules! quote {
     () => {
-        $crate::Stream::new()
+        Stream::new()
     };
     ($x:tt) => {{
-        let mut ys = $crate::Stream::new();
+        let mut ys = Stream::new();
         quote_token!{$x ys}
         ys
     }};
     (# $x:ident) => {{
-        let mut ys = $crate::Stream::new();
-        $crate::Lower::lower(&$x, &mut ys);
+        let mut ys = Stream::new();
+        Lower::lower(&$x, &mut ys);
         ys
     }};
     ($x1:tt $x2:tt) => {{
-        let mut ys = $crate::Stream::new();
+        let mut ys = Stream::new();
         quote_token!{$x1 ys}
         quote_token!{$x2 ys}
         ys
     }};
     ($($x:tt)*) => {{
-        let mut ys = $crate::Stream::new();
-        quote_each_token!{ys $($x)*}
+        let mut ys = Stream::new();
+        quote_each!{ys $($x)*}
         ys
     }};
 }
 #[macro_export]
 macro_rules! quote_spanned {
     ($s:expr=>) => {{
-        let _: $crate::Span = lower::get_span($s).__into_span();
-        $crate::Stream::new()
+        let _: Span = lower::get_span($s).__into_span();
+        Stream::new()
     }};
     ($s:expr=> $x:tt) => {{
-        let mut ys = $crate::Stream::new();
-        let y: $crate::Span = lower::get_span($s).__into_span();
+        let mut ys = Stream::new();
+        let y: Span = lower::get_span($s).__into_span();
         quote_token_spanned!{$x ys y}
         ys
     }};
     ($s:expr=> # $x:ident) => {{
-        let mut ys = $crate::Stream::new();
-        let _: $crate::Span = lower::get_span($s).__into_span();
-        $crate::Lower::lower(&$x, &mut ys);
+        let mut ys = Stream::new();
+        let _: Span = lower::get_span($s).__into_span();
+        Lower::lower(&$x, &mut ys);
         ys
     }};
     ($s:expr=> $x1:tt $x2:tt) => {{
-        let mut ys = $crate::Stream::new();
-        let y: $crate::Span = lower::get_span($s).__into_span();
+        let mut ys = Stream::new();
+        let y: Span = lower::get_span($s).__into_span();
         quote_token_spanned!{$x1 ys y}
         quote_token_spanned!{$x2 ys y}
         ys
     }};
     ($s:expr=> $($x:tt)*) => {{
-        let mut ys = $crate::Stream::new();
-        let y: $crate::Span = lower::get_span($s).__into_span();
-        quote_each_token_spanned!{ys y $($x)*}
+        let mut ys = Stream::new();
+        let y: Span = lower::get_span($s).__into_span();
+        quote_each_spanned!{ys y $($x)*}
         ys
     }};
-}
-
-macro_rules! quote_bind_into_iter {
-    ($has_iter:ident $var:ident) => {
-        #[allow(unused_mut)]
-        let (mut $var, i) = $var.quote_into_iter();
-        let $has_iter = $has_iter | i;
-    };
-}
-macro_rules! quote_bind_next_or_break {
-    ($var:ident) => {
-        let $var = match $var.next() {
-            Some(_x) => $crate::RepInterp(_x),
-            None => break,
-        };
-    };
-}
-macro_rules! quote_tokens_with_context {
-    ($tokens:ident
-        ($($b3:tt)*) ($($b2:tt)*) ($($b1:tt)*)
-        ($($curr:tt)*)
-        ($($a1:tt)*) ($($a2:tt)*) ($($a3:tt)*)
-    ) => {
-        $(
-            quote_token_with_context!{$tokens $b3 $b2 $b1 $curr $a1 $a2 $a3}
-        )*
-    };
-}
-macro_rules! quote_tokens_with_context_spanned {
-    ($tokens:ident $span:ident
-        ($($b3:tt)*) ($($b2:tt)*) ($($b1:tt)*)
-        ($($curr:tt)*)
-        ($($a1:tt)*) ($($a2:tt)*) ($($a3:tt)*)
-    ) => {
-        $(
-            quote_token_with_context_spanned!{$tokens $span $b3 $b2 $b1 $curr $a1 $a2 $a3}
-        )*
-    };
-}
-macro_rules! quote_token_with_context {
-    ($tokens:ident $b3:tt $b2:tt $b1:tt @ $a1:tt $a2:tt $a3:tt) => {};
-    ($tokens:ident $b3:tt $b2:tt $b1:tt (#) ( $($inner:tt)* ) * $a3:tt) => {{
-        let has_iter = $crate::ThereIsNoIteratorInRepetition;
-        pounded_names!{quote_bind_into_iter!(has_iter) () $($inner)*}
-        let _: $crate::HasIterator = has_iter;
-        while true {
-            pounded_names!{quote_bind_next_or_break!() () $($inner)*}
-            quote_each_token!{$tokens $($inner)*}
-        }
-    }};
-    ($tokens:ident $b3:tt $b2:tt # (( $($inner:tt)* )) * $a2:tt $a3:tt) => {};
-    ($tokens:ident $b3:tt # ( $($inner:tt)* ) (*) $a1:tt $a2:tt $a3:tt) => {};
-    ($tokens:ident $b3:tt $b2:tt $b1:tt (#) ( $($inner:tt)* ) $sep:tt *) => {{
-        let mut _i = 0usize;
-        let has_iter = $crate::ThereIsNoIteratorInRepetition;
-        pounded_names!{quote_bind_into_iter!(has_iter) () $($inner)*}
-        let _: $crate::HasIterator = has_iter;
-        while true {
-            pounded_names!{quote_bind_next_or_break!() () $($inner)*}
-            if _i > 0 {
-                quote_token!{$sep $tokens}
-            }
-            _i += 1;
-            quote_each_token!{$tokens $($inner)*}
-        }
-    }};
-    ($tokens:ident $b3:tt $b2:tt # (( $($inner:tt)* )) $sep:tt * $a3:tt) => {};
-    ($tokens:ident $b3:tt # ( $($inner:tt)* ) ($sep:tt) * $a2:tt $a3:tt) => {};
-    ($tokens:ident # ( $($inner:tt)* ) * (*) $a1:tt $a2:tt $a3:tt) => {
-        quote_token!{* $tokens}
-    };
-    ($tokens:ident # ( $($inner:tt)* ) $sep:tt (*) $a1:tt $a2:tt $a3:tt) => {};
-    ($tokens:ident $b3:tt $b2:tt $b1:tt (#) $var:ident $a2:tt $a3:tt) => {
-        $crate::Lower::lower(&$var, &mut $tokens);
-    };
-    ($tokens:ident $b3:tt $b2:tt # ($var:ident) $a1:tt $a2:tt $a3:tt) => {};
-    ($tokens:ident $b3:tt $b2:tt $b1:tt ($curr:tt) $a1:tt $a2:tt $a3:tt) => {
-        quote_token!{$curr $tokens}
-    };
-}
-macro_rules! quote_token_with_context_spanned {
-    ($tokens:ident $span:ident $b3:tt $b2:tt $b1:tt @ $a1:tt $a2:tt $a3:tt) => {};
-    ($tokens:ident $span:ident $b3:tt $b2:tt $b1:tt (#) ( $($inner:tt)* ) * $a3:tt) => {{
-        let has_iter = $crate::ThereIsNoIteratorInRepetition;
-        pounded_names!{quote_bind_into_iter!(has_iter) () $($inner)*}
-        let _: $crate::HasIterator = has_iter;
-        while true {
-            pounded_names!{quote_bind_next_or_break!() () $($inner)*}
-            quote_each_token_spanned!{$tokens $span $($inner)*}
-        }
-    }};
-    ($tokens:ident $span:ident $b3:tt $b2:tt # (( $($inner:tt)* )) * $a2:tt $a3:tt) => {};
-    ($tokens:ident $span:ident $b3:tt # ( $($inner:tt)* ) (*) $a1:tt $a2:tt $a3:tt) => {};
-    ($tokens:ident $span:ident $b3:tt $b2:tt $b1:tt (#) ( $($inner:tt)* ) $sep:tt *) => {{
-        let mut _i = 0usize;
-        let has_iter = $crate::ThereIsNoIteratorInRepetition;
-        pounded_names!{quote_bind_into_iter!(has_iter) () $($inner)*}
-        let _: $crate::HasIterator = has_iter;
-        while true {
-            pounded_names!{quote_bind_next_or_break!() () $($inner)*}
-            if _i > 0 {
-                quote_token_spanned!{$sep $tokens $span}
-            }
-            _i += 1;
-            quote_each_token_spanned!{$tokens $span $($inner)*}
-        }
-    }};
-    ($tokens:ident $span:ident $b3:tt $b2:tt # (( $($inner:tt)* )) $sep:tt * $a3:tt) => {};
-    ($tokens:ident $span:ident $b3:tt # ( $($inner:tt)* ) ($sep:tt) * $a2:tt $a3:tt) => {};
-    ($tokens:ident $span:ident # ( $($inner:tt)* ) * (*) $a1:tt $a2:tt $a3:tt) => {
-        quote_token_spanned!{* $tokens $span}
-    };
-    ($tokens:ident $span:ident # ( $($inner:tt)* ) $sep:tt (*) $a1:tt $a2:tt $a3:tt) => {};
-    ($tokens:ident $span:ident $b3:tt $b2:tt $b1:tt (#) $var:ident $a2:tt $a3:tt) => {
-        $crate::Lower::lower(&$var, &mut $tokens);
-    };
-    ($tokens:ident $span:ident $b3:tt $b2:tt # ($var:ident) $a1:tt $a2:tt $a3:tt) => {};
-    ($tokens:ident $span:ident $b3:tt $b2:tt $b1:tt ($curr:tt) $a1:tt $a2:tt $a3:tt) => {
-        quote_token_spanned!{$curr $tokens $span}
-    };
 }
 
 pub struct Mac {
@@ -1227,7 +1235,7 @@ impl Parse for Mac {
             path: s.call(Path::parse_mod_style)?,
             bang: s.parse()?,
             delim: {
-                let (y, x) = parse_delim(s)?;
+                let (y, x) = tok::parse_delim(s)?;
                 toks = x;
                 y
             },
@@ -1340,25 +1348,6 @@ impl<V: Visitor + ?Sized> Visit for Mac {
     }
 }
 
-pub fn parse_delim(s: Stream) -> Res<(tok::Delim, pm2::Stream)> {
-    s.step(|x| {
-        if let Some((pm2::Tree::Group(x), rest)) = x.token_tree() {
-            let s = x.delim_span();
-            let delim = match x.delim() {
-                pm2::Delim::Parenth => tok::Delim::Parenth(tok::Parenth(s)),
-                pm2::Delim::Brace => tok::Delim::Brace(tok::Brace(s)),
-                pm2::Delim::Bracket => tok::Delim::Bracket(tok::Bracket(s)),
-                pm2::Delim::None => {
-                    return Err(x.err("expected delim"));
-                },
-            };
-            Ok(((delim, x.stream()), rest))
-        } else {
-            Err(x.err("expected delim"))
-        }
-    })
-}
-
 pub trait StreamExt {
     fn append<U>(&mut self, x: U)
     where
@@ -1417,5 +1406,110 @@ impl StreamExt for pm2::Stream {
             x.lower(self);
             y.lower(self);
         }
+    }
+}
+
+pub struct HasIter;
+impl BitOr<HasIter> for HasIter {
+    type Output = HasIter;
+    fn bitor(self, _: HasIter) -> HasIter {
+        HasIter
+    }
+}
+impl BitOr<HasNoIter> for HasIter {
+    type Output = HasIter;
+    fn bitor(self, _: HasNoIter) -> HasIter {
+        HasIter
+    }
+}
+
+pub struct HasNoIter;
+impl BitOr<HasIter> for HasNoIter {
+    type Output = HasIter;
+    fn bitor(self, _: HasIter) -> HasIter {
+        HasIter
+    }
+}
+impl BitOr<HasNoIter> for HasNoIter {
+    type Output = HasNoIter;
+    fn bitor(self, _: HasNoIter) -> HasNoIter {
+        HasNoIter
+    }
+}
+
+pub trait RepIterExt: Iterator + Sized {
+    fn quote_into_iter(self) -> (Self, HasIter) {
+        (self, HasIter)
+    }
+}
+impl<T: Iterator> RepIterExt for T {}
+
+pub trait RepLowerExt {
+    fn next(&self) -> Option<&Self> {
+        Some(self)
+    }
+    fn quote_into_iter(&self) -> (&Self, HasNoIter) {
+        (self, HasNoIter)
+    }
+}
+impl<T: Lower + ?Sized> RepLowerExt for T {}
+
+#[derive(Copy, Clone)]
+pub struct RepInterp<T>(pub T);
+impl<T> RepInterp<T> {
+    pub fn next(self) -> Option<T> {
+        Some(self.0)
+    }
+}
+impl<T: Iterator> Iterator for RepInterp<T> {
+    type Item = T::Item;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next()
+    }
+}
+impl<T: Lower> Lower for RepInterp<T> {
+    fn lower(&self, s: &mut Stream) {
+        self.0.lower(s);
+    }
+}
+
+pub trait RepAsIterExt<'q> {
+    type Iter: Iterator;
+    fn quote_into_iter(&'q self) -> (Self::Iter, HasIter);
+}
+impl<'q, 'a, T: RepAsIterExt<'q> + ?Sized> RepAsIterExt<'q> for &'a T {
+    type Iter = T::Iter;
+    fn quote_into_iter(&'q self) -> (Self::Iter, HasIter) {
+        <T as RepAsIterExt>::quote_into_iter(*self)
+    }
+}
+impl<'q, 'a, T: RepAsIterExt<'q> + ?Sized> RepAsIterExt<'q> for &'a mut T {
+    type Iter = T::Iter;
+    fn quote_into_iter(&'q self) -> (Self::Iter, HasIter) {
+        <T as RepAsIterExt>::quote_into_iter(*self)
+    }
+}
+impl<'q, T: 'q> RepAsIterExt<'q> for [T] {
+    type Iter = slice::Iter<'q, T>;
+    fn quote_into_iter(&'q self) -> (Self::Iter, HasIter) {
+        (self.iter(), HasIter)
+    }
+}
+impl<'q, T: 'q> RepAsIterExt<'q> for Vec<T> {
+    type Iter = slice::Iter<'q, T>;
+    fn quote_into_iter(&'q self) -> (Self::Iter, HasIter) {
+        (self.iter(), HasIter)
+    }
+}
+impl<'q, T: 'q> RepAsIterExt<'q> for BTreeSet<T> {
+    type Iter = btree_set::Iter<'q, T>;
+    fn quote_into_iter(&'q self) -> (Self::Iter, HasIter) {
+        (self.iter(), HasIter)
+    }
+}
+impl<'q, T: RepAsIterExt<'q>> RepAsIterExt<'q> for RepInterp<T> {
+    type Iter = T::Iter;
+    fn quote_into_iter(&'q self) -> (Self::Iter, HasIter) {
+        self.0.quote_into_iter()
     }
 }

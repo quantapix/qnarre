@@ -1,13 +1,8 @@
-use super::pm2::{Delim, DelimSpan, Group, Ident, Lit, Punct, Spacing, Span, Stream, Tree};
-use std::{
-    borrow::Cow,
-    collections::btree_set::{self, BTreeSet},
-    fmt, iter,
-    ops::{BitOr, Deref},
-    option::Option,
-    rc::Rc,
-    slice,
+use super::{
+    ident,
+    pm2::{Delim, DelimSpan, Group, Ident, Lit, Punct, Spacing, Span, Stream, Tree},
 };
+use std::{borrow::Cow, fmt, iter, ops::Deref, option::Option, rc::Rc};
 
 pub trait Fragment {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result;
@@ -229,111 +224,6 @@ fn join_spans(s: Stream) -> Span {
         .unwrap_or(first)
 }
 
-pub struct HasIter;
-impl BitOr<HasIter> for HasIter {
-    type Output = HasIter;
-    fn bitor(self, _: HasIter) -> HasIter {
-        HasIter
-    }
-}
-impl BitOr<HasNoIter> for HasIter {
-    type Output = HasIter;
-    fn bitor(self, _: HasNoIter) -> HasIter {
-        HasIter
-    }
-}
-
-pub struct HasNoIter;
-impl BitOr<HasNoIter> for HasNoIter {
-    type Output = HasNoIter;
-    fn bitor(self, _: HasNoIter) -> HasNoIter {
-        HasNoIter
-    }
-}
-impl BitOr<HasIter> for HasNoIter {
-    type Output = HasIter;
-    fn bitor(self, _: HasIter) -> HasIter {
-        HasIter
-    }
-}
-
-pub trait RepIteratorExt: Iterator + Sized {
-    fn quote_into_iter(self) -> (Self, HasIter) {
-        (self, HasIter)
-    }
-}
-impl<T: Iterator> RepIteratorExt for T {}
-
-pub trait RepToTokensExt {
-    fn next(&self) -> Option<&Self> {
-        Some(self)
-    }
-    fn quote_into_iter(&self) -> (&Self, HasNoIter) {
-        (self, HasNoIter)
-    }
-}
-impl<T: Lower + ?Sized> RepToTokensExt for T {}
-
-pub trait RepAsIteratorExt<'q> {
-    type Iter: Iterator;
-    fn quote_into_iter(&'q self) -> (Self::Iter, HasIter);
-}
-impl<'q, 'a, T: RepAsIteratorExt<'q> + ?Sized> RepAsIteratorExt<'q> for &'a T {
-    type Iter = T::Iter;
-    fn quote_into_iter(&'q self) -> (Self::Iter, HasIter) {
-        <T as RepAsIteratorExt>::quote_into_iter(*self)
-    }
-}
-impl<'q, 'a, T: RepAsIteratorExt<'q> + ?Sized> RepAsIteratorExt<'q> for &'a mut T {
-    type Iter = T::Iter;
-    fn quote_into_iter(&'q self) -> (Self::Iter, HasIter) {
-        <T as RepAsIteratorExt>::quote_into_iter(*self)
-    }
-}
-impl<'q, T: 'q> RepAsIteratorExt<'q> for [T] {
-    type Iter = slice::Iter<'q, T>;
-    fn quote_into_iter(&'q self) -> (Self::Iter, HasIter) {
-        (self.iter(), HasIter)
-    }
-}
-impl<'q, T: 'q> RepAsIteratorExt<'q> for Vec<T> {
-    type Iter = slice::Iter<'q, T>;
-    fn quote_into_iter(&'q self) -> (Self::Iter, HasIter) {
-        (self.iter(), HasIter)
-    }
-}
-impl<'q, T: 'q> RepAsIteratorExt<'q> for BTreeSet<T> {
-    type Iter = btree_set::Iter<'q, T>;
-    fn quote_into_iter(&'q self) -> (Self::Iter, HasIter) {
-        (self.iter(), HasIter)
-    }
-}
-impl<'q, T: RepAsIteratorExt<'q>> RepAsIteratorExt<'q> for RepInterp<T> {
-    type Iter = T::Iter;
-    fn quote_into_iter(&'q self) -> (Self::Iter, HasIter) {
-        self.0.quote_into_iter()
-    }
-}
-
-#[derive(Copy, Clone)]
-pub struct RepInterp<T>(pub T);
-impl<T> RepInterp<T> {
-    pub fn next(self) -> Option<T> {
-        Some(self.0)
-    }
-}
-impl<T: Iterator> Iterator for RepInterp<T> {
-    type Item = T::Item;
-    fn next(&mut self) -> Option<Self::Item> {
-        self.0.next()
-    }
-}
-impl<T: Lower> Lower for RepInterp<T> {
-    fn lower(&self, tokens: &mut Stream) {
-        self.0.lower(tokens);
-    }
-}
-
 pub struct GetSpanBase<T>(pub T);
 impl<T> GetSpanBase<T> {
     #[allow(clippy::unused_self)]
@@ -498,7 +388,7 @@ pub fn push_ident(s: &mut Stream, x: &str) {
     push_ident_spanned(s, span, x);
 }
 pub fn push_ident_spanned(s: &mut Stream, span: Span, x: &str) {
-    s.append(ident_maybe_raw(x, span));
+    s.append(ident::maybe_raw(x, span));
 }
 pub fn push_life(s: &mut Stream, x: &str) {
     struct Life<'a> {
@@ -562,46 +452,35 @@ pub fn push_underscore(s: &mut Stream) {
 pub fn push_underscore_spanned(s: &mut Stream, span: Span) {
     s.append(Ident::new("_", span));
 }
-pub fn mk_ident(id: &str, span: Option<Span>) -> Ident {
-    let span = span.unwrap_or_else(Span::call_site);
-    ident_maybe_raw(id, span)
-}
-fn ident_maybe_raw(id: &str, span: Span) -> Ident {
-    if id.starts_with("r#") {
-        Ident::new_raw(&id[2..], span)
-    } else {
-        Ident::new(id, span)
-    }
-}
 
 #[derive(Copy, Clone)]
-pub struct IdentFragmentAdapter<T: Fragment>(pub T);
-impl<T: Fragment> IdentFragmentAdapter<T> {
+pub struct FragAdaptor<T: Fragment>(pub T);
+impl<T: Fragment> FragAdaptor<T> {
     pub fn span(&self) -> Option<Span> {
         self.0.span()
     }
 }
-impl<T: Fragment> fmt::Display for IdentFragmentAdapter<T> {
+impl<T: Fragment> fmt::Display for FragAdaptor<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         Fragment::fmt(&self.0, f)
     }
 }
-impl<T: Fragment + fmt::Octal> fmt::Octal for IdentFragmentAdapter<T> {
+impl<T: Fragment + fmt::Octal> fmt::Octal for FragAdaptor<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Octal::fmt(&self.0, f)
     }
 }
-impl<T: Fragment + fmt::LowerHex> fmt::LowerHex for IdentFragmentAdapter<T> {
+impl<T: Fragment + fmt::LowerHex> fmt::LowerHex for FragAdaptor<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::LowerHex::fmt(&self.0, f)
     }
 }
-impl<T: Fragment + fmt::UpperHex> fmt::UpperHex for IdentFragmentAdapter<T> {
+impl<T: Fragment + fmt::UpperHex> fmt::UpperHex for FragAdaptor<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::UpperHex::fmt(&self.0, f)
     }
 }
-impl<T: Fragment + fmt::Binary> fmt::Binary for IdentFragmentAdapter<T> {
+impl<T: Fragment + fmt::Binary> fmt::Binary for FragAdaptor<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Binary::fmt(&self.0, f)
     }

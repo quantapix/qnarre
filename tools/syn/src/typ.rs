@@ -2284,7 +2284,7 @@ pub fn parse_ambig_typ(s: Stream, plus: bool, gen: bool) -> Res<Type> {
         }
         if s.peek(Token![!]) && !s.peek(Token![!=]) && typ.path.is_mod_style() {
             let bang: Token![!] = s.parse()?;
-            let (delim, toks) = mac::parse_delim(s)?;
+            let (delim, toks) = tok::parse_delim(s)?;
             return Ok(Type::Mac(Mac {
                 mac: mac::Mac {
                     path: typ.path,

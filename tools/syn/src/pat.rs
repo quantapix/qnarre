@@ -1718,7 +1718,7 @@ fn parse_path_or_mac_or_struct_or_range(s: Stream) -> Res<Pat> {
     let (qself, path) = path::qpath(s, true)?;
     if qself.is_none() && s.peek(Token![!]) && !s.peek(Token![!=]) && path.is_mod_style() {
         let bang: Token![!] = s.parse()?;
-        let (delim, toks) = mac::parse_delim(s)?;
+        let (delim, toks) = tok::parse_delim(s)?;
         return Ok(Pat::Mac(expr::Mac {
             attrs: Vec::new(),
             mac: mac::Mac {

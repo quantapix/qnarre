@@ -124,18 +124,18 @@ macro_rules! def_keywords {
             impl Parse for $n {
                 fn parse(s: parse::Stream) -> Res<Self> {
                     Ok($n {
-                        span: crate::tok::parse_kw(s, $t)?,
+                        span: tok::parse_kw(s, $t)?,
                     })
                 }
             }
             impl Lower for $n {
                 fn lower(&self, s: &mut pm2::Stream) {
-                    crate::tok::kw_to_toks($t, self.span, s);
+                    tok::kw_to_toks($t, self.span, s);
                 }
             }
             impl Tok for $n {
                 fn peek(x: Cursor) -> bool {
-                    crate::tok::peek_kw(x, $t)
+                    tok::peek_kw(x, $t)
                 }
                 fn display() -> &'static str {
                     concat!("`", $t, "`")
@@ -323,7 +323,7 @@ macro_rules! def_punct {
             }
             impl Tok for $n {
                 fn peek(x: Cursor) -> bool {
-                    crate::tok::peek_punct(x, $t)
+                    tok::peek_punct(x, $t)
                 }
                 fn display() -> &'static str {
                     concat!("`", $t, "`")
@@ -332,13 +332,13 @@ macro_rules! def_punct {
             impl Parse for $n {
                 fn parse(s: Stream) -> Res<Self> {
                     Ok($n {
-                        spans: crate::tok::parse_punct(s, $t)?,
+                        spans: tok::parse_punct(s, $t)?,
                     })
                 }
             }
             impl Lower for $n {
                 fn lower(&self, s: &mut pm2::Stream) {
-                    crate::tok::punct_lower($t, &self.spans, s);
+                    tok::punct_lower($t, &self.spans, s);
                 }
             }
         )*
@@ -412,7 +412,7 @@ macro_rules! def_delims {
                 {
                     let mut inner = pm2::Stream::new();
                     f(&mut inner);
-                    crate::tok::delim_lower(pm2::Delim::$d, self.span.join(), ts, inner);
+                    tok::delim_lower(pm2::Delim::$d, self.span.join(), ts, inner);
                 }
             }
             #[allow(non_snake_case)]
@@ -538,7 +538,7 @@ impl Clone for Delim {
         }
     }
 }
-impl Debug for tok::Delim {
+impl Debug for Delim {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("Delim::")?;
         use Delim::*;
@@ -573,7 +573,7 @@ impl PartialEq for Delim {
         }
     }
 }
-impl<F: Folder + ?Sized> Fold for tok::Delim {
+impl<F: Folder + ?Sized> Fold for Delim {
     fn fold(&self, f: &mut F) {
         use Delim::*;
         match self {
@@ -750,4 +750,23 @@ pub fn peek_punct(mut c: Cursor, txt: &str) -> bool {
         }
     }
     false
+}
+
+pub fn parse_delim(s: Stream) -> Res<(Delim, pm2::Stream)> {
+    s.step(|x| {
+        if let Some((pm2::Tree::Group(x), rest)) = x.token_tree() {
+            let s = x.delim_span();
+            let delim = match x.delim() {
+                pm2::Delim::Parenth => Delim::Parenth(Parenth(s)),
+                pm2::Delim::Brace => Delim::Brace(Brace(s)),
+                pm2::Delim::Bracket => Delim::Bracket(Bracket(s)),
+                pm2::Delim::None => {
+                    return Err(x.err("expected delim"));
+                },
+            };
+            Ok(((delim, x.stream()), rest))
+        } else {
+            Err(x.err("expected delim"))
+        }
+    })
 }

@@ -593,7 +593,7 @@ fn parse_stmt(s: Stream, nosemi: NoSemi) -> Res<Stmt> {
 }
 fn parse_mac(s: Stream, attrs: Vec<attr::Attr>, path: Path) -> Res<Mac> {
     let bang: Token![!] = s.parse()?;
-    let (delim, toks) = mac::parse_delim(s)?;
+    let (delim, toks) = tok::parse_delim(s)?;
     let semi: Option<Token![;]> = s.parse()?;
     Ok(Mac {
         attrs,

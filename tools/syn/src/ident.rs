@@ -34,6 +34,18 @@ impl<V: Visitor + ?Sized> Visit for Ident {
     }
 }
 
+pub fn make(x: &str, span: Option<Span>) -> Ident {
+    let span = span.unwrap_or_else(Span::call_site);
+    maybe_raw(x, span)
+}
+pub fn maybe_raw(x: &str, span: Span) -> Ident {
+    if x.starts_with("r#") {
+        Ident::new_raw(&x[2..], span)
+    } else {
+        Ident::new(x, span)
+    }
+}
+
 macro_rules! ident_from_tok {
     ($x:ident) => {
         impl From<Token![$x]> for Ident {
