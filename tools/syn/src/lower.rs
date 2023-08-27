@@ -356,6 +356,25 @@ push_punct!(push_star push_star_spanned '*');
 push_punct!(push_sub push_sub_spanned '-');
 push_punct!(push_sub_eq push_sub_eq_spanned '-' '=');
 
+pub fn parse(s: &mut Stream, x: &str) {
+    let y: Stream = x.parse().expect("invalid token stream");
+    s.extend(iter::once(y));
+}
+pub fn parse_spanned(s: &mut Stream, span: Span, x: &str) {
+    let y: Stream = x.parse().expect("invalid token stream");
+    fn respan(mut x: Tree, span: Span) -> Tree {
+        match &mut x {
+            Tree::Group(x) => {
+                let y = x.stream().into_iter().map(|x| respan(x, span)).collect();
+                *x = Group::new(x.delim(), y);
+                x.set_span(span);
+            },
+            x => x.set_span(span),
+        }
+        x
+    }
+    s.extend(y.into_iter().map(|x| respan(x, span)));
+}
 pub fn push_group(s: &mut Stream, delim: Delim, inner: Stream) {
     s.append(Group::new(delim, inner));
 }
@@ -363,25 +382,6 @@ pub fn push_group_spanned(s: &mut Stream, span: Span, delim: Delim, inner: Strea
     let mut y = Group::new(delim, inner);
     y.set_span(span);
     s.append(y);
-}
-pub fn parse(s: &mut Stream, x: &str) {
-    let y: Stream = x.parse().expect("invalid token stream");
-    s.extend(iter::once(y));
-}
-pub fn parse_spanned(s: &mut Stream, span: Span, x: &str) {
-    let y: Stream = x.parse().expect("invalid token stream");
-    s.extend(y.into_iter().map(|x| respan_tree(x, span)));
-}
-fn respan_tree(mut x: Tree, span: Span) -> Tree {
-    match &mut x {
-        Tree::Group(x) => {
-            let y = x.stream().into_iter().map(|x| respan_tree(x, span)).collect();
-            *x = Group::new(x.delim(), y);
-            x.set_span(span);
-        },
-        x => x.set_span(span),
-    }
-    x
 }
 pub fn push_ident(s: &mut Stream, x: &str) {
     let span = Span::call_site();
