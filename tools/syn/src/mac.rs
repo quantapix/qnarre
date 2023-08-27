@@ -285,221 +285,6 @@ macro_rules! format_ident {
     };
 }
 
-pub struct Mac {
-    pub path: Path,
-    pub bang: Token![!],
-    pub delim: tok::Delim,
-    pub toks: pm2::Stream,
-}
-impl Mac {
-    pub fn parse_body<T: Parse>(&self) -> Res<T> {
-        self.parse_body_with(T::parse)
-    }
-    pub fn parse_body_with<T: Parser>(&self, f: T) -> Res<T::Output> {
-        let scope = self.delim.span().close();
-        parse::parse_scoped(f, scope, self.toks.clone())
-    }
-}
-impl Parse for Mac {
-    fn parse(s: Stream) -> Res<Self> {
-        let toks;
-        Ok(Mac {
-            path: s.call(Path::parse_mod_style)?,
-            bang: s.parse()?,
-            delim: {
-                let (y, x) = parse_delim(s)?;
-                toks = x;
-                y
-            },
-            toks,
-        })
-    }
-}
-impl Lower for Mac {
-    fn lower(&self, s: &mut Stream) {
-        self.path.lower(s);
-        self.bang.lower(s);
-        self.delim.surround(s, self.toks.clone());
-    }
-}
-impl Clone for Mac {
-    fn clone(&self) -> Self {
-        Mac {
-            path: self.path.clone(),
-            bang: self.bang.clone(),
-            delim: self.delim.clone(),
-            toks: self.toks.clone(),
-        }
-    }
-}
-impl Debug for Mac {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("Macro");
-        f.field("path", &self.path);
-        f.field("bang", &self.bang);
-        f.field("delimiter", &self.delim);
-        f.field("toks", &self.toks);
-        f.finish()
-    }
-}
-impl Eq for Mac {}
-impl PartialEq for Mac {
-    fn eq(&self, x: &Self) -> bool {
-        self.path == x.path && self.delim == x.delim && StreamHelper(&self.toks) == StreamHelper(&x.toks)
-    }
-}
-impl Pretty for Mac {
-    fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
-        let Some(x, semi) = pretty::Args::ident_semi(x);
-        if self.path.is_ident("macro_rules") {
-            if let Some(x) = x {
-                p.macro_rules(x, &self.toks);
-                return;
-            }
-        }
-        if x.is_none() && p.standard_library_macro(self, semi) {
-            return;
-        }
-        &self.path.pretty_with_args(p, path::Kind::Simple);
-        p.word("!");
-        if let Some(x) = x {
-            p.nbsp();
-            x.pretty(x);
-        }
-        use tok::Delim::*;
-        let (open, close, f) = match self.delim {
-            Brace(_) => (" {", "}", Print::hardbreak as fn(&mut Self)),
-            Bracket(_) => ("[", "]", Print::zerobreak as fn(&mut Self)),
-            Parenth(_) => ("(", ")", Print::zerobreak as fn(&mut Self)),
-        };
-        p.word(open);
-        if !self.toks.is_empty() {
-            p.cbox(INDENT);
-            f(p);
-            p.ibox(0);
-            p.macro_rules_tokens(self.toks.clone(), false);
-            p.end();
-            f(p);
-            p.offset(-INDENT);
-            p.end();
-        }
-        p.word(close);
-        if semi {
-            match self.delim {
-                Parenth(_) | Bracket(_) => p.word(";"),
-                Brace(_) => {},
-            }
-        }
-    }
-}
-impl<F: Folder + ?Sized> Fold for Mac {
-    fn fold(&self, f: &mut F) {
-        Mac {
-            path: self.path.fold(f),
-            bang: self.bang,
-            delim: self.delim.fold(f),
-            toks: self.toks,
-        }
-    }
-}
-impl<H: Hasher> Hash for Mac {
-    fn hash(&self, h: &mut H) {
-        self.path.hash(h);
-        self.delim.hash(h);
-        StreamHelper(&self.toks).hash(h);
-    }
-}
-impl<V: Visitor + ?Sized> Visit for Mac {
-    fn visit(&self, v: &mut V) {
-        &self.path.visit(v);
-        &self.delim.visit(v);
-    }
-    fn visit_mut(&mut self, v: &mut V) {
-        &mut self.path.visit_mut(v);
-        &mut self.delim.visit_mut(v);
-    }
-}
-
-pub fn parse_delim(s: Stream) -> Res<(tok::Delim, pm2::Stream)> {
-    s.step(|x| {
-        if let Some((pm2::Tree::Group(x), rest)) = x.token_tree() {
-            let s = x.delim_span();
-            let delim = match x.delim() {
-                pm2::Delim::Parenth => tok::Delim::Parenth(tok::Parenth(s)),
-                pm2::Delim::Brace => tok::Delim::Brace(tok::Brace(s)),
-                pm2::Delim::Bracket => tok::Delim::Bracket(tok::Bracket(s)),
-                pm2::Delim::None => {
-                    return Err(x.err("expected delim"));
-                },
-            };
-            Ok(((delim, x.stream()), rest))
-        } else {
-            Err(x.err("expected delim"))
-        }
-    })
-}
-
-pub trait StreamExt {
-    fn append<U>(&mut self, x: U)
-    where
-        U: Into<pm2::Tree>;
-    fn append_all<I>(&mut self, xs: I)
-    where
-        I: IntoIterator,
-        I::Item: Lower;
-    fn append_sep<I, U>(&mut self, xs: I, y: U)
-    where
-        I: IntoIterator,
-        I::Item: Lower,
-        U: Lower;
-    fn append_term<I, U>(&mut self, xs: I, y: U)
-    where
-        I: IntoIterator,
-        I::Item: Lower,
-        U: Lower;
-}
-impl StreamExt for pm2::Stream {
-    fn append<U>(&mut self, x: U)
-    where
-        U: Into<pm2::Tree>,
-    {
-        self.extend(iter::once(x.into()));
-    }
-    fn append_all<I>(&mut self, xs: I)
-    where
-        I: IntoIterator,
-        I::Item: Lower,
-    {
-        for x in xs {
-            x.lower(self);
-        }
-    }
-    fn append_sep<I, U>(&mut self, xs: I, y: U)
-    where
-        I: IntoIterator,
-        I::Item: Lower,
-        U: Lower,
-    {
-        for (i, x) in xs.into_iter().enumerate() {
-            if i > 0 {
-                y.lower(self);
-            }
-            x.lower(self);
-        }
-    }
-    fn append_term<I, U>(&mut self, xs: I, y: U)
-    where
-        I: IntoIterator,
-        I::Item: Lower,
-        U: Lower,
-    {
-        for x in xs {
-            x.lower(self);
-            y.lower(self);
-        }
-    }
-}
-
 macro_rules! clone_for_kw {
     ($n:ident) => {
         impl Copy for $n {}
@@ -842,4 +627,793 @@ got:
             }
         }
     };
+}
+
+macro_rules! pounded_names_with_context {
+    ($call:ident! $extra:tt ($($b1:tt)*) ($($curr:tt)*)) => {
+        $(
+            pounded_with_context!{$call! $extra $b1 $curr}
+        )*
+    };
+}
+macro_rules! pounded_names {
+    ($call:ident! $extra:tt $($tts:tt)*) => {
+        pounded_names_with_context!{$call! $extra
+            (@ $($tts)*)
+            ($($tts)* @)
+        }
+    };
+}
+#[macro_export]
+macro_rules! pounded_with_context {
+    ($call:ident! $extra:tt $b1:tt ( $($inner:tt)* )) => {
+        pounded_names!{$call! $extra $($inner)*}
+    };
+    ($call:ident! $extra:tt $b1:tt [ $($inner:tt)* ]) => {
+        pounded_names!{$call! $extra $($inner)*}
+    };
+    ($call:ident! $extra:tt $b1:tt { $($inner:tt)* }) => {
+        pounded_names!{$call! $extra $($inner)*}
+    };
+    ($call:ident!($($extra:tt)*) # $var:ident) => {
+        $crate::$call!($($extra)* $var);
+    };
+    ($call:ident! $extra:tt $b1:tt $curr:tt) => {};
+}
+
+macro_rules! quote_token {
+    ($x:ident $ys:ident) => {
+        lower::push_ident(&mut $ys, stringify!($x));
+    };
+    (:: $ys:ident) => {
+        lower::push_colon2(&mut $ys);
+    };
+    (( $($x:tt)* ) $ys:ident) => {
+        lower::push_group(
+            &mut $ys,
+            pm2::Delim::Parenthesis,
+            $crate::quote!($($x)*),
+        );
+    };
+    ([ $($x:tt)* ] $ys:ident) => {
+        lower::push_group(
+            &mut $ys,
+            pm2::Delim::Bracket,
+            quote!($($x)*),
+        );
+    };
+    ({ $($x:tt)* } $ys:ident) => {
+        lower::push_group(
+            &mut $ys,
+            pm2::Delim::Brace,
+            quote!($($x)*),
+        );
+    };
+    (# $ys:ident) => {
+        lower::push_pound(&mut $ys);
+    };
+    (, $ys:ident) => {
+        lower::push_comma(&mut $ys);
+    };
+    (. $ys:ident) => {
+        lower::push_dot(&mut $ys);
+    };
+    (; $ys:ident) => {
+        lower::push_semi(&mut $ys);
+    };
+    (: $ys:ident) => {
+        lower::push_colon(&mut $ys);
+    };
+    (+ $ys:ident) => {
+        lower::push_add(&mut $ys);
+    };
+    (+= $ys:ident) => {
+        lower::push_add_eq(&mut $ys);
+    };
+    (& $ys:ident) => {
+        lower::push_and(&mut $ys);
+    };
+    (&& $ys:ident) => {
+        lower::push_and_and(&mut $ys);
+    };
+    (&= $ys:ident) => {
+        lower::push_and_eq(&mut $ys);
+    };
+    (@ $ys:ident) => {
+        lower::push_at(&mut $ys);
+    };
+    (! $ys:ident) => {
+        lower::push_bang(&mut $ys);
+    };
+    (^ $ys:ident) => {
+        lower::push_caret(&mut $ys);
+    };
+    (^= $ys:ident) => {
+        lower::push_caret_eq(&mut $ys);
+    };
+    (/ $ys:ident) => {
+        lower::push_div(&mut $ys);
+    };
+    (/= $ys:ident) => {
+        lower::push_div_eq(&mut $ys);
+    };
+    (.. $ys:ident) => {
+        lower::push_dot2(&mut $ys);
+    };
+    (... $ys:ident) => {
+        lower::push_dot3(&mut $ys);
+    };
+    (..= $ys:ident) => {
+        lower::push_dot_dot_eq(&mut $ys);
+    };
+    (= $ys:ident) => {
+        lower::push_eq(&mut $ys);
+    };
+    (== $ys:ident) => {
+        lower::push_eq_eq(&mut $ys);
+    };
+    (>= $ys:ident) => {
+        lower::push_ge(&mut $ys);
+    };
+    (> $ys:ident) => {
+        lower::push_gt(&mut $ys);
+    };
+    (<= $ys:ident) => {
+        lower::push_le(&mut $ys);
+    };
+    (< $ys:ident) => {
+        lower::push_lt(&mut $ys);
+    };
+    (*= $ys:ident) => {
+        lower::push_mul_eq(&mut $ys);
+    };
+    (!= $ys:ident) => {
+        lower::push_ne(&mut $ys);
+    };
+    (| $ys:ident) => {
+        lower::push_or(&mut $ys);
+    };
+    (|= $ys:ident) => {
+        lower::push_or_eq(&mut $ys);
+    };
+    (|| $ys:ident) => {
+        lower::push_or_or(&mut $ys);
+    };
+    (? $ys:ident) => {
+        lower::push_question(&mut $ys);
+    };
+    (-> $ys:ident) => {
+        lower::push_rarrow(&mut $ys);
+    };
+    (<- $ys:ident) => {
+        lower::push_larrow(&mut $ys);
+    };
+    (% $ys:ident) => {
+        lower::push_rem(&mut $ys);
+    };
+    (%= $ys:ident) => {
+        lower::push_rem_eq(&mut $ys);
+    };
+    (=> $ys:ident) => {
+        lower::push_fat_arrow(&mut $ys);
+    };
+    (<< $ys:ident) => {
+        lower::push_shl(&mut $ys);
+    };
+    (<<= $ys:ident) => {
+        lower::push_shl_eq(&mut $ys);
+    };
+    (>> $ys:ident) => {
+        lower::push_shr(&mut $ys);
+    };
+    (>>= $ys:ident) => {
+        lower::push_shr_eq(&mut $ys);
+    };
+    (* $ys:ident) => {
+        lower::push_star(&mut $ys);
+    };
+    (- $ys:ident) => {
+        lower::push_sub(&mut $ys);
+    };
+    (-= $ys:ident) => {
+        lower::push_sub_eq(&mut $ys);
+    };
+    ($x:lifetime $ys:ident) => {
+        lower::push_lifetime(&mut $ys, stringify!($x));
+    };
+    (_ $ys:ident) => {
+        lower::push_underscore(&mut $ys);
+    };
+    ($x:tt $ys:ident) => {
+        $crate::parse(&mut $ys, stringify!($x));
+    };
+}
+macro_rules! quote_each_token {
+    ($ys:ident $($xs:tt)*) => {
+        quote_tokens_with_context!{$ys
+            (@ @ @ @ @ @ $($xs)*)
+            (@ @ @ @ @ $($xs)* @)
+            (@ @ @ @ $($xs)* @ @)
+            (@ @ @ $(($xs))* @ @ @)
+            (@ @ $($xs)* @ @ @ @)
+            (@ $($xs)* @ @ @ @ @)
+            ($($xs)* @ @ @ @ @ @)
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! quote {
+    () => {
+        $crate::Stream::new()
+    };
+    ($x:tt) => {{
+        let mut ys = $crate::Stream::new();
+        quote_token!{$x ys}
+        ys
+    }};
+    (# $x:ident) => {{
+        let mut ys = $crate::Stream::new();
+        $crate::Lower::lower(&$x, &mut ys);
+        ys
+    }};
+    ($x1:tt $x2:tt) => {{
+        let mut ys = $crate::Stream::new();
+        quote_token!{$x1 ys}
+        quote_token!{$x2 ys}
+        ys
+    }};
+    ($($x:tt)*) => {{
+        let mut ys = $crate::Stream::new();
+        quote_each_token!{ys $($x)*}
+        ys
+    }};
+}
+macro_rules! quote_spanned {
+    ($span:expr=>) => {{
+        let _: $crate::Span = $crate::get_span($span).__into_span();
+        $crate::Stream::new()
+    }};
+    ($span:expr=> $tt:tt) => {{
+        let mut _s = $crate::Stream::new();
+        let _span: $crate::Span = $crate::get_span($span).__into_span();
+        quote_token_spanned!{$tt _s _span}
+        _s
+    }};
+    ($span:expr=> # $var:ident) => {{
+        let mut _s = $crate::Stream::new();
+        let _: $crate::Span = $crate::get_span($span).__into_span();
+        $crate::Lower::lower(&$var, &mut _s);
+        _s
+    }};
+    ($span:expr=> $tt1:tt $tt2:tt) => {{
+        let mut _s = $crate::Stream::new();
+        let _span: $crate::Span = $crate::get_span($span).__into_span();
+        quote_token_spanned!{$tt1 _s _span}
+        quote_token_spanned!{$tt2 _s _span}
+        _s
+    }};
+    ($span:expr=> $($tt:tt)*) => {{
+        let mut _s = $crate::Stream::new();
+        let _span: $crate::Span = $crate::get_span($span).__into_span();
+        quote_each_token_spanned!{_s _span $($tt)*}
+        _s
+    }};
+}
+macro_rules! quote_bind_into_iter {
+    ($has_iter:ident $var:ident) => {
+        #[allow(unused_mut)]
+        let (mut $var, i) = $var.quote_into_iter();
+        let $has_iter = $has_iter | i;
+    };
+}
+macro_rules! quote_bind_next_or_break {
+    ($var:ident) => {
+        let $var = match $var.next() {
+            Some(_x) => $crate::RepInterp(_x),
+            None => break,
+        };
+    };
+}
+macro_rules! quote_each_token_spanned {
+    ($tokens:ident $span:ident $($tts:tt)*) => {
+        quote_tokens_with_context_spanned!{$tokens $span
+            (@ @ @ @ @ @ $($tts)*)
+            (@ @ @ @ @ $($tts)* @)
+            (@ @ @ @ $($tts)* @ @)
+            (@ @ @ $(($tts))* @ @ @)
+            (@ @ $($tts)* @ @ @ @)
+            (@ $($tts)* @ @ @ @ @)
+            ($($tts)* @ @ @ @ @ @)
+        }
+    };
+}
+macro_rules! quote_tokens_with_context {
+    ($tokens:ident
+        ($($b3:tt)*) ($($b2:tt)*) ($($b1:tt)*)
+        ($($curr:tt)*)
+        ($($a1:tt)*) ($($a2:tt)*) ($($a3:tt)*)
+    ) => {
+        $(
+            quote_token_with_context!{$tokens $b3 $b2 $b1 $curr $a1 $a2 $a3}
+        )*
+    };
+}
+macro_rules! quote_tokens_with_context_spanned {
+    ($tokens:ident $span:ident
+        ($($b3:tt)*) ($($b2:tt)*) ($($b1:tt)*)
+        ($($curr:tt)*)
+        ($($a1:tt)*) ($($a2:tt)*) ($($a3:tt)*)
+    ) => {
+        $(
+            quote_token_with_context_spanned!{$tokens $span $b3 $b2 $b1 $curr $a1 $a2 $a3}
+        )*
+    };
+}
+macro_rules! quote_token_with_context {
+    ($tokens:ident $b3:tt $b2:tt $b1:tt @ $a1:tt $a2:tt $a3:tt) => {};
+    ($tokens:ident $b3:tt $b2:tt $b1:tt (#) ( $($inner:tt)* ) * $a3:tt) => {{
+        let has_iter = $crate::ThereIsNoIteratorInRepetition;
+        pounded_names!{quote_bind_into_iter!(has_iter) () $($inner)*}
+        let _: $crate::HasIterator = has_iter;
+        while true {
+            pounded_names!{quote_bind_next_or_break!() () $($inner)*}
+            quote_each_token!{$tokens $($inner)*}
+        }
+    }};
+    ($tokens:ident $b3:tt $b2:tt # (( $($inner:tt)* )) * $a2:tt $a3:tt) => {};
+    ($tokens:ident $b3:tt # ( $($inner:tt)* ) (*) $a1:tt $a2:tt $a3:tt) => {};
+    ($tokens:ident $b3:tt $b2:tt $b1:tt (#) ( $($inner:tt)* ) $sep:tt *) => {{
+        let mut _i = 0usize;
+        let has_iter = $crate::ThereIsNoIteratorInRepetition;
+        pounded_names!{quote_bind_into_iter!(has_iter) () $($inner)*}
+        let _: $crate::HasIterator = has_iter;
+        while true {
+            pounded_names!{quote_bind_next_or_break!() () $($inner)*}
+            if _i > 0 {
+                quote_token!{$sep $tokens}
+            }
+            _i += 1;
+            quote_each_token!{$tokens $($inner)*}
+        }
+    }};
+    ($tokens:ident $b3:tt $b2:tt # (( $($inner:tt)* )) $sep:tt * $a3:tt) => {};
+    ($tokens:ident $b3:tt # ( $($inner:tt)* ) ($sep:tt) * $a2:tt $a3:tt) => {};
+    ($tokens:ident # ( $($inner:tt)* ) * (*) $a1:tt $a2:tt $a3:tt) => {
+        quote_token!{* $tokens}
+    };
+    ($tokens:ident # ( $($inner:tt)* ) $sep:tt (*) $a1:tt $a2:tt $a3:tt) => {};
+    ($tokens:ident $b3:tt $b2:tt $b1:tt (#) $var:ident $a2:tt $a3:tt) => {
+        $crate::Lower::lower(&$var, &mut $tokens);
+    };
+    ($tokens:ident $b3:tt $b2:tt # ($var:ident) $a1:tt $a2:tt $a3:tt) => {};
+    ($tokens:ident $b3:tt $b2:tt $b1:tt ($curr:tt) $a1:tt $a2:tt $a3:tt) => {
+        quote_token!{$curr $tokens}
+    };
+}
+macro_rules! quote_token_with_context_spanned {
+    ($tokens:ident $span:ident $b3:tt $b2:tt $b1:tt @ $a1:tt $a2:tt $a3:tt) => {};
+    ($tokens:ident $span:ident $b3:tt $b2:tt $b1:tt (#) ( $($inner:tt)* ) * $a3:tt) => {{
+        let has_iter = $crate::ThereIsNoIteratorInRepetition;
+        pounded_names!{quote_bind_into_iter!(has_iter) () $($inner)*}
+        let _: $crate::HasIterator = has_iter;
+        while true {
+            pounded_names!{quote_bind_next_or_break!() () $($inner)*}
+            quote_each_token_spanned!{$tokens $span $($inner)*}
+        }
+    }};
+    ($tokens:ident $span:ident $b3:tt $b2:tt # (( $($inner:tt)* )) * $a2:tt $a3:tt) => {};
+    ($tokens:ident $span:ident $b3:tt # ( $($inner:tt)* ) (*) $a1:tt $a2:tt $a3:tt) => {};
+    ($tokens:ident $span:ident $b3:tt $b2:tt $b1:tt (#) ( $($inner:tt)* ) $sep:tt *) => {{
+        let mut _i = 0usize;
+        let has_iter = $crate::ThereIsNoIteratorInRepetition;
+        pounded_names!{quote_bind_into_iter!(has_iter) () $($inner)*}
+        let _: $crate::HasIterator = has_iter;
+        while true {
+            pounded_names!{quote_bind_next_or_break!() () $($inner)*}
+            if _i > 0 {
+                quote_token_spanned!{$sep $tokens $span}
+            }
+            _i += 1;
+            quote_each_token_spanned!{$tokens $span $($inner)*}
+        }
+    }};
+    ($tokens:ident $span:ident $b3:tt $b2:tt # (( $($inner:tt)* )) $sep:tt * $a3:tt) => {};
+    ($tokens:ident $span:ident $b3:tt # ( $($inner:tt)* ) ($sep:tt) * $a2:tt $a3:tt) => {};
+    ($tokens:ident $span:ident # ( $($inner:tt)* ) * (*) $a1:tt $a2:tt $a3:tt) => {
+        quote_token_spanned!{* $tokens $span}
+    };
+    ($tokens:ident $span:ident # ( $($inner:tt)* ) $sep:tt (*) $a1:tt $a2:tt $a3:tt) => {};
+    ($tokens:ident $span:ident $b3:tt $b2:tt $b1:tt (#) $var:ident $a2:tt $a3:tt) => {
+        $crate::Lower::lower(&$var, &mut $tokens);
+    };
+    ($tokens:ident $span:ident $b3:tt $b2:tt # ($var:ident) $a1:tt $a2:tt $a3:tt) => {};
+    ($tokens:ident $span:ident $b3:tt $b2:tt $b1:tt ($curr:tt) $a1:tt $a2:tt $a3:tt) => {
+        quote_token_spanned!{$curr $tokens $span}
+    };
+}
+macro_rules! quote_token_spanned {
+    ($ident:ident $tokens:ident $span:ident) => {
+        lower::push_ident_spanned(&mut $tokens, $span, stringify!($ident));
+    };
+    (:: $tokens:ident $span:ident) => {
+        lower::push_colon2_spanned(&mut $tokens, $span);
+    };
+    (( $($inner:tt)* ) $tokens:ident $span:ident) => {
+        lower::push_group_spanned(
+            &mut $tokens,
+            $span,
+            $crate::Delimiter::Parenthesis,
+            quote_spanned!($span=> $($inner)*),
+        );
+    };
+    ([ $($inner:tt)* ] $tokens:ident $span:ident) => {
+        lower::push_group_spanned(
+            &mut $tokens,
+            $span,
+            $crate::Delimiter::Bracket,
+            quote_spanned!($span=> $($inner)*),
+        );
+    };
+    ({ $($inner:tt)* } $tokens:ident $span:ident) => {
+        lower::push_group_spanned(
+            &mut $tokens,
+            $span,
+            $crate::Delimiter::Brace,
+            quote_spanned!($span=> $($inner)*),
+        );
+    };
+    (# $tokens:ident $span:ident) => {
+        lower::push_pound_spanned(&mut $tokens, $span);
+    };
+    (, $tokens:ident $span:ident) => {
+        lower::push_comma_spanned(&mut $tokens, $span);
+    };
+    (. $tokens:ident $span:ident) => {
+        lower::push_dot_spanned(&mut $tokens, $span);
+    };
+    (; $tokens:ident $span:ident) => {
+        lower::push_semi_spanned(&mut $tokens, $span);
+    };
+    (: $tokens:ident $span:ident) => {
+        lower::push_colon_spanned(&mut $tokens, $span);
+    };
+    (+ $tokens:ident $span:ident) => {
+        lower::push_add_spanned(&mut $tokens, $span);
+    };
+    (+= $tokens:ident $span:ident) => {
+        lower::push_add_eq_spanned(&mut $tokens, $span);
+    };
+    (& $tokens:ident $span:ident) => {
+        lower::push_and_spanned(&mut $tokens, $span);
+    };
+    (&& $tokens:ident $span:ident) => {
+        lower::push_and_and_spanned(&mut $tokens, $span);
+    };
+    (&= $tokens:ident $span:ident) => {
+        lower::push_and_eq_spanned(&mut $tokens, $span);
+    };
+    (@ $tokens:ident $span:ident) => {
+        lower::push_at_spanned(&mut $tokens, $span);
+    };
+    (! $tokens:ident $span:ident) => {
+        lower::push_bang_spanned(&mut $tokens, $span);
+    };
+    (^ $tokens:ident $span:ident) => {
+        lower::push_caret_spanned(&mut $tokens, $span);
+    };
+    (^= $tokens:ident $span:ident) => {
+        lower::push_caret_eq_spanned(&mut $tokens, $span);
+    };
+    (/ $tokens:ident $span:ident) => {
+        lower::push_div_spanned(&mut $tokens, $span);
+    };
+    (/= $tokens:ident $span:ident) => {
+        lower::push_div_eq_spanned(&mut $tokens, $span);
+    };
+    (.. $tokens:ident $span:ident) => {
+        lower::push_dot2_spanned(&mut $tokens, $span);
+    };
+    (... $tokens:ident $span:ident) => {
+        lower::push_dot3_spanned(&mut $tokens, $span);
+    };
+    (..= $tokens:ident $span:ident) => {
+        lower::push_dot_dot_eq_spanned(&mut $tokens, $span);
+    };
+    (= $tokens:ident $span:ident) => {
+        lower::push_eq_spanned(&mut $tokens, $span);
+    };
+    (== $tokens:ident $span:ident) => {
+        lower::push_eq_eq_spanned(&mut $tokens, $span);
+    };
+    (>= $tokens:ident $span:ident) => {
+        lower::push_ge_spanned(&mut $tokens, $span);
+    };
+    (> $tokens:ident $span:ident) => {
+        lower::push_gt_spanned(&mut $tokens, $span);
+    };
+    (<= $tokens:ident $span:ident) => {
+        lower::push_le_spanned(&mut $tokens, $span);
+    };
+    (< $tokens:ident $span:ident) => {
+        lower::push_lt_spanned(&mut $tokens, $span);
+    };
+    (*= $tokens:ident $span:ident) => {
+        lower::push_mul_eq_spanned(&mut $tokens, $span);
+    };
+    (!= $tokens:ident $span:ident) => {
+        lower::push_ne_spanned(&mut $tokens, $span);
+    };
+    (| $tokens:ident $span:ident) => {
+        lower::push_or_spanned(&mut $tokens, $span);
+    };
+    (|= $tokens:ident $span:ident) => {
+        lower::push_or_eq_spanned(&mut $tokens, $span);
+    };
+    (|| $tokens:ident $span:ident) => {
+        lower::push_or_or_spanned(&mut $tokens, $span);
+    };
+    (? $tokens:ident $span:ident) => {
+        lower::push_question_spanned(&mut $tokens, $span);
+    };
+    (-> $tokens:ident $span:ident) => {
+        lower::push_rarrow_spanned(&mut $tokens, $span);
+    };
+    (<- $tokens:ident $span:ident) => {
+        lower::push_larrow_spanned(&mut $tokens, $span);
+    };
+    (% $tokens:ident $span:ident) => {
+        lower::push_rem_spanned(&mut $tokens, $span);
+    };
+    (%= $tokens:ident $span:ident) => {
+        lower::push_rem_eq_spanned(&mut $tokens, $span);
+    };
+    (=> $tokens:ident $span:ident) => {
+        lower::push_fat_arrow_spanned(&mut $tokens, $span);
+    };
+    (<< $tokens:ident $span:ident) => {
+        lower::push_shl_spanned(&mut $tokens, $span);
+    };
+    (<<= $tokens:ident $span:ident) => {
+        lower::push_shl_eq_spanned(&mut $tokens, $span);
+    };
+    (>> $tokens:ident $span:ident) => {
+        lower::push_shr_spanned(&mut $tokens, $span);
+    };
+    (>>= $tokens:ident $span:ident) => {
+        lower::push_shr_eq_spanned(&mut $tokens, $span);
+    };
+    (* $tokens:ident $span:ident) => {
+        lower::push_star_spanned(&mut $tokens, $span);
+    };
+    (- $tokens:ident $span:ident) => {
+        lower::push_sub_spanned(&mut $tokens, $span);
+    };
+    (-= $tokens:ident $span:ident) => {
+        lower::push_sub_eq_spanned(&mut $tokens, $span);
+    };
+    ($lifetime:lifetime $tokens:ident $span:ident) => {
+        lower::push_lifetime_spanned(&mut $tokens, $span, stringify!($lifetime));
+    };
+    (_ $tokens:ident $span:ident) => {
+        lower::push_underscore_spanned(&mut $tokens, $span);
+    };
+    ($other:tt $tokens:ident $span:ident) => {
+        $crate::parse_spanned(&mut $tokens, $span, stringify!($other));
+    };
+}
+
+pub struct Mac {
+    pub path: Path,
+    pub bang: Token![!],
+    pub delim: tok::Delim,
+    pub toks: pm2::Stream,
+}
+impl Mac {
+    pub fn parse_body<T: Parse>(&self) -> Res<T> {
+        self.parse_body_with(T::parse)
+    }
+    pub fn parse_body_with<T: Parser>(&self, f: T) -> Res<T::Output> {
+        let scope = self.delim.span().close();
+        parse::parse_scoped(f, scope, self.toks.clone())
+    }
+}
+impl Parse for Mac {
+    fn parse(s: Stream) -> Res<Self> {
+        let toks;
+        Ok(Mac {
+            path: s.call(Path::parse_mod_style)?,
+            bang: s.parse()?,
+            delim: {
+                let (y, x) = parse_delim(s)?;
+                toks = x;
+                y
+            },
+            toks,
+        })
+    }
+}
+impl Lower for Mac {
+    fn lower(&self, s: &mut Stream) {
+        self.path.lower(s);
+        self.bang.lower(s);
+        self.delim.surround(s, self.toks.clone());
+    }
+}
+impl Clone for Mac {
+    fn clone(&self) -> Self {
+        Mac {
+            path: self.path.clone(),
+            bang: self.bang.clone(),
+            delim: self.delim.clone(),
+            toks: self.toks.clone(),
+        }
+    }
+}
+impl Debug for Mac {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut f = f.debug_struct("Macro");
+        f.field("path", &self.path);
+        f.field("bang", &self.bang);
+        f.field("delimiter", &self.delim);
+        f.field("toks", &self.toks);
+        f.finish()
+    }
+}
+impl Eq for Mac {}
+impl PartialEq for Mac {
+    fn eq(&self, x: &Self) -> bool {
+        self.path == x.path && self.delim == x.delim && StreamHelper(&self.toks) == StreamHelper(&x.toks)
+    }
+}
+impl Pretty for Mac {
+    fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
+        let Some(x, semi) = pretty::Args::ident_semi(x);
+        if self.path.is_ident("macro_rules") {
+            if let Some(x) = x {
+                p.macro_rules(x, &self.toks);
+                return;
+            }
+        }
+        if x.is_none() && p.standard_library_macro(self, semi) {
+            return;
+        }
+        &self.path.pretty_with_args(p, path::Kind::Simple);
+        p.word("!");
+        if let Some(x) = x {
+            p.nbsp();
+            x.pretty(x);
+        }
+        use tok::Delim::*;
+        let (open, close, f) = match self.delim {
+            Brace(_) => (" {", "}", Print::hardbreak as fn(&mut Self)),
+            Bracket(_) => ("[", "]", Print::zerobreak as fn(&mut Self)),
+            Parenth(_) => ("(", ")", Print::zerobreak as fn(&mut Self)),
+        };
+        p.word(open);
+        if !self.toks.is_empty() {
+            p.cbox(INDENT);
+            f(p);
+            p.ibox(0);
+            p.macro_rules_tokens(self.toks.clone(), false);
+            p.end();
+            f(p);
+            p.offset(-INDENT);
+            p.end();
+        }
+        p.word(close);
+        if semi {
+            match self.delim {
+                Parenth(_) | Bracket(_) => p.word(";"),
+                Brace(_) => {},
+            }
+        }
+    }
+}
+impl<F: Folder + ?Sized> Fold for Mac {
+    fn fold(&self, f: &mut F) {
+        Mac {
+            path: self.path.fold(f),
+            bang: self.bang,
+            delim: self.delim.fold(f),
+            toks: self.toks,
+        }
+    }
+}
+impl<H: Hasher> Hash for Mac {
+    fn hash(&self, h: &mut H) {
+        self.path.hash(h);
+        self.delim.hash(h);
+        StreamHelper(&self.toks).hash(h);
+    }
+}
+impl<V: Visitor + ?Sized> Visit for Mac {
+    fn visit(&self, v: &mut V) {
+        &self.path.visit(v);
+        &self.delim.visit(v);
+    }
+    fn visit_mut(&mut self, v: &mut V) {
+        &mut self.path.visit_mut(v);
+        &mut self.delim.visit_mut(v);
+    }
+}
+
+pub fn parse_delim(s: Stream) -> Res<(tok::Delim, pm2::Stream)> {
+    s.step(|x| {
+        if let Some((pm2::Tree::Group(x), rest)) = x.token_tree() {
+            let s = x.delim_span();
+            let delim = match x.delim() {
+                pm2::Delim::Parenth => tok::Delim::Parenth(tok::Parenth(s)),
+                pm2::Delim::Brace => tok::Delim::Brace(tok::Brace(s)),
+                pm2::Delim::Bracket => tok::Delim::Bracket(tok::Bracket(s)),
+                pm2::Delim::None => {
+                    return Err(x.err("expected delim"));
+                },
+            };
+            Ok(((delim, x.stream()), rest))
+        } else {
+            Err(x.err("expected delim"))
+        }
+    })
+}
+
+pub trait StreamExt {
+    fn append<U>(&mut self, x: U)
+    where
+        U: Into<pm2::Tree>;
+    fn append_all<I>(&mut self, xs: I)
+    where
+        I: IntoIterator,
+        I::Item: Lower;
+    fn append_sep<I, U>(&mut self, xs: I, y: U)
+    where
+        I: IntoIterator,
+        I::Item: Lower,
+        U: Lower;
+    fn append_term<I, U>(&mut self, xs: I, y: U)
+    where
+        I: IntoIterator,
+        I::Item: Lower,
+        U: Lower;
+}
+impl StreamExt for pm2::Stream {
+    fn append<U>(&mut self, x: U)
+    where
+        U: Into<pm2::Tree>,
+    {
+        self.extend(iter::once(x.into()));
+    }
+    fn append_all<I>(&mut self, xs: I)
+    where
+        I: IntoIterator,
+        I::Item: Lower,
+    {
+        for x in xs {
+            x.lower(self);
+        }
+    }
+    fn append_sep<I, U>(&mut self, xs: I, y: U)
+    where
+        I: IntoIterator,
+        I::Item: Lower,
+        U: Lower,
+    {
+        for (i, x) in xs.into_iter().enumerate() {
+            if i > 0 {
+                y.lower(self);
+            }
+            x.lower(self);
+        }
+    }
+    fn append_term<I, U>(&mut self, xs: I, y: U)
+    where
+        I: IntoIterator,
+        I::Item: Lower,
+        U: Lower,
+    {
+        for x in xs {
+            x.lower(self);
+            y.lower(self);
+        }
+    }
 }

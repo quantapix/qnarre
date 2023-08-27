@@ -1,4 +1,4 @@
-#![allow(non_camel_case_types, non_snake_case_types)]
+#![allow(non_camel_case_types)]
 
 extern crate proc_macro as pm;
 
@@ -11,8 +11,8 @@ use std::{
 };
 
 #[macro_use]
-mod quote;
-use quote::Lower;
+mod lower;
+use lower::Lower;
 
 #[macro_use]
 mod mac;
@@ -138,7 +138,7 @@ where
 pub trait Spanned {
     fn span(&self) -> pm2::Span;
 }
-impl<T: ?Sized + quote::Spanned> Spanned for T {
+impl<T: ?Sized + lower::Spanned> Spanned for T {
     fn span(&self) -> pm2::Span {
         self.__span()
     }

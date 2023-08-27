@@ -1,5 +1,5 @@
 use super::*;
-use quote::Fragment;
+use lower::Fragment;
 
 enum_of_structs! {
     pub enum Expr {
