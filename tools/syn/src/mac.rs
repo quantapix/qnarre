@@ -1,85 +1,6 @@
 use super::*;
 use std::iter;
 
-#[macro_export]
-macro_rules! braced {
-    ($n:ident in $s:expr) => {
-        match parse::parse_braces(&$s) {
-            Ok(x) => {
-                $n = x.buf;
-                x.tok
-            },
-            Err(x) => {
-                return Err(x);
-            },
-        }
-    };
-}
-#[macro_export]
-macro_rules! bracketed {
-    ($n:ident in $s:expr) => {
-        match parse::parse_brackets(&$s) {
-            Ok(x) => {
-                $n = x.buf;
-                x.tok
-            },
-            Err(x) => {
-                return Err(x);
-            },
-        }
-    };
-}
-#[macro_export]
-macro_rules! parenthed {
-    ($n:ident in $s:expr) => {
-        match parse::parse_parenths(&$s) {
-            Ok(x) => {
-                $n = x.buf;
-                x.tok
-            },
-            Err(x) => {
-                return Err(x);
-            },
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! parse_quote {
-    ($($tt:tt)*) => {
-        parse::parse_quote(quote!($($tt)*))
-    };
-}
-#[macro_export]
-macro_rules! parse_quote_spanned {
-    ($s:expr=> $($tt:tt)*) => {
-        parse::parse_quote(quote_spanned!($s => $($tt)*))
-    };
-}
-#[macro_export]
-macro_rules! parse_mac_input {
-    ($n:ident as $ty:ty) => {
-        match parse::<$ty>($n) {
-            Ok(x) => x,
-            Err(x) => {
-                return pm2::Stream::from(x.to_compile_error());
-            },
-        }
-    };
-    ($n:ident with $p:path) => {
-        match Parser::parse($p, $n) {
-            Ok(x) => x,
-            Err(x) => {
-                return pm2::Stream::from(x.to_compile_error());
-            },
-        }
-    };
-    ($n:ident) => {
-        parse_mac_input!($n as _)
-    };
-}
-
-#[macro_export]
 macro_rules! Token {
     [abstract]    => { tok::Abstract };
     [as]          => { tok::As };
@@ -180,6 +101,188 @@ macro_rules! Token {
     [*=]          => { tok::StarEq };
     [~]           => { tok::Tilde };
     [_]           => { tok::Underscore };
+}
+
+macro_rules! impl_From {
+    ($n:ident::Verbatim, $($y:ident)::+) => {};
+    ($n:ident::$x:ident, $($y:ident)::+) => {
+        impl From<$($y)::+> for $n {
+            fn from(x: $($y)::+) -> $n {
+                $n::$x(x)
+            }
+        }
+    };
+}
+macro_rules! impl_Lower {
+    (
+        ($($ys:tt)*)
+        $n:ident {
+            $x:ident ()
+            $($xs:tt)*
+        }
+    ) => {
+        impl_Lower!(
+            ($($ys)* $n::$x => {})
+            $n { $($xs)* }
+        );
+    };
+    (
+        ($($ys:tt)*)
+        $n:ident {
+            $x:ident ( $($s:ident)::+, )
+            $($xs:tt)*
+        }
+    ) => {
+        impl_Lower!(
+            ($($ys)* $n::$x(x) => x.lower(s), )
+            $n { $($xs)* }
+        );
+    };
+    (($($ys:tt)*) $n:ident {}) => {
+        impl Lower for $n {
+            fn lower(&self, s: &mut pm2::Stream) {
+                match self {
+                    $($ys)*
+                }
+            }
+        }
+    };
+}
+macro_rules! impl_enum {
+    (
+        $n:ident { $( $x:ident $( ($($xs:ident)::+) )*, )* }
+    ) => {
+        $( $( impl_From!($n::$x, $($xs)::+); )* )*
+        impl_Lower!{ () $n { $( $x ( $( $($xs)::+, )* ) )* } }
+    };
+}
+macro_rules! enum_of_structs {
+    (
+        pub enum $n:ident $x:tt $($xs:tt)*
+    ) => {
+        pub enum $n $x
+        impl_enum!($n $x $($xs)*);
+    };
+}
+
+macro_rules! braced {
+    ($y:ident in $s:expr) => {
+        match parse::parse_braces(&$s) {
+            Ok(x) => {
+                $y = x.buf;
+                x.tok
+            },
+            Err(x) => {
+                return Err(x);
+            },
+        }
+    };
+}
+macro_rules! bracketed {
+    ($y:ident in $s:expr) => {
+        match parse::parse_brackets(&$s) {
+            Ok(x) => {
+                $y = x.buf;
+                x.tok
+            },
+            Err(x) => {
+                return Err(x);
+            },
+        }
+    };
+}
+macro_rules! parenthed {
+    ($y:ident in $s:expr) => {
+        match parse::parse_parenths(&$s) {
+            Ok(x) => {
+                $y = x.buf;
+                x.tok
+            },
+            Err(x) => {
+                return Err(x);
+            },
+        }
+    };
+}
+
+macro_rules! parse_quote {
+    ($($tt:tt)*) => {
+        parse::parse_quote(quote!($($tt)*))
+    };
+}
+macro_rules! parse_quote_spanned {
+    ($s:expr=> $($tt:tt)*) => {
+        parse::parse_quote(quote_spanned!($s => $($tt)*))
+    };
+}
+macro_rules! parse_mac_input {
+    ($y:ident as $ty:ty) => {
+        match parse::<$ty>($y) {
+            Ok(x) => x,
+            Err(x) => {
+                return pm2::Stream::from(x.to_compile_error());
+            },
+        }
+    };
+    ($y:ident with $p:path) => {
+        match Parser::parse($p, $y) {
+            Ok(x) => x,
+            Err(x) => {
+                return pm2::Stream::from(x.to_compile_error());
+            },
+        }
+    };
+    ($y:ident) => {
+        parse_mac_input!($y as _)
+    };
+}
+
+macro_rules! format_ident_impl {
+    ([$span:expr, $($fmt:tt)*]) => {
+        quote::mk_ident(
+            format!($($fmt)*),
+            $span,
+        )
+    };
+    ([$old:expr, $($fmt:tt)*] span = $span:expr) => {
+        format_ident_impl!([$old, $($fmt)*] span = $span,)
+    };
+    ([$old:expr, $($fmt:tt)*] span = $span:expr, $($rest:tt)*) => {
+        format_ident_impl!([
+            Option::Some::<$crate::Span>($span),
+            $($fmt)*
+        ] $($rest)*)
+    };
+    ([$span:expr, $($fmt:tt)*] $name:ident = $arg:expr) => {
+        format_ident_impl!([$span, $($fmt)*] $name = $arg,)
+    };
+    ([$span:expr, $($fmt:tt)*] $name:ident = $arg:expr, $($rest:tt)*) => {
+        match $crate::IdentFragmentAdapter(&$arg) {
+            arg => format_ident_impl!([$span.or(arg.span()), $($fmt)*, $name = arg] $($rest)*),
+        }
+    };
+    ([$span:expr, $($fmt:tt)*] $arg:expr) => {
+        format_ident_impl!([$span, $($fmt)*] $arg,)
+    };
+    ([$span:expr, $($fmt:tt)*] $arg:expr, $($rest:tt)*) => {
+        match $crate::IdentFragmentAdapter(&$arg) {
+            arg => format_ident_impl!([$span.or(arg.span()), $($fmt)*, arg] $($rest)*),
+        }
+    };
+}
+macro_rules! format_ident {
+    ($fmt:expr) => {
+        format_ident_impl!([
+            Option::None,
+            $fmt
+        ])
+    };
+    ($fmt:expr, $($rest:tt)*) => {
+        format_ident_impl!([
+            Option::None,
+            $fmt
+        ] $($rest)*)
+    };
 }
 
 pub struct Mac {
@@ -334,69 +437,6 @@ pub fn parse_delim(s: Stream) -> Res<(tok::Delim, pm2::Stream)> {
             Err(x.err("expected delim"))
         }
     })
-}
-
-macro_rules! impl_From {
-    ($n:ident::Verbatim, $($y:ident)::+) => {};
-    ($n:ident::$x:ident, $($y:ident)::+) => {
-        impl From<$($y)::+> for $n {
-            fn from(x: $($y)::+) -> $n {
-                $n::$x(x)
-            }
-        }
-    };
-}
-macro_rules! impl_Lower {
-    (
-        ($($ys:tt)*)
-        $n:ident {
-            $x:ident ()
-            $($xs:tt)*
-        }
-    ) => {
-        impl_Lower!(
-            ($($ys)* $n::$x => {})
-            $n { $($xs)* }
-        );
-    };
-    (
-        ($($ys:tt)*)
-        $n:ident {
-            $x:ident ( $($s:ident)::+, )
-            $($xs:tt)*
-        }
-    ) => {
-        impl_Lower!(
-            ($($ys)* $n::$x(x) => x.lower(s), )
-            $n { $($xs)* }
-        );
-    };
-    (($($ys:tt)*) $n:ident {}) => {
-        impl Lower for $n {
-            fn lower(&self, s: &mut pm2::Stream) {
-                match self {
-                    $($ys)*
-                }
-            }
-        }
-    };
-}
-macro_rules! impl_enum {
-    (
-        $n:ident { $( $x:ident $( ($($xs:ident)::+) )*, )* }
-    ) => {
-        $( $( impl_From!($n::$x, $($xs)::+); )* )*
-        impl_Lower!{ () $n { $( $x ( $( $($xs)::+, )* ) )* } }
-    };
-}
-#[macro_export]
-macro_rules! enum_of_structs {
-    (
-        pub enum $n:ident $x:tt $($xs:tt)*
-    ) => {
-        pub enum $n $x
-        impl_enum!($n $x $($xs)*);
-    };
 }
 
 pub trait StreamExt {
@@ -698,7 +738,6 @@ macro_rules! custom_punct {
     };
 }
 
-#[macro_export]
 macro_rules! decl_derive {
     ([$n:ident $($tt:tt)*] => $(#[$($attrs:tt)*])* $inner:path) => {
         #[proc_macro_derive($n $(tt)*)]
@@ -723,7 +762,6 @@ macro_rules! decl_derive {
         }
     };
 }
-#[macro_export]
 macro_rules! decl_attr {
     ([$attribute:ident] => $(#[$($attrs:tt)*])* $inner:path) => {
         #[proc_macro_attribute]
@@ -750,7 +788,6 @@ macro_rules! decl_attr {
         }
     };
 }
-#[macro_export]
 macro_rules! test_derive {
     ($n:path { $($i:tt)* } expands to { $($o:tt)* }) => {
         {

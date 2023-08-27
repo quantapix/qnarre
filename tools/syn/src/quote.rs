@@ -9,56 +9,6 @@ use std::{
     slice,
 };
 
-#[macro_export]
-macro_rules! format_ident {
-    ($fmt:expr) => {
-        $crate::format_ident_impl!([
-            Option::None,
-            $fmt
-        ])
-    };
-    ($fmt:expr, $($rest:tt)*) => {
-        $crate::format_ident_impl!([
-            Option::None,
-            $fmt
-        ] $($rest)*)
-    };
-}
-#[macro_export]
-macro_rules! format_ident_impl {
-    ([$span:expr, $($fmt:tt)*]) => {
-        quote::mk_ident(
-            format!($($fmt)*),
-            $span,
-        )
-    };
-    ([$old:expr, $($fmt:tt)*] span = $span:expr) => {
-        $crate::format_ident_impl!([$old, $($fmt)*] span = $span,)
-    };
-    ([$old:expr, $($fmt:tt)*] span = $span:expr, $($rest:tt)*) => {
-        $crate::format_ident_impl!([
-            Option::Some::<$crate::Span>($span),
-            $($fmt)*
-        ] $($rest)*)
-    };
-    ([$span:expr, $($fmt:tt)*] $name:ident = $arg:expr) => {
-        $crate::format_ident_impl!([$span, $($fmt)*] $name = $arg,)
-    };
-    ([$span:expr, $($fmt:tt)*] $name:ident = $arg:expr, $($rest:tt)*) => {
-        match $crate::IdentFragmentAdapter(&$arg) {
-            arg => $crate::format_ident_impl!([$span.or(arg.span()), $($fmt)*, $name = arg] $($rest)*),
-        }
-    };
-    ([$span:expr, $($fmt:tt)*] $arg:expr) => {
-        $crate::format_ident_impl!([$span, $($fmt)*] $arg,)
-    };
-    ([$span:expr, $($fmt:tt)*] $arg:expr, $($rest:tt)*) => {
-        match $crate::IdentFragmentAdapter(&$arg) {
-            arg => $crate::format_ident_impl!([$span.or(arg.span()), $($fmt)*, arg] $($rest)*),
-        }
-    };
-}
-
 pub trait Fragment {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result;
     fn span(&self) -> Option<Span> {
