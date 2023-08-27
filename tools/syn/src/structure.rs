@@ -21,9 +21,9 @@ impl Lower for BindStyle {
     fn lower(&self, s: &mut pm2::Stream) {
         match self {
             BindStyle::Move => {},
-            BindStyle::MoveMut => quote_spanned!(pm2::Span::call_site() => mut).lower(s),
-            BindStyle::Ref => quote_spanned!(pm2::Span::call_site() => ref).lower(s),
-            BindStyle::RefMut => quote_spanned!(pm2::Span::call_site() => ref mut).lower(s),
+            BindStyle::MoveMut => quote_spanned!(Span::call_site() => mut).lower(s),
+            BindStyle::Ref => quote_spanned!(Span::call_site() => ref).lower(s),
+            BindStyle::RefMut => quote_spanned!(Span::call_site() => ref mut).lower(s),
         }
     }
 }
@@ -59,7 +59,7 @@ fn sanitize_ident(s: &str) -> Ident {
         }
         res.push(c);
     }
-    Ident::new(&res, pm2::Span::call_site())
+    Ident::new(&res, Span::call_site())
 }
 fn merge_generics(into: &mut gen::Gens, from: &gen::Gens) -> Res<()> {
     for p in &from.params {
@@ -234,7 +234,7 @@ impl<'a> VariantInfo<'a> {
             data::Fields::Unit => {
                 assert!(self.bindings.is_empty());
             },
-            data::Fields::Unnamed(..) => tok::Parenth(pm2::Span::call_site()).surround(&mut t, |t| {
+            data::Fields::Unnamed(..) => tok::Parenth(Span::call_site()).surround(&mut t, |t| {
                 let mut i = 0;
                 for x in &self.bindings {
                     while i < x.index {
@@ -249,7 +249,7 @@ impl<'a> VariantInfo<'a> {
                     quote!(..).lower(t);
                 }
             }),
-            data::Fields::Named(..) => tok::Brace(pm2::Span::call_site()).surround(&mut t, |t| {
+            data::Fields::Named(..) => tok::Brace(Span::call_site()).surround(&mut t, |t| {
                 for x in &self.bindings {
                     x.field.ident.lower(t);
                     quote!(:).lower(t);

@@ -43,7 +43,7 @@ use err::{Err, Res};
 use ident::Life;
 use parse::{Parse, Parser, Stream};
 use path::Path;
-use pm2::{Ident, Punct};
+use pm2::{Ident, Punct, Span};
 use pretty::{Pretty, Print};
 use punct::{Pair, Puncted};
 use tok::Tok;
@@ -53,7 +53,7 @@ mod look {
     use std::cell::RefCell;
     pub struct Look1<'a> {
         cur: Cursor<'a>,
-        scope: pm2::Span,
+        scope: Span,
         comps: RefCell<Vec<&'static str>>,
     }
     impl<'a> Look1<'a> {
@@ -94,7 +94,7 @@ mod look {
         }
     }
 
-    pub fn new(scope: pm2::Span, cur: Cursor) -> Look1 {
+    pub fn new(scope: Span, cur: Cursor) -> Look1 {
         Look1 {
             cur,
             scope,
@@ -136,10 +136,10 @@ where
 }
 
 pub trait Spanned {
-    fn span(&self) -> pm2::Span;
+    fn span(&self) -> Span;
 }
 impl<T: ?Sized + lower::Spanned> Spanned for T {
-    fn span(&self) -> pm2::Span {
+    fn span(&self) -> Span {
         self.__span()
     }
 }

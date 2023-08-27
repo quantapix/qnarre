@@ -62,7 +62,7 @@ impl_low_level!("token" token_tree pm2::Tree);
 fn peek_impl(x: Cursor, f: fn(Stream) -> bool) -> bool {
     use parse::Unexpected;
     use std::{cell::Cell, rc::Rc};
-    let scope = pm2::Span::call_site();
+    let scope = Span::call_site();
     let unexpected = Rc::new(Cell::new(Unexpected::None));
     let y = crate::parse::new_parse_buffer(scope, x, unexpected);
     f(&y)
@@ -81,7 +81,7 @@ impl<T: Custom> Tok for T {
     }
 }
 
-pub fn kw_to_toks(txt: &str, span: pm2::Span, s: &mut Stream) {
+pub fn kw_to_toks(txt: &str, span: Span, s: &mut Stream) {
     s.append(Ident::new(txt, span));
 }
 
@@ -89,15 +89,15 @@ macro_rules! def_keywords {
     ($($t:literal $n:ident)*) => {
         $(
             pub struct $n {
-                pub span: pm2::Span,
+                pub span: Span,
             }
-            pub fn $n<S: pm2::IntoSpans<pm2::Span>>(s: S) -> $n {
+            pub fn $n<S: pm2::IntoSpans<Span>>(s: S) -> $n {
                 $n {                    span: s.into_spans()                }
             }
             impl std::default::Default for $n {
                 fn default() -> Self {
                     $n {
-                        span: pm2::Span::call_site(),
+                        span: Span::call_site(),
                     }
                 }
             }
@@ -220,10 +220,10 @@ macro_rules! def_punct_structs {
     ($($t:literal pub struct $n:ident/$len:tt)*) => {
         $(
             pub struct $n {
-                pub spans: [pm2::Span; $len],
+                pub spans: [Span; $len],
             }
             #[allow(non_snake_case)]
-            pub fn $n<S: pm2::IntoSpans<[pm2::Span; $len]>>(ss: S) -> $n {
+            pub fn $n<S: pm2::IntoSpans<[Span; $len]>>(ss: S) -> $n {
                 $n {
                     spans: ss.into_spans(),
                 }
@@ -231,7 +231,7 @@ macro_rules! def_punct_structs {
             impl std::default::Default for $n {
                 fn default() -> Self {
                     $n {
-                        spans: [pm2::Span::call_site(); $len],
+                        spans: [Span::call_site(); $len],
                     }
                 }
             }
@@ -299,7 +299,7 @@ impl Parse for Underscore {
     }
 }
 
-pub fn punct_lower(txt: &str, spans: &[pm2::Span], s: &mut Stream) {
+pub fn punct_lower(txt: &str, spans: &[Span], s: &mut Stream) {
     assert_eq!(txt.len(), spans.len());
     let mut chars = txt.chars();
     let mut spans = spans.iter();
@@ -393,7 +393,7 @@ def_punct! {
     "~"           pub struct Tilde/1
 }
 
-pub fn delim_lower(d: pm2::Delim, span: pm2::Span, s: &mut Stream, inner: pm2::Stream) {
+pub fn delim_lower(d: pm2::Delim, span: Span, s: &mut Stream, inner: pm2::Stream) {
     let mut y = Group::new(d, inner);
     y.set_span(span);
     s.append(y);
@@ -423,7 +423,7 @@ macro_rules! def_delims {
             }
             impl std::default::Default for $n {
                 fn default() -> Self {
-                    $n(pm2::Span::call_site())
+                    $n(Span::call_site())
                 }
             }
             impl Copy for $n {}
@@ -619,7 +619,7 @@ impl<V: Visitor + ?Sized> Visit for Delim {
 }
 
 pub struct Group {
-    pub span: pm2::Span,
+    pub span: Span,
 }
 impl Group {
     pub fn surround<F>(&self, ts: &mut pm2::Stream, f: F)
@@ -634,7 +634,7 @@ impl Group {
 impl std::default::Default for Group {
     fn default() -> Self {
         Group {
-            span: pm2::Span::call_site(),
+            span: Span::call_site(),
         }
     }
 }
@@ -668,12 +668,12 @@ impl Tok for Group {
 }
 
 #[allow(non_snake_case)]
-pub fn Group<S: pm2::IntoSpans<pm2::Span>>(s: S) -> Group {
+pub fn Group<S: pm2::IntoSpans<Span>>(s: S) -> Group {
     Group { span: s.into_spans() }
 }
 
 pub struct WithSpan {
-    pub span: pm2::Span,
+    pub span: Span,
 }
 
 pub fn accept_as_ident(x: &Ident) -> bool {
@@ -687,7 +687,7 @@ pub fn accept_as_ident(x: &Ident) -> bool {
     }
 }
 
-pub fn parse_kw(s: Stream, txt: &str) -> Res<pm2::Span> {
+pub fn parse_kw(s: Stream, txt: &str) -> Res<Span> {
     s.step(|x| {
         if let Some((y, rest)) = x.ident() {
             if y == txt {
@@ -705,8 +705,8 @@ pub fn peek_kw(c: Cursor, txt: &str) -> bool {
     }
 }
 
-pub fn parse_punct<const N: usize>(s: Stream, txt: &str) -> Res<[pm2::Span; N]> {
-    fn doit(s: Stream, txt: &str, ys: &mut [pm2::Span]) -> Res<()> {
+pub fn parse_punct<const N: usize>(s: Stream, txt: &str) -> Res<[Span; N]> {
+    fn doit(s: Stream, txt: &str, ys: &mut [Span]) -> Res<()> {
         s.step(|c| {
             let mut c = *c;
             assert_eq!(txt.len(), ys.len());

@@ -1666,7 +1666,7 @@ mod fold {
                 #![allow(unreachable_code, unused_variables)]
                 #![allow(clippy::match_wildcard_for_single_variants, clippy::needless_match)]
                 use crate::*;
-                use syn::pm2::Span;
+                use syn::Span;
                 pub trait Fold {
                     #traits
                 }
@@ -2040,7 +2040,7 @@ mod visit_mut {
                 #[cfg(any(feature = "full", feature = "derive"))]
                 use crate::punctuated::Punctuated;
                 use crate::*;
-                use syn::pm2::Span;
+                use syn::Span;
                 macro_rules! skip {
                     ($($tt:tt)*) => {};
                 }

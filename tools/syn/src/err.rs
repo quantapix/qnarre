@@ -11,9 +11,9 @@ pub struct Err {
     msgs: Vec<ErrMsg>,
 }
 impl Err {
-    pub fn new<T: Display>(span: pm2::Span, msg: T) -> Self {
+    pub fn new<T: Display>(span: Span, msg: T) -> Self {
         return new(span, msg.to_string());
-        fn new(span: pm2::Span, msg: String) -> Err {
+        fn new(span: Span, msg: String) -> Err {
             Err {
                 msgs: vec![ErrMsg {
                     span: ThreadBound::new(SpanRange { beg: span, end: span }),
@@ -26,7 +26,7 @@ impl Err {
         return new_spanned(tokens.into_stream(), msg.to_string());
         fn new_spanned(tokens: pm2::Stream, msg: String) -> Err {
             let mut iter = tokens.into_iter();
-            let beg = iter.next().map_or_else(pm2::Span::call_site, |t| t.span());
+            let beg = iter.next().map_or_else(Span::call_site, |t| t.span());
             let end = iter.last().map_or(beg, |t| t.span());
             Err {
                 msgs: vec![ErrMsg {
@@ -36,10 +36,10 @@ impl Err {
             }
         }
     }
-    pub fn span(&self) -> pm2::Span {
+    pub fn span(&self) -> Span {
         let SpanRange { beg: start, end } = match self.msgs[0].span.get() {
             Some(span) => *span,
-            None => return pm2::Span::call_site(),
+            None => return Span::call_site(),
         };
         start.join(end).unwrap_or(start)
     }
@@ -136,7 +136,7 @@ impl ErrMsg {
     fn to_compile_error(&self) -> pm2::Stream {
         let (start, end) = match self.span.get() {
             Some(x) => (x.beg, x.end),
-            None => (pm2::Span::call_site(), pm2::Span::call_site()),
+            None => (Span::call_site(), Span::call_site()),
         };
         use pm2::{Spacing::*, Tree::*};
         pm2::Stream::from_iter(vec![
@@ -232,8 +232,8 @@ unsafe impl<T> Sync for ThreadBound<T> {}
 unsafe impl<T: Copy> Send for ThreadBound<T> {}
 
 struct SpanRange {
-    beg: pm2::Span,
-    end: pm2::Span,
+    beg: Span,
+    end: Span,
 }
 impl Clone for SpanRange {
     fn clone(&self) -> Self {
@@ -242,7 +242,7 @@ impl Clone for SpanRange {
 }
 impl Copy for SpanRange {}
 
-pub fn new_at<T: Display>(scope: pm2::Span, cursor: Cursor, msg: T) -> Err {
+pub fn new_at<T: Display>(scope: Span, cursor: Cursor, msg: T) -> Err {
     if cursor.eof() {
         Err::new(scope, format!("unexpected end of input, {}", msg))
     } else {
@@ -250,8 +250,8 @@ pub fn new_at<T: Display>(scope: pm2::Span, cursor: Cursor, msg: T) -> Err {
         Err::new(span, msg)
     }
 }
-pub fn new2<T: Display>(beg: pm2::Span, end: pm2::Span, msg: T) -> Err {
-    fn doit(beg: pm2::Span, end: pm2::Span, msg: String) -> Err {
+pub fn new2<T: Display>(beg: Span, end: Span, msg: T) -> Err {
+    fn doit(beg: Span, end: Span, msg: String) -> Err {
         Err {
             msgs: vec![ErrMsg {
                 span: ThreadBound::new(SpanRange { beg, end }),

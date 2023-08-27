@@ -1428,7 +1428,7 @@ impl Trait {
         let bounds = Self::parse_bounds(span, s, plus)?;
         Ok(Trait { dyn_, bounds })
     }
-    fn parse_bounds(s: pm2::Span, x: Stream, plus: bool) -> Res<Puncted<gen::bound::Type, Token![+]>> {
+    fn parse_bounds(s: Span, x: Stream, plus: bool) -> Res<Puncted<gen::bound::Type, Token![+]>> {
         let ys = gen::bound::Type::parse_many(x, plus)?;
         let mut last = None;
         let mut one = false;

@@ -4294,7 +4294,7 @@ impl Lower for Struct {
             if let Some(dot2) = &self.dot2 {
                 dot2.lower(s);
             } else if self.rest.is_some() {
-                Token![..](pm2::Span::call_site()).lower(s);
+                Token![..](Span::call_site()).lower(s);
             }
             self.rest.lower(s);
         });
@@ -5280,7 +5280,7 @@ impl Fragment for Member {
             Unnamed(x) => Display::fmt(&x.idx, f),
         }
     }
-    fn span(&self) -> Option<pm2::Span> {
+    fn span(&self) -> Option<Span> {
         use Member::*;
         match self {
             Named(x) => Some(x.span()),
@@ -5363,14 +5363,14 @@ impl<V: Visitor + ?Sized> Visit for Member {
 
 pub struct Idx {
     pub idx: u32,
-    pub span: pm2::Span,
+    pub span: Span,
 }
 impl From<usize> for Idx {
     fn from(x: usize) -> Idx {
         assert!(x < u32::max_value() as usize);
         Idx {
             idx: x as u32,
-            span: pm2::Span::call_site(),
+            span: Span::call_site(),
         }
     }
 }
@@ -5400,7 +5400,7 @@ impl Fragment for Idx {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         Display::fmt(&self.idx, f)
     }
-    fn span(&self) -> Option<pm2::Span> {
+    fn span(&self) -> Option<Span> {
         Some(self.span)
     }
 }

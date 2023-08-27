@@ -68,11 +68,11 @@ pub fn xid_ok(x: &str) -> bool {
 }
 
 pub struct Life {
-    pub apos: pm2::Span,
+    pub apos: Span,
     pub ident: Ident,
 }
 impl Life {
-    pub fn new(x: &str, s: pm2::Span) -> Self {
+    pub fn new(x: &str, s: Span) -> Self {
         if !x.starts_with('\'') {
             panic!("life name must start with apos as in \"'a\", got {:?}", x);
         }
@@ -87,10 +87,10 @@ impl Life {
             ident: Ident::new(&x[1..], s),
         }
     }
-    pub fn span(&self) -> pm2::Span {
+    pub fn span(&self) -> Span {
         self.apos.join(self.ident.span()).unwrap_or(self.apos)
     }
-    pub fn set_span(&mut self, s: pm2::Span) {
+    pub fn set_span(&mut self, s: Span) {
         self.apos = s;
         self.ident.set_span(s);
     }
