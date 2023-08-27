@@ -1,4 +1,4 @@
-#![allow(non_camel_case_types)]
+#![allow(non_camel_case_types, non_snake_case, unused_macros)]
 
 extern crate proc_macro as pm;
 
