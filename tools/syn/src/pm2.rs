@@ -825,6 +825,31 @@ impl From<Stream> for pm::TokenStream {
         }
     }
 }
+impl PartialEq for Stream {
+    fn eq(&self, x: &Self) -> bool {
+        let left = self.0.clone().into_iter().collect::<Vec<_>>();
+        let right = x.0.clone().into_iter().collect::<Vec<_>>();
+        if left.len() != right.len() {
+            return false;
+        }
+        for (a, b) in left.into_iter().zip(right) {
+            if TreeHelper(&a) != TreeHelper(&b) {
+                return false;
+            }
+        }
+        true
+    }
+}
+impl Hash for Stream {
+    fn hash<H: Hasher>(&self, h: &mut H) {
+        let xs = self.0.clone().into_iter().collect::<Vec<_>>();
+        xs.len().hash(h);
+        for x in xs {
+            TreeHelper(&x).hash(h);
+        }
+    }
+}
+
 fn pm_parse(x: &str) -> Result<pm::TokenStream, LexErr> {
     let y = panic::catch_unwind(|| x.parse().map_err(LexErr::Compiler));
     y.unwrap_or_else(|_| Err(LexErr::call_site()))

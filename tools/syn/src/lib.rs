@@ -212,32 +212,6 @@ impl<'a> Hash for TreeHelper<'a> {
     }
 }
 
-struct StreamHelper<'a>(pub &'a pm2::Stream);
-impl<'a> PartialEq for StreamHelper<'a> {
-    fn eq(&self, x: &Self) -> bool {
-        let left = self.0.clone().into_iter().collect::<Vec<_>>();
-        let right = x.0.clone().into_iter().collect::<Vec<_>>();
-        if left.len() != right.len() {
-            return false;
-        }
-        for (a, b) in left.into_iter().zip(right) {
-            if TreeHelper(&a) != TreeHelper(&b) {
-                return false;
-            }
-        }
-        true
-    }
-}
-impl<'a> Hash for StreamHelper<'a> {
-    fn hash<H: Hasher>(&self, h: &mut H) {
-        let xs = self.0.clone().into_iter().collect::<Vec<_>>();
-        xs.len().hash(h);
-        for x in xs {
-            TreeHelper(&x).hash(h);
-        }
-    }
-}
-
 pub fn parse<T: parse::Parse>(s: Stream) -> Res<T> {
     Parser::parse(T::parse, s)
 }

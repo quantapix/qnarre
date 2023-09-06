@@ -1,5 +1,6 @@
 use super::*;
 
+#[derive(Eq, PartialEq)]
 pub struct Input {
     pub attrs: Vec<attr::Attr>,
     pub vis: Visibility,
@@ -73,16 +74,6 @@ impl Debug for Input {
         f.field("gens", &self.gens);
         f.field("data", &self.data);
         f.finish()
-    }
-}
-impl Eq for Input {}
-impl PartialEq for Input {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs
-            && self.vis == x.vis
-            && self.ident == x.ident
-            && self.gens == x.gens
-            && self.data == x.data
     }
 }
 impl Lower for Input {
@@ -168,6 +159,7 @@ impl<V: Visitor + ?Sized> Visit for Input {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub enum Visibility {
     Public(Token![pub]),
     Restricted(Restricted),
@@ -269,18 +261,6 @@ impl Debug for Visibility {
         }
     }
 }
-impl Eq for Visibility {}
-impl PartialEq for Visibility {
-    fn eq(&self, x: &Self) -> bool {
-        use Visibility::*;
-        match (self, x) {
-            (Inherited, Inherited) => true,
-            (Public(_), Public(_)) => true,
-            (Restricted(x), Restricted(y)) => x == y,
-            _ => false,
-        }
-    }
-}
 impl Pretty for Visibility {
     fn pretty(&self, p: &mut Print) {
         use Visibility::*;
@@ -341,6 +321,7 @@ impl<V: Visitor + ?Sized> Visit for Visibility {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Restricted {
     pub pub_: Token![pub],
     pub parenth: tok::Parenth,
@@ -379,12 +360,6 @@ impl Debug for Restricted {
             }
         }
         self.debug(f, "data::Restricted")
-    }
-}
-impl Eq for Restricted {}
-impl PartialEq for Restricted {
-    fn eq(&self, x: &Self) -> bool {
-        self.in_ == x.in_ && self.path == x.path
     }
 }
 impl Pretty for Restricted {
@@ -426,6 +401,7 @@ impl<V: Visitor + ?Sized> Visit for Restricted {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub enum Data {
     Enum(Enum),
     Struct(Struct),
@@ -449,18 +425,6 @@ impl Debug for Data {
             Enum(x) => x.debug(f, "Enum"),
             Struct(x) => x.debug(f, "Struct"),
             Union(x) => x.debug(f, "Union"),
-        }
-    }
-}
-impl Eq for Data {}
-impl PartialEq for Data {
-    fn eq(&self, x: &Self) -> bool {
-        use Data::*;
-        match (self, x) {
-            (Struct(x), Struct(y)) => x == y,
-            (Enum(x), Enum(y)) => x == y,
-            (Union(x), Union(y)) => x == y,
-            _ => false,
         }
     }
 }
@@ -524,6 +488,7 @@ impl<V: Visitor + ?Sized> Visit for Data {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Enum {
     pub enum_: Token![enum],
     pub brace: tok::Brace,
@@ -550,12 +515,6 @@ impl Debug for Enum {
             }
         }
         self.debug(f, "data::Enum")
-    }
-}
-impl Eq for Enum {}
-impl PartialEq for Enum {
-    fn eq(&self, x: &Self) -> bool {
-        self.variants == x.variants
     }
 }
 impl<F: Folder + ?Sized> Fold for Enum {
@@ -587,6 +546,7 @@ impl<V: Visitor + ?Sized> Visit for Enum {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Struct {
     pub struct_: Token![struct],
     pub fields: Fields,
@@ -615,18 +575,6 @@ impl Debug for Struct {
         self.debug(f, "data::Struct")
     }
 }
-impl Eq for Struct {}
-impl PartialEq for Struct {
-    fn eq(&self, x: &Self) -> bool {
-        self.fields == x.fields && self.semi == x.semi
-    }
-}
-impl Eq for Union {}
-impl PartialEq for Union {
-    fn eq(&self, x: &Self) -> bool {
-        self.fields == x.fields
-    }
-}
 impl<F: Folder + ?Sized> Fold for Struct {
     fn fold(&self, f: &mut F) {
         Struct {
@@ -651,6 +599,7 @@ impl<V: Visitor + ?Sized> Visit for Struct {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Union {
     pub union_: Token![union],
     pub fields: Named,
@@ -698,6 +647,7 @@ impl<V: Visitor + ?Sized> Visit for Union {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Variant {
     pub attrs: Vec<attr::Attr>,
     pub ident: Ident,
@@ -760,12 +710,6 @@ impl Debug for Variant {
         f.field("fields", &self.fields);
         f.field("discrim", &self.discrim);
         f.finish()
-    }
-}
-impl Eq for Variant {}
-impl PartialEq for Variant {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs && self.ident == x.ident && self.fields == x.fields && self.discrim == x.discrim
     }
 }
 impl Pretty for Variant {
@@ -842,6 +786,7 @@ impl<V: Visitor + ?Sized> Visit for Variant {
 }
 
 enum_of_structs! {
+    #[derive(Eq, PartialEq)]
     pub enum Fields {
         Named(Named),
         Unnamed(Unnamed),
@@ -929,18 +874,6 @@ impl Debug for Fields {
         }
     }
 }
-impl Eq for Fields {}
-impl PartialEq for Fields {
-    fn eq(&self, x: &Self) -> bool {
-        use Fields::*;
-        match (self, x) {
-            (Named(x), Named(y)) => x == y,
-            (Unit, Unit) => true,
-            (Unnamed(x), Unnamed(y)) => x == y,
-            _ => false,
-        }
-    }
-}
 impl<F: Folder + ?Sized> Fold for Fields {
     fn fold(&self, f: &mut F) {
         use Fields::*;
@@ -996,6 +929,7 @@ impl<V: Visitor + ?Sized> Visit for Fields {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Named {
     pub brace: tok::Brace,
     pub fields: Puncted<Field, Token![,]>,
@@ -1037,12 +971,6 @@ impl Debug for Named {
         self.debug(f, "data::Named")
     }
 }
-impl Eq for Named {}
-impl PartialEq for Named {
-    fn eq(&self, x: &Self) -> bool {
-        self.fields == x.fields
-    }
-}
 impl<F: Folder + ?Sized> Fold for Named {
     fn fold(&self, f: &mut F) {
         Named {
@@ -1071,6 +999,7 @@ impl<V: Visitor + ?Sized> Visit for Named {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Unnamed {
     pub parenth: tok::Parenth,
     pub fields: Puncted<Field, Token![,]>,
@@ -1110,12 +1039,6 @@ impl Debug for Unnamed {
             }
         }
         self.debug(f, "data::Unnamed")
-    }
-}
-impl Eq for Unnamed {}
-impl PartialEq for Unnamed {
-    fn eq(&self, x: &Self) -> bool {
-        self.fields == x.fields
     }
 }
 impl Pretty for Unnamed {
@@ -1158,6 +1081,7 @@ impl<V: Visitor + ?Sized> Visit for Unnamed {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Field {
     pub attrs: Vec<attr::Attr>,
     pub vis: Visibility,
@@ -1227,17 +1151,6 @@ impl Debug for Field {
         f.finish()
     }
 }
-impl Eq for Field {}
-impl PartialEq for Field {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs
-            && self.vis == x.vis
-            && self.mut_ == x.mut_
-            && self.ident == x.ident
-            && self.colon == x.colon
-            && self.typ == x.typ
-    }
-}
 impl Pretty for Field {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -1296,6 +1209,7 @@ impl<V: Visitor + ?Sized> Visit for Field {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub enum Mut {
     None,
 }
@@ -1313,15 +1227,6 @@ impl Debug for Mut {
         use Mut::*;
         match self {
             None => f.write_str("None"),
-        }
-    }
-}
-impl Eq for Mut {}
-impl PartialEq for Mut {
-    fn eq(&self, x: &Self) -> bool {
-        use Mut::*;
-        match (self, x) {
-            (None, None) => true,
         }
     }
 }

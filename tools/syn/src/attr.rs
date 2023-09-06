@@ -1,6 +1,7 @@
 use super::*;
 use std::{iter, slice};
 
+#[derive(Eq, PartialEq)]
 pub enum Style {
     Outer,
     Inner(Token![!]),
@@ -22,17 +23,6 @@ impl Debug for Style {
                 f.field(x);
                 f.finish()
             },
-        }
-    }
-}
-impl Eq for Style {}
-impl PartialEq for Style {
-    fn eq(&self, x: &Self) -> bool {
-        use Style::*;
-        match (self, x) {
-            (Outer, Outer) => true,
-            (Inner(_), Inner(_)) => true,
-            _ => false,
         }
     }
 }
@@ -75,6 +65,7 @@ impl<V: Visitor + ?Sized> Visit for Style {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Attr {
     pub pound: Token![#],
     pub style: Style,
@@ -170,12 +161,6 @@ impl Debug for Attr {
         f.field("bracket", &self.bracket);
         f.field("meta", &self.meta);
         f.finish()
-    }
-}
-impl Eq for Attr {}
-impl PartialEq for Attr {
-    fn eq(&self, x: &Self) -> bool {
-        self.style == x.style && self.meta == x.meta
     }
 }
 impl Pretty for Attr {
@@ -412,6 +397,7 @@ impl<'a> Display for DisplayStyle<'a> {
 }
 
 enum_of_structs! {
+    #[derive(Eq, PartialEq)]
     pub enum Meta {
         List(List),
         NameValue(NameValue),
@@ -488,18 +474,6 @@ impl Debug for Meta {
         }
     }
 }
-impl Eq for Meta {}
-impl PartialEq for Meta {
-    fn eq(&self, x: &Self) -> bool {
-        use Meta::*;
-        match (self, x) {
-            (List(x), List(y)) => x == y,
-            (NameValue(x), NameValue(y)) => x == y,
-            (Path(x), Path(y)) => x == y,
-            _ => false,
-        }
-    }
-}
 impl Pretty for Meta {
     fn pretty(&self, p: &mut Print) {
         use Meta::*;
@@ -570,6 +544,7 @@ impl<V: Visitor + ?Sized> Visit for Meta {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct List {
     pub path: Path,
     pub delim: tok::Delim,
@@ -620,12 +595,6 @@ impl Debug for List {
             }
         }
         self.debug(f, "attr::List")
-    }
-}
-impl Eq for List {}
-impl PartialEq for List {
-    fn eq(&self, x: &Self) -> bool {
-        self.path == x.path && self.delim == x.delim && StreamHelper(&self.toks) == StreamHelper(&x.toks)
     }
 }
 impl Pretty for List {
@@ -769,6 +738,7 @@ impl<V: Visitor + ?Sized> Visit for List {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct NameValue {
     pub name: Path,
     pub eq: Token![=],
@@ -808,12 +778,6 @@ impl Debug for NameValue {
             }
         }
         self.debug(f, "attr::NameValue")
-    }
-}
-impl Eq for NameValue {}
-impl PartialEq for NameValue {
-    fn eq(&self, x: &Self) -> bool {
-        self.name == x.name && self.val == x.val
     }
 }
 impl Pretty for NameValue {
