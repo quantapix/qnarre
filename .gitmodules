@@ -23,3 +23,6 @@
 [submodule "lib/rust-analyzer"]
 	path = lib/rust-analyzer
 	url = https://github.com/rust-lang/rust-analyzer.git
+[submodule "lib/async-book"]
+	path = lib/async-book
+	url = https://github.com/rust-lang/async-book.git
