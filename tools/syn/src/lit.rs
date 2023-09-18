@@ -6,6 +6,7 @@ use std::{
 };
 
 enum_of_structs! {
+    #[derive(Eq, PartialEq)]
     pub enum Lit {
         Bool(Bool),
         Byte(Byte),
@@ -171,23 +172,6 @@ impl Debug for Lit {
         }
     }
 }
-impl Eq for Lit {}
-impl PartialEq for Lit {
-    fn eq(&self, x: &Self) -> bool {
-        use Lit::*;
-        match (self, x) {
-            (Str(x), Str(y)) => x == y,
-            (ByteStr(x), ByteStr(y)) => x == y,
-            (Byte(x), Byte(y)) => x == y,
-            (Char(x), Char(y)) => x == y,
-            (Int(x), Int(y)) => x == y,
-            (Float(x), Float(y)) => x == y,
-            (Bool(x), Bool(y)) => x == y,
-            (Verbatim(x), Verbatim(y)) => x.to_string() == y.to_string(),
-            _ => false,
-        }
-    }
-}
 impl Pretty for Lit {
     fn pretty(&self, p: &mut Print) {
         use Lit::*;
@@ -314,6 +298,7 @@ impl<V: Visitor + ?Sized> Visit for Lit {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Bool {
     pub val: bool,
     pub span: Span,
@@ -356,12 +341,6 @@ impl Clone for Bool {
             val: self.val.clone(),
             span: self.span.clone(),
         }
-    }
-}
-impl Eq for Bool {}
-impl PartialEq for Bool {
-    fn eq(&self, x: &Self) -> bool {
-        self.val == x.val
     }
 }
 impl Pretty for Bool {
@@ -410,11 +389,6 @@ macro_rules! extra_traits {
                 }
             }
         }
-        impl PartialEq for $ty {
-            fn eq(&self, x: &Self) -> bool {
-                self.repr.tok.to_string() == x.repr.tok.to_string()
-            }
-        }
         impl<H: Hasher> Hash for $ty {
             fn hash(&self, x: &mut H) {
                 self.repr.tok.to_string().hash(x);
@@ -427,6 +401,7 @@ macro_rules! extra_traits {
     };
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Byte {
     pub repr: Box<Repr>,
 }
@@ -486,7 +461,6 @@ impl Debug for Byte {
         self.debug(f, "lit::Byte")
     }
 }
-impl Eq for Byte {}
 impl Pretty for Byte {
     fn pretty(&self, p: &mut Print) {
         p.word(self.token().to_string());
@@ -505,6 +479,7 @@ impl<V: Visitor + ?Sized> Visit for Byte {
     fn visit_mut(&mut self, v: &mut V) {}
 }
 
+#[derive(Eq, PartialEq)]
 pub struct ByteStr {
     pub repr: Box<Repr>,
 }
@@ -564,7 +539,6 @@ impl Debug for ByteStr {
         self.debug(f, "lit::ByteStr")
     }
 }
-impl Eq for ByteStr {}
 impl Pretty for ByteStr {
     fn pretty(&self, p: &mut Print) {
         p.word(self.token().to_string());
@@ -583,6 +557,7 @@ impl<V: Visitor + ?Sized> Visit for ByteStr {
     fn visit_mut(&mut self, v: &mut V) {}
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Char {
     pub repr: Box<Repr>,
 }
@@ -642,7 +617,6 @@ impl Debug for Char {
         self.debug(f, "lit::Char")
     }
 }
-impl Eq for Char {}
 impl Pretty for Char {
     fn pretty(&self, p: &mut Print) {
         p.word(self.token().to_string());
@@ -661,6 +635,7 @@ impl<V: Visitor + ?Sized> Visit for Char {
     fn visit_mut(&mut self, v: &mut V) {}
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Float {
     pub repr: Box<FloatRepr>,
 }
@@ -743,7 +718,6 @@ impl Display for Float {
         self.repr.tok.fmt(f)
     }
 }
-impl Eq for Float {}
 impl Pretty for Float {
     fn pretty(&self, p: &mut Print) {
         p.word(self.token().to_string());
@@ -762,6 +736,7 @@ impl<V: Visitor + ?Sized> Visit for Float {
     fn visit_mut(&mut self, v: &mut V) {}
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Int {
     pub repr: Box<IntRepr>,
 }
@@ -844,7 +819,6 @@ impl Display for Int {
         self.repr.tok.fmt(f)
     }
 }
-impl Eq for Int {}
 impl Pretty for Int {
     fn pretty(&self, p: &mut Print) {
         p.word(self.token().to_string());
@@ -863,6 +837,7 @@ impl<V: Visitor + ?Sized> Visit for Int {
     fn visit_mut(&mut self, v: &mut V) {}
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Str {
     pub repr: Box<Repr>,
 }
@@ -945,7 +920,6 @@ impl Debug for Str {
         self.debug(f, "lit::Str")
     }
 }
-impl Eq for Str {}
 impl Pretty for Str {
     fn pretty(&self, p: &mut Print) {
         p.word(self.token().to_string());

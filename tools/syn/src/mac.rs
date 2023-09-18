@@ -307,12 +307,6 @@ macro_rules! traits_for_kw {
                 fmt::Formatter::write_str(f, std::concat!("Keyword [", std::stringify!($n), "]",))
             }
         }
-        impl Eq for $n {}
-        impl PartialEq for $n {
-            fn eq(&self, _: &Self) -> bool {
-                true
-            }
-        }
         impl<H: Hasher> Hash for $n {
             fn hash(&self, _: &mut H) {}
         }
@@ -358,6 +352,7 @@ macro_rules! lower_for_kw {
 }
 macro_rules! custom_kw {
     ($n:ident) => {
+        #[derive(Eq, PartialEq)]
         pub struct $n {
             pub span: Span,
         }
@@ -460,12 +455,6 @@ macro_rules! traits_for_punct {
         impl Debug for $n {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 fmt::Formatter::write_str(f, std::stringify!($n))
-            }
-        }
-        impl Eq for $n {}
-        impl PartialEq for $n {
-            fn eq(&self, _: &Self) -> bool {
-                true
             }
         }
         impl<H: Hasher> Hash for $n {
@@ -1213,6 +1202,7 @@ macro_rules! quote_spanned {
     }};
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Mac {
     pub path: Path,
     pub bang: Token![!],
@@ -1268,12 +1258,6 @@ impl Debug for Mac {
         f.field("delimiter", &self.delim);
         f.field("toks", &self.toks);
         f.finish()
-    }
-}
-impl Eq for Mac {}
-impl PartialEq for Mac {
-    fn eq(&self, x: &Self) -> bool {
-        self.path == x.path && self.delim == x.delim && StreamHelper(&self.toks) == StreamHelper(&x.toks)
     }
 }
 impl Pretty for Mac {

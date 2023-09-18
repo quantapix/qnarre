@@ -177,7 +177,7 @@ fn mismatch() -> ! {
     panic!("compiler/fallback mismatch")
 }
 
-#[derive(Clone)]
+#[derive(Clone, Eq)]
 pub enum Ident {
     Compiler(pm::Ident),
     Fallback(imp::Ident),
@@ -236,7 +236,6 @@ where
         }
     }
 }
-impl Eq for Ident {}
 impl PartialOrd for Ident {
     fn partial_cmp(&self, x: &Ident) -> Option<Ordering> {
         Some(self.cmp(x))

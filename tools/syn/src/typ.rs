@@ -1,6 +1,7 @@
 use super::*;
 
 enum_of_structs! {
+    #[derive(Eq, PartialEq)]
     pub enum Type {
         Array(Array),
         Fn(Fn),
@@ -79,30 +80,6 @@ impl Debug for Type {
                 y.field(x);
                 y.finish()
             },
-        }
-    }
-}
-impl Eq for Type {}
-impl PartialEq for Type {
-    fn eq(&self, x: &Self) -> bool {
-        use Type::*;
-        match (self, x) {
-            (Array(x), Array(y)) => x == y,
-            (Fn(x), Fn(y)) => x == y,
-            (Group(x), Group(y)) => x == y,
-            (Impl(x), Impl(y)) => x == y,
-            (Infer(x), Infer(y)) => x == y,
-            (Mac(x), Mac(y)) => x == y,
-            (Never(x), Never(y)) => x == y,
-            (Parenth(x), Parenth(y)) => x == y,
-            (Path(x), Path(y)) => x == y,
-            (Ptr(x), Ptr(y)) => x == y,
-            (Ref(x), Ref(y)) => x == y,
-            (Slice(x), Slice(y)) => x == y,
-            (Trait(x), Trait(y)) => x == y,
-            (Tuple(x), Tuple(y)) => x == y,
-            (Verbatim(x), Verbatim(y)) => StreamHelper(x) == StreamHelper(y),
-            _ => false,
         }
     }
 }
@@ -316,6 +293,7 @@ impl<V: Visitor + ?Sized> Visit for Type {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Array {
     pub bracket: tok::Bracket,
     pub elem: Box<Type>,
@@ -367,12 +345,6 @@ impl Debug for Array {
         self.debug(f, "typ::Array")
     }
 }
-impl Eq for Array {}
-impl PartialEq for Array {
-    fn eq(&self, x: &Self) -> bool {
-        self.elem == x.elem && self.len == x.len
-    }
-}
 impl Pretty for Array {
     fn pretty(&self, p: &mut Print) {
         p.word("[");
@@ -409,6 +381,7 @@ impl<V: Visitor + ?Sized> Visit for Array {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Fn {
     pub lifes: Option<gen::bound::Lifes>,
     pub unsafe_: Option<Token![unsafe]>,
@@ -508,17 +481,6 @@ impl Debug for Fn {
         self.debug(f, "typ::Fn")
     }
 }
-impl Eq for Fn {}
-impl PartialEq for Fn {
-    fn eq(&self, x: &Self) -> bool {
-        self.lifes == x.lifes
-            && self.unsafe_ == x.unsafe_
-            && self.abi == x.abi
-            && self.args == x.args
-            && self.vari == x.vari
-            && self.ret == x.ret
-    }
-}
 impl Pretty for Fn {
     fn pretty(&self, p: &mut Print) {
         if let Some(x) = &self.lifes {
@@ -606,6 +568,7 @@ impl<V: Visitor + ?Sized> Visit for Fn {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Group {
     pub group: tok::Group,
     pub elem: Box<Type>,
@@ -647,12 +610,6 @@ impl Debug for Group {
         self.debug(f, "typ::Group")
     }
 }
-impl Eq for Group {}
-impl PartialEq for Group {
-    fn eq(&self, x: &Self) -> bool {
-        self.elem == x.elem
-    }
-}
 impl Pretty for Group {
     fn pretty(&self, p: &mut Print) {
         &self.elem.pretty(p);
@@ -680,6 +637,7 @@ impl<V: Visitor + ?Sized> Visit for Group {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Impl {
     pub impl_: Token![impl],
     pub bounds: Puncted<gen::bound::Type, Token![+]>,
@@ -745,12 +703,6 @@ impl Debug for Impl {
         self.debug(f, "typ::Impl")
     }
 }
-impl Eq for Impl {}
-impl PartialEq for Impl {
-    fn eq(&self, x: &Self) -> bool {
-        self.bounds == x.bounds
-    }
-}
 impl Pretty for Impl {
     fn pretty(&self, p: &mut Print) {
         p.word("impl ");
@@ -790,6 +742,7 @@ impl<V: Visitor + ?Sized> Visit for Impl {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Infer {
     pub underscore: Token![_],
 }
@@ -822,12 +775,6 @@ impl Debug for Infer {
         self.debug(f, "typ::Infer")
     }
 }
-impl Eq for Infer {}
-impl PartialEq for Infer {
-    fn eq(&self, _other: &Self) -> bool {
-        true
-    }
-}
 impl Pretty for Infer {
     fn pretty(&self, p: &mut Print) {
         let _ = self;
@@ -849,6 +796,7 @@ impl<V: Visitor + ?Sized> Visit for Infer {
     fn visit_mut(&mut self, v: &mut V) {}
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Mac {
     pub mac: mac::Mac,
 }
@@ -879,12 +827,6 @@ impl Debug for Mac {
         self.debug(f, "typ::Mac")
     }
 }
-impl Eq for Mac {}
-impl PartialEq for Mac {
-    fn eq(&self, x: &Self) -> bool {
-        self.mac == x.mac
-    }
-}
 impl Pretty for Mac {
     fn pretty(&self, p: &mut Print) {
         let semi = false;
@@ -910,6 +852,7 @@ impl<V: Visitor + ?Sized> Visit for Mac {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Never {
     pub bang: Token![!],
 }
@@ -942,12 +885,6 @@ impl Debug for Never {
         self.debug(f, "typ::Never")
     }
 }
-impl Eq for Never {}
-impl PartialEq for Never {
-    fn eq(&self, _other: &Self) -> bool {
-        true
-    }
-}
 impl Pretty for Never {
     fn pretty(&self, p: &mut Print) {
         let _ = self;
@@ -967,6 +904,7 @@ impl<V: Visitor + ?Sized> Visit for Never {
     fn visit_mut(&mut self, v: &mut V) {}
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Parenth {
     pub parenth: tok::Parenth,
     pub elem: Box<Type>,
@@ -1017,12 +955,6 @@ impl Debug for Parenth {
         self.debug(f, "typ::Parenth")
     }
 }
-impl Eq for Parenth {}
-impl PartialEq for Parenth {
-    fn eq(&self, x: &Self) -> bool {
-        self.elem == x.elem
-    }
-}
 impl Pretty for Parenth {
     fn pretty(&self, p: &mut Print) {
         p.word("(");
@@ -1052,6 +984,7 @@ impl<V: Visitor + ?Sized> Visit for Parenth {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Path {
     pub qself: Option<path::QSelf>,
     pub path: Path,
@@ -1089,12 +1022,6 @@ impl Debug for Path {
         self.debug(f, "typ::Path")
     }
 }
-impl Eq for Path {}
-impl PartialEq for Path {
-    fn eq(&self, x: &Self) -> bool {
-        self.qself == x.qself && self.path == x.path
-    }
-}
 impl Pretty for Path {
     fn pretty(&self, p: &mut Print) {
         &self.path.pretty_qpath(p, &self.qself, path::Kind::Type);
@@ -1129,6 +1056,7 @@ impl<V: Visitor + ?Sized> Visit for Path {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Ptr {
     pub star: Token![*],
     pub const_: Option<Token![const]>,
@@ -1191,12 +1119,6 @@ impl Debug for Ptr {
         self.debug(f, "typ::Ptr")
     }
 }
-impl Eq for Ptr {}
-impl PartialEq for Ptr {
-    fn eq(&self, x: &Self) -> bool {
-        self.const_ == x.const_ && self.mut_ == x.mut_ && self.elem == x.elem
-    }
-}
 impl Pretty for Ptr {
     fn pretty(&self, p: &mut Print) {
         p.word("*");
@@ -1234,6 +1156,7 @@ impl<V: Visitor + ?Sized> Visit for Ptr {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Ref {
     pub and: Token![&],
     pub life: Option<Life>,
@@ -1283,12 +1206,6 @@ impl Debug for Ref {
         self.debug(f, "typ::Ref")
     }
 }
-impl Eq for Ref {}
-impl PartialEq for Ref {
-    fn eq(&self, x: &Self) -> bool {
-        self.life == x.life && self.mut_ == x.mut_ && self.elem == x.elem
-    }
-}
 impl Pretty for Ref {
     fn pretty(&self, p: &mut Print) {
         p.word("&");
@@ -1334,6 +1251,7 @@ impl<V: Visitor + ?Sized> Visit for Ref {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Slice {
     pub bracket: tok::Bracket,
     pub elem: Box<Type>,
@@ -1375,12 +1293,6 @@ impl Debug for Slice {
         self.debug(f, "typ::Slice")
     }
 }
-impl Eq for Slice {}
-impl PartialEq for Slice {
-    fn eq(&self, x: &Self) -> bool {
-        self.elem == x.elem
-    }
-}
 impl Pretty for Slice {
     fn pretty(&self, p: &mut Print) {
         p.word("[");
@@ -1410,6 +1322,7 @@ impl<V: Visitor + ?Sized> Visit for Slice {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Trait {
     pub dyn_: Option<Token![dyn]>,
     pub bounds: Puncted<gen::bound::Type, Token![+]>,
@@ -1483,12 +1396,6 @@ impl Debug for Trait {
         self.debug(f, "typ::Trait")
     }
 }
-impl Eq for Trait {}
-impl PartialEq for Trait {
-    fn eq(&self, x: &Self) -> bool {
-        self.dyn_ == x.dyn_ && self.bounds == x.bounds
-    }
-}
 impl Pretty for Trait {
     fn pretty(&self, p: &mut Print) {
         p.word("dyn ");
@@ -1529,6 +1436,7 @@ impl<V: Visitor + ?Sized> Visit for Trait {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Tuple {
     pub parenth: tok::Parenth,
     pub elems: Puncted<Type, Token![,]>,
@@ -1593,12 +1501,6 @@ impl Debug for Tuple {
         self.debug(f, "typ::Tuple")
     }
 }
-impl Eq for Tuple {}
-impl PartialEq for Tuple {
-    fn eq(&self, x: &Self) -> bool {
-        self.elems == x.elems
-    }
-}
 impl Pretty for Tuple {
     fn pretty(&self, p: &mut Print) {
         p.word("(");
@@ -1646,6 +1548,7 @@ impl<V: Visitor + ?Sized> Visit for Tuple {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Abi {
     pub extern_: Token![extern],
     pub name: Option<lit::Str>,
@@ -1689,12 +1592,6 @@ impl Debug for Abi {
         f.finish()
     }
 }
-impl Eq for Abi {}
-impl PartialEq for Abi {
-    fn eq(&self, x: &Self) -> bool {
-        self.name == x.name
-    }
-}
 impl Pretty for Abi {
     fn pretty(&self, p: &mut Print) {
         p.word("extern ");
@@ -1730,6 +1627,7 @@ impl<V: Visitor + ?Sized> Visit for Abi {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct FnArg {
     pub attrs: Vec<attr::Attr>,
     pub name: Option<(Ident, Token![:])>,
@@ -1767,12 +1665,6 @@ impl Debug for FnArg {
         f.field("name", &self.name);
         f.field("ty", &self.typ);
         f.finish()
-    }
-}
-impl Eq for FnArg {}
-impl PartialEq for FnArg {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs && self.name == x.name && self.typ == x.typ
     }
 }
 impl Pretty for FnArg {
@@ -1822,6 +1714,7 @@ impl<V: Visitor + ?Sized> Visit for FnArg {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Variadic {
     pub attrs: Vec<attr::Attr>,
     pub name: Option<(Ident, Token![:])>,
@@ -1857,12 +1750,6 @@ impl Debug for Variadic {
         f.field("dots", &self.dots);
         f.field("comma", &self.comma);
         f.finish()
-    }
-}
-impl Eq for Variadic {}
-impl PartialEq for Variadic {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs && self.name == x.name && self.comma == x.comma
     }
 }
 impl Pretty for Variadic {
@@ -1911,6 +1798,7 @@ impl<V: Visitor + ?Sized> Visit for Variadic {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub enum Ret {
     Default,
     Type(Token![->], Box<Type>),
@@ -1969,17 +1857,6 @@ impl Debug for Ret {
                 f.field(v1);
                 f.finish()
             },
-        }
-    }
-}
-impl Eq for Ret {}
-impl PartialEq for Ret {
-    fn eq(&self, x: &Self) -> bool {
-        use Ret::*;
-        match (self, x) {
-            (Default, Default) => true,
-            (Type(_, x), Type(_, y)) => x == y,
-            _ => false,
         }
     }
 }

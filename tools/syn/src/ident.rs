@@ -79,6 +79,7 @@ pub fn xid_ok(x: &str) -> bool {
     true
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Life {
     pub apos: Span,
     pub ident: Ident,
@@ -132,12 +133,6 @@ impl Display for Life {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         "'".fmt(f)?;
         self.ident.fmt(f)
-    }
-}
-impl Eq for Life {}
-impl PartialEq for Life {
-    fn eq(&self, x: &Life) -> bool {
-        self.ident.eq(&x.ident)
     }
 }
 impl PartialOrd for Life {

@@ -2,6 +2,7 @@ use super::*;
 pub use expr::{Const, Lit, Mac, Member, Path, Range};
 
 enum_of_structs! {
+    #[derive(Eq, PartialEq)]
     pub enum Pat {
         Const(Const),
         Ident(Ident),
@@ -120,32 +121,6 @@ impl Debug for Pat {
                 f.finish()
             },
             Wild(x) => x.debug(f, "Wild"),
-        }
-    }
-}
-impl Eq for Pat {}
-impl PartialEq for Pat {
-    fn eq(&self, x: &Self) -> bool {
-        use Pat::*;
-        match (self, x) {
-            (Const(x), Const(y)) => x == y,
-            (Ident(x), Ident(y)) => x == y,
-            (Lit(x), Lit(y)) => x == y,
-            (Mac(x), Mac(y)) => x == y,
-            (Or(x), Or(y)) => x == y,
-            (Parenth(x), Parenth(y)) => x == y,
-            (Path(x), Path(y)) => x == y,
-            (Range(x), Range(y)) => x == y,
-            (Ref(x), Ref(y)) => x == y,
-            (Rest(x), Rest(y)) => x == y,
-            (Slice(x), Slice(y)) => x == y,
-            (Struct(x), Struct(y)) => x == y,
-            (Tuple(x), Tuple(y)) => x == y,
-            (TupleStruct(x), TupleStruct(y)) => x == y,
-            (Type(x), Type(y)) => x == y,
-            (Verbatim(x), Verbatim(y)) => StreamHelper(x) == StreamHelper(y),
-            (Wild(x), Wild(y)) => x == y,
-            _ => false,
         }
     }
 }
@@ -383,6 +358,7 @@ impl<V: Visitor + ?Sized> Visit for Pat {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Ident {
     pub attrs: Vec<attr::Attr>,
     pub ref_: Option<Token![ref]>,
@@ -427,16 +403,6 @@ impl Debug for Ident {
             }
         }
         self.debug(f, "pat::Ident")
-    }
-}
-impl Eq for Ident {}
-impl PartialEq for Ident {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs
-            && self.ref_ == x.ref_
-            && self.mut_ == x.mut_
-            && self.ident == x.ident
-            && self.sub == x.sub
     }
 }
 impl Pretty for Ident {
@@ -496,6 +462,7 @@ impl<V: Visitor + ?Sized> Visit for Ident {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Or {
     pub attrs: Vec<attr::Attr>,
     pub vert: Option<Token![|]>,
@@ -529,12 +496,6 @@ impl Debug for Or {
             }
         }
         self.debug(f, "pat::Or")
-    }
-}
-impl Eq for Or {}
-impl PartialEq for Or {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs && self.vert == x.vert && self.cases == x.cases
     }
 }
 impl Pretty for Or {
@@ -602,6 +563,7 @@ impl<V: Visitor + ?Sized> Visit for Or {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Parenth {
     pub attrs: Vec<attr::Attr>,
     pub parenth: tok::Parenth,
@@ -636,12 +598,6 @@ impl Debug for Parenth {
             }
         }
         self.debug(f, "pat::Parenth")
-    }
-}
-impl Eq for Parenth {}
-impl PartialEq for Parenth {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs && self.pat == x.pat
     }
 }
 impl Pretty for Parenth {
@@ -682,6 +638,7 @@ impl<V: Visitor + ?Sized> Visit for Parenth {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Ref {
     pub attrs: Vec<attr::Attr>,
     pub and: Token![&],
@@ -719,12 +676,6 @@ impl Debug for Ref {
             }
         }
         self.debug(f, "pat::Ref")
-    }
-}
-impl Eq for Ref {}
-impl PartialEq for Ref {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs && self.mut_ == x.mut_ && self.pat == x.pat
     }
 }
 impl Pretty for Ref {
@@ -769,6 +720,7 @@ impl<V: Visitor + ?Sized> Visit for Ref {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Rest {
     pub attrs: Vec<attr::Attr>,
     pub dot2: Token![..],
@@ -798,12 +750,6 @@ impl Debug for Rest {
             }
         }
         self.debug(f, "pat::Rest")
-    }
-}
-impl Eq for Rest {}
-impl PartialEq for Rest {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs
     }
 }
 impl Pretty for Rest {
@@ -838,6 +784,7 @@ impl<V: Visitor + ?Sized> Visit for Rest {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Slice {
     pub attrs: Vec<attr::Attr>,
     pub bracket: tok::Bracket,
@@ -872,12 +819,6 @@ impl Debug for Slice {
             }
         }
         self.debug(f, "pat::Slice")
-    }
-}
-impl Eq for Slice {}
-impl PartialEq for Slice {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs && self.pats == x.pats
     }
 }
 impl Pretty for Slice {
@@ -927,6 +868,7 @@ impl<V: Visitor + ?Sized> Visit for Slice {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Struct {
     pub attrs: Vec<attr::Attr>,
     pub qself: Option<path::QSelf>,
@@ -975,16 +917,6 @@ impl Debug for Struct {
             }
         }
         self.debug(f, "pat::Struct")
-    }
-}
-impl Eq for Struct {}
-impl PartialEq for Struct {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs
-            && self.qself == x.qself
-            && self.path == x.path
-            && self.fields == x.fields
-            && self.rest == x.rest
     }
 }
 impl Pretty for Struct {
@@ -1063,6 +995,7 @@ impl<V: Visitor + ?Sized> Visit for Struct {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Field {
     pub attrs: Vec<attr::Attr>,
     pub memb: Member,
@@ -1097,12 +1030,6 @@ impl Debug for Field {
         f.field("colon", &self.colon);
         f.field("pat", &self.pat);
         f.finish()
-    }
-}
-impl Eq for Field {}
-impl PartialEq for Field {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs && self.memb == x.memb && self.colon == x.colon && self.pat == x.pat
     }
 }
 impl Pretty for Field {
@@ -1159,6 +1086,7 @@ impl Member {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Tuple {
     pub attrs: Vec<attr::Attr>,
     pub parenth: tok::Parenth,
@@ -1193,12 +1121,6 @@ impl Debug for Tuple {
             }
         }
         self.debug(f, "pat::Tuple")
-    }
-}
-impl Eq for Tuple {}
-impl PartialEq for Tuple {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs && self.pats == x.pats
     }
 }
 impl Pretty for Tuple {
@@ -1259,6 +1181,7 @@ impl<V: Visitor + ?Sized> Visit for Tuple {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct TupleStruct {
     pub attrs: Vec<attr::Attr>,
     pub qself: Option<path::QSelf>,
@@ -1300,12 +1223,6 @@ impl Debug for TupleStruct {
             }
         }
         self.debug(f, "pat::TupleStructuct")
-    }
-}
-impl Eq for TupleStruct {}
-impl PartialEq for TupleStruct {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs && self.qself == x.qself && self.path == x.path && self.pats == x.pats
     }
 }
 impl Pretty for TupleStruct {
@@ -1372,6 +1289,7 @@ impl<V: Visitor + ?Sized> Visit for TupleStruct {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Type {
     pub attrs: Vec<attr::Attr>,
     pub pat: Box<Pat>,
@@ -1409,12 +1327,6 @@ impl Debug for Type {
             }
         }
         self.debug(f, "pat::Type")
-    }
-}
-impl Eq for Type {}
-impl PartialEq for Type {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs && self.pat == x.pat && self.typ == x.typ
     }
 }
 impl Pretty for Type {
@@ -1459,6 +1371,7 @@ impl<V: Visitor + ?Sized> Visit for Type {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Wild {
     pub attrs: Vec<attr::Attr>,
     pub underscore: Token![_],
@@ -1488,12 +1401,6 @@ impl Debug for Wild {
             }
         }
         self.debug(f, "pat::Wild")
-    }
-}
-impl Eq for Wild {}
-impl PartialEq for Wild {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs
     }
 }
 impl Pretty for Wild {
