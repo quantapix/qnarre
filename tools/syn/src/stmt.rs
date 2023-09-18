@@ -2,7 +2,7 @@ use super::*;
 
 struct NoSemi(bool);
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub enum Stmt {
     Expr(Expr, Option<Token![;]>),
     Item(Item),
@@ -26,17 +26,6 @@ impl Lower for Stmt {
             Item(x) => x.lower(s),
             Local(x) => x.lower(s),
             Mac(x) => x.lower(s),
-        }
-    }
-}
-impl Clone for Stmt {
-    fn clone(&self) -> Self {
-        use Stmt::*;
-        match self {
-            Expr(x, v1) => Expr(x.clone(), v1.clone()),
-            Item(x) => Item(x.clone()),
-            Local(x) => Local(x.clone()),
-            Mac(x) => Mac(x.clone()),
         }
     }
 }
@@ -206,7 +195,7 @@ impl<V: Visitor + ?Sized> Visit for Stmt {
 pub use expr::Expr;
 pub use item::Item;
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Local {
     pub attrs: Vec<attr::Attr>,
     pub let_: Token![let],
@@ -228,17 +217,6 @@ impl Lower for Local {
             }
         }
         self.semi.lower(s);
-    }
-}
-impl Clone for Local {
-    fn clone(&self) -> Self {
-        Local {
-            attrs: self.attrs.clone(),
-            let_: self.let_.clone(),
-            pat: self.pat.clone(),
-            init: self.init.clone(),
-            semi: self.semi.clone(),
-        }
     }
 }
 impl Debug for Local {
@@ -296,7 +274,7 @@ impl<V: Visitor + ?Sized> Visit for Local {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Mac {
     pub attrs: Vec<attr::Attr>,
     pub mac: mac::Mac,
@@ -307,15 +285,6 @@ impl Lower for Mac {
         attr::lower_outers(&self.attrs, s);
         self.mac.lower(s);
         self.semi.lower(s);
-    }
-}
-impl Clone for Mac {
-    fn clone(&self) -> Self {
-        Mac {
-            attrs: self.attrs.clone(),
-            mac: self.mac.clone(),
-            semi: self.semi.clone(),
-        }
     }
 }
 impl Debug for Mac {
@@ -363,7 +332,7 @@ impl<V: Visitor + ?Sized> Visit for Mac {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Block {
     pub brace: tok::Brace,
     pub stmts: Vec<Stmt>,
@@ -411,14 +380,6 @@ impl Lower for Block {
         });
     }
 }
-impl Clone for Block {
-    fn clone(&self) -> Self {
-        Block {
-            brace: self.brace.clone(),
-            stmts: self.stmts.clone(),
-        }
-    }
-}
 impl Debug for Block {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut f = f.debug_struct("Block");
@@ -453,20 +414,11 @@ impl<V: Visitor + ?Sized> Visit for Block {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Init {
     pub eq: Token![=],
     pub expr: Box<Expr>,
     pub diverge: Option<(Token![else], Box<Expr>)>,
-}
-impl Clone for Init {
-    fn clone(&self) -> Self {
-        Init {
-            eq: self.eq.clone(),
-            expr: self.expr.clone(),
-            diverge: self.diverge.clone(),
-        }
-    }
 }
 impl Debug for Init {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

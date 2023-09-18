@@ -1,13 +1,13 @@
 use super::*;
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum Kind {
     Expr,
     Simple,
     Type,
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Path {
     pub colon: Option<Token![::]>,
     pub segs: Puncted<Segment, Token![::]>,
@@ -141,14 +141,6 @@ impl Lower for Path {
         self.segs.lower(s);
     }
 }
-impl Clone for Path {
-    fn clone(&self) -> Self {
-        Path {
-            colon: self.colon.clone(),
-            segs: self.segs.clone(),
-        }
-    }
-}
 impl Debug for Path {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         impl Path {
@@ -203,7 +195,7 @@ impl<V: Visitor + ?Sized> Visit for Path {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Segment {
     pub ident: Ident,
     pub args: Args,
@@ -251,14 +243,6 @@ impl Lower for Segment {
         self.args.lower(s);
     }
 }
-impl Clone for Segment {
-    fn clone(&self) -> Self {
-        Segment {
-            ident: self.ident.clone(),
-            args: self.args.clone(),
-        }
-    }
-}
 impl Debug for Segment {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut f = f.debug_struct("path::Segment");
@@ -298,7 +282,7 @@ impl<V: Visitor + ?Sized> Visit for Segment {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub enum Args {
     None,
     Angle(Angle),
@@ -337,16 +321,6 @@ impl Lower for Args {
             Parenth(x) => {
                 x.lower(s);
             },
-        }
-    }
-}
-impl Clone for Args {
-    fn clone(&self) -> Self {
-        use Args::*;
-        match self {
-            None => None,
-            Angle(x) => Angle(x.clone()),
-            Parenth(x) => Parenth(x.clone()),
         }
     }
 }
@@ -430,7 +404,7 @@ impl<V: Visitor + ?Sized> Visit for Args {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub enum Arg {
     Life(Life),
     Type(typ::Type),
@@ -534,19 +508,6 @@ impl Lower for Arg {
             AssocType(x) => x.lower(s),
             AssocConst(x) => x.lower(s),
             Constraint(x) => x.lower(s),
-        }
-    }
-}
-impl Clone for Arg {
-    fn clone(&self) -> Self {
-        use Arg::*;
-        match self {
-            AssocConst(x) => AssocConst(x.clone()),
-            AssocType(x) => AssocType(x.clone()),
-            Const(x) => Const(x.clone()),
-            Constraint(x) => Constraint(x.clone()),
-            Life(x) => Life(x.clone()),
-            Type(x) => Type(x.clone()),
         }
     }
 }
@@ -704,7 +665,7 @@ impl<V: Visitor + ?Sized> Visit for Arg {
 
 pub use expr::Expr;
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Angle {
     pub colon2: Option<Token![::]>,
     pub lt: Token![<],
@@ -775,16 +736,6 @@ impl Lower for Angle {
             }
         }
         self.gt.lower(s);
-    }
-}
-impl Clone for Angle {
-    fn clone(&self) -> Self {
-        Angle {
-            colon2: self.colon2.clone(),
-            lt: self.lt.clone(),
-            args: self.args.clone(),
-            gt: self.gt.clone(),
-        }
     }
 }
 impl Debug for path::Angle {
@@ -871,7 +822,7 @@ impl<V: Visitor + ?Sized> Visit for Angle {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Parenth {
     pub parenth: tok::Parenth,
     pub args: Puncted<typ::Type, Token![,]>,
@@ -893,15 +844,6 @@ impl Lower for Parenth {
             self.args.lower(s);
         });
         self.ret.lower(s);
-    }
-}
-impl Clone for Parenth {
-    fn clone(&self) -> Self {
-        Parenth {
-            parenth: self.parenth.clone(),
-            args: self.args.clone(),
-            ret: self.ret.clone(),
-        }
     }
 }
 impl Debug for path::Parenth {
@@ -965,7 +907,7 @@ impl<V: Visitor + ?Sized> Visit for Parenth {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct AssocType {
     pub ident: Ident,
     pub args: Option<Angle>,
@@ -978,16 +920,6 @@ impl Lower for AssocType {
         self.args.lower(s);
         self.eq.lower(s);
         self.typ.lower(s);
-    }
-}
-impl Clone for AssocType {
-    fn clone(&self) -> Self {
-        AssocType {
-            ident: self.ident.clone(),
-            args: self.args.clone(),
-            eq: self.eq.clone(),
-            typ: self.typ.clone(),
-        }
     }
 }
 impl Debug for AssocType {
@@ -1044,7 +976,7 @@ impl<V: Visitor + ?Sized> Visit for AssocType {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct AssocConst {
     pub ident: Ident,
     pub args: Option<Angle>,
@@ -1057,16 +989,6 @@ impl Lower for AssocConst {
         self.args.lower(s);
         self.eq.lower(s);
         self.val.lower(s);
-    }
-}
-impl Clone for AssocConst {
-    fn clone(&self) -> Self {
-        AssocConst {
-            ident: self.ident.clone(),
-            args: self.args.clone(),
-            eq: self.eq.clone(),
-            val: self.val.clone(),
-        }
     }
 }
 impl Debug for AssocConst {
@@ -1123,7 +1045,7 @@ impl<V: Visitor + ?Sized> Visit for AssocConst {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Constraint {
     pub ident: Ident,
     pub args: Option<Angle>,
@@ -1138,17 +1060,7 @@ impl Lower for Constraint {
         self.bounds.lower(s);
     }
 }
-impl Clone for Constraint {
-    fn clone(&self) -> Self {
-        Constraint {
-            ident: self.ident.clone(),
-            args: self.args.clone(),
-            colon: self.colon.clone(),
-            bounds: self.bounds.clone(),
-        }
-    }
-}
-impl Debug for path::Constraint {
+impl Debug for Constraint {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut f = f.debug_struct("Constraint");
         f.field("ident", &self.ident);
@@ -1217,24 +1129,13 @@ impl<V: Visitor + ?Sized> Visit for Constraint {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct QSelf {
     pub lt: Token![<],
     pub typ: Box<typ::Type>,
     pub pos: usize,
     pub as_: Option<Token![as]>,
     pub gt: Token![>],
-}
-impl Clone for QSelf {
-    fn clone(&self) -> Self {
-        QSelf {
-            lt: self.lt.clone(),
-            typ: self.typ.clone(),
-            pos: self.pos.clone(),
-            as_: self.as_.clone(),
-            gt: self.gt.clone(),
-        }
-    }
 }
 impl Debug for QSelf {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

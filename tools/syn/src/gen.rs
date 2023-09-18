@@ -6,7 +6,7 @@ use super::{
 pub mod bound {
     use super::*;
     enum_of_structs! {
-        #[derive(Eq, PartialEq)]
+        #[derive(Clone, Eq, PartialEq)]
         pub enum Type {
             Life(Life),
             Trait(Trait),
@@ -58,16 +58,6 @@ pub mod bound {
                 Ok(Type::Verbatim(parse::parse_verbatim(&beg, s)))
             } else {
                 Ok(Type::Trait(y))
-            }
-        }
-    }
-    impl Clone for Type {
-        fn clone(&self) -> Self {
-            use self::Type::*;
-            match self {
-                Life(x) => Life(x.clone()),
-                Trait(x) => Trait(x.clone()),
-                Verbatim(x) => Verbatim(x.clone()),
             }
         }
     }
@@ -159,7 +149,7 @@ pub mod bound {
         }
     }
 
-    #[derive(Eq, PartialEq)]
+    #[derive(Clone, Eq, PartialEq)]
     pub struct Trait {
         pub parenth: Option<tok::Parenth>,
         pub modif: Modifier,
@@ -197,16 +187,6 @@ pub mod bound {
             match &self.parenth {
                 Some(x) => x.surround(s, y),
                 None => y(s),
-            }
-        }
-    }
-    impl Clone for Trait {
-        fn clone(&self) -> Self {
-            Trait {
-                parenth: self.parenth.clone(),
-                modif: self.modif.clone(),
-                lifes: self.lifes.clone(),
-                path: self.path.clone(),
             }
         }
     }
@@ -278,7 +258,7 @@ pub mod bound {
         }
     }
 
-    #[derive(Eq, PartialEq)]
+    #[derive(Clone, Copy, Eq, PartialEq)]
     pub enum Modifier {
         Maybe(Token![?]),
         None,
@@ -299,12 +279,6 @@ pub mod bound {
                 Maybe(x) => x.lower(s),
                 None => {},
             }
-        }
-    }
-    impl Copy for Modifier {}
-    impl Clone for Modifier {
-        fn clone(&self) -> Self {
-            *self
         }
     }
     impl Debug for Modifier {
@@ -369,7 +343,7 @@ pub mod bound {
         }
     }
 
-    #[derive(Eq, PartialEq)]
+    #[derive(Clone, Eq, PartialEq)]
     pub struct Lifes {
         pub for_: Token![for],
         pub lt: Token![<],
@@ -428,16 +402,6 @@ pub mod bound {
             self.lt.lower(s);
             self.lifes.lower(s);
             self.gt.lower(s);
-        }
-    }
-    impl Clone for Lifes {
-        fn clone(&self) -> Self {
-            Lifes {
-                for_: self.for_.clone(),
-                lt: self.lt.clone(),
-                lifes: self.lifes.clone(),
-                gt: self.gt.clone(),
-            }
         }
     }
     impl Debug for Lifes {
@@ -541,7 +505,7 @@ pub mod bound {
 pub mod param {
     use super::*;
     enum_of_structs! {
-        #[derive(Eq, PartialEq)]
+        #[derive(Clone, Eq, PartialEq)]
         pub enum Param {
             Const(Const),
             Life(Life),
@@ -560,16 +524,6 @@ pub mod param {
                 Ok(Param::Const(Const { attrs, ..s.parse()? }))
             } else {
                 Err(look.error())
-            }
-        }
-    }
-    impl Clone for Param {
-        fn clone(&self) -> Self {
-            use Param::*;
-            match self {
-                Const(x) => Const(x.clone()),
-                Life(x) => Life(x.clone()),
-                Type(x) => Type(x.clone()),
             }
         }
     }
@@ -666,7 +620,7 @@ pub mod param {
         }
     }
 
-    #[derive(Eq, PartialEq)]
+    #[derive(Clone, Eq, PartialEq)]
     pub struct Life {
         pub attrs: Vec<attr::Attr>,
         pub life: Life,
@@ -726,16 +680,6 @@ pub mod param {
             if !self.bounds.is_empty() {
                 ToksOrDefault(&self.colon).lower(s);
                 self.bounds.lower(s);
-            }
-        }
-    }
-    impl Clone for Life {
-        fn clone(&self) -> Self {
-            Life {
-                attrs: self.attrs.clone(),
-                life: self.life.clone(),
-                colon: self.colon.clone(),
-                bounds: self.bounds.clone(),
             }
         }
     }
@@ -836,7 +780,7 @@ pub mod param {
         }
     }
 
-    #[derive(Eq, PartialEq)]
+    #[derive(Clone, Eq, PartialEq)]
     pub struct Type {
         pub attrs: Vec<attr::Attr>,
         pub ident: Ident,
@@ -904,18 +848,6 @@ pub mod param {
             if let Some(y) = &self.default {
                 ToksOrDefault(&self.eq).lower(s);
                 y.lower(s);
-            }
-        }
-    }
-    impl Clone for Type {
-        fn clone(&self) -> Self {
-            Type {
-                attrs: self.attrs.clone(),
-                ident: self.ident.clone(),
-                colon: self.colon.clone(),
-                bounds: self.bounds.clone(),
-                eq: self.eq.clone(),
-                default: self.default.clone(),
             }
         }
     }
@@ -1036,7 +968,7 @@ pub mod param {
         }
     }
 
-    #[derive(Eq, PartialEq)]
+    #[derive(Clone, Eq, PartialEq)]
     pub struct Const {
         pub attrs: Vec<attr::Attr>,
         pub const_: Token![const],
@@ -1078,19 +1010,6 @@ pub mod param {
             if let Some(y) = &self.default {
                 ToksOrDefault(&self.eq).lower(s);
                 y.lower(s);
-            }
-        }
-    }
-    impl Clone for Const {
-        fn clone(&self) -> Self {
-            Const {
-                attrs: self.attrs.clone(),
-                const_: self.const_.clone(),
-                ident: self.ident.clone(),
-                colon: self.colon.clone(),
-                typ: self.typ.clone(),
-                eq: self.eq.clone(),
-                default: self.default.clone(),
             }
         }
     }
@@ -1199,7 +1118,7 @@ pub mod param {
 }
 pub use param::Param;
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Where {
     pub where_: Token![where],
     pub preds: Puncted<where_::Pred, Token![,]>,
@@ -1238,14 +1157,6 @@ impl Lower for Where {
         if !self.preds.is_empty() {
             self.where_.lower(s);
             self.preds.lower(s);
-        }
-    }
-}
-impl Clone for Where {
-    fn clone(&self) -> Self {
-        Where {
-            where_: self.where_.clone(),
-            preds: self.preds.clone(),
         }
     }
 }
@@ -1376,7 +1287,7 @@ impl Print {
 pub mod where_ {
     use super::*;
     enum_of_structs! {
-        #[derive(Eq, PartialEq)]
+        #[derive(Clone, Eq, PartialEq)]
         pub enum Pred {
             Life(Life),
             Type(Type),
@@ -1439,15 +1350,6 @@ pub mod where_ {
                         ys
                     },
                 }))
-            }
-        }
-    }
-    impl Clone for Pred {
-        fn clone(&self) -> Self {
-            use Pred::*;
-            match self {
-                Life(x) => Life(x.clone()),
-                Type(x) => Type(x.clone()),
             }
         }
     }
@@ -1527,7 +1429,7 @@ pub mod where_ {
         }
     }
 
-    #[derive(Eq, PartialEq)]
+    #[derive(Clone, Eq, PartialEq)]
     pub struct Life {
         pub life: Life,
         pub colon: Token![:],
@@ -1538,15 +1440,6 @@ pub mod where_ {
             self.life.lower(s);
             self.colon.lower(s);
             self.bounds.lower(s);
-        }
-    }
-    impl Clone for Life {
-        fn clone(&self) -> Self {
-            Life {
-                life: self.life.clone(),
-                colon: self.colon.clone(),
-                bounds: self.bounds.clone(),
-            }
         }
     }
     impl Debug for Life {
@@ -1607,7 +1500,7 @@ pub mod where_ {
         }
     }
 
-    #[derive(Eq, PartialEq)]
+    #[derive(Clone, Eq, PartialEq)]
     pub struct Type {
         pub lifes: Option<bound::Lifes>,
         pub typ: typ::Type,
@@ -1620,16 +1513,6 @@ pub mod where_ {
             self.typ.lower(s);
             self.colon.lower(s);
             self.bounds.lower(s);
-        }
-    }
-    impl Clone for Type {
-        fn clone(&self) -> Self {
-            Type {
-                lifes: self.lifes.clone(),
-                typ: self.typ.clone(),
-                colon: self.colon.clone(),
-                bounds: self.bounds.clone(),
-            }
         }
     }
     impl Debug for Type {
@@ -1707,7 +1590,7 @@ pub mod where_ {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Gens {
     pub lt: Option<Token![<]>,
     pub params: Puncted<Param, Token![,]>,
@@ -1825,16 +1708,6 @@ impl Lower for Gens {
             }
         }
         ToksOrDefault(&self.gt).lower(s);
-    }
-}
-impl Clone for Gens {
-    fn clone(&self) -> Self {
-        Gens {
-            lt: self.lt.clone(),
-            params: self.params.clone(),
-            gt: self.gt.clone(),
-            where_: self.where_.clone(),
-        }
     }
 }
 impl Debug for Gens {

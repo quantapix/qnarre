@@ -79,7 +79,7 @@ pub fn xid_ok(x: &str) -> bool {
     true
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Life {
     pub apos: Span,
     pub ident: Ident,
@@ -106,14 +106,6 @@ impl Life {
     pub fn set_span(&mut self, s: Span) {
         self.apos = s;
         self.ident.set_span(s);
-    }
-}
-impl Clone for Life {
-    fn clone(&self) -> Self {
-        Life {
-            apos: self.apos,
-            ident: self.ident.clone(),
-        }
     }
 }
 impl Debug for Life {

@@ -178,6 +178,7 @@ impl<'a> Debug for Buffer<'a> {
     }
 }
 
+#[derive(Clone)]
 pub enum Unexpected {
     None,
     Some(Span),
@@ -186,16 +187,6 @@ pub enum Unexpected {
 impl Default for Unexpected {
     fn default() -> Self {
         Unexpected::None
-    }
-}
-impl Clone for Unexpected {
-    fn clone(&self) -> Self {
-        use Unexpected::*;
-        match self {
-            None => None,
-            Some(x) => Some(*x),
-            Chain(x) => Chain(x.clone()),
-        }
     }
 }
 

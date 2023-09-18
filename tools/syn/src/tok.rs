@@ -88,6 +88,7 @@ pub fn kw_to_toks(txt: &str, span: Span, s: &mut Stream) {
 macro_rules! def_keywords {
     ($($t:literal $n:ident)*) => {
         $(
+            #[derive(Clone, Copy, Eq, PartialEq)]
             pub struct $n {
                 pub span: Span,
             }
@@ -101,21 +102,9 @@ macro_rules! def_keywords {
                     }
                 }
             }
-            impl Copy for $n {}
-            impl Clone for $n {
-                fn clone(&self) -> Self {
-                    *self
-                }
-            }
             impl Debug for $n {
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                     f.write_str(stringify!($n))
-                }
-            }
-            impl std::cmp::Eq for $n {}
-            impl PartialEq for $n {
-                fn eq(&self, _: &$n) -> bool {
-                    true
                 }
             }
             impl<H: Hasher> Hash for $n {
@@ -219,6 +208,7 @@ macro_rules! impl_deref_len_1 {
 macro_rules! def_punct_structs {
     ($($t:literal pub struct $n:ident/$len:tt)*) => {
         $(
+            #[derive(Clone, Copy, Eq, PartialEq)]
             pub struct $n {
                 pub spans: [Span; $len],
             }
@@ -235,21 +225,9 @@ macro_rules! def_punct_structs {
                     }
                 }
             }
-            impl Copy for $n {}
-            impl Clone for $n {
-                fn clone(&self) -> Self {
-                    *self
-                }
-            }
             impl Debug for $n {
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                     f.write_str(stringify!($n))
-                }
-            }
-            impl std::cmp::Eq for $n {}
-            impl PartialEq for $n {
-                fn eq(&self, _: &$n) -> bool {
-                    true
                 }
             }
             impl<H: Hasher> Hash for $n {
@@ -402,6 +380,7 @@ pub fn delim_lower(d: pm2::Delim, span: Span, s: &mut Stream, inner: pm2::Stream
 macro_rules! def_delims {
     ($($d:ident pub struct $n:ident)*) => {
         $(
+            #[derive(Clone, Copy, Eq, PartialEq)]
             pub struct $n {
                 pub span: pm2::DelimSpan,
             }
@@ -426,21 +405,9 @@ macro_rules! def_delims {
                     $n(Span::call_site())
                 }
             }
-            impl Copy for $n {}
-            impl Clone for $n {
-                fn clone(&self) -> Self {
-                    *self
-                }
-            }
             impl Debug for $n {
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                     f.write_str(stringify!($n))
-                }
-            }
-            impl std::cmp::Eq for $n {}
-            impl PartialEq for $n {
-                fn eq(&self, _: &$n) -> bool {
-                    true
                 }
             }
             impl<H: Hasher> Hash for $n {
@@ -479,6 +446,7 @@ impl Tok for Parenth {
     }
 }
 
+#[derive(Clone, Eq, PartialEq)]
 pub enum Delim {
     Brace(Brace),
     Bracket(Bracket),
@@ -528,16 +496,6 @@ impl Delim {
         });
     }
 }
-impl Clone for Delim {
-    fn clone(&self) -> Self {
-        use Delim::*;
-        match self {
-            Brace(x) => Brace(x.clone()),
-            Bracket(x) => Bracket(x.clone()),
-            Parenth(x) => Parenth(x.clone()),
-        }
-    }
-}
 impl Debug for Delim {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("Delim::")?;
@@ -558,18 +516,6 @@ impl Debug for Delim {
                 f.field(x);
                 f.finish()
             },
-        }
-    }
-}
-impl std::cmp::Eq for Delim {}
-impl PartialEq for Delim {
-    fn eq(&self, x: &Self) -> bool {
-        use Delim::*;
-        match (self, x) {
-            (Brace(_), Brace(_)) => true,
-            (Bracket(_), Bracket(_)) => true,
-            (Parenth(_), Parenth(_)) => true,
-            _ => false,
         }
     }
 }
@@ -618,6 +564,7 @@ impl<V: Visitor + ?Sized> Visit for Delim {
     }
 }
 
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub struct Group {
     pub span: Span,
 }
@@ -638,21 +585,9 @@ impl std::default::Default for Group {
         }
     }
 }
-impl Copy for Group {}
-impl Clone for Group {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
 impl Debug for Group {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("Group")
-    }
-}
-impl std::cmp::Eq for Group {}
-impl PartialEq for Group {
-    fn eq(&self, _: &Group) -> bool {
-        true
     }
 }
 impl<H: Hasher> Hash for Group {

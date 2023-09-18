@@ -290,16 +290,6 @@ macro_rules! format_ident {
     };
 }
 
-macro_rules! clone_for_kw {
-    ($n:ident) => {
-        impl Copy for $n {}
-        impl Clone for $n {
-            fn clone(&self) -> Self {
-                *self
-            }
-        }
-    };
-}
 macro_rules! traits_for_kw {
     ($n:ident) => {
         impl Debug for $n {
@@ -352,7 +342,7 @@ macro_rules! lower_for_kw {
 }
 macro_rules! custom_kw {
     ($n:ident) => {
-        #[derive(Eq, PartialEq)]
+        #[derive(Clone, Copy, Eq, PartialEq)]
         pub struct $n {
             pub span: Span,
         }
@@ -367,7 +357,6 @@ macro_rules! custom_kw {
                     }
                 }
             }
-            clone_for_kw!($n);
             traits_for_kw!($n);
             parse_for_kw!($n);
             lower_for_kw!($n);
@@ -440,16 +429,6 @@ macro_rules! stringify_punct {
     };
 }
 
-macro_rules! clone_for_punct {
-    ($n:ident, $($tt:tt)+) => {
-        impl Copy for $n {}
-        impl Clone for $n {
-            fn clone(&self) -> Self {
-                *self
-            }
-        }
-    };
-}
 macro_rules! traits_for_punct {
     ($n:ident, $($tt:tt)+) => {
         impl Debug for $n {
@@ -492,6 +471,7 @@ macro_rules! lower_for_punct {
 }
 macro_rules! custom_punct {
     ($n:ident, $($tt:tt)+) => {
+        #[derive(Clone, Copy)]
         pub struct $n {
             pub spans: punct_repr!($($tt)+),
         }
@@ -511,7 +491,6 @@ macro_rules! custom_punct {
             }
             parse_for_punct!($n, $($tt)+);
             lower_for_punct!($n, $($tt)+);
-            clone_for_punct!($n, $($tt)+);
             traits_for_punct!($n, $($tt)+);
         };
     };
@@ -1202,7 +1181,7 @@ macro_rules! quote_spanned {
     }};
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Mac {
     pub path: Path,
     pub bang: Token![!],
@@ -1238,16 +1217,6 @@ impl Lower for Mac {
         self.path.lower(s);
         self.bang.lower(s);
         self.delim.surround(s, self.toks.clone());
-    }
-}
-impl Clone for Mac {
-    fn clone(&self) -> Self {
-        Mac {
-            path: self.path.clone(),
-            bang: self.bang.clone(),
-            delim: self.delim.clone(),
-            toks: self.toks.clone(),
-        }
     }
 }
 impl Debug for Mac {

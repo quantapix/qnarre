@@ -6,7 +6,7 @@ use std::{
 };
 
 enum_of_structs! {
-    #[derive(Eq, PartialEq)]
+    #[derive(Clone, Eq, PartialEq)]
     pub enum Lit {
         Bool(Bool),
         Byte(Byte),
@@ -135,21 +135,6 @@ impl Parse for Lit {
             }
             Err(x.err("expected literal"))
         })
-    }
-}
-impl Clone for Lit {
-    fn clone(&self) -> Self {
-        use Lit::*;
-        match self {
-            Bool(x) => Bool(x.clone()),
-            Byte(x) => Byte(x.clone()),
-            ByteStr(x) => ByteStr(x.clone()),
-            Char(x) => Char(x.clone()),
-            Float(x) => Float(x.clone()),
-            Int(x) => Int(x.clone()),
-            Str(x) => Str(x.clone()),
-            Verbatim(x) => Verbatim(x.clone()),
-        }
     }
 }
 impl Debug for Lit {
@@ -298,7 +283,7 @@ impl<V: Visitor + ?Sized> Visit for Lit {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Bool {
     pub val: bool,
     pub span: Span,
@@ -333,14 +318,6 @@ impl Parse for Bool {
 impl Lower for Bool {
     fn lower(&self, s: &mut Stream) {
         s.append(self.token());
-    }
-}
-impl Clone for Bool {
-    fn clone(&self) -> Self {
-        Bool {
-            val: self.val.clone(),
-            span: self.span.clone(),
-        }
     }
 }
 impl Pretty for Bool {
@@ -382,13 +359,6 @@ impl Debug for Bool {
 
 macro_rules! extra_traits {
     ($ty:ident) => {
-        impl Clone for $ty {
-            fn clone(&self) -> Self {
-                $ty {
-                    repr: self.repr.clone(),
-                }
-            }
-        }
         impl<H: Hasher> Hash for $ty {
             fn hash(&self, x: &mut H) {
                 self.repr.tok.to_string().hash(x);
@@ -401,7 +371,7 @@ macro_rules! extra_traits {
     };
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Byte {
     pub repr: Box<Repr>,
 }
@@ -479,7 +449,7 @@ impl<V: Visitor + ?Sized> Visit for Byte {
     fn visit_mut(&mut self, v: &mut V) {}
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct ByteStr {
     pub repr: Box<Repr>,
 }
@@ -557,7 +527,7 @@ impl<V: Visitor + ?Sized> Visit for ByteStr {
     fn visit_mut(&mut self, v: &mut V) {}
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Char {
     pub repr: Box<Repr>,
 }
@@ -635,7 +605,7 @@ impl<V: Visitor + ?Sized> Visit for Char {
     fn visit_mut(&mut self, v: &mut V) {}
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Float {
     pub repr: Box<FloatRepr>,
 }
@@ -736,7 +706,7 @@ impl<V: Visitor + ?Sized> Visit for Float {
     fn visit_mut(&mut self, v: &mut V) {}
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Int {
     pub repr: Box<IntRepr>,
 }
@@ -837,7 +807,7 @@ impl<V: Visitor + ?Sized> Visit for Int {
     fn visit_mut(&mut self, v: &mut V) {}
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Str {
     pub repr: Box<Repr>,
 }
@@ -938,47 +908,24 @@ impl<V: Visitor + ?Sized> Visit for Str {
     fn visit_mut(&mut self, v: &mut V) {}
 }
 
+#[derive(Clone)]
 struct Repr {
     pub tok: pm2::Lit,
     suff: Box<str>,
 }
-impl Clone for Repr {
-    fn clone(&self) -> Self {
-        Repr {
-            tok: self.tok.clone(),
-            suff: self.suff.clone(),
-        }
-    }
-}
 
+#[derive(Clone)]
 struct IntRepr {
     pub tok: pm2::Lit,
     digits: Box<str>,
     suff: Box<str>,
 }
-impl Clone for IntRepr {
-    fn clone(&self) -> Self {
-        IntRepr {
-            tok: self.tok.clone(),
-            digits: self.digits.clone(),
-            suff: self.suff.clone(),
-        }
-    }
-}
 
+#[derive(Clone)]
 struct FloatRepr {
     pub tok: pm2::Lit,
     digits: Box<str>,
     suff: Box<str>,
-}
-impl Clone for FloatRepr {
-    fn clone(&self) -> Self {
-        FloatRepr {
-            tok: self.tok.clone(),
-            digits: self.digits.clone(),
-            suff: self.suff.clone(),
-        }
-    }
 }
 
 pub struct BigInt {
