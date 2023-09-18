@@ -35,7 +35,7 @@ pub enum Delim {
     None,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum DelimSpan {
     Compiler {
         join: pm::Span,
@@ -74,13 +74,8 @@ impl DelimSpan {
         }
     }
 }
-impl Debug for DelimSpan {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        Debug::fmt(&self.join(), f)
-    }
-}
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Group {
     Compiler(pm::Group),
     Fallback(imp::Group),
@@ -165,19 +160,11 @@ impl Display for Group {
         }
     }
 }
-impl Debug for Group {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Group::Compiler(x) => Debug::fmt(x, f),
-            Group::Fallback(x) => Debug::fmt(x, f),
-        }
-    }
-}
 fn mismatch() -> ! {
     panic!("compiler/fallback mismatch")
 }
 
-#[derive(Clone, Eq)]
+#[derive(Clone, Debug, Eq)]
 pub enum Ident {
     Compiler(pm::Ident),
     Fallback(imp::Ident),
@@ -259,15 +246,8 @@ impl Display for Ident {
         }
     }
 }
-impl Debug for Ident {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Ident::Compiler(x) => Debug::fmt(x, f),
-            Ident::Fallback(x) => Debug::fmt(x, f),
-        }
-    }
-}
 
+#[derive(Debug)]
 pub enum LexErr {
     Compiler(pm::LexError),
     Fallback(imp::LexErr),
@@ -297,14 +277,6 @@ impl From<imp::LexErr> for LexErr {
         LexErr::Fallback(x)
     }
 }
-impl Debug for LexErr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            LexErr::Compiler(x) => Debug::fmt(x, f),
-            LexErr::Fallback(x) => Debug::fmt(x, f),
-        }
-    }
-}
 impl Display for LexErr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -330,7 +302,7 @@ impl PartialOrd for LineCol {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Lit {
     Compiler(pm::Literal),
     Fallback(imp::Lit),
@@ -490,14 +462,6 @@ impl Display for Lit {
         }
     }
 }
-impl Debug for Lit {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Lit::Compiler(x) => Debug::fmt(x, f),
-            Lit::Fallback(x) => Debug::fmt(x, f),
-        }
-    }
-}
 impl Pretty for Lit {
     fn pretty(&self, p: &mut Print) {
         p.word(self.to_string());
@@ -507,7 +471,7 @@ fn compiler_lit_from_str(x: &str) -> Result<pm::Literal, LexErr> {
     pm::Literal::from_str(x).map_err(LexErr::Compiler)
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Punct {
     ch: char,
     spacing: Spacing,
@@ -539,23 +503,6 @@ impl Display for Punct {
         Display::fmt(&self.ch, f)
     }
 }
-impl Debug for Punct {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let mut y = fmt.debug_struct("Punct");
-        y.field("char", &self.ch);
-        y.field("spacing", &self.spacing);
-        debug_span_field(&mut y, self.span);
-        y.finish()
-    }
-}
-pub fn debug_span_field(x: &mut fmt::DebugStruct, s: Span) {
-    match s {
-        Span::Compiler(s) => {
-            x.field("span", &s);
-        },
-        Span::Fallback(s) => imp::debug_span_field(x, s),
-    }
-}
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Spacing {
@@ -563,7 +510,7 @@ pub enum Spacing {
     Joint,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum Span {
     Compiler(pm::Span),
     Fallback(imp::Span),
@@ -649,14 +596,6 @@ impl From<imp::Span> for Span {
         Span::Fallback(x)
     }
 }
-impl Debug for Span {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Span::Compiler(x) => Debug::fmt(x, f),
-            Span::Fallback(x) => Debug::fmt(x, f),
-        }
-    }
-}
 impl<F: Folder + ?Sized> Fold for Span {
     fn fold(&self, f: &mut F) {
         self
@@ -667,7 +606,7 @@ impl<V: Visitor + ?Sized> Visit for Span {
     fn visit_mut(&mut self, v: &mut V) {}
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Stream {
     Compiler(Deferred),
     Fallback(imp::Stream),
@@ -808,14 +747,6 @@ impl Display for Stream {
         }
     }
 }
-impl Debug for Stream {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Stream::Compiler(x) => Debug::fmt(&x.clone().into_stream(), f),
-            Stream::Fallback(x) => Debug::fmt(x, f),
-        }
-    }
-}
 impl From<Stream> for pm::TokenStream {
     fn from(x: Stream) -> Self {
         match x {
@@ -870,7 +801,7 @@ fn into_pm_tok(x: Tree) -> pm::TokenTree {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Tree {
     Group(Group),
     Ident(Ident),
@@ -925,21 +856,6 @@ impl Display for Tree {
         }
     }
 }
-impl Debug for Tree {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Tree::Group(x) => Debug::fmt(x, f),
-            Tree::Ident(x) => {
-                let mut y = f.debug_struct("Ident");
-                y.field("sym", &format_args!("{}", x));
-                debug_span_field(&mut y, x.span());
-                y.finish()
-            },
-            Tree::Punct(x) => Debug::fmt(x, f),
-            Tree::Lit(x) => Debug::fmt(x, f),
-        }
-    }
-}
 
 #[derive(Clone)]
 pub enum TreeIter {
@@ -976,7 +892,7 @@ impl Iterator for TreeIter {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct IntoIter {
     iter: TreeIter,
     _marker: util::Marker,
@@ -988,12 +904,6 @@ impl Iterator for IntoIter {
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
-    }
-}
-impl Debug for IntoIter {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("TokenStream ")?;
-        f.debug_list().entries(self.clone()).finish()
     }
 }
 impl IntoIterator for Stream {
@@ -1725,7 +1635,7 @@ mod imp {
         }
     }
 
-    #[derive(Clone)]
+    #[derive(Clone, Debug)]
     pub struct Group {
         delim: Delim,
         stream: Stream,
@@ -1775,17 +1685,8 @@ mod imp {
             Ok(())
         }
     }
-    impl Debug for Group {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            let mut y = f.debug_struct("Group");
-            y.field("delimiter", &self.delim);
-            y.field("stream", &self.stream);
-            debug_span_field(&mut y, self.span);
-            y.finish()
-        }
-    }
 
-    #[derive(Clone)]
+    #[derive(Clone, Debug)]
     pub struct Ident {
         sym: String,
         span: Span,
@@ -1841,15 +1742,6 @@ mod imp {
             Display::fmt(&self.sym, f)
         }
     }
-    #[allow(clippy::missing_fields_in_debug)]
-    impl Debug for Ident {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            let mut y = f.debug_struct("Ident");
-            y.field("sym", &format_args!("{}", self));
-            debug_span_field(&mut y, self.span);
-            y.finish()
-        }
-    }
 
     #[derive(Debug)]
     pub struct LexErr {
@@ -1873,7 +1765,7 @@ mod imp {
         }
     }
 
-    #[derive(Clone)]
+    #[derive(Clone, Debug)]
     pub struct Lit {
         repr: String,
         span: Span,
@@ -2078,19 +1970,11 @@ mod imp {
             Display::fmt(&self.repr, f)
         }
     }
-    impl Debug for Lit {
-        fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-            let mut debug = fmt.debug_struct("Literal");
-            debug.field("lit", &format_args!("{}", self.repr));
-            debug_span_field(&mut debug, self.span);
-            debug.finish()
-        }
-    }
 
     pub struct Rej;
     pub type Res<'a, T> = Result<(Cursor<'a>, T), Rej>;
 
-    #[derive(Clone, Copy, PartialEq, Eq)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
     pub struct Span {
         pub lo: u32,
         pub hi: u32,
@@ -2167,21 +2051,8 @@ mod imp {
             self.lo == 0 && self.hi == 0
         }
     }
-    impl Debug for Span {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            return write!(f, "bytes({}..{})", self.lo, self.hi);
-        }
-    }
-    pub fn debug_span_field(x: &mut fmt::DebugStruct, s: Span) {
-        {
-            if s.is_call_site() {
-                return;
-            }
-        }
-        x.field("span", &s);
-    }
 
-    #[derive(Clone, PartialEq, Eq)]
+    #[derive(Clone, Debug, PartialEq, Eq)]
     pub struct SrcFile {
         path: PathBuf,
     }
@@ -2191,14 +2062,6 @@ mod imp {
         }
         pub fn is_real(&self) -> bool {
             false
-        }
-    }
-    impl Debug for SrcFile {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            f.debug_struct("SourceFile")
-                .field("path", &self.path())
-                .field("is_real", &self.is_real())
-                .finish()
         }
     }
 
@@ -2255,7 +2118,7 @@ mod imp {
         });
     }
 
-    #[derive(Clone)]
+    #[derive(Clone, Debug)]
     pub struct Stream {
         trees: RcVec<Tree>,
         _marker: util::Marker,
@@ -2376,12 +2239,6 @@ mod imp {
                 }?;
             }
             Ok(())
-        }
-    }
-    impl Debug for Stream {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            f.write_str("TokenStream ")?;
-            f.debug_list().entries(self.clone()).finish()
         }
     }
     impl From<Stream> for pm::TokenStream {

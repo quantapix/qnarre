@@ -2,7 +2,7 @@ use super::*;
 
 struct NoSemi(bool);
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Stmt {
     Expr(Expr, Option<Token![;]>),
     Item(Item),
@@ -26,27 +26,6 @@ impl Lower for Stmt {
             Item(x) => x.lower(s),
             Local(x) => x.lower(s),
             Mac(x) => x.lower(s),
-        }
-    }
-}
-impl Debug for Stmt {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("stmt::Stmt::")?;
-        use Stmt::*;
-        match self {
-            Local(x) => x.debug(f, "Local"),
-            Item(x) => {
-                let mut f = f.debug_tuple("Item");
-                f.field(x);
-                f.finish()
-            },
-            Expr(x, v1) => {
-                let mut f = f.debug_tuple("Expr");
-                f.field(x);
-                f.field(v1);
-                f.finish()
-            },
-            Mac(x) => x.debug(f, "Mac"),
         }
     }
 }
@@ -195,7 +174,7 @@ impl<V: Visitor + ?Sized> Visit for Stmt {
 pub use expr::Expr;
 pub use item::Item;
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Local {
     pub attrs: Vec<attr::Attr>,
     pub let_: Token![let],
@@ -217,22 +196,6 @@ impl Lower for Local {
             }
         }
         self.semi.lower(s);
-    }
-}
-impl Debug for Local {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Local {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("let_", &self.let_);
-                f.field("pat", &self.pat);
-                f.field("init", &self.init);
-                f.field("semi", &self.semi);
-                f.finish()
-            }
-        }
-        self.debug(f, "stmt::Local")
     }
 }
 impl<F: Folder + ?Sized> Fold for Local {
@@ -274,7 +237,7 @@ impl<V: Visitor + ?Sized> Visit for Local {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Mac {
     pub attrs: Vec<attr::Attr>,
     pub mac: mac::Mac,
@@ -285,20 +248,6 @@ impl Lower for Mac {
         attr::lower_outers(&self.attrs, s);
         self.mac.lower(s);
         self.semi.lower(s);
-    }
-}
-impl Debug for Mac {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Mac {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("mac", &self.mac);
-                f.field("semi", &self.semi);
-                f.finish()
-            }
-        }
-        self.debug(f, "stmt::Mac")
     }
 }
 impl<F: Folder + ?Sized> Fold for Mac {
@@ -332,7 +281,7 @@ impl<V: Visitor + ?Sized> Visit for Mac {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Block {
     pub brace: tok::Brace,
     pub stmts: Vec<Stmt>,
@@ -380,14 +329,6 @@ impl Lower for Block {
         });
     }
 }
-impl Debug for Block {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("Block");
-        f.field("brace", &self.brace);
-        f.field("stmts", &self.stmts);
-        f.finish()
-    }
-}
 impl<F: Folder + ?Sized> Fold for Block {
     fn fold(&self, f: &mut F) {
         Block {
@@ -414,20 +355,11 @@ impl<V: Visitor + ?Sized> Visit for Block {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Init {
     pub eq: Token![=],
     pub expr: Box<Expr>,
     pub diverge: Option<(Token![else], Box<Expr>)>,
-}
-impl Debug for Init {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("stmt::Init");
-        f.field("eq", &self.eq);
-        f.field("expr", &self.expr);
-        f.field("diverge", &self.diverge);
-        f.finish()
-    }
 }
 impl<F: Folder + ?Sized> Fold for Init {
     fn fold(&self, f: &mut F) {

@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Input {
     pub attrs: Vec<attr::Attr>,
     pub vis: Visibility,
@@ -52,17 +52,6 @@ impl Parse for Input {
         } else {
             Err(look.error())
         }
-    }
-}
-impl Debug for Input {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("Input");
-        f.field("attrs", &self.attrs);
-        f.field("vis", &self.vis);
-        f.field("ident", &self.ident);
-        f.field("gens", &self.gens);
-        f.field("data", &self.data);
-        f.finish()
     }
 }
 impl Lower for Input {
@@ -148,7 +137,7 @@ impl<V: Visitor + ?Sized> Visit for Input {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Visibility {
     Public(Token![pub]),
     Restricted(Restricted),
@@ -225,21 +214,6 @@ impl Lower for Visibility {
         }
     }
 }
-impl Debug for Visibility {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("data::Visibility::")?;
-        use Visibility::*;
-        match self {
-            Public(x) => {
-                let mut f = f.debug_tuple("Public");
-                f.field(x);
-                f.finish()
-            },
-            Restricted(x) => x.debug(f, "Restricted"),
-            Inherited => f.write_str("Inherited"),
-        }
-    }
-}
 impl Pretty for Visibility {
     fn pretty(&self, p: &mut Print) {
         use Visibility::*;
@@ -300,7 +274,7 @@ impl<V: Visitor + ?Sized> Visit for Visibility {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Restricted {
     pub pub_: Token![pub],
     pub parenth: tok::Parenth,
@@ -314,21 +288,6 @@ impl Lower for Restricted {
             self.in_.lower(s);
             self.path.lower(s);
         });
-    }
-}
-impl Debug for Restricted {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Restricted {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("pub_", &self.pub_);
-                f.field("parenth", &self.parenth);
-                f.field("in_", &self.in_);
-                f.field("path", &self.path);
-                f.finish()
-            }
-        }
-        self.debug(f, "data::Restricted")
     }
 }
 impl Pretty for Restricted {
@@ -370,22 +329,11 @@ impl<V: Visitor + ?Sized> Visit for Restricted {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Data {
     Enum(Enum),
     Struct(Struct),
     Union(Union),
-}
-impl Debug for Data {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("data::Data::")?;
-        use Data::*;
-        match self {
-            Enum(x) => x.debug(f, "Enum"),
-            Struct(x) => x.debug(f, "Struct"),
-            Union(x) => x.debug(f, "Union"),
-        }
-    }
 }
 impl<F: Folder + ?Sized> Fold for Data {
     fn fold(&self, f: &mut F) {
@@ -447,25 +395,11 @@ impl<V: Visitor + ?Sized> Visit for Data {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Enum {
     pub enum_: Token![enum],
     pub brace: tok::Brace,
     pub variants: Puncted<Variant, Token![,]>,
-}
-impl Debug for Enum {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Enum {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("enum_", &self.enum_);
-                f.field("brace", &self.brace);
-                f.field("variants", &self.variants);
-                f.finish()
-            }
-        }
-        self.debug(f, "data::Enum")
-    }
 }
 impl<F: Folder + ?Sized> Fold for Enum {
     fn fold(&self, f: &mut F) {
@@ -496,25 +430,11 @@ impl<V: Visitor + ?Sized> Visit for Enum {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Struct {
     pub struct_: Token![struct],
     pub fields: Fields,
     pub semi: Option<Token![;]>,
-}
-impl Debug for Struct {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Struct {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("struct_", &self.struct_);
-                f.field("fields", &self.fields);
-                f.field("semi", &self.semi);
-                f.finish()
-            }
-        }
-        self.debug(f, "data::Struct")
-    }
 }
 impl<F: Folder + ?Sized> Fold for Struct {
     fn fold(&self, f: &mut F) {
@@ -540,23 +460,10 @@ impl<V: Visitor + ?Sized> Visit for Struct {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Union {
     pub union_: Token![union],
     pub fields: Named,
-}
-impl Debug for Union {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Union {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("union_", &self.union_);
-                f.field("fields", &self.fields);
-                f.finish()
-            }
-        }
-        self.debug(f, "data::Union")
-    }
 }
 impl<F: Folder + ?Sized> Fold for Union {
     fn fold(&self, f: &mut F) {
@@ -580,7 +487,7 @@ impl<V: Visitor + ?Sized> Visit for Union {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Variant {
     pub attrs: Vec<attr::Attr>,
     pub ident: Ident,
@@ -623,16 +530,6 @@ impl Lower for Variant {
             eq.lower(s);
             disc.lower(s);
         }
-    }
-}
-impl Debug for Variant {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("data::Variant");
-        f.field("attrs", &self.attrs);
-        f.field("ident", &self.ident);
-        f.field("fields", &self.fields);
-        f.field("discrim", &self.discrim);
-        f.finish()
     }
 }
 impl Pretty for Variant {
@@ -709,7 +606,7 @@ impl<V: Visitor + ?Sized> Visit for Variant {
 }
 
 enum_of_structs! {
-    #[derive(Clone, Eq, PartialEq)]
+    #[derive(Clone, Debug, Eq, PartialEq)]
     pub enum Fields {
         Named(Named),
         Unnamed(Unnamed),
@@ -776,17 +673,6 @@ impl<'a> IntoIterator for &'a mut Fields {
         self.iter_mut()
     }
 }
-impl Debug for Fields {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("data::Fields::")?;
-        use Fields::*;
-        match self {
-            Named(x) => x.debug(f, "Named"),
-            Unnamed(x) => x.debug(f, "Unnamed"),
-            Unit => f.write_str("Unit"),
-        }
-    }
-}
 impl<F: Folder + ?Sized> Fold for Fields {
     fn fold(&self, f: &mut F) {
         use Fields::*;
@@ -842,7 +728,7 @@ impl<V: Visitor + ?Sized> Visit for Fields {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Named {
     pub brace: tok::Brace,
     pub fields: Puncted<Field, Token![,]>,
@@ -861,19 +747,6 @@ impl Lower for Named {
         self.brace.surround(s, |s| {
             self.fields.lower(s);
         });
-    }
-}
-impl Debug for Named {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Named {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("brace", &self.brace);
-                f.field("fields", &self.fields);
-                f.finish()
-            }
-        }
-        self.debug(f, "data::Named")
     }
 }
 impl<F: Folder + ?Sized> Fold for Named {
@@ -904,7 +777,7 @@ impl<V: Visitor + ?Sized> Visit for Named {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Unnamed {
     pub parenth: tok::Parenth,
     pub fields: Puncted<Field, Token![,]>,
@@ -923,19 +796,6 @@ impl Lower for Unnamed {
         self.parenth.surround(s, |s| {
             self.fields.lower(s);
         });
-    }
-}
-impl Debug for Unnamed {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Unnamed {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("parenth", &self.parenth);
-                f.field("fields", &self.fields);
-                f.finish()
-            }
-        }
-        self.debug(f, "data::Unnamed")
     }
 }
 impl Pretty for Unnamed {
@@ -978,7 +838,7 @@ impl<V: Visitor + ?Sized> Visit for Unnamed {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Field {
     pub attrs: Vec<attr::Attr>,
     pub vis: Visibility,
@@ -1022,18 +882,6 @@ impl Lower for Field {
             ToksOrDefault(&self.colon).lower(s);
         }
         self.typ.lower(s);
-    }
-}
-impl Debug for Field {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("data::Field");
-        f.field("attrs", &self.attrs);
-        f.field("vis", &self.vis);
-        f.field("mut_", &self.mut_);
-        f.field("ident", &self.ident);
-        f.field("colon", &self.colon);
-        f.field("ty", &self.typ);
-        f.finish()
     }
 }
 impl Pretty for Field {
@@ -1094,18 +942,9 @@ impl<V: Visitor + ?Sized> Visit for Field {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Mut {
     None,
-}
-impl Debug for Mut {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("Mut::")?;
-        use Mut::*;
-        match self {
-            None => f.write_str("None"),
-        }
-    }
 }
 impl<F: Folder + ?Sized> Fold for Mut {
     fn fold(&self, f: &mut F) {

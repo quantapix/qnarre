@@ -364,16 +364,11 @@ where
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct Nothing;
 impl Parse for Nothing {
     fn parse(_: Stream) -> Res<Self> {
         Ok(Nothing)
-    }
-}
-impl Debug for Nothing {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("Nothing")
     }
 }
 impl<H: Hasher> Hash for Nothing {

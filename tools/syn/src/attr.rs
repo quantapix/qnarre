@@ -1,24 +1,10 @@
 use super::*;
 use std::{iter, slice};
 
-#[derive(Clone, Copy, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Style {
     Outer,
     Inner(Token![!]),
-}
-impl Debug for Style {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("attr::Style::")?;
-        use Style::*;
-        match self {
-            Outer => f.write_str("Outer"),
-            Inner(x) => {
-                let mut f = f.debug_tuple("Inner");
-                f.field(x);
-                f.finish()
-            },
-        }
-    }
 }
 impl<F: Folder + ?Sized> Fold for Style {
     fn fold(&self, f: &mut F) {
@@ -59,7 +45,7 @@ impl<V: Visitor + ?Sized> Visit for Style {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Attr {
     pub pound: Token![#],
     pub style: Style,
@@ -135,16 +121,6 @@ impl Lower for Attr {
         self.bracket.surround(s, |s| {
             self.meta.lower(s);
         });
-    }
-}
-impl Debug for Attr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("attr::Attr");
-        f.field("pound", &self.pound);
-        f.field("style", &self.style);
-        f.field("bracket", &self.bracket);
-        f.field("meta", &self.meta);
-        f.finish()
     }
 }
 impl Pretty for Attr {
@@ -381,7 +357,7 @@ impl<'a> Display for DisplayStyle<'a> {
 }
 
 enum_of_structs! {
-    #[derive(Clone, Eq, PartialEq)]
+    #[derive(Clone, Debug, Eq, PartialEq)]
     pub enum Meta {
         List(List),
         NameValue(NameValue),
@@ -435,17 +411,6 @@ impl Parse for Meta {
     fn parse(s: Stream) -> Res<Self> {
         let y = s.call(Path::parse_mod_style)?;
         parse_after_path(y, s)
-    }
-}
-impl Debug for Meta {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("attr::Meta::")?;
-        use Meta::*;
-        match self {
-            Path(x) => x.debug(f, "Path"),
-            List(x) => x.debug(f, "List"),
-            NameValue(x) => x.debug(f, "NameValue"),
-        }
     }
 }
 impl Pretty for Meta {
@@ -518,7 +483,7 @@ impl<V: Visitor + ?Sized> Visit for Meta {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct List {
     pub path: Path,
     pub delim: tok::Delim,
@@ -546,20 +511,6 @@ impl Lower for List {
     fn lower(&self, s: &mut Stream) {
         self.path.lower(s);
         self.delim.surround(s, self.toks.clone());
-    }
-}
-impl Debug for List {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl List {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("path", &self.path);
-                f.field("delim", &self.delim);
-                f.field("toks", &self.toks);
-                f.finish()
-            }
-        }
-        self.debug(f, "attr::List")
     }
 }
 impl Pretty for List {
@@ -703,7 +654,7 @@ impl<V: Visitor + ?Sized> Visit for List {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NameValue {
     pub name: Path,
     pub eq: Token![=],
@@ -720,20 +671,6 @@ impl Lower for NameValue {
         self.name.lower(s);
         self.eq.lower(s);
         self.val.lower(s);
-    }
-}
-impl Debug for NameValue {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl NameValue {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("name", &self.name);
-                f.field("eq", &self.eq);
-                f.field("val", &self.val);
-                f.finish()
-            }
-        }
-        self.debug(f, "attr::NameValue")
     }
 }
 impl Pretty for NameValue {

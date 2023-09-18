@@ -6,7 +6,7 @@ use super::{
 pub mod bound {
     use super::*;
     enum_of_structs! {
-        #[derive(Clone, Eq, PartialEq)]
+        #[derive(Clone, Debug, Eq, PartialEq)]
         pub enum Type {
             Life(Life),
             Trait(Trait),
@@ -58,25 +58,6 @@ pub mod bound {
                 Ok(Type::Verbatim(parse::parse_verbatim(&beg, s)))
             } else {
                 Ok(Type::Trait(y))
-            }
-        }
-    }
-    impl Debug for Type {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            f.write_str("gen::bound::Type::")?;
-            use self::Type::*;
-            match self {
-                Life(x) => x.debug(f, "Life"),
-                Trait(x) => {
-                    let mut f = f.debug_tuple("Trait");
-                    f.field(x);
-                    f.finish()
-                },
-                Verbatim(x) => {
-                    let mut f = f.debug_tuple("Verbatim");
-                    f.field(x);
-                    f.finish()
-                },
             }
         }
     }
@@ -149,7 +130,7 @@ pub mod bound {
         }
     }
 
-    #[derive(Clone, Eq, PartialEq)]
+    #[derive(Clone, Debug, Eq, PartialEq)]
     pub struct Trait {
         pub parenth: Option<tok::Parenth>,
         pub modif: Modifier,
@@ -188,16 +169,6 @@ pub mod bound {
                 Some(x) => x.surround(s, y),
                 None => y(s),
             }
-        }
-    }
-    impl Debug for Trait {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            let mut f = f.debug_struct("gen::bound::Trait");
-            f.field("parenth", &self.parenth);
-            f.field("modif", &self.modif);
-            f.field("lifes", &self.lifes);
-            f.field("path", &self.path);
-            f.finish()
         }
     }
     impl Pretty for Trait {
@@ -258,7 +229,7 @@ pub mod bound {
         }
     }
 
-    #[derive(Clone, Copy, Eq, PartialEq)]
+    #[derive(Clone, Copy, Debug, Eq, PartialEq)]
     pub enum Modifier {
         Maybe(Token![?]),
         None,
@@ -278,20 +249,6 @@ pub mod bound {
             match self {
                 Maybe(x) => x.lower(s),
                 None => {},
-            }
-        }
-    }
-    impl Debug for Modifier {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            f.write_str("gen::bound::Modifier::")?;
-            use Modifier::*;
-            match self {
-                Maybe(x) => {
-                    let mut f = f.debug_tuple("Maybe");
-                    f.field(x);
-                    f.finish()
-                },
-                None => f.write_str("None"),
             }
         }
     }
@@ -343,7 +300,7 @@ pub mod bound {
         }
     }
 
-    #[derive(Clone, Eq, PartialEq)]
+    #[derive(Clone, Debug, Eq, PartialEq)]
     pub struct Lifes {
         pub for_: Token![for],
         pub lt: Token![<],
@@ -402,16 +359,6 @@ pub mod bound {
             self.lt.lower(s);
             self.lifes.lower(s);
             self.gt.lower(s);
-        }
-    }
-    impl Debug for Lifes {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            let mut f = f.debug_struct("gen::bound::Lifes");
-            f.field("for_", &self.for_);
-            f.field("lt", &self.lt);
-            f.field("lifes", &self.lifes);
-            f.field("gt", &self.gt);
-            f.finish()
         }
     }
     impl Pretty for Lifes {
@@ -505,7 +452,7 @@ pub mod bound {
 pub mod param {
     use super::*;
     enum_of_structs! {
-        #[derive(Clone, Eq, PartialEq)]
+        #[derive(Clone, Debug, Eq, PartialEq)]
         pub enum Param {
             Const(Const),
             Life(Life),
@@ -524,29 +471,6 @@ pub mod param {
                 Ok(Param::Const(Const { attrs, ..s.parse()? }))
             } else {
                 Err(look.error())
-            }
-        }
-    }
-    impl Debug for Param {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            f.write_str("gen::param::Param::")?;
-            use Param::*;
-            match self {
-                Life(x) => {
-                    let mut f = f.debug_tuple("Life");
-                    f.field(x);
-                    f.finish()
-                },
-                Type(x) => {
-                    let mut f = f.debug_tuple("Type");
-                    f.field(x);
-                    f.finish()
-                },
-                Const(x) => {
-                    let mut f = f.debug_tuple("Const");
-                    f.field(x);
-                    f.finish()
-                },
             }
         }
     }
@@ -620,7 +544,7 @@ pub mod param {
         }
     }
 
-    #[derive(Clone, Eq, PartialEq)]
+    #[derive(Clone, Debug, Eq, PartialEq)]
     pub struct Life {
         pub attrs: Vec<attr::Attr>,
         pub life: Life,
@@ -681,16 +605,6 @@ pub mod param {
                 ToksOrDefault(&self.colon).lower(s);
                 self.bounds.lower(s);
             }
-        }
-    }
-    impl Debug for Life {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            let mut f = f.debug_struct("gen::param::Life");
-            f.field("attrs", &self.attrs);
-            f.field("life", &self.life);
-            f.field("colon", &self.colon);
-            f.field("bounds", &self.bounds);
-            f.finish()
         }
     }
     impl Pretty for Life {
@@ -780,7 +694,7 @@ pub mod param {
         }
     }
 
-    #[derive(Clone, Eq, PartialEq)]
+    #[derive(Clone, Debug, Eq, PartialEq)]
     pub struct Type {
         pub attrs: Vec<attr::Attr>,
         pub ident: Ident,
@@ -849,18 +763,6 @@ pub mod param {
                 ToksOrDefault(&self.eq).lower(s);
                 y.lower(s);
             }
-        }
-    }
-    impl Debug for Type {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            let mut f = f.debug_struct("gen::param::Type");
-            f.field("attrs", &self.attrs);
-            f.field("ident", &self.ident);
-            f.field("colon", &self.colon);
-            f.field("bounds", &self.bounds);
-            f.field("eq", &self.eq);
-            f.field("default", &self.default);
-            f.finish()
         }
     }
     impl Pretty for Type {
@@ -968,7 +870,7 @@ pub mod param {
         }
     }
 
-    #[derive(Clone, Eq, PartialEq)]
+    #[derive(Clone, Debug, Eq, PartialEq)]
     pub struct Const {
         pub attrs: Vec<attr::Attr>,
         pub const_: Token![const],
@@ -1011,19 +913,6 @@ pub mod param {
                 ToksOrDefault(&self.eq).lower(s);
                 y.lower(s);
             }
-        }
-    }
-    impl Debug for Const {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            let mut f = f.debug_struct("gen::param::Const");
-            f.field("attrs", &self.attrs);
-            f.field("const_", &self.const_);
-            f.field("ident", &self.ident);
-            f.field("colon", &self.colon);
-            f.field("typ", &self.typ);
-            f.field("eq", &self.eq);
-            f.field("default", &self.default);
-            f.finish()
         }
     }
     impl Pretty for Const {
@@ -1118,7 +1007,7 @@ pub mod param {
 }
 pub use param::Param;
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Where {
     pub where_: Token![where],
     pub preds: Puncted<where_::Pred, Token![,]>,
@@ -1158,14 +1047,6 @@ impl Lower for Where {
             self.where_.lower(s);
             self.preds.lower(s);
         }
-    }
-}
-impl Debug for Where {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("gen::Where");
-        f.field("where_", &self.where_);
-        f.field("preds", &self.preds);
-        f.finish()
     }
 }
 impl Pretty for Where {
@@ -1287,7 +1168,7 @@ impl Print {
 pub mod where_ {
     use super::*;
     enum_of_structs! {
-        #[derive(Clone, Eq, PartialEq)]
+        #[derive(Clone, Debug, Eq, PartialEq)]
         pub enum Pred {
             Life(Life),
             Type(Type),
@@ -1353,24 +1234,6 @@ pub mod where_ {
             }
         }
     }
-    impl Debug for Pred {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            f.write_str("gen::where_::Pred::")?;
-            use Pred::*;
-            match self {
-                Life(x) => {
-                    let mut f = f.debug_tuple("Life");
-                    f.field(x);
-                    f.finish()
-                },
-                Type(x) => {
-                    let mut f = f.debug_tuple("Type");
-                    f.field(x);
-                    f.finish()
-                },
-            }
-        }
-    }
     impl Pretty for Pred {
         fn pretty(&self, p: &mut Print) {
             use Pred::*;
@@ -1429,7 +1292,7 @@ pub mod where_ {
         }
     }
 
-    #[derive(Clone, Eq, PartialEq)]
+    #[derive(Clone, Debug, Eq, PartialEq)]
     pub struct Life {
         pub life: Life,
         pub colon: Token![:],
@@ -1440,15 +1303,6 @@ pub mod where_ {
             self.life.lower(s);
             self.colon.lower(s);
             self.bounds.lower(s);
-        }
-    }
-    impl Debug for Life {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            let mut f = f.debug_struct("gen::where_::Life");
-            f.field("life", &self.life);
-            f.field("colon", &self.colon);
-            f.field("bounds", &self.bounds);
-            f.finish()
         }
     }
     impl Pretty for Life {
@@ -1500,7 +1354,7 @@ pub mod where_ {
         }
     }
 
-    #[derive(Clone, Eq, PartialEq)]
+    #[derive(Clone, Debug, Eq, PartialEq)]
     pub struct Type {
         pub lifes: Option<bound::Lifes>,
         pub typ: typ::Type,
@@ -1513,16 +1367,6 @@ pub mod where_ {
             self.typ.lower(s);
             self.colon.lower(s);
             self.bounds.lower(s);
-        }
-    }
-    impl Debug for Type {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            let mut f = f.debug_struct("gen::where_::Type");
-            f.field("lifes", &self.lifes);
-            f.field("typ", &self.typ);
-            f.field("colon", &self.colon);
-            f.field("bounds", &self.bounds);
-            f.finish()
         }
     }
     impl Pretty for Type {
@@ -1590,7 +1434,7 @@ pub mod where_ {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Gens {
     pub lt: Option<Token![<]>,
     pub params: Puncted<Param, Token![,]>,
@@ -1708,16 +1552,6 @@ impl Lower for Gens {
             }
         }
         ToksOrDefault(&self.gt).lower(s);
-    }
-}
-impl Debug for Gens {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("gen::Gens");
-        f.field("lt", &self.lt);
-        f.field("params", &self.params);
-        f.field("gt", &self.gt);
-        f.field("where_", &self.where_);
-        f.finish()
     }
 }
 impl Pretty for Gens {

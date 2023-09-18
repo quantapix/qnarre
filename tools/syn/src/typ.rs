@@ -1,7 +1,7 @@
 use super::*;
 
 enum_of_structs! {
-    #[derive(Clone, Eq, PartialEq)]
+    #[derive(Clone, Debug, Eq, PartialEq)]
     pub enum Type {
         Array(Array),
         Fn(Fn),
@@ -32,33 +32,6 @@ impl Parse for Type {
         let plus = true;
         let gen = true;
         parse_ambig_typ(s, plus, gen)
-    }
-}
-impl Debug for Type {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("Type::")?;
-        use Type::*;
-        match self {
-            Array(x) => x.debug(f, "Array"),
-            Fn(x) => x.debug(f, "Fn"),
-            Group(x) => x.debug(f, "Group"),
-            Impl(x) => x.debug(f, "ImplTrait"),
-            Infer(x) => x.debug(f, "Infer"),
-            Mac(x) => x.debug(f, "Macro"),
-            Never(x) => x.debug(f, "Never"),
-            Parenth(x) => x.debug(f, "Parenth"),
-            Path(x) => x.debug(f, "Path"),
-            Ptr(x) => x.debug(f, "Ptr"),
-            Ref(x) => x.debug(f, "Reference"),
-            Slice(x) => x.debug(f, "Slice"),
-            Trait(x) => x.debug(f, "TraitObject"),
-            Tuple(x) => x.debug(f, "Tuple"),
-            Verbatim(x) => {
-                let mut y = f.debug_tuple("Stream");
-                y.field(x);
-                y.finish()
-            },
-        }
     }
 }
 impl Pretty for Type {
@@ -271,7 +244,7 @@ impl<V: Visitor + ?Sized> Visit for Type {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Array {
     pub bracket: tok::Bracket,
     pub elem: Box<Type>,
@@ -296,21 +269,6 @@ impl Lower for Array {
             self.semi.lower(s);
             self.len.lower(s);
         });
-    }
-}
-impl Debug for Array {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Array {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut y = f.debug_struct(x);
-                y.field("bracket", &self.bracket);
-                y.field("elem", &self.elem);
-                y.field("semi", &self.semi);
-                y.field("len", &self.len);
-                y.finish()
-            }
-        }
-        self.debug(f, "typ::Array")
     }
 }
 impl Pretty for Array {
@@ -349,7 +307,7 @@ impl<V: Visitor + ?Sized> Visit for Array {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Fn {
     pub lifes: Option<gen::bound::Lifes>,
     pub unsafe_: Option<Token![unsafe]>,
@@ -414,25 +372,6 @@ impl Lower for Fn {
             }
         });
         self.ret.lower(s);
-    }
-}
-impl Debug for Fn {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Fn {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut y = f.debug_struct(x);
-                y.field("lifes", &self.lifes);
-                y.field("unsafe_", &self.unsafe_);
-                y.field("abi", &self.abi);
-                y.field("fn_", &self.fn_);
-                y.field("parenth", &self.parenth);
-                y.field("inputs", &self.args);
-                y.field("vari", &self.vari);
-                y.field("output", &self.ret);
-                y.finish()
-            }
-        }
-        self.debug(f, "typ::Fn")
     }
 }
 impl Pretty for Fn {
@@ -522,7 +461,7 @@ impl<V: Visitor + ?Sized> Visit for Fn {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Group {
     pub group: tok::Group,
     pub elem: Box<Type>,
@@ -541,19 +480,6 @@ impl Lower for Group {
         self.group.surround(s, |s| {
             self.elem.lower(s);
         });
-    }
-}
-impl Debug for Group {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Group {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut y = f.debug_struct(x);
-                y.field("group", &self.group);
-                y.field("elem", &self.elem);
-                y.finish()
-            }
-        }
-        self.debug(f, "typ::Group")
     }
 }
 impl Pretty for Group {
@@ -583,7 +509,7 @@ impl<V: Visitor + ?Sized> Visit for Group {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Impl {
     pub impl_: Token![impl],
     pub bounds: Puncted<gen::bound::Type, Token![+]>,
@@ -628,19 +554,6 @@ impl Lower for Impl {
         self.bounds.lower(s);
     }
 }
-impl Debug for Impl {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Impl {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut y = f.debug_struct(x);
-                y.field("impl_", &self.impl_);
-                y.field("bounds", &self.bounds);
-                y.finish()
-            }
-        }
-        self.debug(f, "typ::Impl")
-    }
-}
 impl Pretty for Impl {
     fn pretty(&self, p: &mut Print) {
         p.word("impl ");
@@ -680,7 +593,7 @@ impl<V: Visitor + ?Sized> Visit for Impl {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Infer {
     pub underscore: Token![_],
 }
@@ -692,18 +605,6 @@ impl Parse for Infer {
 impl Lower for Infer {
     fn lower(&self, s: &mut Stream) {
         self.underscore.lower(s);
-    }
-}
-impl Debug for Infer {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Infer {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("underscore", &self.underscore);
-                f.finish()
-            }
-        }
-        self.debug(f, "typ::Infer")
     }
 }
 impl Pretty for Infer {
@@ -727,7 +628,7 @@ impl<V: Visitor + ?Sized> Visit for Infer {
     fn visit_mut(&mut self, v: &mut V) {}
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Mac {
     pub mac: mac::Mac,
 }
@@ -739,18 +640,6 @@ impl Parse for Mac {
 impl Lower for Mac {
     fn lower(&self, s: &mut Stream) {
         self.mac.lower(s);
-    }
-}
-impl Debug for Mac {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Mac {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("mac", &self.mac);
-                f.finish()
-            }
-        }
-        self.debug(f, "typ::Mac")
     }
 }
 impl Pretty for Mac {
@@ -778,7 +667,7 @@ impl<V: Visitor + ?Sized> Visit for Mac {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Never {
     pub bang: Token![!],
 }
@@ -790,18 +679,6 @@ impl Parse for Never {
 impl Lower for Never {
     fn lower(&self, s: &mut Stream) {
         self.bang.lower(s);
-    }
-}
-impl Debug for Never {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Never {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("bang", &self.bang);
-                f.finish()
-            }
-        }
-        self.debug(f, "typ::Never")
     }
 }
 impl Pretty for Never {
@@ -823,7 +700,7 @@ impl<V: Visitor + ?Sized> Visit for Never {
     fn visit_mut(&mut self, v: &mut V) {}
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Parenth {
     pub parenth: tok::Parenth,
     pub elem: Box<Type>,
@@ -851,19 +728,6 @@ impl Lower for Parenth {
         self.parenth.surround(s, |s| {
             self.elem.lower(s);
         });
-    }
-}
-impl Debug for Parenth {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Parenth {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("parenth", &self.parenth);
-                f.field("elem", &self.elem);
-                f.finish()
-            }
-        }
-        self.debug(f, "typ::Parenth")
     }
 }
 impl Pretty for Parenth {
@@ -895,7 +759,7 @@ impl<V: Visitor + ?Sized> Visit for Parenth {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Path {
     pub qself: Option<path::QSelf>,
     pub path: Path,
@@ -910,19 +774,6 @@ impl Parse for Path {
 impl Lower for Path {
     fn lower(&self, s: &mut Stream) {
         path::path_lower(s, &self.qself, &self.path);
-    }
-}
-impl Debug for Path {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Path {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("qself", &self.qself);
-                f.field("path", &self.path);
-                f.finish()
-            }
-        }
-        self.debug(f, "typ::Path")
     }
 }
 impl Pretty for Path {
@@ -959,7 +810,7 @@ impl<V: Visitor + ?Sized> Visit for Path {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Ptr {
     pub star: Token![*],
     pub const_: Option<Token![const]>,
@@ -995,21 +846,6 @@ impl Lower for Ptr {
             },
         }
         self.elem.lower(s);
-    }
-}
-impl Debug for Ptr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Ptr {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("star", &self.star);
-                f.field("const_", &self.const_);
-                f.field("mut_", &self.mut_);
-                f.field("elem", &self.elem);
-                f.finish()
-            }
-        }
-        self.debug(f, "typ::Ptr")
     }
 }
 impl Pretty for Ptr {
@@ -1049,7 +885,7 @@ impl<V: Visitor + ?Sized> Visit for Ptr {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Ref {
     pub and: Token![&],
     pub life: Option<Life>,
@@ -1072,21 +908,6 @@ impl Lower for Ref {
         self.life.lower(s);
         self.mut_.lower(s);
         self.elem.lower(s);
-    }
-}
-impl Debug for Ref {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Ref {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("and", &self.and);
-                f.field("life", &self.life);
-                f.field("mut_", &self.mut_);
-                f.field("elem", &self.elem);
-                f.finish()
-            }
-        }
-        self.debug(f, "typ::Ref")
     }
 }
 impl Pretty for Ref {
@@ -1134,7 +955,7 @@ impl<V: Visitor + ?Sized> Visit for Ref {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Slice {
     pub bracket: tok::Bracket,
     pub elem: Box<Type>,
@@ -1153,19 +974,6 @@ impl Lower for Slice {
         self.bracket.surround(s, |s| {
             self.elem.lower(s);
         });
-    }
-}
-impl Debug for Slice {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Slice {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("bracket", &self.bracket);
-                f.field("elem", &self.elem);
-                f.finish()
-            }
-        }
-        self.debug(f, "typ::Slice")
     }
 }
 impl Pretty for Slice {
@@ -1197,7 +1005,7 @@ impl<V: Visitor + ?Sized> Visit for Slice {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Trait {
     pub dyn_: Option<Token![dyn]>,
     pub bounds: Puncted<gen::bound::Type, Token![+]>,
@@ -1250,19 +1058,6 @@ impl Lower for Trait {
         self.bounds.lower(s);
     }
 }
-impl Debug for Trait {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Trait {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("dyn_", &self.dyn_);
-                f.field("bounds", &self.bounds);
-                f.finish()
-            }
-        }
-        self.debug(f, "typ::Trait")
-    }
-}
 impl Pretty for Trait {
     fn pretty(&self, p: &mut Print) {
         p.word("dyn ");
@@ -1303,7 +1098,7 @@ impl<V: Visitor + ?Sized> Visit for Trait {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Tuple {
     pub parenth: tok::Parenth,
     pub elems: Puncted<Type, Token![,]>,
@@ -1345,19 +1140,6 @@ impl Lower for Tuple {
                 <Token![,]>::default().lower(s);
             }
         });
-    }
-}
-impl Debug for Tuple {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Tuple {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("parenth", &self.parenth);
-                f.field("elems", &self.elems);
-                f.finish()
-            }
-        }
-        self.debug(f, "typ::Tuple")
     }
 }
 impl Pretty for Tuple {
@@ -1407,7 +1189,7 @@ impl<V: Visitor + ?Sized> Visit for Tuple {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Abi {
     pub extern_: Token![extern],
     pub name: Option<lit::Str>,
@@ -1433,14 +1215,6 @@ impl Parse for Option<Abi> {
         } else {
             Ok(None)
         }
-    }
-}
-impl Debug for Abi {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("Abi");
-        f.field("extern_", &self.extern_);
-        f.field("name", &self.name);
-        f.finish()
     }
 }
 impl Pretty for Abi {
@@ -1478,7 +1252,7 @@ impl<V: Visitor + ?Sized> Visit for Abi {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FnArg {
     pub attrs: Vec<attr::Attr>,
     pub name: Option<(Ident, Token![:])>,
@@ -1498,15 +1272,6 @@ impl Lower for FnArg {
             colon.lower(s);
         }
         self.typ.lower(s);
-    }
-}
-impl Debug for FnArg {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("typ::FnArg");
-        f.field("attrs", &self.attrs);
-        f.field("name", &self.name);
-        f.field("ty", &self.typ);
-        f.finish()
     }
 }
 impl Pretty for FnArg {
@@ -1556,7 +1321,7 @@ impl<V: Visitor + ?Sized> Visit for FnArg {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Variadic {
     pub attrs: Vec<attr::Attr>,
     pub name: Option<(Ident, Token![:])>,
@@ -1572,16 +1337,6 @@ impl Lower for Variadic {
         }
         self.dots.lower(s);
         self.comma.lower(s);
-    }
-}
-impl Debug for Variadic {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("typ::Variadic");
-        f.field("attrs", &self.attrs);
-        f.field("name", &self.name);
-        f.field("dots", &self.dots);
-        f.field("comma", &self.comma);
-        f.finish()
     }
 }
 impl Pretty for Variadic {
@@ -1630,7 +1385,7 @@ impl<V: Visitor + ?Sized> Visit for Variadic {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Ret {
     Default,
     Type(Token![->], Box<Type>),
@@ -1665,21 +1420,6 @@ impl Lower for Ret {
                 x.lower(s);
             },
             Ret::Default => {},
-        }
-    }
-}
-impl Debug for Ret {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("typ::Ret::")?;
-        use Ret::*;
-        match self {
-            Default => f.write_str("Default"),
-            Type(x, v1) => {
-                let mut f = f.debug_tuple("Type");
-                f.field(x);
-                f.field(v1);
-                f.finish()
-            },
         }
     }
 }

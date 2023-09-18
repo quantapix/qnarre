@@ -7,7 +7,7 @@ pub enum Kind {
     Type,
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Path {
     pub colon: Option<Token![::]>,
     pub segs: Puncted<Segment, Token![::]>,
@@ -141,19 +141,6 @@ impl Lower for Path {
         self.segs.lower(s);
     }
 }
-impl Debug for Path {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Path {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("colon", &self.colon);
-                f.field("segs", &self.segs);
-                f.finish()
-            }
-        }
-        self.debug(f, "Path")
-    }
-}
 impl Pretty for Path {
     fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
         let Some(kind) = pretty::Args::kind(x);
@@ -195,7 +182,7 @@ impl<V: Visitor + ?Sized> Visit for Path {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Segment {
     pub ident: Ident,
     pub args: Args,
@@ -243,14 +230,6 @@ impl Lower for Segment {
         self.args.lower(s);
     }
 }
-impl Debug for Segment {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("path::Segment");
-        f.field("ident", &self.ident);
-        f.field("args", &self.args);
-        f.finish()
-    }
-}
 impl Pretty for Segment {
     fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
         &self.ident.pretty(p);
@@ -282,7 +261,7 @@ impl<V: Visitor + ?Sized> Visit for Segment {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Args {
     None,
     Angle(Angle),
@@ -321,17 +300,6 @@ impl Lower for Args {
             Parenth(x) => {
                 x.lower(s);
             },
-        }
-    }
-}
-impl Debug for path::Args {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("path::Args::")?;
-        use path::Args::*;
-        match self {
-            None => f.write_str("None"),
-            Angle(x) => x.debug(f, "Angle"),
-            Parenth(x) => x.debug(f, "Parenth"),
         }
     }
 }
@@ -404,7 +372,7 @@ impl<V: Visitor + ?Sized> Visit for Args {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Arg {
     Life(Life),
     Type(typ::Type),
@@ -508,44 +476,6 @@ impl Lower for Arg {
             AssocType(x) => x.lower(s),
             AssocConst(x) => x.lower(s),
             Constraint(x) => x.lower(s),
-        }
-    }
-}
-impl Debug for Arg {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("path::Arg::")?;
-        use Arg::*;
-        match self {
-            Life(x) => {
-                let mut f = f.debug_tuple("Life");
-                f.field(x);
-                f.finish()
-            },
-            Type(x) => {
-                let mut f = f.debug_tuple("Type");
-                f.field(x);
-                f.finish()
-            },
-            Const(x) => {
-                let mut f = f.debug_tuple("Const");
-                f.field(x);
-                f.finish()
-            },
-            AssocType(x) => {
-                let mut f = f.debug_tuple("AssocType");
-                f.field(x);
-                f.finish()
-            },
-            AssocConst(x) => {
-                let mut f = f.debug_tuple("AssocConst");
-                f.field(x);
-                f.finish()
-            },
-            Constraint(x) => {
-                let mut f = f.debug_tuple("Constraint");
-                f.field(x);
-                f.finish()
-            },
         }
     }
 }
@@ -665,7 +595,7 @@ impl<V: Visitor + ?Sized> Visit for Arg {
 
 pub use expr::Expr;
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Angle {
     pub colon2: Option<Token![::]>,
     pub lt: Token![<],
@@ -738,21 +668,6 @@ impl Lower for Angle {
         self.gt.lower(s);
     }
 }
-impl Debug for path::Angle {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl path::Angle {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("colon2", &self.colon2);
-                f.field("lt", &self.lt);
-                f.field("args", &self.args);
-                f.field("gt", &self.gt);
-                f.finish()
-            }
-        }
-        self.debug(f, "path::Angle")
-    }
-}
 impl Pretty for Angle {
     fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
         let Some(kind) = pretty::Args::kind(x);
@@ -822,7 +737,7 @@ impl<V: Visitor + ?Sized> Visit for Angle {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Parenth {
     pub parenth: tok::Parenth,
     pub args: Puncted<typ::Type, Token![,]>,
@@ -844,20 +759,6 @@ impl Lower for Parenth {
             self.args.lower(s);
         });
         self.ret.lower(s);
-    }
-}
-impl Debug for path::Parenth {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl path::Parenth {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("parenth", &self.parenth);
-                f.field("args", &self.args);
-                f.field("ret", &self.ret);
-                f.finish()
-            }
-        }
-        self.debug(f, "path::Parenth")
     }
 }
 impl Pretty for Parenth {
@@ -907,7 +808,7 @@ impl<V: Visitor + ?Sized> Visit for Parenth {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AssocType {
     pub ident: Ident,
     pub args: Option<Angle>,
@@ -920,16 +821,6 @@ impl Lower for AssocType {
         self.args.lower(s);
         self.eq.lower(s);
         self.typ.lower(s);
-    }
-}
-impl Debug for AssocType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("path::AssocType");
-        f.field("ident", &self.ident);
-        f.field("args", &self.args);
-        f.field("eq", &self.eq);
-        f.field("typ", &self.typ);
-        f.finish()
     }
 }
 impl Pretty for AssocType {
@@ -976,7 +867,7 @@ impl<V: Visitor + ?Sized> Visit for AssocType {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AssocConst {
     pub ident: Ident,
     pub args: Option<Angle>,
@@ -989,16 +880,6 @@ impl Lower for AssocConst {
         self.args.lower(s);
         self.eq.lower(s);
         self.val.lower(s);
-    }
-}
-impl Debug for AssocConst {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("path::AssocConst");
-        f.field("ident", &self.ident);
-        f.field("args", &self.args);
-        f.field("eq", &self.eq);
-        f.field("val", &self.val);
-        f.finish()
     }
 }
 impl Pretty for AssocConst {
@@ -1045,7 +926,7 @@ impl<V: Visitor + ?Sized> Visit for AssocConst {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Constraint {
     pub ident: Ident,
     pub args: Option<Angle>,
@@ -1058,16 +939,6 @@ impl Lower for Constraint {
         self.args.lower(s);
         self.colon.lower(s);
         self.bounds.lower(s);
-    }
-}
-impl Debug for Constraint {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("Constraint");
-        f.field("ident", &self.ident);
-        f.field("args", &self.args);
-        f.field("colon", &self.colon);
-        f.field("bounds", &self.bounds);
-        f.finish()
     }
 }
 impl Pretty for Constraint {
@@ -1129,24 +1000,13 @@ impl<V: Visitor + ?Sized> Visit for Constraint {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct QSelf {
     pub lt: Token![<],
     pub typ: Box<typ::Type>,
     pub pos: usize,
     pub as_: Option<Token![as]>,
     pub gt: Token![>],
-}
-impl Debug for QSelf {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("QSelf");
-        f.field("lt", &self.lt);
-        f.field("typ", &self.typ);
-        f.field("pos", &self.pos);
-        f.field("as_", &self.as_);
-        f.field("gt", &self.gt);
-        f.finish()
-    }
 }
 impl<F: Folder + ?Sized> Fold for path::QSelf {
     fn fold(&self, f: &mut F) {

@@ -6,7 +6,7 @@ use std::{
 };
 
 enum_of_structs! {
-    #[derive(Clone, Eq, PartialEq)]
+    #[derive(Clone, Debug, Eq, PartialEq)]
     pub enum Lit {
         Bool(Bool),
         Byte(Byte),
@@ -137,26 +137,6 @@ impl Parse for Lit {
         })
     }
 }
-impl Debug for Lit {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("Lit::")?;
-        use Lit::*;
-        match self {
-            Bool(x) => x.debug(f, "Bool"),
-            Byte(x) => x.debug(f, "Byte"),
-            ByteStr(x) => x.debug(f, "ByteStr"),
-            Char(x) => x.debug(f, "Char"),
-            Float(x) => x.debug(f, "Float"),
-            Int(x) => x.debug(f, "Int"),
-            Str(x) => x.debug(f, "Str"),
-            Verbatim(x) => {
-                let mut f = f.debug_tuple("Verbatim");
-                f.field(x);
-                f.finish()
-            },
-        }
-    }
-}
 impl Pretty for Lit {
     fn pretty(&self, p: &mut Print) {
         use Lit::*;
@@ -283,7 +263,7 @@ impl<V: Visitor + ?Sized> Visit for Lit {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Bool {
     pub val: bool,
     pub span: Span,
@@ -346,16 +326,6 @@ impl<V: Visitor + ?Sized> Visit for Bool {
         &mut self.span.visit_mut(v);
     }
 }
-impl Debug for Bool {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Bool {
-            pub fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                f.debug_struct(x).field("value", &self.val).finish()
-            }
-        }
-        self.debug(f, "lit::Bool")
-    }
-}
 
 macro_rules! extra_traits {
     ($ty:ident) => {
@@ -371,7 +341,7 @@ macro_rules! extra_traits {
     };
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Byte {
     pub repr: Box<Repr>,
 }
@@ -419,18 +389,6 @@ impl Lower for Byte {
         self.repr.tok.lower(s);
     }
 }
-impl Debug for Byte {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Byte {
-            pub fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                f.debug_struct(x)
-                    .field("tok", &format_args!("{}", self.repr.tok))
-                    .finish()
-            }
-        }
-        self.debug(f, "lit::Byte")
-    }
-}
 impl Pretty for Byte {
     fn pretty(&self, p: &mut Print) {
         p.word(self.token().to_string());
@@ -449,7 +407,7 @@ impl<V: Visitor + ?Sized> Visit for Byte {
     fn visit_mut(&mut self, v: &mut V) {}
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ByteStr {
     pub repr: Box<Repr>,
 }
@@ -497,18 +455,6 @@ impl Lower for ByteStr {
         self.repr.tok.lower(s);
     }
 }
-impl Debug for ByteStr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl ByteStr {
-            pub fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                f.debug_struct(x)
-                    .field("tok", &format_args!("{}", self.repr.tok))
-                    .finish()
-            }
-        }
-        self.debug(f, "lit::ByteStr")
-    }
-}
 impl Pretty for ByteStr {
     fn pretty(&self, p: &mut Print) {
         p.word(self.token().to_string());
@@ -527,7 +473,7 @@ impl<V: Visitor + ?Sized> Visit for ByteStr {
     fn visit_mut(&mut self, v: &mut V) {}
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Char {
     pub repr: Box<Repr>,
 }
@@ -575,18 +521,6 @@ impl Lower for Char {
         self.repr.tok.lower(s);
     }
 }
-impl Debug for Char {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Char {
-            pub fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                f.debug_struct(x)
-                    .field("tok", &format_args!("{}", self.repr.tok))
-                    .finish()
-            }
-        }
-        self.debug(f, "lit::Char")
-    }
-}
 impl Pretty for Char {
     fn pretty(&self, p: &mut Print) {
         p.word(self.token().to_string());
@@ -605,7 +539,7 @@ impl<V: Visitor + ?Sized> Visit for Char {
     fn visit_mut(&mut self, v: &mut V) {}
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Float {
     pub repr: Box<FloatRepr>,
 }
@@ -671,18 +605,6 @@ impl Lower for Float {
         self.repr.tok.lower(s);
     }
 }
-impl Debug for Float {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Float {
-            pub fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                f.debug_struct(x)
-                    .field("tok", &format_args!("{}", self.repr.tok))
-                    .finish()
-            }
-        }
-        self.debug(f, "lit::Float")
-    }
-}
 impl Display for Float {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.repr.tok.fmt(f)
@@ -706,7 +628,7 @@ impl<V: Visitor + ?Sized> Visit for Float {
     fn visit_mut(&mut self, v: &mut V) {}
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Int {
     pub repr: Box<IntRepr>,
 }
@@ -772,18 +694,6 @@ impl Lower for Int {
         self.repr.tok.lower(s);
     }
 }
-impl Debug for Int {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Int {
-            pub fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                f.debug_struct(x)
-                    .field("tok", &format_args!("{}", self.repr.tok))
-                    .finish()
-            }
-        }
-        self.debug(f, "LitInt")
-    }
-}
 impl Display for Int {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.repr.tok.fmt(f)
@@ -807,7 +717,7 @@ impl<V: Visitor + ?Sized> Visit for Int {
     fn visit_mut(&mut self, v: &mut V) {}
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Str {
     pub repr: Box<Repr>,
 }
@@ -876,18 +786,6 @@ impl Parse for Str {
 impl Lower for Str {
     fn lower(&self, s: &mut Stream) {
         self.repr.tok.lower(s);
-    }
-}
-impl Debug for Str {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Str {
-            pub fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                f.debug_struct(x)
-                    .field("tok", &format_args!("{}", self.repr.tok))
-                    .finish()
-            }
-        }
-        self.debug(f, "lit::Str")
     }
 }
 impl Pretty for Str {

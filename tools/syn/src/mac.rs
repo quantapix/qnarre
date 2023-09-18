@@ -292,11 +292,6 @@ macro_rules! format_ident {
 
 macro_rules! traits_for_kw {
     ($n:ident) => {
-        impl Debug for $n {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                fmt::Formatter::write_str(f, std::concat!("Keyword [", std::stringify!($n), "]",))
-            }
-        }
         impl<H: Hasher> Hash for $n {
             fn hash(&self, _: &mut H) {}
         }
@@ -342,7 +337,7 @@ macro_rules! lower_for_kw {
 }
 macro_rules! custom_kw {
     ($n:ident) => {
-        #[derive(Clone, Copy, Eq, PartialEq)]
+        #[derive(Clone, Copy, Debug, Eq, PartialEq)]
         pub struct $n {
             pub span: Span,
         }
@@ -431,11 +426,6 @@ macro_rules! stringify_punct {
 
 macro_rules! traits_for_punct {
     ($n:ident, $($tt:tt)+) => {
-        impl Debug for $n {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                fmt::Formatter::write_str(f, std::stringify!($n))
-            }
-        }
         impl<H: Hasher> Hash for $n {
             fn hash(&self, _: &mut H) {}
         }
@@ -471,7 +461,7 @@ macro_rules! lower_for_punct {
 }
 macro_rules! custom_punct {
     ($n:ident, $($tt:tt)+) => {
-        #[derive(Clone, Copy)]
+        #[derive(Clone, Copy, Debug)]
         pub struct $n {
             pub spans: punct_repr!($($tt)+),
         }
@@ -1181,7 +1171,7 @@ macro_rules! quote_spanned {
     }};
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Mac {
     pub path: Path,
     pub bang: Token![!],
@@ -1217,16 +1207,6 @@ impl Lower for Mac {
         self.path.lower(s);
         self.bang.lower(s);
         self.delim.surround(s, self.toks.clone());
-    }
-}
-impl Debug for Mac {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("Macro");
-        f.field("path", &self.path);
-        f.field("bang", &self.bang);
-        f.field("delimiter", &self.delim);
-        f.field("toks", &self.toks);
-        f.finish()
     }
 }
 impl Pretty for Mac {

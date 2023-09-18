@@ -7,7 +7,7 @@ use std::{
 
 pub type Res<T> = std::result::Result<T, Err>;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Err {
     msgs: Vec<ErrMsg>,
 }
@@ -52,15 +52,6 @@ impl Err {
     }
     pub fn combine(&mut self, another: Err) {
         self.msgs.extend(another.msgs);
-    }
-}
-impl Debug for Err {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.msgs.len() == 1 {
-            f.debug_tuple("Error").field(&self.msgs[0]).finish()
-        } else {
-            f.debug_tuple("Error").field(&self.msgs).finish()
-        }
     }
 }
 impl Display for Err {
@@ -122,7 +113,7 @@ impl<'a> IntoIterator for &'a Err {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct ErrMsg {
     span: ThreadBound<SpanRange>,
     msg: String,
@@ -176,13 +167,8 @@ impl ErrMsg {
         ])
     }
 }
-impl Debug for ErrMsg {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        Debug::fmt(&self.msg, f)
-    }
-}
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 struct ThreadBound<T> {
     val: T,
     id: ThreadId,
@@ -199,14 +185,6 @@ impl<T> ThreadBound<T> {
             Some(&self.val)
         } else {
             None
-        }
-    }
-}
-impl<T: Debug> Debug for ThreadBound<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.get() {
-            Some(x) => Debug::fmt(x, f),
-            None => f.write_str("unknown"),
         }
     }
 }

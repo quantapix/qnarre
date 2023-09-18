@@ -79,7 +79,7 @@ pub fn xid_ok(x: &str) -> bool {
     true
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Life {
     pub apos: Span,
     pub ident: Ident,
@@ -106,19 +106,6 @@ impl Life {
     pub fn set_span(&mut self, s: Span) {
         self.apos = s;
         self.ident.set_span(s);
-    }
-}
-impl Debug for Life {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Life {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("apos", &self.apos);
-                f.field("ident", &self.ident);
-                f.finish()
-            }
-        }
-        self.debug(f, "ident::Life")
     }
 }
 impl Display for Life {
