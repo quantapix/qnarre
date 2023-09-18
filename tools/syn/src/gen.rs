@@ -6,6 +6,7 @@ use super::{
 pub mod bound {
     use super::*;
     enum_of_structs! {
+        #[derive(Eq, PartialEq)]
         pub enum Type {
             Life(Life),
             Trait(Trait),
@@ -89,18 +90,6 @@ pub mod bound {
             }
         }
     }
-    impl Eq for Type {}
-    impl PartialEq for Type {
-        fn eq(&self, x: &Self) -> bool {
-            use self::Type::*;
-            match (self, x) {
-                (Life(x), Life(y)) => x == y,
-                (Trait(x), Trait(y)) => x == y,
-                (Verbatim(x), Verbatim(y)) => StreamHelper(x) == StreamHelper(y),
-                _ => false,
-            }
-        }
-    }
     impl Pretty for Type {
         fn pretty(&self, p: &mut Print) {
             use self::Type::*;
@@ -170,6 +159,7 @@ pub mod bound {
         }
     }
 
+    #[derive(Eq, PartialEq)]
     pub struct Trait {
         pub parenth: Option<tok::Parenth>,
         pub modif: Modifier,
@@ -230,12 +220,6 @@ pub mod bound {
             f.finish()
         }
     }
-    impl Eq for Trait {}
-    impl PartialEq for Trait {
-        fn eq(&self, x: &Self) -> bool {
-            self.parenth == x.parenth && self.modif == x.modif && self.lifes == x.lifes && self.path == x.path
-        }
-    }
     impl Pretty for Trait {
         fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
             if self.parenth.is_some() {
@@ -294,6 +278,7 @@ pub mod bound {
         }
     }
 
+    #[derive(Eq, PartialEq)]
     pub enum Modifier {
         Maybe(Token![?]),
         None,
@@ -333,17 +318,6 @@ pub mod bound {
                     f.finish()
                 },
                 None => f.write_str("None"),
-            }
-        }
-    }
-    impl Eq for Modifier {}
-    impl PartialEq for Modifier {
-        fn eq(&self, x: &Self) -> bool {
-            use Modifier::*;
-            match (self, x) {
-                (Maybe(_), Maybe(_)) => true,
-                (None, None) => true,
-                _ => false,
             }
         }
     }
@@ -395,6 +369,7 @@ pub mod bound {
         }
     }
 
+    #[derive(Eq, PartialEq)]
     pub struct Lifes {
         pub for_: Token![for],
         pub lt: Token![<],
@@ -473,12 +448,6 @@ pub mod bound {
             f.field("lifes", &self.lifes);
             f.field("gt", &self.gt);
             f.finish()
-        }
-    }
-    impl Eq for Lifes {}
-    impl PartialEq for Lifes {
-        fn eq(&self, x: &Self) -> bool {
-            self.lifes == x.lifes
         }
     }
     impl Pretty for Lifes {
@@ -572,6 +541,7 @@ pub mod bound {
 pub mod param {
     use super::*;
     enum_of_structs! {
+        #[derive(Eq, PartialEq)]
         pub enum Param {
             Const(Const),
             Life(Life),
@@ -623,18 +593,6 @@ pub mod param {
                     f.field(x);
                     f.finish()
                 },
-            }
-        }
-    }
-    impl Eq for Param {}
-    impl PartialEq for Param {
-        fn eq(&self, x: &Self) -> bool {
-            use Param::*;
-            match (self, x) {
-                (Const(x), Const(y)) => x == y,
-                (Life(x), Life(y)) => x == y,
-                (Type(x), Type(y)) => x == y,
-                _ => false,
             }
         }
     }
@@ -708,6 +666,7 @@ pub mod param {
         }
     }
 
+    #[derive(Eq, PartialEq)]
     pub struct Life {
         pub attrs: Vec<attr::Attr>,
         pub life: Life,
@@ -788,12 +747,6 @@ pub mod param {
             f.field("colon", &self.colon);
             f.field("bounds", &self.bounds);
             f.finish()
-        }
-    }
-    impl Eq for Life {}
-    impl PartialEq for Life {
-        fn eq(&self, x: &Self) -> bool {
-            self.attrs == x.attrs && self.life == x.life && self.colon == x.colon && self.bounds == x.bounds
         }
     }
     impl Pretty for Life {
@@ -883,6 +836,7 @@ pub mod param {
         }
     }
 
+    #[derive(Eq, PartialEq)]
     pub struct Type {
         pub attrs: Vec<attr::Attr>,
         pub ident: Ident,
@@ -975,17 +929,6 @@ pub mod param {
             f.field("eq", &self.eq);
             f.field("default", &self.default);
             f.finish()
-        }
-    }
-    impl Eq for Type {}
-    impl PartialEq for Type {
-        fn eq(&self, x: &Self) -> bool {
-            self.attrs == x.attrs
-                && self.ident == x.ident
-                && self.colon == x.colon
-                && self.bounds == x.bounds
-                && self.eq == x.eq
-                && self.default == x.default
         }
     }
     impl Pretty for Type {
@@ -1093,6 +1036,7 @@ pub mod param {
         }
     }
 
+    #[derive(Eq, PartialEq)]
     pub struct Const {
         pub attrs: Vec<attr::Attr>,
         pub const_: Token![const],
@@ -1161,16 +1105,6 @@ pub mod param {
             f.field("eq", &self.eq);
             f.field("default", &self.default);
             f.finish()
-        }
-    }
-    impl Eq for Const {}
-    impl PartialEq for Const {
-        fn eq(&self, x: &Self) -> bool {
-            self.attrs == x.attrs
-                && self.ident == x.ident
-                && self.typ == x.typ
-                && self.eq == x.eq
-                && self.default == x.default
         }
     }
     impl Pretty for Const {
@@ -1265,6 +1199,7 @@ pub mod param {
 }
 pub use param::Param;
 
+#[derive(Eq, PartialEq)]
 pub struct Where {
     pub where_: Token![where],
     pub preds: Puncted<where_::Pred, Token![,]>,
@@ -1320,12 +1255,6 @@ impl Debug for Where {
         f.field("where_", &self.where_);
         f.field("preds", &self.preds);
         f.finish()
-    }
-}
-impl Eq for Where {}
-impl PartialEq for Where {
-    fn eq(&self, x: &Self) -> bool {
-        self.preds == x.preds
     }
 }
 impl Pretty for Where {
@@ -1447,6 +1376,7 @@ impl Print {
 pub mod where_ {
     use super::*;
     enum_of_structs! {
+        #[derive(Eq, PartialEq)]
         pub enum Pred {
             Life(Life),
             Type(Type),
@@ -1539,17 +1469,6 @@ pub mod where_ {
             }
         }
     }
-    impl Eq for Pred {}
-    impl PartialEq for Pred {
-        fn eq(&self, x: &Self) -> bool {
-            use Pred::*;
-            match (self, x) {
-                (Life(x), Life(y)) => x == y,
-                (Type(x), Type(y)) => x == y,
-                _ => false,
-            }
-        }
-    }
     impl Pretty for Pred {
         fn pretty(&self, p: &mut Print) {
             use Pred::*;
@@ -1608,6 +1527,7 @@ pub mod where_ {
         }
     }
 
+    #[derive(Eq, PartialEq)]
     pub struct Life {
         pub life: Life,
         pub colon: Token![:],
@@ -1636,12 +1556,6 @@ pub mod where_ {
             f.field("colon", &self.colon);
             f.field("bounds", &self.bounds);
             f.finish()
-        }
-    }
-    impl Eq for Life {}
-    impl PartialEq for Life {
-        fn eq(&self, x: &Self) -> bool {
-            self.life == x.life && self.bounds == x.bounds
         }
     }
     impl Pretty for Life {
@@ -1693,6 +1607,7 @@ pub mod where_ {
         }
     }
 
+    #[derive(Eq, PartialEq)]
     pub struct Type {
         pub lifes: Option<bound::Lifes>,
         pub typ: typ::Type,
@@ -1725,12 +1640,6 @@ pub mod where_ {
             f.field("colon", &self.colon);
             f.field("bounds", &self.bounds);
             f.finish()
-        }
-    }
-    impl Eq for Type {}
-    impl PartialEq for Type {
-        fn eq(&self, x: &Self) -> bool {
-            self.lifes == x.lifes && self.typ == x.typ && self.bounds == x.bounds
         }
     }
     impl Pretty for Type {
@@ -1798,6 +1707,7 @@ pub mod where_ {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Gens {
     pub lt: Option<Token![<]>,
     pub params: Puncted<Param, Token![,]>,
@@ -1935,12 +1845,6 @@ impl Debug for Gens {
         f.field("gt", &self.gt);
         f.field("where_", &self.where_);
         f.finish()
-    }
-}
-impl Eq for Gens {}
-impl PartialEq for Gens {
-    fn eq(&self, x: &Self) -> bool {
-        self.lt == x.lt && self.params == x.params && self.gt == x.gt && self.where_ == x.where_
     }
 }
 impl Pretty for Gens {

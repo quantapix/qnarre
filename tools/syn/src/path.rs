@@ -7,6 +7,7 @@ pub enum Kind {
     Type,
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Path {
     pub colon: Option<Token![::]>,
     pub segs: Puncted<Segment, Token![::]>,
@@ -161,12 +162,6 @@ impl Debug for Path {
         self.debug(f, "Path")
     }
 }
-impl Eq for Path {}
-impl PartialEq for Path {
-    fn eq(&self, x: &Self) -> bool {
-        self.colon == x.colon && self.segs == x.segs
-    }
-}
 impl Pretty for Path {
     fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
         let Some(kind) = pretty::Args::kind(x);
@@ -208,6 +203,7 @@ impl<V: Visitor + ?Sized> Visit for Path {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Segment {
     pub ident: Ident,
     pub args: Args,
@@ -263,18 +259,12 @@ impl Clone for Segment {
         }
     }
 }
-impl Debug for path::Segment {
+impl Debug for Segment {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut f = f.debug_struct("path::Segment");
         f.field("ident", &self.ident);
         f.field("args", &self.args);
         f.finish()
-    }
-}
-impl Eq for Segment {}
-impl PartialEq for Segment {
-    fn eq(&self, x: &Self) -> bool {
-        self.ident == x.ident && self.args == x.args
     }
 }
 impl Pretty for Segment {
@@ -308,6 +298,7 @@ impl<V: Visitor + ?Sized> Visit for Segment {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub enum Args {
     None,
     Angle(Angle),
@@ -367,18 +358,6 @@ impl Debug for path::Args {
             None => f.write_str("None"),
             Angle(x) => x.debug(f, "Angle"),
             Parenth(x) => x.debug(f, "Parenth"),
-        }
-    }
-}
-impl Eq for Args {}
-impl PartialEq for Args {
-    fn eq(&self, x: &Self) -> bool {
-        use Args::*;
-        match (self, x) {
-            (None, None) => true,
-            (Angle(x), Angle(y)) => x == y,
-            (Parenth(x), Parenth(y)) => x == y,
-            _ => false,
         }
     }
 }
@@ -451,6 +430,7 @@ impl<V: Visitor + ?Sized> Visit for Args {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub enum Arg {
     Life(Life),
     Type(typ::Type),
@@ -608,21 +588,6 @@ impl Debug for Arg {
         }
     }
 }
-impl Eq for Arg {}
-impl PartialEq for Arg {
-    fn eq(&self, x: &Self) -> bool {
-        use Arg::*;
-        match (self, x) {
-            (AssocConst(x), AssocConst(y)) => x == y,
-            (AssocType(x), AssocType(y)) => x == y,
-            (Const(x), Const(y)) => x == y,
-            (Constraint(x), Constraint(y)) => x == y,
-            (Life(x), Life(y)) => x == y,
-            (Type(x), Type(y)) => x == y,
-            _ => false,
-        }
-    }
-}
 impl Pretty for Arg {
     fn pretty(&self, p: &mut Print) {
         use Arg::*;
@@ -739,6 +704,7 @@ impl<V: Visitor + ?Sized> Visit for Arg {
 
 pub use expr::Expr;
 
+#[derive(Eq, PartialEq)]
 pub struct Angle {
     pub colon2: Option<Token![::]>,
     pub lt: Token![<],
@@ -836,12 +802,6 @@ impl Debug for path::Angle {
         self.debug(f, "path::Angle")
     }
 }
-impl Eq for Angle {}
-impl PartialEq for Angle {
-    fn eq(&self, x: &Self) -> bool {
-        self.colon2 == x.colon2 && self.args == x.args
-    }
-}
 impl Pretty for Angle {
     fn pretty_with_args(&self, p: &mut Print, x: &Option<pretty::Args>) {
         let Some(kind) = pretty::Args::kind(x);
@@ -911,6 +871,7 @@ impl<V: Visitor + ?Sized> Visit for Angle {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Parenth {
     pub parenth: tok::Parenth,
     pub args: Puncted<typ::Type, Token![,]>,
@@ -955,12 +916,6 @@ impl Debug for path::Parenth {
             }
         }
         self.debug(f, "path::Parenth")
-    }
-}
-impl Eq for Parenth {}
-impl PartialEq for Parenth {
-    fn eq(&self, x: &Self) -> bool {
-        self.args == x.args && self.ret == x.ret
     }
 }
 impl Pretty for Parenth {
@@ -1010,6 +965,7 @@ impl<V: Visitor + ?Sized> Visit for Parenth {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct AssocType {
     pub ident: Ident,
     pub args: Option<Angle>,
@@ -1042,12 +998,6 @@ impl Debug for AssocType {
         f.field("eq", &self.eq);
         f.field("typ", &self.typ);
         f.finish()
-    }
-}
-impl Eq for AssocType {}
-impl PartialEq for AssocType {
-    fn eq(&self, x: &Self) -> bool {
-        self.ident == x.ident && self.args == x.args && self.typ == x.typ
     }
 }
 impl Pretty for AssocType {
@@ -1094,6 +1044,7 @@ impl<V: Visitor + ?Sized> Visit for AssocType {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct AssocConst {
     pub ident: Ident,
     pub args: Option<Angle>,
@@ -1126,12 +1077,6 @@ impl Debug for AssocConst {
         f.field("eq", &self.eq);
         f.field("val", &self.val);
         f.finish()
-    }
-}
-impl Eq for AssocConst {}
-impl PartialEq for AssocConst {
-    fn eq(&self, x: &Self) -> bool {
-        self.ident == x.ident && self.args == x.args && self.val == x.val
     }
 }
 impl Pretty for AssocConst {
@@ -1178,6 +1123,7 @@ impl<V: Visitor + ?Sized> Visit for AssocConst {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Constraint {
     pub ident: Ident,
     pub args: Option<Angle>,
@@ -1210,12 +1156,6 @@ impl Debug for path::Constraint {
         f.field("colon", &self.colon);
         f.field("bounds", &self.bounds);
         f.finish()
-    }
-}
-impl Eq for Constraint {}
-impl PartialEq for Constraint {
-    fn eq(&self, x: &Self) -> bool {
-        self.ident == x.ident && self.args == x.args && self.bounds == x.bounds
     }
 }
 impl Pretty for Constraint {
@@ -1277,6 +1217,7 @@ impl<V: Visitor + ?Sized> Visit for Constraint {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct QSelf {
     pub lt: Token![<],
     pub typ: Box<typ::Type>,
@@ -1304,12 +1245,6 @@ impl Debug for QSelf {
         f.field("as_", &self.as_);
         f.field("gt", &self.gt);
         f.finish()
-    }
-}
-impl Eq for QSelf {}
-impl PartialEq for QSelf {
-    fn eq(&self, x: &Self) -> bool {
-        self.ty == x.ty && self.pos == x.pos && self.as_ == x.as_
     }
 }
 impl<F: Folder + ?Sized> Fold for path::QSelf {

@@ -373,6 +373,7 @@ where
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Nothing;
 impl Parse for Nothing {
     fn parse(_: Stream) -> Res<Self> {
@@ -382,12 +383,6 @@ impl Parse for Nothing {
 impl Debug for Nothing {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("Nothing")
-    }
-}
-impl Eq for Nothing {}
-impl PartialEq for Nothing {
-    fn eq(&self, _: &Self) -> bool {
-        true
     }
 }
 impl<H: Hasher> Hash for Nothing {

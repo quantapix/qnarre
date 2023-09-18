@@ -2,6 +2,7 @@ use super::*;
 
 struct NoSemi(bool);
 
+#[derive(Eq, PartialEq)]
 pub enum Stmt {
     Expr(Expr, Option<Token![;]>),
     Item(Item),
@@ -57,19 +58,6 @@ impl Debug for Stmt {
                 f.finish()
             },
             Mac(x) => x.debug(f, "Mac"),
-        }
-    }
-}
-impl Eq for Stmt {}
-impl PartialEq for Stmt {
-    fn eq(&self, x: &Self) -> bool {
-        use Stmt::*;
-        match (self, x) {
-            (Expr(x, self1), Expr(y, other1)) => x == y && self1 == other1,
-            (Item(x), Item(y)) => x == y,
-            (Local(x), Local(y)) => x == y,
-            (Mac(x), Mac(y)) => x == y,
-            _ => false,
         }
     }
 }
@@ -218,6 +206,7 @@ impl<V: Visitor + ?Sized> Visit for Stmt {
 pub use expr::Expr;
 pub use item::Item;
 
+#[derive(Eq, PartialEq)]
 pub struct Local {
     pub attrs: Vec<attr::Attr>,
     pub let_: Token![let],
@@ -268,12 +257,6 @@ impl Debug for Local {
         self.debug(f, "stmt::Local")
     }
 }
-impl Eq for Local {}
-impl PartialEq for Local {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs && self.pat == x.pat && self.init == x.init
-    }
-}
 impl<F: Folder + ?Sized> Fold for Local {
     fn fold(&self, f: &mut F) {
         Local {
@@ -313,6 +296,7 @@ impl<V: Visitor + ?Sized> Visit for Local {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Mac {
     pub attrs: Vec<attr::Attr>,
     pub mac: mac::Mac,
@@ -348,12 +332,6 @@ impl Debug for Mac {
         self.debug(f, "stmt::Mac")
     }
 }
-impl Eq for Mac {}
-impl PartialEq for Mac {
-    fn eq(&self, x: &Self) -> bool {
-        self.attrs == x.attrs && self.mac == x.mac && self.semi == x.semi
-    }
-}
 impl<F: Folder + ?Sized> Fold for Mac {
     fn fold(&self, f: &mut F) {
         Mac {
@@ -385,6 +363,7 @@ impl<V: Visitor + ?Sized> Visit for Mac {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Block {
     pub brace: tok::Brace,
     pub stmts: Vec<Stmt>,
@@ -448,12 +427,6 @@ impl Debug for Block {
         f.finish()
     }
 }
-impl Eq for Block {}
-impl PartialEq for Block {
-    fn eq(&self, x: &Self) -> bool {
-        self.stmts == x.stmts
-    }
-}
 impl<F: Folder + ?Sized> Fold for Block {
     fn fold(&self, f: &mut F) {
         Block {
@@ -480,6 +453,7 @@ impl<V: Visitor + ?Sized> Visit for Block {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Init {
     pub eq: Token![=],
     pub expr: Box<Expr>,
@@ -501,12 +475,6 @@ impl Debug for Init {
         f.field("expr", &self.expr);
         f.field("diverge", &self.diverge);
         f.finish()
-    }
-}
-impl Eq for Init {}
-impl PartialEq for Init {
-    fn eq(&self, x: &Self) -> bool {
-        self.expr == x.expr && self.diverge == x.diverge
     }
 }
 impl<F: Folder + ?Sized> Fold for Init {
