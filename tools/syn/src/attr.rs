@@ -1,16 +1,10 @@
 use super::*;
 use std::{iter, slice};
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub enum Style {
     Outer,
     Inner(Token![!]),
-}
-impl Copy for Style {}
-impl Clone for Style {
-    fn clone(&self) -> Self {
-        *self
-    }
 }
 impl Debug for Style {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -65,7 +59,7 @@ impl<V: Visitor + ?Sized> Visit for Style {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Attr {
     pub pound: Token![#],
     pub style: Style,
@@ -141,16 +135,6 @@ impl Lower for Attr {
         self.bracket.surround(s, |s| {
             self.meta.lower(s);
         });
-    }
-}
-impl Clone for Attr {
-    fn clone(&self) -> Self {
-        Attr {
-            pound: self.pound.clone(),
-            style: self.style.clone(),
-            bracket: self.bracket.clone(),
-            meta: self.meta.clone(),
-        }
     }
 }
 impl Debug for Attr {
@@ -397,7 +381,7 @@ impl<'a> Display for DisplayStyle<'a> {
 }
 
 enum_of_structs! {
-    #[derive(Eq, PartialEq)]
+    #[derive(Clone, Eq, PartialEq)]
     pub enum Meta {
         List(List),
         NameValue(NameValue),
@@ -451,16 +435,6 @@ impl Parse for Meta {
     fn parse(s: Stream) -> Res<Self> {
         let y = s.call(Path::parse_mod_style)?;
         parse_after_path(y, s)
-    }
-}
-impl Clone for Meta {
-    fn clone(&self) -> Self {
-        use Meta::*;
-        match self {
-            List(x) => List(x.clone()),
-            NameValue(x) => NameValue(x.clone()),
-            Path(x) => Path(x.clone()),
-        }
     }
 }
 impl Debug for Meta {
@@ -544,7 +518,7 @@ impl<V: Visitor + ?Sized> Visit for Meta {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct List {
     pub path: Path,
     pub delim: tok::Delim,
@@ -572,15 +546,6 @@ impl Lower for List {
     fn lower(&self, s: &mut Stream) {
         self.path.lower(s);
         self.delim.surround(s, self.toks.clone());
-    }
-}
-impl Clone for List {
-    fn clone(&self) -> Self {
-        List {
-            path: self.path.clone(),
-            delim: self.delim.clone(),
-            toks: self.toks.clone(),
-        }
     }
 }
 impl Debug for List {
@@ -738,7 +703,7 @@ impl<V: Visitor + ?Sized> Visit for List {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct NameValue {
     pub name: Path,
     pub eq: Token![=],
@@ -755,15 +720,6 @@ impl Lower for NameValue {
         self.name.lower(s);
         self.eq.lower(s);
         self.val.lower(s);
-    }
-}
-impl Clone for NameValue {
-    fn clone(&self) -> Self {
-        NameValue {
-            name: self.name.clone(),
-            eq: self.eq.clone(),
-            val: self.val.clone(),
-        }
     }
 }
 impl Debug for NameValue {

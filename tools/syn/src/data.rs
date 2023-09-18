@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Input {
     pub attrs: Vec<attr::Attr>,
     pub vis: Visibility,
@@ -51,17 +51,6 @@ impl Parse for Input {
             })
         } else {
             Err(look.error())
-        }
-    }
-}
-impl Clone for Input {
-    fn clone(&self) -> Self {
-        Input {
-            attrs: self.attrs.clone(),
-            vis: self.vis.clone(),
-            ident: self.ident.clone(),
-            gens: self.gens.clone(),
-            data: self.data.clone(),
         }
     }
 }
@@ -159,7 +148,7 @@ impl<V: Visitor + ?Sized> Visit for Input {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub enum Visibility {
     Public(Token![pub]),
     Restricted(Restricted),
@@ -233,16 +222,6 @@ impl Lower for Visibility {
             Visibility::Public(x) => x.lower(s),
             Visibility::Restricted(x) => x.lower(s),
             Visibility::Inherited => {},
-        }
-    }
-}
-impl Clone for Visibility {
-    fn clone(&self) -> Self {
-        use Visibility::*;
-        match self {
-            Inherited => Inherited,
-            Public(x) => Public(x.clone()),
-            Restricted(x) => Restricted(x.clone()),
         }
     }
 }
@@ -321,7 +300,7 @@ impl<V: Visitor + ?Sized> Visit for Visibility {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Restricted {
     pub pub_: Token![pub],
     pub parenth: tok::Parenth,
@@ -335,16 +314,6 @@ impl Lower for Restricted {
             self.in_.lower(s);
             self.path.lower(s);
         });
-    }
-}
-impl Clone for Restricted {
-    fn clone(&self) -> Self {
-        Restricted {
-            pub_: self.pub_.clone(),
-            parenth: self.parenth.clone(),
-            in_: self.in_.clone(),
-            path: self.path.clone(),
-        }
     }
 }
 impl Debug for Restricted {
@@ -401,21 +370,11 @@ impl<V: Visitor + ?Sized> Visit for Restricted {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub enum Data {
     Enum(Enum),
     Struct(Struct),
     Union(Union),
-}
-impl Clone for Data {
-    fn clone(&self) -> Self {
-        use Data::*;
-        match self {
-            Struct(x) => Struct(x.clone()),
-            Enum(x) => Enum(x.clone()),
-            Union(x) => Union(x.clone()),
-        }
-    }
 }
 impl Debug for Data {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -488,20 +447,11 @@ impl<V: Visitor + ?Sized> Visit for Data {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Enum {
     pub enum_: Token![enum],
     pub brace: tok::Brace,
     pub variants: Puncted<Variant, Token![,]>,
-}
-impl Clone for Enum {
-    fn clone(&self) -> Self {
-        Enum {
-            enum_: self.enum_.clone(),
-            brace: self.brace.clone(),
-            variants: self.variants.clone(),
-        }
-    }
 }
 impl Debug for Enum {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -546,20 +496,11 @@ impl<V: Visitor + ?Sized> Visit for Enum {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Struct {
     pub struct_: Token![struct],
     pub fields: Fields,
     pub semi: Option<Token![;]>,
-}
-impl Clone for Struct {
-    fn clone(&self) -> Self {
-        Struct {
-            struct_: self.struct_.clone(),
-            fields: self.fields.clone(),
-            semi: self.semi.clone(),
-        }
-    }
 }
 impl Debug for Struct {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -599,18 +540,10 @@ impl<V: Visitor + ?Sized> Visit for Struct {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Union {
     pub union_: Token![union],
     pub fields: Named,
-}
-impl Clone for Union {
-    fn clone(&self) -> Self {
-        Union {
-            union_: self.union_.clone(),
-            fields: self.fields.clone(),
-        }
-    }
 }
 impl Debug for Union {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -647,7 +580,7 @@ impl<V: Visitor + ?Sized> Visit for Union {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Variant {
     pub attrs: Vec<attr::Attr>,
     pub ident: Ident,
@@ -689,16 +622,6 @@ impl Lower for Variant {
         if let Some((eq, disc)) = &self.discrim {
             eq.lower(s);
             disc.lower(s);
-        }
-    }
-}
-impl Clone for Variant {
-    fn clone(&self) -> Self {
-        Variant {
-            attrs: self.attrs.clone(),
-            ident: self.ident.clone(),
-            fields: self.fields.clone(),
-            discrim: self.discrim.clone(),
         }
     }
 }
@@ -786,7 +709,7 @@ impl<V: Visitor + ?Sized> Visit for Variant {
 }
 
 enum_of_structs! {
-    #[derive(Eq, PartialEq)]
+    #[derive(Clone, Eq, PartialEq)]
     pub enum Fields {
         Named(Named),
         Unnamed(Unnamed),
@@ -851,16 +774,6 @@ impl<'a> IntoIterator for &'a mut Fields {
     type IntoIter = punct::IterMut<'a, Field>;
     fn into_iter(self) -> Self::IntoIter {
         self.iter_mut()
-    }
-}
-impl Clone for Fields {
-    fn clone(&self) -> Self {
-        use Fields::*;
-        match self {
-            Named(x) => Named(x.clone()),
-            Unnamed(x) => Unnamed(x.clone()),
-            Unit => Unit,
-        }
     }
 }
 impl Debug for Fields {
@@ -929,7 +842,7 @@ impl<V: Visitor + ?Sized> Visit for Fields {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Named {
     pub brace: tok::Brace,
     pub fields: Puncted<Field, Token![,]>,
@@ -948,14 +861,6 @@ impl Lower for Named {
         self.brace.surround(s, |s| {
             self.fields.lower(s);
         });
-    }
-}
-impl Clone for Named {
-    fn clone(&self) -> Self {
-        Named {
-            brace: self.brace.clone(),
-            fields: self.fields.clone(),
-        }
     }
 }
 impl Debug for Named {
@@ -999,7 +904,7 @@ impl<V: Visitor + ?Sized> Visit for Named {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Unnamed {
     pub parenth: tok::Parenth,
     pub fields: Puncted<Field, Token![,]>,
@@ -1018,14 +923,6 @@ impl Lower for Unnamed {
         self.parenth.surround(s, |s| {
             self.fields.lower(s);
         });
-    }
-}
-impl Clone for Unnamed {
-    fn clone(&self) -> Self {
-        Unnamed {
-            parenth: self.parenth.clone(),
-            fields: self.fields.clone(),
-        }
     }
 }
 impl Debug for Unnamed {
@@ -1081,7 +978,7 @@ impl<V: Visitor + ?Sized> Visit for Unnamed {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Field {
     pub attrs: Vec<attr::Attr>,
     pub vis: Visibility,
@@ -1125,18 +1022,6 @@ impl Lower for Field {
             ToksOrDefault(&self.colon).lower(s);
         }
         self.typ.lower(s);
-    }
-}
-impl Clone for Field {
-    fn clone(&self) -> Self {
-        Field {
-            attrs: self.attrs.clone(),
-            vis: self.vis.clone(),
-            mut_: self.mut_.clone(),
-            ident: self.ident.clone(),
-            colon: self.colon.clone(),
-            typ: self.typ.clone(),
-        }
     }
 }
 impl Debug for Field {
@@ -1209,17 +1094,9 @@ impl<V: Visitor + ?Sized> Visit for Field {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub enum Mut {
     None,
-}
-impl Clone for Mut {
-    fn clone(&self) -> Self {
-        use Mut::*;
-        match self {
-            None => None,
-        }
-    }
 }
 impl Debug for Mut {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

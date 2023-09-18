@@ -7,6 +7,7 @@ use std::{
 
 pub type Res<T> = std::result::Result<T, Err>;
 
+#[derive(Clone)]
 pub struct Err {
     msgs: Vec<ErrMsg>,
 }
@@ -51,13 +52,6 @@ impl Err {
     }
     pub fn combine(&mut self, another: Err) {
         self.msgs.extend(another.msgs);
-    }
-}
-impl Clone for Err {
-    fn clone(&self) -> Self {
-        Err {
-            msgs: self.msgs.clone(),
-        }
     }
 }
 impl Debug for Err {
@@ -128,6 +122,7 @@ impl<'a> IntoIterator for &'a Err {
     }
 }
 
+#[derive(Clone)]
 struct ErrMsg {
     span: ThreadBound<SpanRange>,
     msg: String,
@@ -181,20 +176,13 @@ impl ErrMsg {
         ])
     }
 }
-impl Clone for ErrMsg {
-    fn clone(&self) -> Self {
-        ErrMsg {
-            span: self.span,
-            msg: self.msg.clone(),
-        }
-    }
-}
 impl Debug for ErrMsg {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         Debug::fmt(&self.msg, f)
     }
 }
 
+#[derive(Clone, Copy)]
 struct ThreadBound<T> {
     val: T,
     id: ThreadId,
@@ -222,25 +210,14 @@ impl<T: Debug> Debug for ThreadBound<T> {
         }
     }
 }
-impl<T: Copy> Copy for ThreadBound<T> {}
-impl<T: Copy> Clone for ThreadBound<T> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
 unsafe impl<T> Sync for ThreadBound<T> {}
 unsafe impl<T: Copy> Send for ThreadBound<T> {}
 
+#[derive(Clone, Copy)]
 struct SpanRange {
     beg: Span,
     end: Span,
 }
-impl Clone for SpanRange {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-impl Copy for SpanRange {}
 
 pub fn new_at<T: Display>(scope: Span, cursor: Cursor, msg: T) -> Err {
     if cursor.eof() {

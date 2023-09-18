@@ -11,6 +11,7 @@ enum Entry {
     End(isize),
 }
 
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub struct Cursor<'a> {
     ptr: *const Entry,
     scope: *const Entry,
@@ -189,18 +190,6 @@ impl<'a> Cursor<'a> {
             _ => 1,
         };
         Some(unsafe { Cursor::create(self.ptr.add(y), self.scope) })
-    }
-}
-impl<'a> Copy for Cursor<'a> {}
-impl<'a> Clone for Cursor<'a> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-impl<'a> Eq for Cursor<'a> {}
-impl<'a> PartialEq for Cursor<'a> {
-    fn eq(&self, x: &Self) -> bool {
-        self.ptr == x.ptr
     }
 }
 impl<'a> PartialOrd for Cursor<'a> {
