@@ -1,7 +1,7 @@
 use super::*;
 
 enum_of_structs! {
-    #[derive(Eq, PartialEq)]
+    #[derive(Clone, Eq, PartialEq)]
     pub enum Type {
         Array(Array),
         Fn(Fn),
@@ -32,28 +32,6 @@ impl Parse for Type {
         let plus = true;
         let gen = true;
         parse_ambig_typ(s, plus, gen)
-    }
-}
-impl Clone for Type {
-    fn clone(&self) -> Self {
-        use Type::*;
-        match self {
-            Array(x) => Array(x.clone()),
-            Fn(x) => Fn(x.clone()),
-            Group(x) => Group(x.clone()),
-            Impl(x) => Impl(x.clone()),
-            Infer(x) => Infer(x.clone()),
-            Mac(x) => Mac(x.clone()),
-            Never(x) => Never(x.clone()),
-            Parenth(x) => Parenth(x.clone()),
-            Path(x) => Path(x.clone()),
-            Ptr(x) => Ptr(x.clone()),
-            Ref(x) => Ref(x.clone()),
-            Slice(x) => Slice(x.clone()),
-            Trait(x) => Trait(x.clone()),
-            Tuple(x) => Tuple(x.clone()),
-            Verbatim(x) => Verbatim(x.clone()),
-        }
     }
 }
 impl Debug for Type {
@@ -293,7 +271,7 @@ impl<V: Visitor + ?Sized> Visit for Type {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Array {
     pub bracket: tok::Bracket,
     pub elem: Box<Type>,
@@ -318,16 +296,6 @@ impl Lower for Array {
             self.semi.lower(s);
             self.len.lower(s);
         });
-    }
-}
-impl Clone for Array {
-    fn clone(&self) -> Self {
-        Array {
-            bracket: self.bracket.clone(),
-            elem: self.elem.clone(),
-            semi: self.semi.clone(),
-            len: self.len.clone(),
-        }
     }
 }
 impl Debug for Array {
@@ -381,7 +349,7 @@ impl<V: Visitor + ?Sized> Visit for Array {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Fn {
     pub lifes: Option<gen::bound::Lifes>,
     pub unsafe_: Option<Token![unsafe]>,
@@ -446,20 +414,6 @@ impl Lower for Fn {
             }
         });
         self.ret.lower(s);
-    }
-}
-impl Clone for Fn {
-    fn clone(&self) -> Self {
-        Fn {
-            lifes: self.lifes.clone(),
-            unsafe_: self.unsafe_.clone(),
-            abi: self.abi.clone(),
-            fn_: self.fn_.clone(),
-            parenth: self.parenth.clone(),
-            args: self.args.clone(),
-            vari: self.vari.clone(),
-            ret: self.ret.clone(),
-        }
     }
 }
 impl Debug for Fn {
@@ -568,7 +522,7 @@ impl<V: Visitor + ?Sized> Visit for Fn {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Group {
     pub group: tok::Group,
     pub elem: Box<Type>,
@@ -587,14 +541,6 @@ impl Lower for Group {
         self.group.surround(s, |s| {
             self.elem.lower(s);
         });
-    }
-}
-impl Clone for Group {
-    fn clone(&self) -> Self {
-        Group {
-            group: self.group.clone(),
-            elem: self.elem.clone(),
-        }
     }
 }
 impl Debug for Group {
@@ -637,7 +583,7 @@ impl<V: Visitor + ?Sized> Visit for Group {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Impl {
     pub impl_: Token![impl],
     pub bounds: Puncted<gen::bound::Type, Token![+]>,
@@ -680,14 +626,6 @@ impl Lower for Impl {
     fn lower(&self, s: &mut Stream) {
         self.impl_.lower(s);
         self.bounds.lower(s);
-    }
-}
-impl Clone for Impl {
-    fn clone(&self) -> Self {
-        Impl {
-            impl_: self.impl_.clone(),
-            bounds: self.bounds.clone(),
-        }
     }
 }
 impl Debug for Impl {
@@ -742,7 +680,7 @@ impl<V: Visitor + ?Sized> Visit for Impl {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Infer {
     pub underscore: Token![_],
 }
@@ -754,13 +692,6 @@ impl Parse for Infer {
 impl Lower for Infer {
     fn lower(&self, s: &mut Stream) {
         self.underscore.lower(s);
-    }
-}
-impl Clone for Infer {
-    fn clone(&self) -> Self {
-        Infer {
-            underscore: self.underscore.clone(),
-        }
     }
 }
 impl Debug for Infer {
@@ -796,7 +727,7 @@ impl<V: Visitor + ?Sized> Visit for Infer {
     fn visit_mut(&mut self, v: &mut V) {}
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Mac {
     pub mac: mac::Mac,
 }
@@ -808,11 +739,6 @@ impl Parse for Mac {
 impl Lower for Mac {
     fn lower(&self, s: &mut Stream) {
         self.mac.lower(s);
-    }
-}
-impl Clone for Mac {
-    fn clone(&self) -> Self {
-        Mac { mac: self.mac.clone() }
     }
 }
 impl Debug for Mac {
@@ -852,7 +778,7 @@ impl<V: Visitor + ?Sized> Visit for Mac {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Never {
     pub bang: Token![!],
 }
@@ -864,13 +790,6 @@ impl Parse for Never {
 impl Lower for Never {
     fn lower(&self, s: &mut Stream) {
         self.bang.lower(s);
-    }
-}
-impl Clone for Never {
-    fn clone(&self) -> Self {
-        Never {
-            bang: self.bang.clone(),
-        }
     }
 }
 impl Debug for Never {
@@ -904,7 +823,7 @@ impl<V: Visitor + ?Sized> Visit for Never {
     fn visit_mut(&mut self, v: &mut V) {}
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Parenth {
     pub parenth: tok::Parenth,
     pub elem: Box<Type>,
@@ -932,14 +851,6 @@ impl Lower for Parenth {
         self.parenth.surround(s, |s| {
             self.elem.lower(s);
         });
-    }
-}
-impl Clone for Parenth {
-    fn clone(&self) -> Self {
-        Parenth {
-            parenth: self.parenth.clone(),
-            elem: self.elem.clone(),
-        }
     }
 }
 impl Debug for Parenth {
@@ -984,7 +895,7 @@ impl<V: Visitor + ?Sized> Visit for Parenth {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Path {
     pub qself: Option<path::QSelf>,
     pub path: Path,
@@ -999,14 +910,6 @@ impl Parse for Path {
 impl Lower for Path {
     fn lower(&self, s: &mut Stream) {
         path::path_lower(s, &self.qself, &self.path);
-    }
-}
-impl Clone for Path {
-    fn clone(&self) -> Self {
-        Path {
-            qself: self.qself.clone(),
-            path: self.path.clone(),
-        }
     }
 }
 impl Debug for Path {
@@ -1056,7 +959,7 @@ impl<V: Visitor + ?Sized> Visit for Path {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Ptr {
     pub star: Token![*],
     pub const_: Option<Token![const]>,
@@ -1092,16 +995,6 @@ impl Lower for Ptr {
             },
         }
         self.elem.lower(s);
-    }
-}
-impl Clone for Ptr {
-    fn clone(&self) -> Self {
-        Ptr {
-            star: self.star.clone(),
-            const_: self.const_.clone(),
-            mut_: self.mut_.clone(),
-            elem: self.elem.clone(),
-        }
     }
 }
 impl Debug for Ptr {
@@ -1156,7 +1049,7 @@ impl<V: Visitor + ?Sized> Visit for Ptr {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Ref {
     pub and: Token![&],
     pub life: Option<Life>,
@@ -1179,16 +1072,6 @@ impl Lower for Ref {
         self.life.lower(s);
         self.mut_.lower(s);
         self.elem.lower(s);
-    }
-}
-impl Clone for Ref {
-    fn clone(&self) -> Self {
-        Ref {
-            and: self.and.clone(),
-            life: self.life.clone(),
-            mut_: self.mut_.clone(),
-            elem: self.elem.clone(),
-        }
     }
 }
 impl Debug for Ref {
@@ -1251,7 +1134,7 @@ impl<V: Visitor + ?Sized> Visit for Ref {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Slice {
     pub bracket: tok::Bracket,
     pub elem: Box<Type>,
@@ -1270,14 +1153,6 @@ impl Lower for Slice {
         self.bracket.surround(s, |s| {
             self.elem.lower(s);
         });
-    }
-}
-impl Clone for Slice {
-    fn clone(&self) -> Self {
-        Slice {
-            bracket: self.bracket.clone(),
-            elem: self.elem.clone(),
-        }
     }
 }
 impl Debug for Slice {
@@ -1322,7 +1197,7 @@ impl<V: Visitor + ?Sized> Visit for Slice {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Trait {
     pub dyn_: Option<Token![dyn]>,
     pub bounds: Puncted<gen::bound::Type, Token![+]>,
@@ -1373,14 +1248,6 @@ impl Lower for Trait {
     fn lower(&self, s: &mut Stream) {
         self.dyn_.lower(s);
         self.bounds.lower(s);
-    }
-}
-impl Clone for Trait {
-    fn clone(&self) -> Self {
-        Trait {
-            dyn_: self.dyn_.clone(),
-            bounds: self.bounds.clone(),
-        }
     }
 }
 impl Debug for Trait {
@@ -1436,7 +1303,7 @@ impl<V: Visitor + ?Sized> Visit for Trait {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Tuple {
     pub parenth: tok::Parenth,
     pub elems: Puncted<Type, Token![,]>,
@@ -1478,14 +1345,6 @@ impl Lower for Tuple {
                 <Token![,]>::default().lower(s);
             }
         });
-    }
-}
-impl Clone for Tuple {
-    fn clone(&self) -> Self {
-        Tuple {
-            parenth: self.parenth.clone(),
-            elems: self.elems.clone(),
-        }
     }
 }
 impl Debug for Tuple {
@@ -1548,7 +1407,7 @@ impl<V: Visitor + ?Sized> Visit for Tuple {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Abi {
     pub extern_: Token![extern],
     pub name: Option<lit::Str>,
@@ -1573,14 +1432,6 @@ impl Parse for Option<Abi> {
             s.parse().map(Some)
         } else {
             Ok(None)
-        }
-    }
-}
-impl Clone for Abi {
-    fn clone(&self) -> Self {
-        Abi {
-            extern_: self.extern_.clone(),
-            name: self.name.clone(),
         }
     }
 }
@@ -1627,7 +1478,7 @@ impl<V: Visitor + ?Sized> Visit for Abi {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct FnArg {
     pub attrs: Vec<attr::Attr>,
     pub name: Option<(Ident, Token![:])>,
@@ -1647,15 +1498,6 @@ impl Lower for FnArg {
             colon.lower(s);
         }
         self.typ.lower(s);
-    }
-}
-impl Clone for FnArg {
-    fn clone(&self) -> Self {
-        FnArg {
-            attrs: self.attrs.clone(),
-            name: self.name.clone(),
-            typ: self.typ.clone(),
-        }
     }
 }
 impl Debug for FnArg {
@@ -1714,7 +1556,7 @@ impl<V: Visitor + ?Sized> Visit for FnArg {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Variadic {
     pub attrs: Vec<attr::Attr>,
     pub name: Option<(Ident, Token![:])>,
@@ -1730,16 +1572,6 @@ impl Lower for Variadic {
         }
         self.dots.lower(s);
         self.comma.lower(s);
-    }
-}
-impl Clone for Variadic {
-    fn clone(&self) -> Self {
-        Variadic {
-            attrs: self.attrs.clone(),
-            name: self.name.clone(),
-            dots: self.dots.clone(),
-            comma: self.comma.clone(),
-        }
     }
 }
 impl Debug for Variadic {
@@ -1798,7 +1630,7 @@ impl<V: Visitor + ?Sized> Visit for Variadic {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub enum Ret {
     Default,
     Type(Token![->], Box<Type>),
@@ -1833,15 +1665,6 @@ impl Lower for Ret {
                 x.lower(s);
             },
             Ret::Default => {},
-        }
-    }
-}
-impl Clone for Ret {
-    fn clone(&self) -> Self {
-        use Ret::*;
-        match self {
-            Default => Default,
-            Type(x, v1) => Type(x.clone(), v1.clone()),
         }
     }
 }

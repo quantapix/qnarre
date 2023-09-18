@@ -757,18 +757,6 @@ mod clone {
             || n.ident == "RangeLimits"
             || n.ident == "TraitBoundModifier"
             || n.ident == "UnOp";
-        if copy {
-            return quote! {
-                #cfg
-                impl Copy for #typ {}
-                #cfg
-                impl Clone for #typ {
-                    fn clone(&self) -> Self {
-                        *self
-                    }
-                }
-            };
-        }
         let body = expand_body(xs, n);
         quote! {
             #cfg
