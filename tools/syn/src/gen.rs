@@ -6,7 +6,7 @@ use super::{
 pub mod bound {
     use super::*;
     enum_of_structs! {
-        #[derive(Clone, Debug, Eq, PartialEq)]
+        #[derive(Clone, Debug, Eq, Hash, PartialEq)]
         pub enum Type {
             Life(Life),
             Trait(Trait),
@@ -84,25 +84,6 @@ pub mod bound {
             }
         }
     }
-    impl<H: Hasher> Hash for Type {
-        fn hash(&self, h: &mut H) {
-            use self::Type::*;
-            match self {
-                Life(x) => {
-                    h.write_u8(1u8);
-                    x.hash(h);
-                },
-                Trait(x) => {
-                    h.write_u8(0u8);
-                    x.hash(h);
-                },
-                Verbatim(x) => {
-                    h.write_u8(2u8);
-                    StreamHelper(x).hash(h);
-                },
-            }
-        }
-    }
     impl<V: Visitor + ?Sized> Visit for Type {
         fn visit(&self, v: &mut V) {
             use self::Type::*;
@@ -130,7 +111,7 @@ pub mod bound {
         }
     }
 
-    #[derive(Clone, Debug, Eq, PartialEq)]
+    #[derive(Clone, Debug, Eq, Hash, PartialEq)]
     pub struct Trait {
         pub parenth: Option<tok::Parenth>,
         pub modif: Modifier,
@@ -204,14 +185,6 @@ pub mod bound {
             }
         }
     }
-    impl<H: Hasher> Hash for Trait {
-        fn hash(&self, h: &mut H) {
-            self.parenth.hash(h);
-            self.modif.hash(h);
-            self.lifes.hash(h);
-            self.path.hash(h);
-        }
-    }
     impl<V: Visitor + ?Sized> Visit for Trait {
         fn visit(&self, v: &mut V) {
             &self.modif.visit(v);
@@ -229,7 +202,7 @@ pub mod bound {
         }
     }
 
-    #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+    #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
     pub enum Modifier {
         Maybe(Token![?]),
         None,
@@ -270,19 +243,6 @@ pub mod bound {
             }
         }
     }
-    impl<H: Hasher> Hash for Modifier {
-        fn hash(&self, h: &mut H) {
-            use Modifier::*;
-            match self {
-                Maybe(_) => {
-                    h.write_u8(1u8);
-                },
-                None => {
-                    h.write_u8(0u8);
-                },
-            }
-        }
-    }
     impl<V: Visitor + ?Sized> Visit for Modifier {
         fn visit(&self, v: &mut V) {
             use Modifier::*;
@@ -300,7 +260,7 @@ pub mod bound {
         }
     }
 
-    #[derive(Clone, Debug, Eq, PartialEq)]
+    #[derive(Clone, Debug, Eq, Hash, PartialEq)]
     pub struct Lifes {
         pub for_: Token![for],
         pub lt: Token![<],
@@ -383,11 +343,6 @@ pub mod bound {
             }
         }
     }
-    impl<H: Hasher> Hash for Lifes {
-        fn hash(&self, h: &mut H) {
-            self.lifes.hash(h);
-        }
-    }
     impl<V: Visitor + ?Sized> Visit for Lifes {
         fn visit(&self, v: &mut V) {
             for y in Puncted::pairs(&self.lifes) {
@@ -452,7 +407,7 @@ pub mod bound {
 pub mod param {
     use super::*;
     enum_of_structs! {
-        #[derive(Clone, Debug, Eq, PartialEq)]
+        #[derive(Clone, Debug, Eq, Hash, PartialEq)]
         pub enum Param {
             Const(Const),
             Life(Life),
@@ -471,25 +426,6 @@ pub mod param {
                 Ok(Param::Const(Const { attrs, ..s.parse()? }))
             } else {
                 Err(look.error())
-            }
-        }
-    }
-    impl<H: Hasher> Hash for Param {
-        fn hash(&self, h: &mut H) {
-            use Param::*;
-            match self {
-                Life(x) => {
-                    h.write_u8(0u8);
-                    x.hash(h);
-                },
-                Type(x) => {
-                    h.write_u8(1u8);
-                    x.hash(h);
-                },
-                Const(x) => {
-                    h.write_u8(2u8);
-                    x.hash(h);
-                },
             }
         }
     }
@@ -544,7 +480,7 @@ pub mod param {
         }
     }
 
-    #[derive(Clone, Debug, Eq, PartialEq)]
+    #[derive(Clone, Debug, Eq, Hash, PartialEq)]
     pub struct Life {
         pub attrs: Vec<attr::Attr>,
         pub life: Life,
@@ -631,14 +567,6 @@ pub mod param {
             }
         }
     }
-    impl<H: Hasher> Hash for Life {
-        fn hash(&self, h: &mut H) {
-            self.attrs.hash(h);
-            self.life.hash(h);
-            self.colon.hash(h);
-            self.bounds.hash(h);
-        }
-    }
     impl<V: Visitor + ?Sized> Visit for Life {
         fn visit(&self, v: &mut V) {
             for x in &self.attrs {
@@ -694,7 +622,7 @@ pub mod param {
         }
     }
 
-    #[derive(Clone, Debug, Eq, PartialEq)]
+    #[derive(Clone, Debug, Eq, Hash, PartialEq)]
     pub struct Type {
         pub attrs: Vec<attr::Attr>,
         pub ident: Ident,
@@ -799,16 +727,6 @@ pub mod param {
             }
         }
     }
-    impl<H: Hasher> Hash for Type {
-        fn hash(&self, h: &mut H) {
-            self.attrs.hash(h);
-            self.ident.hash(h);
-            self.colon.hash(h);
-            self.bounds.hash(h);
-            self.eq.hash(h);
-            self.default.hash(h);
-        }
-    }
     impl<V: Visitor + ?Sized> Visit for Type {
         fn visit(&self, v: &mut V) {
             for x in &self.attrs {
@@ -870,7 +788,7 @@ pub mod param {
         }
     }
 
-    #[derive(Clone, Debug, Eq, PartialEq)]
+    #[derive(Clone, Debug, Eq, Hash, PartialEq)]
     pub struct Const {
         pub attrs: Vec<attr::Attr>,
         pub const_: Token![const],
@@ -941,15 +859,6 @@ pub mod param {
             }
         }
     }
-    impl<H: Hasher> Hash for Const {
-        fn hash(&self, h: &mut H) {
-            self.attrs.hash(h);
-            self.ident.hash(h);
-            self.typ.hash(h);
-            self.eq.hash(h);
-            self.default.hash(h);
-        }
-    }
     impl<V: Visitor + ?Sized> Visit for Const {
         fn visit(&self, v: &mut V) {
             for x in &self.attrs {
@@ -1007,7 +916,7 @@ pub mod param {
 }
 pub use param::Param;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Where {
     pub where_: Token![where],
     pub preds: Puncted<where_::Pred, Token![,]>,
@@ -1096,11 +1005,6 @@ impl<F: Folder + ?Sized> Fold for Where {
         }
     }
 }
-impl<H: Hasher> Hash for Where {
-    fn hash(&self, h: &mut H) {
-        self.preds.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Where {
     fn visit(&self, v: &mut V) {
         for y in Puncted::pairs(&self.preds) {
@@ -1168,7 +1072,7 @@ impl Print {
 pub mod where_ {
     use super::*;
     enum_of_structs! {
-        #[derive(Clone, Debug, Eq, PartialEq)]
+        #[derive(Clone, Debug, Eq, Hash, PartialEq)]
         pub enum Pred {
             Life(Life),
             Type(Type),
@@ -1252,21 +1156,6 @@ pub mod where_ {
             }
         }
     }
-    impl<H: Hasher> Hash for Pred {
-        fn hash(&self, h: &mut H) {
-            use Pred::*;
-            match self {
-                Life(v0) => {
-                    h.write_u8(0u8);
-                    v0.hash(h);
-                },
-                Type(v0) => {
-                    h.write_u8(1u8);
-                    v0.hash(h);
-                },
-            }
-        }
-    }
     impl<V: Visitor + ?Sized> Visit for Pred {
         fn visit(&self, v: &mut V) {
             use Pred::*;
@@ -1292,7 +1181,7 @@ pub mod where_ {
         }
     }
 
-    #[derive(Clone, Debug, Eq, PartialEq)]
+    #[derive(Clone, Debug, Eq, Hash, PartialEq)]
     pub struct Life {
         pub life: Life,
         pub colon: Token![:],
@@ -1331,12 +1220,6 @@ pub mod where_ {
             }
         }
     }
-    impl<H: Hasher> Hash for Life {
-        fn hash(&self, h: &mut H) {
-            self.life.hash(h);
-            self.bounds.hash(h);
-        }
-    }
     impl<V: Visitor + ?Sized> Visit for Life {
         fn visit(&self, v: &mut V) {
             &self.life.visit(v);
@@ -1354,7 +1237,7 @@ pub mod where_ {
         }
     }
 
-    #[derive(Clone, Debug, Eq, PartialEq)]
+    #[derive(Clone, Debug, Eq, Hash, PartialEq)]
     pub struct Type {
         pub lifes: Option<bound::Lifes>,
         pub typ: typ::Type,
@@ -1403,13 +1286,6 @@ pub mod where_ {
             }
         }
     }
-    impl<H: Hasher> Hash for Type {
-        fn hash(&self, h: &mut H) {
-            self.lifes.hash(h);
-            self.typ.hash(h);
-            self.bounds.hash(h);
-        }
-    }
     impl<V: Visitor + ?Sized> Visit for Type {
         fn visit(&self, v: &mut V) {
             if let Some(x) = &self.lifes {
@@ -1434,7 +1310,7 @@ pub mod where_ {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Gens {
     pub lt: Option<Token![<]>,
     pub params: Puncted<Param, Token![,]>,
@@ -1598,14 +1474,6 @@ impl<F: Folder + ?Sized> Fold for Gens {
         }
     }
 }
-impl<H: Hasher> Hash for Gens {
-    fn hash(&self, h: &mut H) {
-        self.lt.hash(h);
-        self.params.hash(h);
-        self.gt.hash(h);
-        self.where_.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Gens {
     fn visit(&self, v: &mut V) {
         for y in Puncted::pairs(&self.params) {
@@ -1627,33 +1495,8 @@ impl<V: Visitor + ?Sized> Visit for Gens {
     }
 }
 
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Impl<'a>(pub &'a Gens);
-macro_rules! gens_impls {
-    ($n:ident) => {
-        impl<'a> Clone for $n<'a> {
-            fn clone(&self) -> Self {
-                $n(self.0)
-            }
-        }
-        impl<'a> Debug for $n<'a> {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                f.debug_tuple(stringify!($n)).field(self.0).finish()
-            }
-        }
-        impl<'a> Eq for $n<'a> {}
-        impl<'a> PartialEq for $n<'a> {
-            fn eq(&self, x: &Self) -> bool {
-                self.0 == x.0
-            }
-        }
-        impl<'a> Hash for $n<'a> {
-            fn hash<H: Hasher>(&self, x: &mut H) {
-                self.0.hash(x);
-            }
-        }
-    };
-}
-gens_impls!(Impl);
 impl<'a> Lower for Impl<'a> {
     fn lower(&self, s: &mut Stream) {
         if self.0.params.is_empty() {

@@ -1,13 +1,13 @@
 use super::*;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub enum Kind {
     Expr,
     Simple,
     Type,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Path {
     pub colon: Option<Token![::]>,
     pub segs: Puncted<Segment, Token![::]>,
@@ -161,12 +161,6 @@ impl<F: Folder + ?Sized> Fold for Path {
         }
     }
 }
-impl<H: Hasher> Hash for Path {
-    fn hash(&self, h: &mut H) {
-        self.colon.hash(h);
-        self.segs.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Path {
     fn visit(&self, v: &mut V) {
         for y in Puncted::pairs(&self.segs) {
@@ -182,7 +176,7 @@ impl<V: Visitor + ?Sized> Visit for Path {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Segment {
     pub ident: Ident,
     pub args: Args,
@@ -244,12 +238,6 @@ impl<F: Folder + ?Sized> Fold for Segment {
         }
     }
 }
-impl<H: Hasher> Hash for Segment {
-    fn hash(&self, h: &mut H) {
-        self.ident.hash(h);
-        self.args.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Segment {
     fn visit(&self, v: &mut V) {
         &self.ident.visit(v);
@@ -261,7 +249,7 @@ impl<V: Visitor + ?Sized> Visit for Segment {
     }
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub enum Args {
     #[default]
     None,
@@ -323,24 +311,6 @@ impl<F: Folder + ?Sized> Fold for path::Args {
         }
     }
 }
-impl<H: Hasher> Hash for Args {
-    fn hash(&self, h: &mut H) {
-        use Args::*;
-        match self {
-            None => {
-                h.write_u8(0u8);
-            },
-            Angle(x) => {
-                h.write_u8(1u8);
-                x.hash(h);
-            },
-            Parenth(x) => {
-                h.write_u8(2u8);
-                x.hash(h);
-            },
-        }
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Args {
     fn visit(&self, v: &mut V) {
         use Args::*;
@@ -368,7 +338,7 @@ impl<V: Visitor + ?Sized> Visit for Args {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Arg {
     Life(Life),
     Type(typ::Type),
@@ -509,37 +479,6 @@ impl<F: Folder + ?Sized> Fold for Arg {
         }
     }
 }
-impl<H: Hasher> Hash for Arg {
-    fn hash(&self, h: &mut H) {
-        use Arg::*;
-        match self {
-            Life(x) => {
-                h.write_u8(0u8);
-                x.hash(h);
-            },
-            Type(x) => {
-                h.write_u8(1u8);
-                x.hash(h);
-            },
-            Const(x) => {
-                h.write_u8(2u8);
-                x.hash(h);
-            },
-            AssocType(x) => {
-                h.write_u8(3u8);
-                x.hash(h);
-            },
-            AssocConst(x) => {
-                h.write_u8(4u8);
-                x.hash(h);
-            },
-            Constraint(x) => {
-                h.write_u8(5u8);
-                x.hash(h);
-            },
-        }
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Arg {
     fn visit(&self, v: &mut V) {
         use Arg::*;
@@ -591,7 +530,7 @@ impl<V: Visitor + ?Sized> Visit for Arg {
 
 pub use expr::Expr;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Angle {
     pub colon2: Option<Token![::]>,
     pub lt: Token![<],
@@ -712,12 +651,6 @@ impl<F: Folder + ?Sized> Fold for path::Angle {
         }
     }
 }
-impl<H: Hasher> Hash for Angle {
-    fn hash(&self, h: &mut H) {
-        self.colon2.hash(h);
-        self.args.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Angle {
     fn visit<'a>(&self, v: &mut V) {
         for y in Puncted::pairs(&self.args) {
@@ -733,7 +666,7 @@ impl<V: Visitor + ?Sized> Visit for Angle {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Parenth {
     pub parenth: tok::Parenth,
     pub args: Puncted<typ::Type, Token![,]>,
@@ -781,12 +714,6 @@ impl<F: Folder + ?Sized> Fold for path::Parenth {
         }
     }
 }
-impl<H: Hasher> Hash for Parenth {
-    fn hash(&self, h: &mut H) {
-        self.args.hash(h);
-        self.ret.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Parenth {
     fn visit(&self, v: &mut V) {
         for y in Puncted::pairs(&self.ins) {
@@ -804,7 +731,7 @@ impl<V: Visitor + ?Sized> Visit for Parenth {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct AssocType {
     pub ident: Ident,
     pub args: Option<Angle>,
@@ -839,13 +766,6 @@ impl<F: Folder + ?Sized> Fold for path::AssocType {
         }
     }
 }
-impl<H: Hasher> Hash for AssocType {
-    fn hash(&self, h: &mut H) {
-        self.ident.hash(h);
-        self.args.hash(h);
-        self.typ.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for AssocType {
     fn visit(&self, v: &mut V) {
         &self.ident.visit(v);
@@ -863,7 +783,7 @@ impl<V: Visitor + ?Sized> Visit for AssocType {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct AssocConst {
     pub ident: Ident,
     pub args: Option<Angle>,
@@ -898,13 +818,6 @@ impl<F: Folder + ?Sized> Fold for path::AssocConst {
         }
     }
 }
-impl<H: Hasher> Hash for AssocConst {
-    fn hash(&self, h: &mut H) {
-        self.ident.hash(h);
-        self.args.hash(h);
-        self.val.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for AssocConst {
     fn visit(&self, v: &mut V) {
         &self.ident.visit(v);
@@ -922,7 +835,7 @@ impl<V: Visitor + ?Sized> Visit for AssocConst {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Constraint {
     pub ident: Ident,
     pub args: Option<Angle>,
@@ -966,13 +879,6 @@ impl<F: Folder + ?Sized> Fold for Constraint {
         }
     }
 }
-impl<H: Hasher> Hash for Constraint {
-    fn hash(&self, h: &mut H) {
-        self.ident.hash(h);
-        self.args.hash(h);
-        self.bounds.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Constraint {
     fn visit(&self, v: &mut V) {
         &self.ident.visit(v);
@@ -996,7 +902,7 @@ impl<V: Visitor + ?Sized> Visit for Constraint {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct QSelf {
     pub lt: Token![<],
     pub typ: Box<typ::Type>,
@@ -1013,13 +919,6 @@ impl<F: Folder + ?Sized> Fold for path::QSelf {
             as_: self.as_,
             gt: self.gt,
         }
-    }
-}
-impl<H: Hasher> Hash for QSelf {
-    fn hash(&self, h: &mut H) {
-        self.typ.hash(h);
-        self.pos.hash(h);
-        self.as_.hash(h);
     }
 }
 impl<V: Visitor + ?Sized> Visit for QSelf {

@@ -1,7 +1,7 @@
 use super::*;
 use crate::attr::Filter;
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, Hash, PartialEq)]
 pub struct File {
     pub shebang: Option<String>,
     pub attrs: Vec<attr::Attr>,
@@ -60,13 +60,6 @@ impl<F: Folder + ?Sized> Fold for File {
         }
     }
 }
-impl<H: Hasher> Hash for File {
-    fn hash(&self, h: &mut H) {
-        self.shebang.hash(h);
-        self.attrs.hash(h);
-        self.items.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for File {
     fn visit(&self, v: &mut V) {
         for x in &self.attrs {
@@ -87,7 +80,7 @@ impl<V: Visitor + ?Sized> Visit for File {
 }
 
 enum_of_structs! {
-    #[derive(Clone, Eq, PartialEq)]
+    #[derive(Clone, Eq, Hash, PartialEq)]
     pub enum Item {
         Const(Const),
         Enum(Enum),
@@ -242,77 +235,6 @@ impl<F: Folder + ?Sized> Fold for Item {
         }
     }
 }
-impl<H: Hasher> Hash for Item {
-    fn hash(&self, h: &mut H) {
-        use Item::*;
-        match self {
-            Const(x) => {
-                h.write_u8(0u8);
-                x.hash(h);
-            },
-            Enum(x) => {
-                h.write_u8(1u8);
-                x.hash(h);
-            },
-            Extern(x) => {
-                h.write_u8(2u8);
-                x.hash(h);
-            },
-            Fn(x) => {
-                h.write_u8(3u8);
-                x.hash(h);
-            },
-            Foreign(x) => {
-                h.write_u8(4u8);
-                x.hash(h);
-            },
-            Impl(x) => {
-                h.write_u8(5u8);
-                x.hash(h);
-            },
-            Mac(x) => {
-                h.write_u8(6u8);
-                x.hash(h);
-            },
-            Mod(x) => {
-                h.write_u8(7u8);
-                x.hash(h);
-            },
-            Static(x) => {
-                h.write_u8(8u8);
-                x.hash(h);
-            },
-            Struct(x) => {
-                h.write_u8(9u8);
-                x.hash(h);
-            },
-            Trait(x) => {
-                h.write_u8(10u8);
-                x.hash(h);
-            },
-            Alias(x) => {
-                h.write_u8(11u8);
-                x.hash(h);
-            },
-            Type(x) => {
-                h.write_u8(12u8);
-                x.hash(h);
-            },
-            Union(x) => {
-                h.write_u8(13u8);
-                x.hash(h);
-            },
-            Use(x) => {
-                h.write_u8(14u8);
-                x.hash(h);
-            },
-            Verbatim(x) => {
-                h.write_u8(15u8);
-                StreamHelper(x).hash(h);
-            },
-        }
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Item {
     fn visit(&self, v: &mut V) {
         use Item::*;
@@ -418,7 +340,7 @@ impl<V: Visitor + ?Sized> Visit for Item {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, Hash, PartialEq)]
 pub struct Const {
     pub attrs: Vec<attr::Attr>,
     pub vis: data::Visibility,
@@ -522,16 +444,6 @@ impl<F: Folder + ?Sized> Fold for Const {
         }
     }
 }
-impl<H: Hasher> Hash for Const {
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.vis.hash(h);
-        self.ident.hash(h);
-        self.gens.hash(h);
-        self.typ.hash(h);
-        self.expr.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Const {
     fn visit(&self, v: &mut V) {
         for x in &self.attrs {
@@ -555,7 +467,7 @@ impl<V: Visitor + ?Sized> Visit for Const {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, Hash, PartialEq)]
 pub struct Enum {
     pub attrs: Vec<attr::Attr>,
     pub vis: data::Visibility,
@@ -665,15 +577,6 @@ impl<F: Folder + ?Sized> Fold for Enum {
         }
     }
 }
-impl<H: Hasher> Hash for Enum {
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.vis.hash(h);
-        self.ident.hash(h);
-        self.gens.hash(h);
-        self.variants.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Enum {
     fn visit(&self, v: &mut V) {
         for x in &self.attrs {
@@ -701,7 +604,7 @@ impl<V: Visitor + ?Sized> Visit for Enum {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, Hash, PartialEq)]
 pub struct Extern {
     pub attrs: Vec<attr::Attr>,
     pub vis: data::Visibility,
@@ -801,14 +704,6 @@ impl<F: Folder + ?Sized> Fold for Extern {
         }
     }
 }
-impl<H: Hasher> Hash for Extern {
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.vis.hash(h);
-        self.ident.hash(h);
-        self.rename.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Extern {
     fn visit(&self, v: &mut V) {
         for x in &self.attrs {
@@ -832,7 +727,7 @@ impl<V: Visitor + ?Sized> Visit for Extern {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, Hash, PartialEq)]
 pub struct Fn {
     pub attrs: Vec<attr::Attr>,
     pub vis: data::Visibility,
@@ -902,14 +797,6 @@ impl<F: Folder + ?Sized> Fold for Fn {
         }
     }
 }
-impl<H: Hasher> Hash for Fn {
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.vis.hash(h);
-        self.sig.hash(h);
-        self.block.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Fn {
     fn visit(&self, v: &mut V) {
         for x in &self.attrs {
@@ -929,7 +816,7 @@ impl<V: Visitor + ?Sized> Visit for Fn {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, Hash, PartialEq)]
 pub struct Foreign {
     pub attrs: Vec<attr::Attr>,
     pub unsafe_: Option<Token![unsafe]>,
@@ -1016,14 +903,6 @@ impl<F: Folder + ?Sized> Fold for Foreign {
         }
     }
 }
-impl<H: Hasher> Hash for Foreign {
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.unsafe_.hash(h);
-        self.abi.hash(h);
-        self.items.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Foreign {
     fn visit(&self, v: &mut V) {
         for x in &self.attrs {
@@ -1045,7 +924,7 @@ impl<V: Visitor + ?Sized> Visit for Foreign {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, Hash, PartialEq)]
 pub struct Impl {
     pub attrs: Vec<attr::Attr>,
     pub default: Option<Token![default]>,
@@ -1157,17 +1036,6 @@ impl<F: Folder + ?Sized> Fold for Impl {
         }
     }
 }
-impl<H: Hasher> Hash for Impl {
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.default.hash(h);
-        self.unsafe_.hash(h);
-        self.gens.hash(h);
-        self.trait_.hash(h);
-        self.typ.hash(h);
-        self.items.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Impl {
     fn visit(&self, v: &mut V) {
         for x in &self.attrs {
@@ -1197,7 +1065,7 @@ impl<V: Visitor + ?Sized> Visit for Impl {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, Hash, PartialEq)]
 pub struct Mac {
     pub attrs: Vec<attr::Attr>,
     pub ident: Option<Ident>,
@@ -1282,14 +1150,6 @@ impl<F: Folder + ?Sized> Fold for Mac {
         }
     }
 }
-impl<H: Hasher> Hash for Mac {
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.ident.hash(h);
-        self.mac.hash(h);
-        self.semi.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Mac {
     fn visit(&self, v: &mut V) {
         for x in &self.attrs {
@@ -1311,7 +1171,7 @@ impl<V: Visitor + ?Sized> Visit for Mac {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, Hash, PartialEq)]
 pub struct Mod {
     pub attrs: Vec<attr::Attr>,
     pub vis: data::Visibility,
@@ -1440,16 +1300,6 @@ impl<F: Folder + ?Sized> Fold for Mod {
         }
     }
 }
-impl<H: Hasher> Hash for Mod {
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.vis.hash(h);
-        self.unsafe_.hash(h);
-        self.ident.hash(h);
-        self.items.hash(h);
-        self.semi.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Mod {
     fn visit(&self, v: &mut V) {
         for x in &self.attrs {
@@ -1477,7 +1327,7 @@ impl<V: Visitor + ?Sized> Visit for Mod {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, Hash, PartialEq)]
 pub struct Static {
     pub attrs: Vec<attr::Attr>,
     pub vis: data::Visibility,
@@ -1575,16 +1425,6 @@ impl<F: Folder + ?Sized> Fold for Static {
         }
     }
 }
-impl<H: Hasher> Hash for Static {
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.vis.hash(h);
-        self.mut_.hash(h);
-        self.ident.hash(h);
-        self.typ.hash(h);
-        self.expr.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Static {
     fn visit(&self, v: &mut V) {
         for x in &self.attrs {
@@ -1608,7 +1448,7 @@ impl<V: Visitor + ?Sized> Visit for Static {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, Hash, PartialEq)]
 pub struct Struct {
     pub attrs: Vec<attr::Attr>,
     pub vis: data::Visibility,
@@ -1743,16 +1583,6 @@ impl<F: Folder + ?Sized> Fold for Struct {
         }
     }
 }
-impl<H: Hasher> Hash for Struct {
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.vis.hash(h);
-        self.ident.hash(h);
-        self.gens.hash(h);
-        self.fields.hash(h);
-        self.semi.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Struct {
     fn visit(&self, v: &mut V) {
         for x in &self.attrs {
@@ -1774,7 +1604,7 @@ impl<V: Visitor + ?Sized> Visit for Struct {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, Hash, PartialEq)]
 pub struct Trait {
     pub attrs: Vec<attr::Attr>,
     pub vis: data::Visibility,
@@ -1897,20 +1727,6 @@ impl<F: Folder + ?Sized> Fold for Trait {
         }
     }
 }
-impl<H: Hasher> Hash for Trait {
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.vis.hash(h);
-        self.unsafe_.hash(h);
-        self.auto.hash(h);
-        self.restriction.hash(h);
-        self.ident.hash(h);
-        self.gens.hash(h);
-        self.colon.hash(h);
-        self.supers.hash(h);
-        self.items.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Trait {
     fn visit(&self, v: &mut V) {
         for x in &self.attrs {
@@ -1950,7 +1766,7 @@ impl<V: Visitor + ?Sized> Visit for Trait {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, Hash, PartialEq)]
 pub struct Alias {
     pub attrs: Vec<attr::Attr>,
     pub vis: data::Visibility,
@@ -2035,15 +1851,6 @@ impl<F: Folder + ?Sized> Fold for Alias {
         }
     }
 }
-impl<H: Hasher> Hash for Alias {
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.vis.hash(h);
-        self.ident.hash(h);
-        self.gens.hash(h);
-        self.bounds.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Alias {
     fn visit(&self, v: &mut V) {
         for x in &self.attrs {
@@ -2071,7 +1878,7 @@ impl<V: Visitor + ?Sized> Visit for Alias {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, Hash, PartialEq)]
 pub struct Type {
     pub attrs: Vec<attr::Attr>,
     pub vis: data::Visibility,
@@ -2165,15 +1972,6 @@ impl<F: Folder + ?Sized> Fold for Type {
         }
     }
 }
-impl<H: Hasher> Hash for Type {
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.vis.hash(h);
-        self.ident.hash(h);
-        self.gens.hash(h);
-        self.typ.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Type {
     fn visit(&self, v: &mut V) {
         for x in &self.attrs {
@@ -2195,7 +1993,7 @@ impl<V: Visitor + ?Sized> Visit for Type {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, Hash, PartialEq)]
 pub struct Union {
     pub attrs: Vec<attr::Attr>,
     pub vis: data::Visibility,
@@ -2298,15 +2096,6 @@ impl<F: Folder + ?Sized> Fold for Union {
         }
     }
 }
-impl<H: Hasher> Hash for Union {
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.vis.hash(h);
-        self.ident.hash(h);
-        self.gens.hash(h);
-        self.fields.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Union {
     fn visit(&self, v: &mut V) {
         for x in &self.attrs {
@@ -2328,7 +2117,7 @@ impl<V: Visitor + ?Sized> Visit for Union {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, Hash, PartialEq)]
 pub struct Use {
     pub attrs: Vec<attr::Attr>,
     pub vis: data::Visibility,
@@ -2393,14 +2182,6 @@ impl<F: Folder + ?Sized> Fold for Use {
             tree: self.tree.fold(f),
             semi: self.semi,
         }
-    }
-}
-impl<H: Hasher> Hash for Use {
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.vis.hash(h);
-        self.colon.hash(h);
-        self.tree.hash(h);
     }
 }
 impl<V: Visitor + ?Sized> Visit for Use {
@@ -2757,7 +2538,7 @@ impl Pretty for Verbatim {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, Hash, PartialEq)]
 pub struct Receiver {
     pub attrs: Vec<attr::Attr>,
     pub ref_: Option<(Token![&], Option<Life>)>,
@@ -2901,15 +2682,6 @@ impl<F: Folder + ?Sized> Fold for Receiver {
         }
     }
 }
-impl<H: Hasher> Hash for Receiver {
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.ref_.hash(h);
-        self.mut_.hash(h);
-        self.colon.hash(h);
-        self.typ.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Receiver {
     fn visit(&self, v: &mut V) {
         for x in &self.attrs {
@@ -2936,7 +2708,7 @@ impl<V: Visitor + ?Sized> Visit for Receiver {
 }
 
 enum_of_structs! {
-    #[derive(Clone, Eq, PartialEq)]
+    #[derive(Clone, Eq, Hash, PartialEq)]
     pub enum FnArg {
         Receiver(Receiver),
         Type(pat::Type),
@@ -2989,21 +2761,6 @@ impl<F: Folder + ?Sized> Fold for FnArg {
         }
     }
 }
-impl<H: Hasher> Hash for FnArg {
-    fn hash(&self, h: &mut H) {
-        use FnArg::*;
-        match self {
-            Receiver(x) => {
-                h.write_u8(0u8);
-                x.hash(h);
-            },
-            Type(x) => {
-                h.write_u8(1u8);
-                x.hash(h);
-            },
-        }
-    }
-}
 impl<V: Visitor + ?Sized> Visit for FnArg {
     fn visit(&self, v: &mut V) {
         use FnArg::*;
@@ -3034,7 +2791,7 @@ enum FnArgOrVari {
     Variadic(Variadic),
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, Hash, PartialEq)]
 pub struct Sig {
     pub const_: Option<Token![const]>,
     pub async_: Option<Token![async]>,
@@ -3180,19 +2937,6 @@ impl<F: Folder + ?Sized> Fold for Sig {
         }
     }
 }
-impl<H: Hasher> Hash for Sig {
-    fn hash(&self, h: &mut H) {
-        self.const_.hash(h);
-        self.async_.hash(h);
-        self.unsafe_.hash(h);
-        self.abi.hash(h);
-        self.ident.hash(h);
-        self.gens.hash(h);
-        self.args.hash(h);
-        self.vari.hash(h);
-        self.ret.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Sig {
     fn visit(&self, v: &mut V) {
         if let Some(x) = &self.abi {
@@ -3226,7 +2970,7 @@ impl<V: Visitor + ?Sized> Visit for Sig {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, Hash, PartialEq)]
 pub enum StaticMut {
     Mut(Token![mut]),
     None,
@@ -3277,19 +3021,6 @@ impl<F: Folder + ?Sized> Fold for StaticMut {
         }
     }
 }
-impl<H: Hasher> Hash for StaticMut {
-    fn hash(&self, h: &mut H) {
-        use StaticMut::*;
-        match self {
-            Mut(_) => {
-                h.write_u8(0u8);
-            },
-            None => {
-                h.write_u8(1u8);
-            },
-        }
-    }
-}
 impl<V: Visitor + ?Sized> Visit for StaticMut {
     fn visit(&self, v: &mut V) {
         use StaticMut::*;
@@ -3307,7 +3038,7 @@ impl<V: Visitor + ?Sized> Visit for StaticMut {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, Hash, PartialEq)]
 pub struct Variadic {
     pub attrs: Vec<attr::Attr>,
     pub pat: Option<(Box<pat::Pat>, Token![:])>,
@@ -3355,13 +3086,6 @@ impl<F: Folder + ?Sized> Fold for Variadic {
         }
     }
 }
-impl<H: Hasher> Hash for Variadic {
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.pat.hash(h);
-        self.comma.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Variadic {
     fn visit(&self, v: &mut V) {
         for x in &self.attrs {
@@ -3384,7 +3108,7 @@ impl<V: Visitor + ?Sized> Visit for Variadic {
 pub mod foreign {
     use super::*;
     enum_of_structs! {
-        #[derive(Clone, Eq, PartialEq)]
+        #[derive(Clone, Eq, Hash, PartialEq)]
         pub enum Item {
             Fn(Fn),
             Mac(Mac),
@@ -3507,33 +3231,6 @@ pub mod foreign {
             }
         }
     }
-    impl<H: Hasher> Hash for Item {
-        fn hash(&self, h: &mut H) {
-            use self::Item::*;
-            match self {
-                Fn(x) => {
-                    h.write_u8(0u8);
-                    x.hash(h);
-                },
-                Static(x) => {
-                    h.write_u8(1u8);
-                    x.hash(h);
-                },
-                Type(x) => {
-                    h.write_u8(2u8);
-                    x.hash(h);
-                },
-                Mac(x) => {
-                    h.write_u8(3u8);
-                    x.hash(h);
-                },
-                Verbatim(x) => {
-                    h.write_u8(4u8);
-                    StreamHelper(x).hash(h);
-                },
-            }
-        }
-    }
     impl<V: Visitor + ?Sized> Visit for Item {
         fn visit(&self, v: &mut V) {
             use self::Item::*;
@@ -3573,7 +3270,7 @@ pub mod foreign {
         }
     }
 
-    #[derive(Clone, Eq, PartialEq)]
+    #[derive(Clone, Eq, Hash, PartialEq)]
     pub struct Fn {
         pub attrs: Vec<attr::Attr>,
         pub vis: data::Visibility,
@@ -3633,13 +3330,6 @@ pub mod foreign {
             }
         }
     }
-    impl<H: Hasher> Hash for Fn {
-        fn hash(&self, h: &mut H) {
-            self.attrs.hash(h);
-            self.vis.hash(h);
-            self.sig.hash(h);
-        }
-    }
     impl<V: Visitor + ?Sized> Visit for Fn {
         fn visit(&self, v: &mut V) {
             for x in &self.attrs {
@@ -3657,7 +3347,7 @@ pub mod foreign {
         }
     }
 
-    #[derive(Clone, Eq, PartialEq)]
+    #[derive(Clone, Eq, Hash, PartialEq)]
     pub struct Mac {
         pub attrs: Vec<attr::Attr>,
         pub mac: mac::Mac,
@@ -3709,13 +3399,6 @@ pub mod foreign {
             }
         }
     }
-    impl<H: Hasher> Hash for Mac {
-        fn hash(&self, h: &mut H) {
-            self.attrs.hash(h);
-            self.mac.hash(h);
-            self.semi.hash(h);
-        }
-    }
     impl<V: Visitor + ?Sized> Visit for Mac {
         fn visit(&self, v: &mut V) {
             for x in &self.attrs {
@@ -3731,7 +3414,7 @@ pub mod foreign {
         }
     }
 
-    #[derive(Clone, Eq, PartialEq)]
+    #[derive(Clone, Eq, Hash, PartialEq)]
     pub struct Static {
         pub attrs: Vec<attr::Attr>,
         pub vis: data::Visibility,
@@ -3816,15 +3499,6 @@ pub mod foreign {
             }
         }
     }
-    impl<H: Hasher> Hash for Static {
-        fn hash(&self, h: &mut H) {
-            self.attrs.hash(h);
-            self.vis.hash(h);
-            self.mut_.hash(h);
-            self.ident.hash(h);
-            self.typ.hash(h);
-        }
-    }
     impl<V: Visitor + ?Sized> Visit for Static {
         fn visit(&self, v: &mut V) {
             for x in &self.attrs {
@@ -3846,7 +3520,7 @@ pub mod foreign {
         }
     }
 
-    #[derive(Clone, Eq, PartialEq)]
+    #[derive(Clone, Eq, Hash, PartialEq)]
     pub struct Type {
         pub attrs: Vec<attr::Attr>,
         pub vis: data::Visibility,
@@ -3922,14 +3596,6 @@ pub mod foreign {
                 gens: self.gens.fold(f),
                 semi: self.semi,
             }
-        }
-    }
-    impl<H: Hasher> Hash for Type {
-        fn hash(&self, h: &mut H) {
-            self.attrs.hash(h);
-            self.vis.hash(h);
-            self.ident.hash(h);
-            self.gens.hash(h);
         }
     }
     impl<V: Visitor + ?Sized> Visit for Type {
@@ -4021,7 +3687,7 @@ pub mod foreign {
 pub mod impl_ {
     use super::*;
     enum_of_structs! {
-        #[derive(Clone, Eq, PartialEq)]
+        #[derive(Clone, Eq, Hash, PartialEq)]
         pub enum Item {
             Const(Const),
             Fn(Fn),
@@ -4147,33 +3813,6 @@ pub mod impl_ {
             }
         }
     }
-    impl<H: Hasher> Hash for Item {
-        fn hash(&self, h: &mut H) {
-            use self::Item::*;
-            match self {
-                Const(x) => {
-                    h.write_u8(0u8);
-                    x.hash(h);
-                },
-                Fn(x) => {
-                    h.write_u8(1u8);
-                    x.hash(h);
-                },
-                Type(x) => {
-                    h.write_u8(2u8);
-                    x.hash(h);
-                },
-                Mac(x) => {
-                    h.write_u8(3u8);
-                    x.hash(h);
-                },
-                Verbatim(x) => {
-                    h.write_u8(4u8);
-                    StreamHelper(x).hash(h);
-                },
-            }
-        }
-    }
     impl<V: Visitor + ?Sized> Visit for Item {
         fn visit(&self, v: &mut V) {
             use self::Item::*;
@@ -4213,7 +3852,7 @@ pub mod impl_ {
         }
     }
 
-    #[derive(Clone, Eq, PartialEq)]
+    #[derive(Clone, Eq, Hash, PartialEq)]
     pub struct Const {
         pub attrs: Vec<attr::Attr>,
         pub vis: data::Visibility,
@@ -4325,17 +3964,6 @@ pub mod impl_ {
             }
         }
     }
-    impl<H: Hasher> Hash for Const {
-        fn hash(&self, h: &mut H) {
-            self.attrs.hash(h);
-            self.vis.hash(h);
-            self.default.hash(h);
-            self.ident.hash(h);
-            self.gens.hash(h);
-            self.typ.hash(h);
-            self.expr.hash(h);
-        }
-    }
     impl<V: Visitor + ?Sized> Visit for Const {
         fn visit(&self, v: &mut V) {
             for x in &self.attrs {
@@ -4359,7 +3987,7 @@ pub mod impl_ {
         }
     }
 
-    #[derive(Clone, Eq, PartialEq)]
+    #[derive(Clone, Eq, Hash, PartialEq)]
     pub struct Fn {
         pub attrs: Vec<attr::Attr>,
         pub vis: data::Visibility,
@@ -4434,15 +4062,6 @@ pub mod impl_ {
             }
         }
     }
-    impl<H: Hasher> Hash for Fn {
-        fn hash(&self, h: &mut H) {
-            self.attrs.hash(h);
-            self.vis.hash(h);
-            self.default.hash(h);
-            self.sig.hash(h);
-            self.block.hash(h);
-        }
-    }
     impl<V: Visitor + ?Sized> Visit for Fn {
         fn visit(&self, v: &mut V) {
             for x in &self.attrs {
@@ -4462,7 +4081,7 @@ pub mod impl_ {
         }
     }
 
-    #[derive(Clone, Eq, PartialEq)]
+    #[derive(Clone, Eq, Hash, PartialEq)]
     pub struct Mac {
         pub attrs: Vec<attr::Attr>,
         pub mac: mac::Mac,
@@ -4514,13 +4133,6 @@ pub mod impl_ {
             }
         }
     }
-    impl<H: Hasher> Hash for Mac {
-        fn hash(&self, h: &mut H) {
-            self.attrs.hash(h);
-            self.mac.hash(h);
-            self.semi.hash(h);
-        }
-    }
     impl<V: Visitor + ?Sized> Visit for Mac {
         fn visit(&self, v: &mut V) {
             for x in &self.attrs {
@@ -4536,7 +4148,7 @@ pub mod impl_ {
         }
     }
 
-    #[derive(Clone, Eq, PartialEq)]
+    #[derive(Clone, Eq, Hash, PartialEq)]
     pub struct Type {
         pub attrs: Vec<attr::Attr>,
         pub vis: data::Visibility,
@@ -4643,16 +4255,6 @@ pub mod impl_ {
             }
         }
     }
-    impl<H: Hasher> Hash for Type {
-        fn hash(&self, h: &mut H) {
-            self.attrs.hash(h);
-            self.vis.hash(h);
-            self.default.hash(h);
-            self.ident.hash(h);
-            self.gens.hash(h);
-            self.typ.hash(h);
-        }
-    }
     impl<V: Visitor + ?Sized> Visit for Type {
         fn visit(&self, v: &mut V) {
             for x in &self.attrs {
@@ -4741,7 +4343,7 @@ pub mod impl_ {
         }
     }
 
-    #[derive(Clone, Eq, PartialEq)]
+    #[derive(Clone, Eq, Hash, PartialEq)]
     pub enum Restriction {}
     impl Debug for Restriction {
         fn fmt(&self, _f: &mut fmt::Formatter) -> fmt::Result {
@@ -4750,11 +4352,6 @@ pub mod impl_ {
     }
     impl<F: Folder + ?Sized> Fold for Restriction {
         fn fold(&self, f: &mut F) {
-            match *self {}
-        }
-    }
-    impl<H: Hasher> Hash for Restriction {
-        fn hash(&self, _h: &mut H) {
             match *self {}
         }
     }
@@ -4770,7 +4367,7 @@ pub mod impl_ {
 pub mod trait_ {
     use super::*;
     enum_of_structs! {
-        #[derive(Clone, Eq, PartialEq)]
+        #[derive(Clone, Eq, Hash, PartialEq)]
         pub enum Item {
             Const(Const),
             Fn(Fn),
@@ -4874,33 +4471,6 @@ pub mod trait_ {
             }
         }
     }
-    impl<H: Hasher> Hash for Item {
-        fn hash(&self, h: &mut H) {
-            use self::Item::*;
-            match self {
-                Const(x) => {
-                    h.write_u8(0u8);
-                    x.hash(h);
-                },
-                Fn(x) => {
-                    h.write_u8(1u8);
-                    x.hash(h);
-                },
-                Type(x) => {
-                    h.write_u8(2u8);
-                    x.hash(h);
-                },
-                Mac(x) => {
-                    h.write_u8(3u8);
-                    x.hash(h);
-                },
-                Verbatim(x) => {
-                    h.write_u8(4u8);
-                    StreamHelper(x).hash(h);
-                },
-            }
-        }
-    }
     impl<V: Visitor + ?Sized> Visit for Item {
         fn visit(&self, v: &mut V) {
             use self::Item::*;
@@ -4940,7 +4510,7 @@ pub mod trait_ {
         }
     }
 
-    #[derive(Clone, Eq, PartialEq)]
+    #[derive(Clone, Eq, Hash, PartialEq)]
     pub struct Const {
         pub attrs: Vec<attr::Attr>,
         pub const_: Token![const],
@@ -5046,15 +4616,6 @@ pub mod trait_ {
             }
         }
     }
-    impl<H: Hasher> Hash for Const {
-        fn hash(&self, h: &mut H) {
-            self.attrs.hash(h);
-            self.ident.hash(h);
-            self.gens.hash(h);
-            self.typ.hash(h);
-            self.default.hash(h);
-        }
-    }
     impl<V: Visitor + ?Sized> Visit for Const {
         fn visit(&self, v: &mut V) {
             for x in &self.attrs {
@@ -5080,7 +4641,7 @@ pub mod trait_ {
         }
     }
 
-    #[derive(Clone, Eq, PartialEq)]
+    #[derive(Clone, Eq, Hash, PartialEq)]
     pub struct Fn {
         pub attrs: Vec<attr::Attr>,
         pub sig: Sig,
@@ -5177,14 +4738,6 @@ pub mod trait_ {
             }
         }
     }
-    impl<H: Hasher> Hash for Fn {
-        fn hash(&self, h: &mut H) {
-            self.attrs.hash(h);
-            self.sig.hash(h);
-            self.default.hash(h);
-            self.semi.hash(h);
-        }
-    }
     impl<V: Visitor + ?Sized> Visit for Fn {
         fn visit(&self, v: &mut V) {
             for x in &self.attrs {
@@ -5206,7 +4759,7 @@ pub mod trait_ {
         }
     }
 
-    #[derive(Clone, Eq, PartialEq)]
+    #[derive(Clone, Eq, Hash, PartialEq)]
     pub struct Mac {
         pub attrs: Vec<attr::Attr>,
         pub mac: mac::Mac,
@@ -5258,13 +4811,6 @@ pub mod trait_ {
             }
         }
     }
-    impl<H: Hasher> Hash for Mac {
-        fn hash(&self, h: &mut H) {
-            self.attrs.hash(h);
-            self.mac.hash(h);
-            self.semi.hash(h);
-        }
-    }
     impl<V: Visitor + ?Sized> Visit for Mac {
         fn visit(&self, v: &mut V) {
             for x in &self.attrs {
@@ -5280,7 +4826,7 @@ pub mod trait_ {
         }
     }
 
-    #[derive(Clone, Eq, PartialEq)]
+    #[derive(Clone, Eq, Hash, PartialEq)]
     pub struct Type {
         pub attrs: Vec<attr::Attr>,
         pub type_: Token![type],
@@ -5390,16 +4936,6 @@ pub mod trait_ {
                 default: (self.default).map(|x| ((x).0, (x).1.fold(f))),
                 semi: self.semi,
             }
-        }
-    }
-    impl<H: Hasher> Hash for Type {
-        fn hash(&self, h: &mut H) {
-            self.attrs.hash(h);
-            self.ident.hash(h);
-            self.gens.hash(h);
-            self.colon.hash(h);
-            self.bounds.hash(h);
-            self.default.hash(h);
         }
     }
     impl<V: Visitor + ?Sized> Visit for Type {
@@ -5512,7 +5048,7 @@ pub mod trait_ {
 pub mod use_ {
     use super::*;
     enum_of_structs! {
-        #[derive(Clone, Eq, PartialEq)]
+        #[derive(Clone, Eq, Hash, PartialEq)]
         pub enum Tree {
             Glob(Glob),
             Group(Group),
@@ -5581,33 +5117,6 @@ pub mod use_ {
                 Rename(x) => Rename(x.fold(f)),
                 Glob(x) => Glob(x.fold(f)),
                 Group(x) => Group(x.fold(f)),
-            }
-        }
-    }
-    impl<H: Hasher> Hash for Tree {
-        fn hash(&self, h: &mut H) {
-            use Tree::*;
-            match self {
-                Path(x) => {
-                    h.write_u8(0u8);
-                    x.hash(h);
-                },
-                Name(x) => {
-                    h.write_u8(1u8);
-                    x.hash(h);
-                },
-                Rename(x) => {
-                    h.write_u8(2u8);
-                    x.hash(h);
-                },
-                Glob(x) => {
-                    h.write_u8(3u8);
-                    x.hash(h);
-                },
-                Group(x) => {
-                    h.write_u8(4u8);
-                    x.hash(h);
-                },
             }
         }
     }
@@ -5719,7 +5228,7 @@ pub mod use_ {
         }
     }
 
-    #[derive(Clone, Eq, PartialEq)]
+    #[derive(Clone, Eq, Hash, PartialEq)]
     pub struct Glob {
         pub star: Token![*],
     }
@@ -5746,15 +5255,12 @@ pub mod use_ {
             Glob { star: self.star }
         }
     }
-    impl<H: Hasher> Hash for Glob {
-        fn hash(&self, h: &mut H) {}
-    }
     impl<V: Visitor + ?Sized> Visit for Glob {
         fn visit(&self, v: &mut V) {}
         fn visit_mut(&mut self, v: &mut V) {}
     }
 
-    #[derive(Clone, Eq, PartialEq)]
+    #[derive(Clone, Eq, Hash, PartialEq)]
     pub struct Group {
         pub brace: tok::Brace,
         pub trees: Puncted<Tree, Token![,]>,
@@ -5816,11 +5322,6 @@ pub mod use_ {
             }
         }
     }
-    impl<H: Hasher> Hash for Group {
-        fn hash(&self, h: &mut H) {
-            self.trees.hash(h);
-        }
-    }
     impl<V: Visitor + ?Sized> Visit for Group {
         fn visit(&self, v: &mut V) {
             for y in Puncted::pairs(&self.trees) {
@@ -5836,7 +5337,7 @@ pub mod use_ {
         }
     }
 
-    #[derive(Clone, Eq, PartialEq)]
+    #[derive(Clone, Eq, Hash, PartialEq)]
     pub struct Name {
         pub ident: Ident,
     }
@@ -5864,11 +5365,6 @@ pub mod use_ {
             }
         }
     }
-    impl<H: Hasher> Hash for Name {
-        fn hash(&self, h: &mut H) {
-            self.ident.hash(h);
-        }
-    }
     impl<V: Visitor + ?Sized> Visit for Name {
         fn visit(&self, v: &mut V) {
             &self.ident.visit(v);
@@ -5878,7 +5374,7 @@ pub mod use_ {
         }
     }
 
-    #[derive(Clone, Eq, PartialEq)]
+    #[derive(Clone, Eq, Hash, PartialEq)]
     pub struct Path {
         pub ident: Ident,
         pub colon2: Token![::],
@@ -5916,12 +5412,6 @@ pub mod use_ {
             }
         }
     }
-    impl<H: Hasher> Hash for Path {
-        fn hash(&self, h: &mut H) {
-            self.ident.hash(h);
-            self.tree.hash(h);
-        }
-    }
     impl<V: Visitor + ?Sized> Visit for Path {
         fn visit(&self, v: &mut V) {
             &self.ident.visit(v);
@@ -5933,7 +5423,7 @@ pub mod use_ {
         }
     }
 
-    #[derive(Clone, Eq, PartialEq)]
+    #[derive(Clone, Eq, Hash, PartialEq)]
     pub struct Rename {
         pub ident: Ident,
         pub as_: Token![as],
@@ -5969,12 +5459,6 @@ pub mod use_ {
                 as_: self.as_,
                 rename: self.rename.fold(f),
             }
-        }
-    }
-    impl<H: Hasher> Hash for Rename {
-        fn hash(&self, h: &mut H) {
-            self.ident.hash(h);
-            self.rename.hash(h);
         }
     }
     impl<V: Visitor + ?Sized> Visit for Rename {
