@@ -163,8 +163,10 @@ macro_rules! impl_enum {
 }
 macro_rules! enum_of_structs {
     (
+        $(#[$a:meta])*
         pub enum $n:ident $x:tt $($xs:tt)*
     ) => {
+        $(#[$a])*
         pub enum $n $x
         impl_enum!($n $x $($xs)*);
     };
