@@ -1,7 +1,7 @@
 use super::*;
 use std::{iter, slice};
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum Style {
     Outer,
     Inner(Token![!]),
@@ -12,19 +12,6 @@ impl<F: Folder + ?Sized> Fold for Style {
         match self {
             Outer => Outer,
             Inner(x) => Inner(x),
-        }
-    }
-}
-impl<H: Hasher> Hash for Style {
-    fn hash(&self, h: &mut H) {
-        use Style::*;
-        match self {
-            Outer => {
-                h.write_u8(0u8);
-            },
-            Inner(_) => {
-                h.write_u8(1u8);
-            },
         }
     }
 }
@@ -45,7 +32,7 @@ impl<V: Visitor + ?Sized> Visit for Style {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Attr {
     pub pound: Token![#],
     pub style: Style,
@@ -191,12 +178,6 @@ impl<F: Folder + ?Sized> Fold for Attr {
             bracket: self.bracket,
             meta: self.meta.fold(f),
         }
-    }
-}
-impl<H: Hasher> Hash for Attr {
-    fn hash(&self, h: &mut H) {
-        self.style.hash(h);
-        self.meta.hash(h);
     }
 }
 impl<V: Visitor + ?Sized> Visit for Attr {
@@ -357,7 +338,7 @@ impl<'a> Display for DisplayStyle<'a> {
 }
 
 enum_of_structs! {
-    #[derive(Clone, Debug, Eq, PartialEq)]
+    #[derive(Clone, Debug, Eq, Hash, PartialEq)]
     pub enum Meta {
         List(List),
         NameValue(NameValue),
@@ -433,25 +414,6 @@ impl<F: Folder + ?Sized> Fold for Meta {
         }
     }
 }
-impl<H: Hasher> Hash for Meta {
-    fn hash(&self, h: &mut H) {
-        use Meta::*;
-        match self {
-            Path(x) => {
-                h.write_u8(0u8);
-                x.hash(h);
-            },
-            List(x) => {
-                h.write_u8(1u8);
-                x.hash(h);
-            },
-            NameValue(x) => {
-                h.write_u8(2u8);
-                x.hash(h);
-            },
-        }
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Meta {
     fn visit(&self, v: &mut V) {
         use Meta::*;
@@ -483,7 +445,7 @@ impl<V: Visitor + ?Sized> Visit for Meta {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct List {
     pub path: Path,
     pub delim: tok::Delim,
@@ -636,13 +598,6 @@ impl<F: Folder + ?Sized> Fold for List {
         }
     }
 }
-impl<H: Hasher> Hash for List {
-    fn hash(&self, h: &mut H) {
-        self.path.hash(h);
-        self.delim.hash(h);
-        StreamHelper(&self.toks).hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for List {
     fn visit(&self, v: &mut V) {
         &self.path.visit(v);
@@ -654,7 +609,7 @@ impl<V: Visitor + ?Sized> Visit for List {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct NameValue {
     pub name: Path,
     pub eq: Token![=],
@@ -687,12 +642,6 @@ impl<F: Folder + ?Sized> Fold for NameValue {
             eq: self.eq,
             val: self.val.fold(f),
         }
-    }
-}
-impl<H: Hasher> Hash for NameValue {
-    fn hash(&self, h: &mut H) {
-        self.name.hash(h);
-        self.val.hash(h);
     }
 }
 impl<V: Visitor + ?Sized> Visit for NameValue {

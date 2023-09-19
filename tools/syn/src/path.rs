@@ -261,8 +261,9 @@ impl<V: Visitor + ?Sized> Visit for Segment {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub enum Args {
+    #[default]
     None,
     Angle(Angle),
     Parenth(Parenth),
@@ -282,11 +283,6 @@ impl Args {
             None => true,
             Angle(_) | Parenth(_) => false,
         }
-    }
-}
-impl Default for Args {
-    fn default() -> Self {
-        Args::None
     }
 }
 impl Lower for Args {

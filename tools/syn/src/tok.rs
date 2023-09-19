@@ -88,7 +88,7 @@ pub fn kw_to_toks(txt: &str, span: Span, s: &mut Stream) {
 macro_rules! def_keywords {
     ($($t:literal $n:ident)*) => {
         $(
-            #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+            #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
             pub struct $n {
                 pub span: Span,
             }
@@ -101,9 +101,6 @@ macro_rules! def_keywords {
                         span: Span::call_site(),
                     }
                 }
-            }
-            impl<H: Hasher> Hash for $n {
-                fn hash(&self, _: &mut H) {}
             }
             impl Parse for $n {
                 fn parse(s: parse::Stream) -> Res<Self> {
@@ -203,7 +200,7 @@ macro_rules! impl_deref_len_1 {
 macro_rules! def_punct_structs {
     ($($t:literal pub struct $n:ident/$len:tt)*) => {
         $(
-            #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+            #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
             pub struct $n {
                 pub spans: [Span; $len],
             }
@@ -219,9 +216,6 @@ macro_rules! def_punct_structs {
                         spans: [Span::call_site(); $len],
                     }
                 }
-            }
-            impl<H: Hasher> Hash for $n {
-                fn hash(&self, _: &mut H) {}
             }
             impl_deref_len_1!($n/$len);
         )*
@@ -370,7 +364,7 @@ pub fn delim_lower(d: pm2::Delim, span: Span, s: &mut Stream, inner: pm2::Stream
 macro_rules! def_delims {
     ($($d:ident pub struct $n:ident)*) => {
         $(
-            #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+            #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
             pub struct $n {
                 pub span: pm2::DelimSpan,
             }
@@ -394,9 +388,6 @@ macro_rules! def_delims {
                 fn default() -> Self {
                     $n(Span::call_site())
                 }
-            }
-            impl<H: Hasher> Hash for $n {
-                fn hash(&self, _: &mut H) {}
             }
         )*
     };
@@ -431,7 +422,7 @@ impl Tok for Parenth {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Delim {
     Brace(Brace),
     Bracket(Bracket),
@@ -491,22 +482,6 @@ impl<F: Folder + ?Sized> Fold for Delim {
         }
     }
 }
-impl<H: Hasher> Hash for Delim {
-    fn hash(&self, h: &mut H) {
-        use Delim::*;
-        match self {
-            Parenth(_) => {
-                h.write_u8(0u8);
-            },
-            Brace(_) => {
-                h.write_u8(1u8);
-            },
-            Bracket(_) => {
-                h.write_u8(2u8);
-            },
-        }
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Delim {
     fn visit(&self, v: &mut V) {
         use Delim::*;
@@ -526,7 +501,7 @@ impl<V: Visitor + ?Sized> Visit for Delim {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct Group {
     pub span: Span,
 }
@@ -546,9 +521,6 @@ impl std::default::Default for Group {
             span: Span::call_site(),
         }
     }
-}
-impl<H: Hasher> Hash for Group {
-    fn hash(&self, _: &mut H) {}
 }
 impl Tok for Group {
     fn peek(x: Cursor) -> bool {

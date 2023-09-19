@@ -164,7 +164,7 @@ fn mismatch() -> ! {
     panic!("compiler/fallback mismatch")
 }
 
-#[derive(Clone, Debug, Eq)]
+#[derive(Clone, Debug, Eq, Hash)]
 pub enum Ident {
     Compiler(pm::Ident),
     Fallback(imp::Ident),
@@ -231,11 +231,6 @@ impl PartialOrd for Ident {
 impl Ord for Ident {
     fn cmp(&self, x: &Ident) -> Ordering {
         self.to_string().cmp(&x.to_string())
-    }
-}
-impl<H: Hasher> Hash for Ident {
-    fn hash(&self, x: &mut H) {
-        self.to_string().hash(x);
     }
 }
 impl Display for Ident {
@@ -606,7 +601,7 @@ impl<V: Visitor + ?Sized> Visit for Span {
     fn visit_mut(&mut self, v: &mut V) {}
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, Hash)]
 pub enum Stream {
     Compiler(Deferred),
     Fallback(imp::Stream),
@@ -768,15 +763,6 @@ impl PartialEq for Stream {
             }
         }
         true
-    }
-}
-impl Hash for Stream {
-    fn hash<H: Hasher>(&self, h: &mut H) {
-        let xs = self.0.clone().into_iter().collect::<Vec<_>>();
-        xs.len().hash(h);
-        for x in xs {
-            TreeHelper(&x).hash(h);
-        }
     }
 }
 

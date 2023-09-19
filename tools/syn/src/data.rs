@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Input {
     pub attrs: Vec<attr::Attr>,
     pub vis: Visibility,
@@ -107,15 +107,6 @@ impl<F: Folder + ?Sized> Fold for Input {
         }
     }
 }
-impl<H: Hasher> Hash for Input {
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.vis.hash(h);
-        self.ident.hash(h);
-        self.gens.hash(h);
-        self.data.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Input {
     fn visit(&self, v: &mut V) {
         for x in &self.attrs {
@@ -137,7 +128,7 @@ impl<V: Visitor + ?Sized> Visit for Input {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Visibility {
     Public(Token![pub]),
     Restricted(Restricted),
@@ -234,23 +225,6 @@ impl<F: Folder + ?Sized> Fold for Visibility {
         }
     }
 }
-impl<H: Hasher> Hash for Visibility {
-    fn hash(&self, h: &mut H) {
-        use Visibility::*;
-        match self {
-            Public(_) => {
-                h.write_u8(0u8);
-            },
-            Restricted(x) => {
-                h.write_u8(1u8);
-                x.hash(h);
-            },
-            Inherited => {
-                h.write_u8(2u8);
-            },
-        }
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Visibility {
     fn visit(&self, v: &mut V) {
         use Visibility::*;
@@ -274,7 +248,7 @@ impl<V: Visitor + ?Sized> Visit for Visibility {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Restricted {
     pub pub_: Token![pub],
     pub parenth: tok::Parenth,
@@ -314,12 +288,6 @@ impl<F: Folder + ?Sized> Fold for Restricted {
         }
     }
 }
-impl<H: Hasher> Hash for Restricted {
-    fn hash(&self, h: &mut H) {
-        self.in_.hash(h);
-        self.path.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Restricted {
     fn visit(&self, v: &mut V) {
         &*self.path.visit(v);
@@ -329,7 +297,7 @@ impl<V: Visitor + ?Sized> Visit for Restricted {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Data {
     Enum(Enum),
     Struct(Struct),
@@ -342,25 +310,6 @@ impl<F: Folder + ?Sized> Fold for Data {
             Enum(x) => Enum(x.fold(f)),
             Struct(x) => Struct(x.fold(f)),
             Union(x) => Union(x.fold(f)),
-        }
-    }
-}
-impl<H: Hasher> Hash for Data {
-    fn hash(&self, h: &mut H) {
-        use Data::*;
-        match self {
-            Enum(x) => {
-                h.write_u8(1u8);
-                x.hash(h);
-            },
-            Struct(x) => {
-                h.write_u8(0u8);
-                x.hash(h);
-            },
-            Union(x) => {
-                h.write_u8(2u8);
-                x.hash(h);
-            },
         }
     }
 }
@@ -395,7 +344,7 @@ impl<V: Visitor + ?Sized> Visit for Data {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Enum {
     pub enum_: Token![enum],
     pub brace: tok::Brace,
@@ -408,11 +357,6 @@ impl<F: Folder + ?Sized> Fold for Enum {
             brace: self.brace,
             variants: FoldHelper::lift(self.variants, |x| x.fold(f)),
         }
-    }
-}
-impl<H: Hasher> Hash for Enum {
-    fn hash(&self, h: &mut H) {
-        self.variants.hash(h);
     }
 }
 impl<V: Visitor + ?Sized> Visit for Enum {
@@ -430,7 +374,7 @@ impl<V: Visitor + ?Sized> Visit for Enum {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Struct {
     pub struct_: Token![struct],
     pub fields: Fields,
@@ -445,12 +389,6 @@ impl<F: Folder + ?Sized> Fold for Struct {
         }
     }
 }
-impl<H: Hasher> Hash for Struct {
-    fn hash(&self, h: &mut H) {
-        self.fields.hash(h);
-        self.semi.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Struct {
     fn visit(&self, v: &mut V) {
         &self.fields.visit(v);
@@ -460,7 +398,7 @@ impl<V: Visitor + ?Sized> Visit for Struct {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Union {
     pub union_: Token![union],
     pub fields: Named,
@@ -473,11 +411,6 @@ impl<F: Folder + ?Sized> Fold for Union {
         }
     }
 }
-impl<H: Hasher> Hash for Union {
-    fn hash(&self, h: &mut H) {
-        self.fields.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Union {
     fn visit(&self, v: &mut V) {
         &self.fields.visit(v);
@@ -487,7 +420,7 @@ impl<V: Visitor + ?Sized> Visit for Union {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Variant {
     pub attrs: Vec<attr::Attr>,
     pub ident: Ident,
@@ -574,14 +507,6 @@ impl<F: Folder + ?Sized> Fold for Variant {
         }
     }
 }
-impl<H: Hasher> Hash for Variant {
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.ident.hash(h);
-        self.fields.hash(h);
-        self.discrim.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Variant {
     fn visit(&self, v: &mut V) {
         for x in &self.attrs {
@@ -606,7 +531,7 @@ impl<V: Visitor + ?Sized> Visit for Variant {
 }
 
 enum_of_structs! {
-    #[derive(Clone, Debug, Eq, PartialEq)]
+    #[derive(Clone, Debug, Eq, Hash, PartialEq)]
     pub enum Fields {
         Named(Named),
         Unnamed(Unnamed),
@@ -683,24 +608,6 @@ impl<F: Folder + ?Sized> Fold for Fields {
         }
     }
 }
-impl<H: Hasher> Hash for Fields {
-    fn hash(&self, h: &mut H) {
-        use Fields::*;
-        match self {
-            Named(x) => {
-                h.write_u8(0u8);
-                x.hash(h);
-            },
-            Unnamed(x) => {
-                h.write_u8(1u8);
-                x.hash(h);
-            },
-            Unit => {
-                h.write_u8(2u8);
-            },
-        }
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Fields {
     fn visit(&self, v: &mut V) {
         use Fields::*;
@@ -728,7 +635,7 @@ impl<V: Visitor + ?Sized> Visit for Fields {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Named {
     pub brace: tok::Brace,
     pub fields: Puncted<Field, Token![,]>,
@@ -757,11 +664,6 @@ impl<F: Folder + ?Sized> Fold for Named {
         }
     }
 }
-impl<H: Hasher> Hash for Named {
-    fn hash(&self, h: &mut H) {
-        self.fields.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Named {
     fn visit(&self, v: &mut V) {
         for y in Puncted::pairs(&self.fields) {
@@ -777,7 +679,7 @@ impl<V: Visitor + ?Sized> Visit for Named {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Unnamed {
     pub parenth: tok::Parenth,
     pub fields: Puncted<Field, Token![,]>,
@@ -818,11 +720,6 @@ impl<F: Folder + ?Sized> Fold for Unnamed {
         }
     }
 }
-impl<H: Hasher> Hash for Unnamed {
-    fn hash(&self, h: &mut H) {
-        self.fields.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Unnamed {
     fn visit(&self, v: &mut V) {
         for y in Puncted::pairs(&self.fields) {
@@ -838,7 +735,7 @@ impl<V: Visitor + ?Sized> Visit for Unnamed {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Field {
     pub attrs: Vec<attr::Attr>,
     pub vis: Visibility,
@@ -907,16 +804,6 @@ impl<F: Folder + ?Sized> Fold for Field {
         }
     }
 }
-impl<H: Hasher> Hash for Field {
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.vis.hash(h);
-        self.mut_.hash(h);
-        self.ident.hash(h);
-        self.colon.hash(h);
-        self.typ.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Field {
     fn visit(&self, v: &mut V) {
         for x in &self.attrs {
@@ -942,7 +829,7 @@ impl<V: Visitor + ?Sized> Visit for Field {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Mut {
     None,
 }
@@ -951,16 +838,6 @@ impl<F: Folder + ?Sized> Fold for Mut {
         use Mut::*;
         match self {
             None => None,
-        }
-    }
-}
-impl<H: Hasher> Hash for Mut {
-    fn hash(&self, h: &mut H) {
-        use Mut::*;
-        match self {
-            None => {
-                h.write_u8(0u8);
-            },
         }
     }
 }

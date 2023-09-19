@@ -178,16 +178,12 @@ impl<'a> Debug for Buffer<'a> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub enum Unexpected {
+    #[default]
     None,
     Some(Span),
     Chain(Rc<Cell<Unexpected>>),
-}
-impl Default for Unexpected {
-    fn default() -> Self {
-        Unexpected::None
-    }
 }
 
 pub struct Step<'c, 'a> {
@@ -364,15 +360,12 @@ where
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, Hash, PartialEq)]
 pub struct Nothing;
 impl Parse for Nothing {
     fn parse(_: Stream) -> Res<Self> {
         Ok(Nothing)
     }
-}
-impl<H: Hasher> Hash for Nothing {
-    fn hash(&self, _: &mut H) {}
 }
 
 pub mod discouraged {

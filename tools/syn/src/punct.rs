@@ -12,6 +12,7 @@ mod iter {
     }
 }
 
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Puncted<T, P> {
     inner: Vec<(T, P)>,
     last: Option<Box<T>>,
@@ -188,58 +189,6 @@ impl<T, P> Puncted<T, P> {
             ys.push_punct(y);
         }
         Ok(ys)
-    }
-}
-impl<T, P> Clone for Puncted<T, P>
-where
-    T: Clone,
-    P: Clone,
-{
-    fn clone(&self) -> Self {
-        Puncted {
-            inner: self.inner.clone(),
-            last: self.last.clone(),
-        }
-    }
-}
-impl<T: Debug, P: Debug> Debug for Puncted<T, P> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut list = f.debug_list();
-        for (t, p) in &self.inner {
-            list.entry(t);
-            list.entry(p);
-        }
-        if let Some(last) = &self.last {
-            list.entry(last);
-        }
-        list.finish()
-    }
-}
-impl<T, P> Eq for Puncted<T, P>
-where
-    T: Eq,
-    P: Eq,
-{
-}
-impl<T, P> PartialEq for Puncted<T, P>
-where
-    T: PartialEq,
-    P: PartialEq,
-{
-    fn eq(&self, other: &Self) -> bool {
-        let Puncted { inner, last } = self;
-        *inner == other.inner && *last == other.last
-    }
-}
-impl<T, P> Hash for Puncted<T, P>
-where
-    T: Hash,
-    P: Hash,
-{
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        let Puncted { inner, last } = self;
-        inner.hash(state);
-        last.hash(state);
     }
 }
 impl<T, P> FromIterator<T> for Puncted<T, P>

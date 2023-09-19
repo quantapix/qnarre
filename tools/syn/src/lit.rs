@@ -6,7 +6,7 @@ use std::{
 };
 
 enum_of_structs! {
-    #[derive(Clone, Debug, Eq, PartialEq)]
+    #[derive(Clone, Debug, Eq, Hash, PartialEq)]
     pub enum Lit {
         Bool(Bool),
         Byte(Byte),
@@ -167,45 +167,6 @@ impl<F: Folder + ?Sized> Fold for Lit {
         }
     }
 }
-impl<H: Hasher> Hash for Lit {
-    fn hash(&self, h: &mut H) {
-        use Lit::*;
-        match self {
-            Str(x) => {
-                h.write_u8(0u8);
-                x.hash(h);
-            },
-            ByteStr(x) => {
-                h.write_u8(1u8);
-                x.hash(h);
-            },
-            Byte(x) => {
-                h.write_u8(2u8);
-                x.hash(h);
-            },
-            Char(x) => {
-                h.write_u8(3u8);
-                x.hash(h);
-            },
-            Int(x) => {
-                h.write_u8(4u8);
-                x.hash(h);
-            },
-            Float(x) => {
-                h.write_u8(5u8);
-                x.hash(h);
-            },
-            Bool(x) => {
-                h.write_u8(6u8);
-                x.hash(h);
-            },
-            Verbatim(x) => {
-                h.write_u8(7u8);
-                x.to_string().hash(h);
-            },
-        }
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Lit {
     fn visit(&self, v: &mut V) {
         use Lit::*;
@@ -263,7 +224,7 @@ impl<V: Visitor + ?Sized> Visit for Lit {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Bool {
     pub val: bool,
     pub span: Span,
@@ -313,11 +274,6 @@ impl<F: Folder + ?Sized> Fold for Bool {
         }
     }
 }
-impl<H: Hasher> Hash for Bool {
-    fn hash(&self, h: &mut H) {
-        self.val.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Bool {
     fn visit(&self, v: &mut V) {
         &self.span.visit(v);
@@ -329,11 +285,6 @@ impl<V: Visitor + ?Sized> Visit for Bool {
 
 macro_rules! extra_traits {
     ($ty:ident) => {
-        impl<H: Hasher> Hash for $ty {
-            fn hash(&self, x: &mut H) {
-                self.repr.tok.to_string().hash(x);
-            }
-        }
         #[allow(non_snake_case)]
         pub fn $ty(x: look::Marker) -> $ty {
             match x {}
@@ -341,7 +292,7 @@ macro_rules! extra_traits {
     };
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Byte {
     pub repr: Box<Repr>,
 }
@@ -407,7 +358,7 @@ impl<V: Visitor + ?Sized> Visit for Byte {
     fn visit_mut(&mut self, v: &mut V) {}
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct ByteStr {
     pub repr: Box<Repr>,
 }
@@ -473,7 +424,7 @@ impl<V: Visitor + ?Sized> Visit for ByteStr {
     fn visit_mut(&mut self, v: &mut V) {}
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Char {
     pub repr: Box<Repr>,
 }
@@ -539,7 +490,7 @@ impl<V: Visitor + ?Sized> Visit for Char {
     fn visit_mut(&mut self, v: &mut V) {}
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Float {
     pub repr: Box<FloatRepr>,
 }
@@ -628,7 +579,7 @@ impl<V: Visitor + ?Sized> Visit for Float {
     fn visit_mut(&mut self, v: &mut V) {}
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Int {
     pub repr: Box<IntRepr>,
 }
@@ -717,7 +668,7 @@ impl<V: Visitor + ?Sized> Visit for Int {
     fn visit_mut(&mut self, v: &mut V) {}
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Str {
     pub repr: Box<Repr>,
 }

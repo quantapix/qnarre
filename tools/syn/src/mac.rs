@@ -290,13 +290,6 @@ macro_rules! format_ident {
     };
 }
 
-macro_rules! traits_for_kw {
-    ($n:ident) => {
-        impl<H: Hasher> Hash for $n {
-            fn hash(&self, _: &mut H) {}
-        }
-    };
-}
 macro_rules! parse_for_kw {
     ($n:ident) => {
         impl tok::Custom for $n {
@@ -337,7 +330,7 @@ macro_rules! lower_for_kw {
 }
 macro_rules! custom_kw {
     ($n:ident) => {
-        #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+        #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
         pub struct $n {
             pub span: Span,
         }
@@ -352,7 +345,6 @@ macro_rules! custom_kw {
                     }
                 }
             }
-            traits_for_kw!($n);
             parse_for_kw!($n);
             lower_for_kw!($n);
         };
@@ -424,13 +416,6 @@ macro_rules! stringify_punct {
     };
 }
 
-macro_rules! traits_for_punct {
-    ($n:ident, $($tt:tt)+) => {
-        impl<H: Hasher> Hash for $n {
-            fn hash(&self, _: &mut H) {}
-        }
-    };
-}
 macro_rules! parse_for_punct {
     ($n:ident, $($tt:tt)+) => {
         impl tok::Custom for $n {
@@ -461,7 +446,7 @@ macro_rules! lower_for_punct {
 }
 macro_rules! custom_punct {
     ($n:ident, $($tt:tt)+) => {
-        #[derive(Clone, Copy, Debug)]
+        #[derive(Clone, Copy, Debug, Hash)]
         pub struct $n {
             pub spans: punct_repr!($($tt)+),
         }
@@ -481,7 +466,6 @@ macro_rules! custom_punct {
             }
             parse_for_punct!($n, $($tt)+);
             lower_for_punct!($n, $($tt)+);
-            traits_for_punct!($n, $($tt)+);
         };
     };
 }
@@ -1171,7 +1155,7 @@ macro_rules! quote_spanned {
     }};
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Mac {
     pub path: Path,
     pub bang: Token![!],
@@ -1261,13 +1245,6 @@ impl<F: Folder + ?Sized> Fold for Mac {
             delim: self.delim.fold(f),
             toks: self.toks,
         }
-    }
-}
-impl<H: Hasher> Hash for Mac {
-    fn hash(&self, h: &mut H) {
-        self.path.hash(h);
-        self.delim.hash(h);
-        StreamHelper(&self.toks).hash(h);
     }
 }
 impl<V: Visitor + ?Sized> Visit for Mac {

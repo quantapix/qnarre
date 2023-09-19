@@ -2,7 +2,7 @@ use super::*;
 
 struct NoSemi(bool);
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Stmt {
     Expr(Expr, Option<Token![;]>),
     Item(Item),
@@ -110,30 +110,6 @@ impl<F: Folder + ?Sized> Fold for Stmt {
         }
     }
 }
-impl<H: Hasher> Hash for Stmt {
-    fn hash(&self, h: &mut H) {
-        use Stmt::*;
-        match self {
-            Local(x) => {
-                h.write_u8(0u8);
-                x.hash(h);
-            },
-            Item(x) => {
-                h.write_u8(1u8);
-                x.hash(h);
-            },
-            Expr(x, v1) => {
-                h.write_u8(2u8);
-                x.hash(h);
-                v1.hash(h);
-            },
-            Mac(x) => {
-                h.write_u8(3u8);
-                x.hash(h);
-            },
-        }
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Stmt {
     fn visit(&self, v: &mut V) {
         use Stmt::*;
@@ -174,7 +150,7 @@ impl<V: Visitor + ?Sized> Visit for Stmt {
 pub use expr::Expr;
 pub use item::Item;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Local {
     pub attrs: Vec<attr::Attr>,
     pub let_: Token![let],
@@ -209,13 +185,6 @@ impl<F: Folder + ?Sized> Fold for Local {
         }
     }
 }
-impl<H: Hasher> Hash for Local {
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.pat.hash(h);
-        self.init.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Local {
     fn visit(&self, v: &mut V) {
         for x in &self.attrs {
@@ -237,7 +206,7 @@ impl<V: Visitor + ?Sized> Visit for Local {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Mac {
     pub attrs: Vec<attr::Attr>,
     pub mac: mac::Mac,
@@ -259,13 +228,6 @@ impl<F: Folder + ?Sized> Fold for Mac {
         }
     }
 }
-impl<H: Hasher> Hash for Mac {
-    fn hash(&self, h: &mut H) {
-        self.attrs.hash(h);
-        self.mac.hash(h);
-        self.semi.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Mac {
     fn visit(&self, v: &mut V) {
         for x in &self.attrs {
@@ -281,7 +243,7 @@ impl<V: Visitor + ?Sized> Visit for Mac {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Block {
     pub brace: tok::Brace,
     pub stmts: Vec<Stmt>,
@@ -337,11 +299,6 @@ impl<F: Folder + ?Sized> Fold for Block {
         }
     }
 }
-impl<H: Hasher> Hash for Block {
-    fn hash(&self, h: &mut H) {
-        self.stmts.hash(h);
-    }
-}
 impl<V: Visitor + ?Sized> Visit for Block {
     fn visit(&self, v: &mut V) {
         for x in &self.stmts {
@@ -355,7 +312,7 @@ impl<V: Visitor + ?Sized> Visit for Block {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Init {
     pub eq: Token![=],
     pub expr: Box<Expr>,
@@ -368,12 +325,6 @@ impl<F: Folder + ?Sized> Fold for Init {
             expr: Box::new(*self.expr.fold(f)),
             diverge: (self.diverge).map(|x| ((x).0, Box::new(*(x).1.fold(f)))),
         }
-    }
-}
-impl<H: Hasher> Hash for Init {
-    fn hash(&self, h: &mut H) {
-        self.expr.hash(h);
-        self.diverge.hash(h);
     }
 }
 impl<V: Visitor + ?Sized> Visit for Init {

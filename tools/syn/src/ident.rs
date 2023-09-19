@@ -79,7 +79,7 @@ pub fn xid_ok(x: &str) -> bool {
     true
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Life {
     pub apos: Span,
     pub ident: Ident,
@@ -149,11 +149,6 @@ impl<F: Folder + ?Sized> Fold for Life {
             apos: self.apos.fold(f),
             ident: self.ident.fold(f),
         }
-    }
-}
-impl<H: Hasher> Hash for Life {
-    fn hash(&self, x: &mut H) {
-        self.ident.hash(x);
     }
 }
 impl<V: Visitor + ?Sized> Visit for Life {
