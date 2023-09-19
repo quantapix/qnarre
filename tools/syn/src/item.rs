@@ -1,7 +1,7 @@
 use super::*;
 use crate::attr::Filter;
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct File {
     pub shebang: Option<String>,
     pub attrs: Vec<attr::Attr>,
@@ -26,15 +26,6 @@ impl Lower for File {
     fn lower(&self, s: &mut Stream) {
         s.append_all(self.attrs.inners());
         s.append_all(&self.items);
-    }
-}
-impl Debug for File {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("item::File");
-        f.field("shebang", &self.shebang);
-        f.field("attrs", &self.attrs);
-        f.field("items", &self.items);
-        f.finish()
     }
 }
 impl Pretty for File {
@@ -80,7 +71,7 @@ impl<V: Visitor + ?Sized> Visit for File {
 }
 
 enum_of_structs! {
-    #[derive(Clone, Eq, Hash, PartialEq)]
+    #[derive(Clone, Debug, Eq, Hash, PartialEq)]
     pub enum Item {
         Const(Const),
         Enum(Enum),
@@ -159,34 +150,6 @@ impl Parse for Item {
         let beg = s.fork();
         let attrs = s.call(attr::Attr::parse_outers)?;
         parse_rest_of_item(beg, attrs, s)
-    }
-}
-impl Debug for Item {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("Item::")?;
-        use Item::*;
-        match self {
-            Const(x) => x.debug(f, "Const"),
-            Enum(x) => x.debug(f, "Enum"),
-            Extern(x) => x.debug(f, "Extern"),
-            Fn(x) => x.debug(f, "Fn"),
-            Foreign(x) => x.debug(f, "Foreign"),
-            Impl(x) => x.debug(f, "Impl"),
-            Mac(x) => x.debug(f, "Mac"),
-            Mod(x) => x.debug(f, "Mod"),
-            Static(x) => x.debug(f, "Static"),
-            Struct(x) => x.debug(f, "Struct"),
-            Trait(x) => x.debug(f, "Trait"),
-            Alias(x) => x.debug(f, "Alias"),
-            Type(x) => x.debug(f, "Type"),
-            Union(x) => x.debug(f, "Union"),
-            Use(x) => x.debug(f, "Use"),
-            Verbatim(x) => {
-                let mut f = f.debug_tuple("Verbatim");
-                f.field(x);
-                f.finish()
-            },
-        }
     }
 }
 impl Pretty for Item {
@@ -340,7 +303,7 @@ impl<V: Visitor + ?Sized> Visit for Item {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Const {
     pub attrs: Vec<attr::Attr>,
     pub vis: data::Visibility,
@@ -387,27 +350,6 @@ impl Lower for Const {
         self.eq.lower(s);
         self.expr.lower(s);
         self.semi.lower(s);
-    }
-}
-impl Debug for Const {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Const {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("vis", &self.vis);
-                f.field("const_", &self.const_);
-                f.field("ident", &self.ident);
-                f.field("gens", &self.gens);
-                f.field("colon", &self.colon);
-                f.field("ty", &self.typ);
-                f.field("eq", &self.eq);
-                f.field("expr", &self.expr);
-                f.field("semi", &self.semi);
-                f.finish()
-            }
-        }
-        self.debug(f, "item::Const")
     }
 }
 impl Pretty for Const {
@@ -467,7 +409,7 @@ impl<V: Visitor + ?Sized> Visit for Const {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Enum {
     pub attrs: Vec<attr::Attr>,
     pub vis: data::Visibility,
@@ -522,24 +464,6 @@ impl Lower for Enum {
         self.brace.surround(s, |s| {
             self.variants.lower(s);
         });
-    }
-}
-impl Debug for Enum {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Enum {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("vis", &self.vis);
-                f.field("enum_", &self.enum_);
-                f.field("ident", &self.ident);
-                f.field("gens", &self.gens);
-                f.field("brace", &self.brace);
-                f.field("variants", &self.variants);
-                f.finish()
-            }
-        }
-        self.debug(f, "item::Enum")
     }
 }
 impl Pretty for Enum {
@@ -604,7 +528,7 @@ impl<V: Visitor + ?Sized> Visit for Enum {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Extern {
     pub attrs: Vec<attr::Attr>,
     pub vis: data::Visibility,
@@ -659,24 +583,6 @@ impl Lower for Extern {
         self.semi.lower(s);
     }
 }
-impl Debug for Extern {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Extern {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("vis", &self.vis);
-                f.field("extern_", &self.extern_);
-                f.field("crate_", &self.crate_);
-                f.field("ident", &self.ident);
-                f.field("rename", &self.rename);
-                f.field("semi", &self.semi);
-                f.finish()
-            }
-        }
-        self.debug(f, "item::Extern")
-    }
-}
 impl Pretty for Extern {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -727,7 +633,7 @@ impl<V: Visitor + ?Sized> Visit for Extern {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Fn {
     pub attrs: Vec<attr::Attr>,
     pub vis: data::Visibility,
@@ -751,21 +657,6 @@ impl Lower for Fn {
             s.append_all(self.attrs.inners());
             s.append_all(&self.block.stmts);
         });
-    }
-}
-impl Debug for Fn {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Fn {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("vis", &self.vis);
-                f.field("sig", &self.sig);
-                f.field("block", &self.block);
-                f.finish()
-            }
-        }
-        self.debug(f, "item::Fn")
     }
 }
 impl Pretty for Fn {
@@ -816,7 +707,7 @@ impl<V: Visitor + ?Sized> Visit for Fn {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Foreign {
     pub attrs: Vec<attr::Attr>,
     pub unsafe_: Option<Token![unsafe]>,
@@ -854,22 +745,6 @@ impl Lower for Foreign {
             s.append_all(self.attrs.inners());
             s.append_all(&self.items);
         });
-    }
-}
-impl Debug for Foreign {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Foreign {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("unsafe_", &self.unsafe_);
-                f.field("abi", &self.abi);
-                f.field("brace", &self.brace);
-                f.field("items", &self.items);
-                f.finish()
-            }
-        }
-        self.debug(f, "item::Foreign")
     }
 }
 impl Pretty for Foreign {
@@ -924,7 +799,7 @@ impl<V: Visitor + ?Sized> Visit for Foreign {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Impl {
     pub attrs: Vec<attr::Attr>,
     pub default: Option<Token![default]>,
@@ -960,26 +835,6 @@ impl Lower for Impl {
             s.append_all(self.attrs.inners());
             s.append_all(&self.items);
         });
-    }
-}
-impl Debug for Impl {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Impl {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("default", &self.default);
-                f.field("unsafe_", &self.unsafe_);
-                f.field("impl_", &self.impl_);
-                f.field("gens", &self.gens);
-                f.field("trait_", &self.trait_);
-                f.field("typ", &self.typ);
-                f.field("brace", &self.brace);
-                f.field("items", &self.items);
-                f.finish()
-            }
-        }
-        self.debug(f, "item::Impl")
     }
 }
 impl Pretty for Impl {
@@ -1065,7 +920,7 @@ impl<V: Visitor + ?Sized> Visit for Impl {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Mac {
     pub attrs: Vec<attr::Attr>,
     pub ident: Option<Ident>,
@@ -1117,21 +972,6 @@ impl Lower for Mac {
         self.semi.lower(s);
     }
 }
-impl Debug for Mac {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Mac {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("ident", &self.ident);
-                f.field("mac", &self.mac);
-                f.field("semi", &self.semi);
-                f.finish()
-            }
-        }
-        self.debug(f, "item::Mac")
-    }
-}
 impl Pretty for Mac {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -1171,7 +1011,7 @@ impl<V: Visitor + ?Sized> Visit for Mac {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Mod {
     pub attrs: Vec<attr::Attr>,
     pub vis: data::Visibility,
@@ -1242,24 +1082,6 @@ impl Lower for Mod {
         }
     }
 }
-impl Debug for Mod {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Mod {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("vis", &self.vis);
-                f.field("unsafe_", &self.unsafe_);
-                f.field("mod_", &self.mod_);
-                f.field("ident", &self.ident);
-                f.field("content", &self.items);
-                f.field("semi", &self.semi);
-                f.finish()
-            }
-        }
-        self.debug(f, "item::Mod")
-    }
-}
 impl Pretty for Mod {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -1327,7 +1149,7 @@ impl<V: Visitor + ?Sized> Visit for Mod {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Static {
     pub attrs: Vec<attr::Attr>,
     pub vis: data::Visibility,
@@ -1368,27 +1190,6 @@ impl Lower for Static {
         self.eq.lower(s);
         self.expr.lower(s);
         self.semi.lower(s);
-    }
-}
-impl Debug for Static {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Static {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("vis", &self.vis);
-                f.field("static_", &self.static_);
-                f.field("mut_", &self.mut_);
-                f.field("ident", &self.ident);
-                f.field("colon", &self.colon);
-                f.field("ty", &self.typ);
-                f.field("eq", &self.eq);
-                f.field("expr", &self.expr);
-                f.field("semi", &self.semi);
-                f.finish()
-            }
-        }
-        self.debug(f, "item::Static")
     }
 }
 impl Pretty for Static {
@@ -1448,7 +1249,7 @@ impl<V: Visitor + ?Sized> Visit for Static {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Struct {
     pub attrs: Vec<attr::Attr>,
     pub vis: data::Visibility,
@@ -1514,24 +1315,6 @@ impl Lower for Struct {
                 ToksOrDefault(&self.semi).lower(s);
             },
         }
-    }
-}
-impl Debug for Struct {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Struct {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("vis", &self.vis);
-                f.field("struct_", &self.struct_);
-                f.field("ident", &self.ident);
-                f.field("gens", &self.gens);
-                f.field("fields", &self.fields);
-                f.field("semi", &self.semi);
-                f.finish()
-            }
-        }
-        self.debug(f, "item::Struct")
     }
 }
 impl Pretty for Struct {
@@ -1604,7 +1387,7 @@ impl<V: Visitor + ?Sized> Visit for Struct {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Trait {
     pub attrs: Vec<attr::Attr>,
     pub vis: data::Visibility,
@@ -1649,29 +1432,6 @@ impl Lower for Trait {
             s.append_all(self.attrs.inners());
             s.append_all(&self.items);
         });
-    }
-}
-impl Debug for Trait {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Trait {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("vis", &self.vis);
-                f.field("unsafe_", &self.unsafe_);
-                f.field("auto_", &self.auto);
-                f.field("restriction", &self.restriction);
-                f.field("trait_", &self.trait_);
-                f.field("ident", &self.ident);
-                f.field("gens", &self.gens);
-                f.field("colon", &self.colon);
-                f.field("supers", &self.supers);
-                f.field("brace", &self.brace);
-                f.field("items", &self.items);
-                f.finish()
-            }
-        }
-        self.debug(f, "item::Trait")
     }
 }
 impl Pretty for Trait {
@@ -1766,7 +1526,7 @@ impl<V: Visitor + ?Sized> Visit for Trait {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Alias {
     pub attrs: Vec<attr::Attr>,
     pub vis: data::Visibility,
@@ -1794,25 +1554,6 @@ impl Lower for Alias {
         self.bounds.lower(s);
         self.gens.where_.lower(s);
         self.semi.lower(s);
-    }
-}
-impl Debug for Alias {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Alias {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("vis", &self.vis);
-                f.field("trait_", &self.trait_);
-                f.field("ident", &self.ident);
-                f.field("gens", &self.gens);
-                f.field("eq", &self.eq);
-                f.field("bounds", &self.bounds);
-                f.field("semi", &self.semi);
-                f.finish()
-            }
-        }
-        self.debug(f, "item::Alias")
     }
 }
 impl Pretty for Alias {
@@ -1878,7 +1619,7 @@ impl<V: Visitor + ?Sized> Visit for Alias {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Type {
     pub attrs: Vec<attr::Attr>,
     pub vis: data::Visibility,
@@ -1918,25 +1659,6 @@ impl Lower for Type {
         self.eq.lower(s);
         self.typ.lower(s);
         self.semi.lower(s);
-    }
-}
-impl Debug for Type {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Type {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("vis", &self.vis);
-                f.field("type", &self.type_);
-                f.field("ident", &self.ident);
-                f.field("gens", &self.gens);
-                f.field("eq", &self.eq);
-                f.field("ty", &self.typ);
-                f.field("semi", &self.semi);
-                f.finish()
-            }
-        }
-        self.debug(f, "item::Type")
     }
 }
 impl Pretty for Type {
@@ -1993,7 +1715,7 @@ impl<V: Visitor + ?Sized> Visit for Type {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Union {
     pub attrs: Vec<attr::Attr>,
     pub vis: data::Visibility,
@@ -2043,23 +1765,6 @@ impl Lower for Union {
         self.gens.lower(s);
         self.gens.where_.lower(s);
         self.fields.lower(s);
-    }
-}
-impl Debug for Union {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Union {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("vis", &self.vis);
-                f.field("union_", &self.union_);
-                f.field("ident", &self.ident);
-                f.field("gens", &self.gens);
-                f.field("fields", &self.fields);
-                f.finish()
-            }
-        }
-        self.debug(f, "item::Union")
     }
 }
 impl Pretty for Union {
@@ -2117,7 +1822,7 @@ impl<V: Visitor + ?Sized> Visit for Union {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Use {
     pub attrs: Vec<attr::Attr>,
     pub vis: data::Visibility,
@@ -2140,23 +1845,6 @@ impl Lower for Use {
         self.colon.lower(s);
         self.tree.lower(s);
         self.semi.lower(s);
-    }
-}
-impl Debug for Use {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Use {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("vis", &self.vis);
-                f.field("use_", &self.use_);
-                f.field("colon", &self.colon);
-                f.field("tree", &self.tree);
-                f.field("semi", &self.semi);
-                f.finish()
-            }
-        }
-        self.debug(f, "item::Use")
     }
 }
 impl Pretty for Use {
@@ -2538,7 +2226,7 @@ impl Pretty for Verbatim {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Receiver {
     pub attrs: Vec<attr::Attr>,
     pub ref_: Option<(Token![&], Option<Life>)>,
@@ -2622,18 +2310,6 @@ impl Lower for Receiver {
         }
     }
 }
-impl Debug for Receiver {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("item::Receiver");
-        f.field("attrs", &self.attrs);
-        f.field("reference", &self.ref_);
-        f.field("mut_", &self.mut_);
-        f.field("self_", &self.self_);
-        f.field("colon", &self.colon);
-        f.field("ty", &self.typ);
-        f.finish()
-    }
-}
 impl Pretty for Receiver {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -2708,7 +2384,7 @@ impl<V: Visitor + ?Sized> Visit for Receiver {
 }
 
 enum_of_structs! {
-    #[derive(Clone, Eq, Hash, PartialEq)]
+    #[derive(Clone, Debug, Eq, Hash, PartialEq)]
     pub enum FnArg {
         Receiver(Receiver),
         Type(pat::Type),
@@ -2722,24 +2398,6 @@ impl Parse for FnArg {
         match parse_fn_arg_or_variadic(s, attrs, variadic)? {
             FnArg(x) => Ok(x),
             Variadic(_) => unreachable!(),
-        }
-    }
-}
-impl Debug for FnArg {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("item::FnArg::")?;
-        use FnArg::*;
-        match self {
-            Receiver(x) => {
-                let mut f = f.debug_tuple("Receiver");
-                f.field(x);
-                f.finish()
-            },
-            Type(x) => {
-                let mut f = f.debug_tuple("Type");
-                f.field(x);
-                f.finish()
-            },
         }
     }
 }
@@ -2791,7 +2449,7 @@ enum FnArgOrVari {
     Variadic(Variadic),
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Sig {
     pub const_: Option<Token![const]>,
     pub async_: Option<Token![async]>,
@@ -2863,23 +2521,6 @@ impl Lower for Sig {
         });
         self.ret.lower(s);
         self.gens.where_.lower(s);
-    }
-}
-impl Debug for Sig {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("item::Sig");
-        f.field("const_", &self.const_);
-        f.field("asyncness", &self.async_);
-        f.field("unsafe_", &self.unsafe_);
-        f.field("abi", &self.abi);
-        f.field("fn_", &self.fn_);
-        f.field("ident", &self.ident);
-        f.field("gens", &self.gens);
-        f.field("parenth", &self.parenth);
-        f.field("inputs", &self.args);
-        f.field("vari", &self.vari);
-        f.field("output", &self.ret);
-        f.finish()
     }
 }
 impl Pretty for Sig {
@@ -2970,7 +2611,7 @@ impl<V: Visitor + ?Sized> Visit for Sig {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum StaticMut {
     Mut(Token![mut]),
     None,
@@ -2986,20 +2627,6 @@ impl Lower for StaticMut {
         match self {
             StaticMut::None => {},
             StaticMut::Mut(x) => x.lower(s),
-        }
-    }
-}
-impl Debug for StaticMut {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("item::StaticMut::")?;
-        use StaticMut::*;
-        match self {
-            Mut(x) => {
-                let mut f = f.debug_tuple("Mut");
-                f.field(x);
-                f.finish()
-            },
-            None => f.write_str("None"),
         }
     }
 }
@@ -3038,7 +2665,7 @@ impl<V: Visitor + ?Sized> Visit for StaticMut {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Variadic {
     pub attrs: Vec<attr::Attr>,
     pub pat: Option<(Box<pat::Pat>, Token![:])>,
@@ -3054,16 +2681,6 @@ impl Lower for Variadic {
         }
         self.dots.lower(s);
         self.comma.lower(s);
-    }
-}
-impl Debug for Variadic {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("item::Variadic");
-        f.field("attrs", &self.attrs);
-        f.field("pat", &self.pat);
-        f.field("dots", &self.dots);
-        f.field("comma", &self.comma);
-        f.finish()
     }
 }
 impl Pretty for Variadic {
@@ -3108,7 +2725,7 @@ impl<V: Visitor + ?Sized> Visit for Variadic {
 pub mod foreign {
     use super::*;
     enum_of_structs! {
-        #[derive(Clone, Eq, Hash, PartialEq)]
+        #[derive(Clone, Debug, Eq, Hash, PartialEq)]
         pub enum Item {
             Fn(Fn),
             Mac(Mac),
@@ -3190,23 +2807,6 @@ pub mod foreign {
             Ok(y)
         }
     }
-    impl Debug for Item {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            f.write_str("item::foreign::Item::")?;
-            use self::Item::*;
-            match self {
-                Fn(x) => x.debug(f, "Fn"),
-                Static(x) => x.debug(f, "Static"),
-                Type(x) => x.debug(f, "Type"),
-                Mac(x) => x.debug(f, "Mac"),
-                Verbatim(x) => {
-                    let mut f = f.debug_tuple("Verbatim");
-                    f.field(x);
-                    f.finish()
-                },
-            }
-        }
-    }
     impl Pretty for Item {
         fn pretty(&self, p: &mut Print) {
             use self::Item::*;
@@ -3270,7 +2870,7 @@ pub mod foreign {
         }
     }
 
-    #[derive(Clone, Eq, Hash, PartialEq)]
+    #[derive(Clone, Debug, Eq, Hash, PartialEq)]
     pub struct Fn {
         pub attrs: Vec<attr::Attr>,
         pub vis: data::Visibility,
@@ -3292,21 +2892,6 @@ pub mod foreign {
             self.vis.lower(s);
             self.sig.lower(s);
             self.semi.lower(s);
-        }
-    }
-    impl Debug for Fn {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            impl Fn {
-                fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                    let mut f = f.debug_struct(x);
-                    f.field("attrs", &self.attrs);
-                    f.field("vis", &self.vis);
-                    f.field("sig", &self.sig);
-                    f.field("semi", &self.semi);
-                    f.finish()
-                }
-            }
-            self.debug(f, "item::foreign::Fn")
         }
     }
     impl Pretty for Fn {
@@ -3347,7 +2932,7 @@ pub mod foreign {
         }
     }
 
-    #[derive(Clone, Eq, Hash, PartialEq)]
+    #[derive(Clone, Debug, Eq, Hash, PartialEq)]
     pub struct Mac {
         pub attrs: Vec<attr::Attr>,
         pub mac: mac::Mac,
@@ -3366,20 +2951,6 @@ pub mod foreign {
             s.append_all(self.attrs.outers());
             self.mac.lower(s);
             self.semi.lower(s);
-        }
-    }
-    impl Debug for Mac {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            impl Mac {
-                fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                    let mut f = f.debug_struct(x);
-                    f.field("attrs", &self.attrs);
-                    f.field("mac", &self.mac);
-                    f.field("semi", &self.semi);
-                    f.finish()
-                }
-            }
-            self.debug(f, "item::foreign::Mac")
         }
     }
     impl Pretty for Mac {
@@ -3414,7 +2985,7 @@ pub mod foreign {
         }
     }
 
-    #[derive(Clone, Eq, Hash, PartialEq)]
+    #[derive(Clone, Debug, Eq, Hash, PartialEq)]
     pub struct Static {
         pub attrs: Vec<attr::Attr>,
         pub vis: data::Visibility,
@@ -3449,25 +3020,6 @@ pub mod foreign {
             self.colon.lower(s);
             self.typ.lower(s);
             self.semi.lower(s);
-        }
-    }
-    impl Debug for Static {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            impl Static {
-                fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                    let mut f = f.debug_struct(x);
-                    f.field("attrs", &self.attrs);
-                    f.field("vis", &self.vis);
-                    f.field("static_", &self.static_);
-                    f.field("mut_", &self.mut_);
-                    f.field("ident", &self.ident);
-                    f.field("colon", &self.colon);
-                    f.field("ty", &self.typ);
-                    f.field("semi", &self.semi);
-                    f.finish()
-                }
-            }
-            self.debug(f, "item::foreign::Static")
         }
     }
     impl Pretty for Static {
@@ -3520,7 +3072,7 @@ pub mod foreign {
         }
     }
 
-    #[derive(Clone, Eq, Hash, PartialEq)]
+    #[derive(Clone, Debug, Eq, Hash, PartialEq)]
     pub struct Type {
         pub attrs: Vec<attr::Attr>,
         pub vis: data::Visibility,
@@ -3554,23 +3106,6 @@ pub mod foreign {
             self.gens.lower(s);
             self.gens.where_.lower(s);
             self.semi.lower(s);
-        }
-    }
-    impl Debug for Type {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            impl Type {
-                fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                    let mut f = f.debug_struct(x);
-                    f.field("attrs", &self.attrs);
-                    f.field("vis", &self.vis);
-                    f.field("type", &self.type_);
-                    f.field("ident", &self.ident);
-                    f.field("gens", &self.gens);
-                    f.field("semi", &self.semi);
-                    f.finish()
-                }
-            }
-            self.debug(f, "item::foreign::Type")
         }
     }
     impl Pretty for Type {
@@ -3687,7 +3222,7 @@ pub mod foreign {
 pub mod impl_ {
     use super::*;
     enum_of_structs! {
-        #[derive(Clone, Eq, Hash, PartialEq)]
+        #[derive(Clone, Debug, Eq, Hash, PartialEq)]
         pub enum Item {
             Const(Const),
             Fn(Fn),
@@ -3772,23 +3307,6 @@ pub mod impl_ {
             Ok(y)
         }
     }
-    impl Debug for Item {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            f.write_str("item::impl_::Item::")?;
-            use self::Item::*;
-            match self {
-                Const(x) => x.debug(f, "Const"),
-                Fn(x) => x.debug(f, "Fn"),
-                Type(x) => x.debug(f, "Type"),
-                Mac(x) => x.debug(f, "Macro"),
-                Verbatim(x) => {
-                    let mut f = f.debug_tuple("Verbatim");
-                    f.field(x);
-                    f.finish()
-                },
-            }
-        }
-    }
     impl Pretty for Item {
         fn pretty(&self, p: &mut Print) {
             use self::Item::*;
@@ -3852,7 +3370,7 @@ pub mod impl_ {
         }
     }
 
-    #[derive(Clone, Eq, Hash, PartialEq)]
+    #[derive(Clone, Debug, Eq, Hash, PartialEq)]
     pub struct Const {
         pub attrs: Vec<attr::Attr>,
         pub vis: data::Visibility,
@@ -3902,28 +3420,6 @@ pub mod impl_ {
             self.eq.lower(s);
             self.expr.lower(s);
             self.semi.lower(s);
-        }
-    }
-    impl Debug for Const {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            impl Const {
-                fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                    let mut f = f.debug_struct(x);
-                    f.field("attrs", &self.attrs);
-                    f.field("vis", &self.vis);
-                    f.field("default", &self.default);
-                    f.field("const_", &self.const_);
-                    f.field("ident", &self.ident);
-                    f.field("gens", &self.gens);
-                    f.field("colon", &self.colon);
-                    f.field("ty", &self.typ);
-                    f.field("eq", &self.eq);
-                    f.field("expr", &self.expr);
-                    f.field("semi", &self.semi);
-                    f.finish()
-                }
-            }
-            self.debug(f, "item::impl_::Const")
         }
     }
     impl Pretty for Const {
@@ -3987,7 +3483,7 @@ pub mod impl_ {
         }
     }
 
-    #[derive(Clone, Eq, Hash, PartialEq)]
+    #[derive(Clone, Debug, Eq, Hash, PartialEq)]
     pub struct Fn {
         pub attrs: Vec<attr::Attr>,
         pub vis: data::Visibility,
@@ -4011,22 +3507,6 @@ pub mod impl_ {
                 s.append_all(self.attrs.inners());
                 s.append_all(&self.block.stmts);
             });
-        }
-    }
-    impl Debug for Fn {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            impl Fn {
-                fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                    let mut f = f.debug_struct(x);
-                    f.field("attrs", &self.attrs);
-                    f.field("vis", &self.vis);
-                    f.field("default", &self.default);
-                    f.field("sig", &self.sig);
-                    f.field("block", &self.block);
-                    f.finish()
-                }
-            }
-            self.debug(f, "item::impl_::Fn")
         }
     }
     impl Pretty for Fn {
@@ -4081,7 +3561,7 @@ pub mod impl_ {
         }
     }
 
-    #[derive(Clone, Eq, Hash, PartialEq)]
+    #[derive(Clone, Debug, Eq, Hash, PartialEq)]
     pub struct Mac {
         pub attrs: Vec<attr::Attr>,
         pub mac: mac::Mac,
@@ -4100,20 +3580,6 @@ pub mod impl_ {
             s.append_all(self.attrs.outers());
             self.mac.lower(s);
             self.semi.lower(s);
-        }
-    }
-    impl Debug for Mac {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            impl Mac {
-                fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                    let mut f = f.debug_struct(x);
-                    f.field("attrs", &self.attrs);
-                    f.field("mac", &self.mac);
-                    f.field("semi", &self.semi);
-                    f.finish()
-                }
-            }
-            self.debug(f, "item::impl_::Mac")
         }
     }
     impl Pretty for Mac {
@@ -4148,7 +3614,7 @@ pub mod impl_ {
         }
     }
 
-    #[derive(Clone, Eq, Hash, PartialEq)]
+    #[derive(Clone, Debug, Eq, Hash, PartialEq)]
     pub struct Type {
         pub attrs: Vec<attr::Attr>,
         pub vis: data::Visibility,
@@ -4197,26 +3663,6 @@ pub mod impl_ {
             self.typ.lower(s);
             self.gens.where_.lower(s);
             self.semi.lower(s);
-        }
-    }
-    impl Debug for Type {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            impl Type {
-                fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                    let mut f = f.debug_struct(x);
-                    f.field("attrs", &self.attrs);
-                    f.field("vis", &self.vis);
-                    f.field("default", &self.default);
-                    f.field("type", &self.type_);
-                    f.field("ident", &self.ident);
-                    f.field("gens", &self.gens);
-                    f.field("eq", &self.eq);
-                    f.field("ty", &self.typ);
-                    f.field("semi", &self.semi);
-                    f.finish()
-                }
-            }
-            self.debug(f, "item::impl_::Type")
         }
     }
     impl Pretty for Type {
@@ -4343,13 +3789,8 @@ pub mod impl_ {
         }
     }
 
-    #[derive(Clone, Eq, Hash, PartialEq)]
+    #[derive(Clone, Debug, Eq, Hash, PartialEq)]
     pub enum Restriction {}
-    impl Debug for Restriction {
-        fn fmt(&self, _f: &mut fmt::Formatter) -> fmt::Result {
-            match *self {}
-        }
-    }
     impl<F: Folder + ?Sized> Fold for Restriction {
         fn fold(&self, f: &mut F) {
             match *self {}
@@ -4367,7 +3808,7 @@ pub mod impl_ {
 pub mod trait_ {
     use super::*;
     enum_of_structs! {
-        #[derive(Clone, Eq, Hash, PartialEq)]
+        #[derive(Clone, Debug, Eq, Hash, PartialEq)]
         pub enum Item {
             Const(Const),
             Fn(Fn),
@@ -4428,23 +3869,6 @@ pub mod trait_ {
             attrs.append(ys);
             *ys = attrs;
             Ok(y)
-        }
-    }
-    impl Debug for Item {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            f.write_str("item::trait_::Item::")?;
-            use self::Item::*;
-            match self {
-                Const(x) => x.debug(f, "Const"),
-                Fn(x) => x.debug(f, "Fn"),
-                Type(x) => x.debug(f, "Type"),
-                Mac(x) => x.debug(f, "Mac"),
-                Verbatim(x) => {
-                    let mut f = f.debug_tuple("Verbatim");
-                    f.field(x);
-                    f.finish()
-                },
-            }
         }
     }
     impl Pretty for Item {
@@ -4510,7 +3934,7 @@ pub mod trait_ {
         }
     }
 
-    #[derive(Clone, Eq, Hash, PartialEq)]
+    #[derive(Clone, Debug, Eq, Hash, PartialEq)]
     pub struct Const {
         pub attrs: Vec<attr::Attr>,
         pub const_: Token![const],
@@ -4562,25 +3986,6 @@ pub mod trait_ {
                 x.lower(s);
             }
             self.semi.lower(s);
-        }
-    }
-    impl Debug for Const {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            impl Const {
-                fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                    let mut f = f.debug_struct(x);
-                    f.field("attrs", &self.attrs);
-                    f.field("const_", &self.const_);
-                    f.field("ident", &self.ident);
-                    f.field("gens", &self.gens);
-                    f.field("colon", &self.colon);
-                    f.field("ty", &self.typ);
-                    f.field("default", &self.default);
-                    f.field("semi", &self.semi);
-                    f.finish()
-                }
-            }
-            self.debug(f, "item::trait_::Const")
         }
     }
     impl Pretty for Const {
@@ -4641,7 +4046,7 @@ pub mod trait_ {
         }
     }
 
-    #[derive(Clone, Eq, Hash, PartialEq)]
+    #[derive(Clone, Debug, Eq, Hash, PartialEq)]
     pub struct Fn {
         pub attrs: Vec<attr::Attr>,
         pub sig: Sig,
@@ -4688,21 +4093,6 @@ pub mod trait_ {
                     ToksOrDefault(&self.semi).lower(s);
                 },
             }
-        }
-    }
-    impl Debug for Fn {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            impl Fn {
-                fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                    let mut f = f.debug_struct(x);
-                    f.field("attrs", &self.attrs);
-                    f.field("sig", &self.sig);
-                    f.field("default", &self.default);
-                    f.field("semi", &self.semi);
-                    f.finish()
-                }
-            }
-            self.debug(f, "item::trait_::Fn")
         }
     }
     impl Pretty for Fn {
@@ -4759,7 +4149,7 @@ pub mod trait_ {
         }
     }
 
-    #[derive(Clone, Eq, Hash, PartialEq)]
+    #[derive(Clone, Debug, Eq, Hash, PartialEq)]
     pub struct Mac {
         pub attrs: Vec<attr::Attr>,
         pub mac: mac::Mac,
@@ -4778,20 +4168,6 @@ pub mod trait_ {
             s.append_all(self.attrs.outers());
             self.mac.lower(s);
             self.semi.lower(s);
-        }
-    }
-    impl Debug for Mac {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            impl Mac {
-                fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                    let mut f = f.debug_struct(x);
-                    f.field("attrs", &self.attrs);
-                    f.field("mac", &self.mac);
-                    f.field("semi", &self.semi);
-                    f.finish()
-                }
-            }
-            self.debug(f, "item::trait_::Mac")
         }
     }
     impl Pretty for Mac {
@@ -4826,7 +4202,7 @@ pub mod trait_ {
         }
     }
 
-    #[derive(Clone, Eq, Hash, PartialEq)]
+    #[derive(Clone, Debug, Eq, Hash, PartialEq)]
     pub struct Type {
         pub attrs: Vec<attr::Attr>,
         pub type_: Token![type],
@@ -4875,25 +4251,6 @@ pub mod trait_ {
             }
             self.gens.where_.lower(s);
             self.semi.lower(s);
-        }
-    }
-    impl Debug for Type {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            impl Type {
-                fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                    let mut y = f.debug_struct(x);
-                    y.field("attrs", &self.attrs);
-                    y.field("type", &self.type_);
-                    y.field("ident", &self.ident);
-                    y.field("gens", &self.gens);
-                    y.field("colon", &self.colon);
-                    y.field("bounds", &self.bounds);
-                    y.field("default", &self.default);
-                    y.field("semi", &self.semi);
-                    y.finish()
-                }
-            }
-            self.debug(f, "item::trait_::Type")
         }
     }
     impl Pretty for Type {
@@ -5048,7 +4405,7 @@ pub mod trait_ {
 pub mod use_ {
     use super::*;
     enum_of_structs! {
-        #[derive(Clone, Eq, Hash, PartialEq)]
+        #[derive(Clone, Debug, Eq, Hash, PartialEq)]
         pub enum Tree {
             Glob(Glob),
             Group(Group),
@@ -5061,39 +4418,6 @@ pub mod use_ {
         fn parse(s: Stream) -> Res<Tree> {
             let root = false;
             parse_tree(s, root).map(Option::unwrap)
-        }
-    }
-    impl Debug for Tree {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            f.write_str("item::use_::Tree::")?;
-            use Tree::*;
-            match self {
-                Path(x) => {
-                    let mut f = f.debug_tuple("Path");
-                    f.field(x);
-                    f.finish()
-                },
-                Name(x) => {
-                    let mut f = f.debug_tuple("Name");
-                    f.field(x);
-                    f.finish()
-                },
-                Rename(x) => {
-                    let mut f = f.debug_tuple("Rename");
-                    f.field(x);
-                    f.finish()
-                },
-                Glob(x) => {
-                    let mut f = f.debug_tuple("Glob");
-                    f.field(x);
-                    f.finish()
-                },
-                Group(x) => {
-                    let mut f = f.debug_tuple("Group");
-                    f.field(x);
-                    f.finish()
-                },
-            }
         }
     }
     impl Pretty for Tree {
@@ -5228,20 +4552,13 @@ pub mod use_ {
         }
     }
 
-    #[derive(Clone, Eq, Hash, PartialEq)]
+    #[derive(Clone, Debug, Eq, Hash, PartialEq)]
     pub struct Glob {
         pub star: Token![*],
     }
     impl Lower for Glob {
         fn lower(&self, s: &mut Stream) {
             self.star.lower(s);
-        }
-    }
-    impl Debug for Glob {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            let mut f = f.debug_struct("item::use_::Glob");
-            f.field("star", &self.star);
-            f.finish()
         }
     }
     impl Pretty for Glob {
@@ -5260,7 +4577,7 @@ pub mod use_ {
         fn visit_mut(&mut self, v: &mut V) {}
     }
 
-    #[derive(Clone, Eq, Hash, PartialEq)]
+    #[derive(Clone, Debug, Eq, Hash, PartialEq)]
     pub struct Group {
         pub brace: tok::Brace,
         pub trees: Puncted<Tree, Token![,]>,
@@ -5270,14 +4587,6 @@ pub mod use_ {
             self.brace.surround(s, |s| {
                 self.trees.lower(s);
             });
-        }
-    }
-    impl Debug for Group {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            let mut f = f.debug_struct("item::use_::Group");
-            f.field("brace", &self.brace);
-            f.field("items", &self.trees);
-            f.finish()
         }
     }
     impl Pretty for Group {
@@ -5337,20 +4646,13 @@ pub mod use_ {
         }
     }
 
-    #[derive(Clone, Eq, Hash, PartialEq)]
+    #[derive(Clone, Debug, Eq, Hash, PartialEq)]
     pub struct Name {
         pub ident: Ident,
     }
     impl Lower for Name {
         fn lower(&self, s: &mut Stream) {
             self.ident.lower(s);
-        }
-    }
-    impl Debug for Name {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            let mut f = f.debug_struct("item::use_::Name");
-            f.field("ident", &self.ident);
-            f.finish()
         }
     }
     impl Pretty for Name {
@@ -5374,7 +4676,7 @@ pub mod use_ {
         }
     }
 
-    #[derive(Clone, Eq, Hash, PartialEq)]
+    #[derive(Clone, Debug, Eq, Hash, PartialEq)]
     pub struct Path {
         pub ident: Ident,
         pub colon2: Token![::],
@@ -5385,15 +4687,6 @@ pub mod use_ {
             self.ident.lower(s);
             self.colon2.lower(s);
             self.tree.lower(s);
-        }
-    }
-    impl Debug for Path {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            let mut f = f.debug_struct("item::use_::Path");
-            f.field("ident", &self.ident);
-            f.field("colon2", &self.colon2);
-            f.field("tree", &self.tree);
-            f.finish()
         }
     }
     impl Pretty for Path {
@@ -5423,7 +4716,7 @@ pub mod use_ {
         }
     }
 
-    #[derive(Clone, Eq, Hash, PartialEq)]
+    #[derive(Clone, Debug, Eq, Hash, PartialEq)]
     pub struct Rename {
         pub ident: Ident,
         pub as_: Token![as],
@@ -5434,15 +4727,6 @@ pub mod use_ {
             self.ident.lower(s);
             self.as_.lower(s);
             self.rename.lower(s);
-        }
-    }
-    impl Debug for Rename {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            let mut f = f.debug_struct("item::use_::Rename");
-            f.field("ident", &self.ident);
-            f.field("as_", &self.as_);
-            f.field("rename", &self.rename);
-            f.finish()
         }
     }
     impl Pretty for Rename {

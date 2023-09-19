@@ -2,7 +2,7 @@ use super::*;
 use lower::Fragment;
 
 enum_of_structs! {
-    #[derive(Clone, Eq, Hash, PartialEq)]
+    #[derive(Clone, Debug, Eq, Hash, PartialEq)]
     pub enum Expr {
         Array(Array),
         Assign(Assign),
@@ -328,57 +328,6 @@ impl Expr {
 impl Parse for Expr {
     fn parse(s: Stream) -> Res<Self> {
         ambiguous_expr(s, AllowStruct(true))
-    }
-}
-impl Debug for Expr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("Expr::")?;
-        use Expr::*;
-        match self {
-            Array(x) => x.debug(f, "Array"),
-            Assign(x) => x.debug(f, "Assign"),
-            Async(x) => x.debug(f, "Async"),
-            Await(x) => x.debug(f, "Await"),
-            Binary(x) => x.debug(f, "Binary"),
-            Block(x) => x.debug(f, "Block"),
-            Break(x) => x.debug(f, "Break"),
-            Call(x) => x.debug(f, "Call"),
-            Cast(x) => x.debug(f, "Cast"),
-            Closure(x) => x.debug(f, "Closure"),
-            Const(x) => x.debug(f, "Const"),
-            Continue(x) => x.debug(f, "Continue"),
-            Field(x) => x.debug(f, "Field"),
-            For(x) => x.debug(f, "For"),
-            Group(x) => x.debug(f, "Group"),
-            If(x) => x.debug(f, "If"),
-            Index(x) => x.debug(f, "Index"),
-            Infer(x) => x.debug(f, "Infer"),
-            Let(x) => x.debug(f, "Let"),
-            Lit(x) => x.debug(f, "Lit"),
-            Loop(x) => x.debug(f, "Loop"),
-            Mac(x) => x.debug(f, "Macro"),
-            Match(x) => x.debug(f, "Match"),
-            Method(x) => x.debug(f, "Method"),
-            Parenth(x) => x.debug(f, "Parenth"),
-            Path(x) => x.debug(f, "Path"),
-            Range(x) => x.debug(f, "Range"),
-            Ref(x) => x.debug(f, "Reference"),
-            Repeat(x) => x.debug(f, "Repeat"),
-            Return(x) => x.debug(f, "Return"),
-            Struct(x) => x.debug(f, "Struct"),
-            Try(x) => x.debug(f, "Try"),
-            TryBlock(x) => x.debug(f, "TryBlock"),
-            Tuple(x) => x.debug(f, "Tuple"),
-            Unary(x) => x.debug(f, "Unary"),
-            Unsafe(x) => x.debug(f, "Unsafe"),
-            Verbatim(x) => {
-                let mut f = f.debug_tuple("Stream");
-                f.field(x);
-                f.finish()
-            },
-            While(x) => x.debug(f, "While"),
-            Yield(x) => x.debug(f, "Yield"),
-        }
     }
 }
 impl Pretty for Expr {
@@ -752,7 +701,7 @@ impl_by_parsing_expr! {
     expr::Tuple, Tuple, "expected tuple expression",
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Array {
     pub attrs: Vec<attr::Attr>,
     pub bracket: tok::Bracket,
@@ -785,20 +734,6 @@ impl Lower for Array {
         self.bracket.surround(s, |s| {
             self.elems.lower(s);
         });
-    }
-}
-impl Debug for Array {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Array {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("bracket", &self.bracket);
-                f.field("elems", &self.elems);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::Array")
     }
 }
 impl Pretty for Array {
@@ -846,7 +781,7 @@ impl<V: Visitor + ?Sized> Visit for Array {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Assign {
     pub attrs: Vec<attr::Attr>,
     pub left: Box<Expr>,
@@ -859,21 +794,6 @@ impl Lower for Assign {
         self.left.lower(s);
         self.eq.lower(s);
         self.right.lower(s);
-    }
-}
-impl Debug for Assign {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Assign {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("left", &self.left);
-                f.field("eq", &self.eq);
-                f.field("right", &self.right);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::Assign")
     }
 }
 impl Pretty for Assign {
@@ -913,7 +833,7 @@ impl<V: Visitor + ?Sized> Visit for Assign {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Async {
     pub attrs: Vec<attr::Attr>,
     pub async_: Token![async],
@@ -936,21 +856,6 @@ impl Lower for Async {
         self.async_.lower(s);
         self.move_.lower(s);
         self.block.lower(s);
-    }
-}
-impl Debug for Async {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Async {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("async_", &self.async_);
-                f.field("capture", &self.move_);
-                f.field("block", &self.block);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::Async")
     }
 }
 impl Pretty for Async {
@@ -990,7 +895,7 @@ impl<V: Visitor + ?Sized> Visit for Async {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Await {
     pub attrs: Vec<attr::Attr>,
     pub expr: Box<Expr>,
@@ -1010,21 +915,6 @@ impl Lower for Await {
         self.expr.lower(s);
         self.dot.lower(s);
         self.await_.lower(s);
-    }
-}
-impl Debug for Await {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Await {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("base", &self.expr);
-                f.field("dot", &self.dot);
-                f.field("await_", &self.await_);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::Await")
     }
 }
 impl Pretty for Await {
@@ -1060,7 +950,7 @@ impl<V: Visitor + ?Sized> Visit for Await {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Binary {
     pub attrs: Vec<attr::Attr>,
     pub left: Box<Expr>,
@@ -1073,21 +963,6 @@ impl Lower for Binary {
         self.left.lower(s);
         self.op.lower(s);
         self.right.lower(s);
-    }
-}
-impl Debug for Binary {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Binary {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("left", &self.left);
-                f.field("op", &self.op);
-                f.field("right", &self.right);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::Binary")
     }
 }
 impl Pretty for Binary {
@@ -1133,7 +1008,7 @@ impl<V: Visitor + ?Sized> Visit for Binary {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Block {
     pub attrs: Vec<attr::Attr>,
     pub label: Option<Label>,
@@ -1162,20 +1037,6 @@ impl Lower for Block {
             attr::lower_inners(&self.attrs, s);
             s.append_all(&self.block.stmts);
         });
-    }
-}
-impl Debug for Block {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Block {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("label", &self.label);
-                f.field("block", &self.block);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::Block")
     }
 }
 impl Pretty for Block {
@@ -1219,7 +1080,7 @@ impl<V: Visitor + ?Sized> Visit for Block {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Break {
     pub attrs: Vec<attr::Attr>,
     pub break_: Token![break],
@@ -1238,21 +1099,6 @@ impl Lower for Break {
         self.break_.lower(s);
         self.life.lower(s);
         self.val.lower(s);
-    }
-}
-impl Debug for Break {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Break {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("break_", &self.break_);
-                f.field("label", &self.life);
-                f.field("expr", &self.val);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::Break")
     }
 }
 impl Pretty for Break {
@@ -1304,7 +1150,7 @@ impl<V: Visitor + ?Sized> Visit for Break {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Call {
     pub attrs: Vec<attr::Attr>,
     pub func: Box<Expr>,
@@ -1326,21 +1172,6 @@ impl Lower for Call {
         self.parenth.surround(s, |s| {
             self.args.lower(s);
         });
-    }
-}
-impl Debug for Call {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Call {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("func", &self.func);
-                f.field("parenth", &self.parenth);
-                f.field("args", &self.args);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::Call")
     }
 }
 impl Pretty for Call {
@@ -1385,7 +1216,7 @@ impl<V: Visitor + ?Sized> Visit for Call {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Cast {
     pub attrs: Vec<attr::Attr>,
     pub expr: Box<Expr>,
@@ -1398,21 +1229,6 @@ impl Lower for Cast {
         self.expr.lower(s);
         self.as_.lower(s);
         self.typ.lower(s);
-    }
-}
-impl Debug for Cast {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Cast {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("expr", &self.expr);
-                f.field("as_", &self.as_);
-                f.field("ty", &self.typ);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::Cast")
     }
 }
 impl Pretty for Cast {
@@ -1455,7 +1271,7 @@ impl<V: Visitor + ?Sized> Visit for Cast {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Closure {
     pub attrs: Vec<attr::Attr>,
     pub lifes: Option<gen::bound::Lifes>,
@@ -1488,28 +1304,6 @@ impl Lower for Closure {
         self.or2.lower(s);
         self.ret.lower(s);
         self.body.lower(s);
-    }
-}
-impl Debug for Closure {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Closure {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("lifes", &self.lifes);
-                f.field("const_", &self.const_);
-                f.field("movability", &self.static_);
-                f.field("asyncness", &self.async_);
-                f.field("capture", &self.move_);
-                f.field("or1", &self.or1);
-                f.field("inputs", &self.ins);
-                f.field("or2", &self.or2);
-                f.field("output", &self.ret);
-                f.field("body", &self.body);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::Closure")
     }
 }
 impl Pretty for Closure {
@@ -1638,7 +1432,7 @@ impl<V: Visitor + ?Sized> Visit for Closure {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Const {
     pub attrs: Vec<attr::Attr>,
     pub const_: Token![const],
@@ -1666,20 +1460,6 @@ impl Lower for Const {
             attr::lower_inners(&self.attrs, s);
             s.append_all(&self.block.stmts);
         });
-    }
-}
-impl Debug for Const {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Const {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("const_", &self.const_);
-                f.field("block", &self.block);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::Const")
     }
 }
 impl Pretty for Const {
@@ -1715,7 +1495,7 @@ impl<V: Visitor + ?Sized> Visit for Const {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Continue {
     pub attrs: Vec<attr::Attr>,
     pub continue_: Token![continue],
@@ -1735,20 +1515,6 @@ impl Lower for Continue {
         attr::lower_outers(&self.attrs, s);
         self.continue_.lower(s);
         self.life.lower(s);
-    }
-}
-impl Debug for Continue {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Continue {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("continue_", &self.continue_);
-                f.field("label", &self.life);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::Continue")
     }
 }
 impl Pretty for Continue {
@@ -1789,7 +1555,7 @@ impl<V: Visitor + ?Sized> Visit for Continue {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Field {
     pub attrs: Vec<attr::Attr>,
     pub expr: Box<Expr>,
@@ -1810,21 +1576,6 @@ impl Lower for Field {
         self.expr.lower(s);
         self.dot.lower(s);
         self.memb.lower(s);
-    }
-}
-impl Debug for Field {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Field {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("base", &self.expr);
-                f.field("dot", &self.dot);
-                f.field("member", &self.memb);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::Field")
     }
 }
 impl Pretty for Field {
@@ -1862,7 +1613,7 @@ impl<V: Visitor + ?Sized> Visit for Field {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct For {
     pub attrs: Vec<attr::Attr>,
     pub label: Option<Label>,
@@ -1907,24 +1658,6 @@ impl Lower for For {
             attr::lower_inners(&self.attrs, s);
             s.append_all(&self.body.stmts);
         });
-    }
-}
-impl Debug for For {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl For {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("label", &self.label);
-                f.field("for_", &self.for_);
-                f.field("pat", &self.pat);
-                f.field("in_", &self.in_);
-                f.field("expr", &self.expr);
-                f.field("body", &self.body);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::For")
     }
 }
 impl Pretty for For {
@@ -1991,7 +1724,7 @@ impl<V: Visitor + ?Sized> Visit for For {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Group {
     pub attrs: Vec<attr::Attr>,
     pub group: tok::Group,
@@ -2003,20 +1736,6 @@ impl Lower for Group {
         self.group.surround(s, |s| {
             self.expr.lower(s);
         });
-    }
-}
-impl Debug for Group {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Group {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("group", &self.group);
-                f.field("expr", &self.expr);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::Group")
     }
 }
 impl Pretty for Group {
@@ -2049,7 +1768,7 @@ impl<V: Visitor + ?Sized> Visit for Group {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct If {
     pub attrs: Vec<attr::Attr>,
     pub if_: Token![if],
@@ -2088,22 +1807,6 @@ impl Lower for If {
                 _ => tok::Brace::default().surround(s, |s| x.lower(s)),
             }
         }
-    }
-}
-impl Debug for If {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl If {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("if_", &self.if_);
-                f.field("cond", &self.cond);
-                f.field("then_", &self.then_);
-                f.field("else_", &self.else_);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::If")
     }
 }
 impl Pretty for If {
@@ -2195,7 +1898,7 @@ impl<V: Visitor + ?Sized> Visit for If {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Index {
     pub attrs: Vec<attr::Attr>,
     pub expr: Box<Expr>,
@@ -2230,21 +1933,6 @@ impl Lower for Index {
         self.bracket.surround(s, |s| {
             self.idx.lower(s);
         });
-    }
-}
-impl Debug for Index {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Index {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("expr", &self.expr);
-                f.field("bracket", &self.bracket);
-                f.field("idx", &self.idx);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::Index")
     }
 }
 impl Pretty for Index {
@@ -2283,7 +1971,7 @@ impl<V: Visitor + ?Sized> Visit for Index {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Infer {
     pub attrs: Vec<attr::Attr>,
     pub underscore: Token![_],
@@ -2300,19 +1988,6 @@ impl Lower for Infer {
     fn lower(&self, s: &mut Stream) {
         attr::lower_outers(&self.attrs, s);
         self.underscore.lower(s);
-    }
-}
-impl Debug for Infer {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Infer {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("underscore", &self.underscore);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::Infer")
     }
 }
 impl Pretty for Infer {
@@ -2342,7 +2017,7 @@ impl<V: Visitor + ?Sized> Visit for Infer {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Let {
     pub attrs: Vec<attr::Attr>,
     pub let_: Token![let],
@@ -2372,22 +2047,6 @@ impl Lower for Let {
         self.pat.lower(s);
         self.eq.lower(s);
         &self.expr.lower_struct(s);
-    }
-}
-impl Debug for Let {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Let {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("let_", &self.let_);
-                f.field("pat", &self.pat);
-                f.field("eq", &self.eq);
-                f.field("expr", &self.expr);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::Let")
     }
 }
 impl Pretty for Let {
@@ -2439,7 +2098,7 @@ impl<V: Visitor + ?Sized> Visit for Let {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Lit {
     pub attrs: Vec<attr::Attr>,
     pub lit: lit::Lit,
@@ -2456,19 +2115,6 @@ impl Lower for Lit {
     fn lower(&self, s: &mut Stream) {
         attr::lower_outers(&self.attrs, s);
         self.lit.lower(s);
-    }
-}
-impl Debug for Lit {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Lit {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("lit", &self.lit);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::Lit")
     }
 }
 impl Pretty for Lit {
@@ -2500,7 +2146,7 @@ impl<V: Visitor + ?Sized> Visit for Lit {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Loop {
     pub attrs: Vec<attr::Attr>,
     pub label: Option<Label>,
@@ -2533,21 +2179,6 @@ impl Lower for Loop {
             attr::lower_inners(&self.attrs, s);
             s.append_all(&self.body.stmts);
         });
-    }
-}
-impl Debug for Loop {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Loop {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("label", &self.label);
-                f.field("loop_", &self.loop_);
-                f.field("body", &self.body);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::Loop")
     }
 }
 impl Pretty for Loop {
@@ -2599,7 +2230,7 @@ impl<V: Visitor + ?Sized> Visit for Loop {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Mac {
     pub attrs: Vec<attr::Attr>,
     pub mac: mac::Mac,
@@ -2616,19 +2247,6 @@ impl Lower for Mac {
     fn lower(&self, s: &mut Stream) {
         attr::lower_outers(&self.attrs, s);
         self.mac.lower(s);
-    }
-}
-impl Debug for Mac {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Mac {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("mac", &self.mac);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::Mac")
     }
 }
 impl Pretty for Mac {
@@ -2661,7 +2279,7 @@ impl<V: Visitor + ?Sized> Visit for Mac {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Match {
     pub attrs: Vec<attr::Attr>,
     pub match_: Token![match],
@@ -2705,22 +2323,6 @@ impl Lower for Match {
                 }
             }
         });
-    }
-}
-impl Debug for Match {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Match {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("match_", &self.match_);
-                f.field("expr", &self.expr);
-                f.field("brace", &self.brace);
-                f.field("arms", &self.arms);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::Match")
     }
 }
 impl Pretty for Match {
@@ -2776,7 +2378,7 @@ impl<V: Visitor + ?Sized> Visit for Match {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Method {
     pub attrs: Vec<attr::Attr>,
     pub expr: Box<Expr>,
@@ -2812,24 +2414,6 @@ impl Lower for Method {
         self.parenth.surround(s, |s| {
             self.args.lower(s);
         });
-    }
-}
-impl Debug for Method {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Method {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("receiver", &self.expr);
-                f.field("dot", &self.dot);
-                f.field("method", &self.method);
-                f.field("turbofish", &self.turbofish);
-                f.field("parenth", &self.parenth);
-                f.field("args", &self.args);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::Method")
     }
 }
 impl Pretty for Method {
@@ -2886,7 +2470,7 @@ impl<V: Visitor + ?Sized> Visit for Method {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Parenth {
     pub attrs: Vec<attr::Attr>,
     pub parenth: tok::Parenth,
@@ -2903,20 +2487,6 @@ impl Lower for Parenth {
         self.parenth.surround(s, |s| {
             self.expr.lower(s);
         });
-    }
-}
-impl Debug for Parenth {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Parenth {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("parenth", &self.parenth);
-                f.field("expr", &self.expr);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::Parenth")
     }
 }
 impl Pretty for Parenth {
@@ -2951,7 +2521,7 @@ impl<V: Visitor + ?Sized> Visit for Parenth {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Path {
     pub attrs: Vec<attr::Attr>,
     pub qself: Option<path::QSelf>,
@@ -2968,20 +2538,6 @@ impl Lower for Path {
     fn lower(&self, s: &mut Stream) {
         attr::lower_outers(&self.attrs, s);
         path::path_lower(s, &self.qself, &self.path);
-    }
-}
-impl Debug for Path {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Path {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("qself", &self.qself);
-                f.field("path", &self.path);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::Pathth")
     }
 }
 impl Pretty for Path {
@@ -3020,7 +2576,7 @@ impl<V: Visitor + ?Sized> Visit for Path {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Range {
     pub attrs: Vec<attr::Attr>,
     pub beg: Option<Box<Expr>>,
@@ -3033,21 +2589,6 @@ impl Lower for Range {
         self.beg.lower(s);
         self.limits.lower(s);
         self.end.lower(s);
-    }
-}
-impl Debug for Range {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Range {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("start", &self.beg);
-                f.field("limits", &self.limits);
-                f.field("end", &self.end);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::Range")
     }
 }
 impl Pretty for Range {
@@ -3102,7 +2643,7 @@ impl<V: Visitor + ?Sized> Visit for Range {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Ref {
     pub attrs: Vec<attr::Attr>,
     pub and: Token![&],
@@ -3126,21 +2667,6 @@ impl Lower for Ref {
         self.and.lower(s);
         self.mut_.lower(s);
         self.expr.lower(s);
-    }
-}
-impl Debug for Ref {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Ref {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("and", &self.and);
-                f.field("mut_", &self.mut_);
-                f.field("expr", &self.expr);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::Ref")
     }
 }
 impl Pretty for Ref {
@@ -3178,7 +2704,7 @@ impl<V: Visitor + ?Sized> Visit for Ref {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Repeat {
     pub attrs: Vec<attr::Attr>,
     pub bracket: tok::Bracket,
@@ -3206,22 +2732,6 @@ impl Lower for Repeat {
             self.semi.lower(s);
             self.len.lower(s);
         });
-    }
-}
-impl Debug for Repeat {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Repeat {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("bracket", &self.bracket);
-                f.field("expr", &self.expr);
-                f.field("semi", &self.semi);
-                f.field("len", &self.len);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::Repeat")
     }
 }
 impl Pretty for Repeat {
@@ -3262,7 +2772,7 @@ impl<V: Visitor + ?Sized> Visit for Repeat {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Return {
     pub attrs: Vec<attr::Attr>,
     pub return_: Token![return],
@@ -3279,20 +2789,6 @@ impl Lower for Return {
         attr::lower_outers(&self.attrs, s);
         self.return_.lower(s);
         self.expr.lower(s);
-    }
-}
-impl Debug for Return {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Return {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("return_", &self.return_);
-                f.field("expr", &self.expr);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::Return")
     }
 }
 impl Pretty for Return {
@@ -3333,7 +2829,7 @@ impl<V: Visitor + ?Sized> Visit for Return {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Struct {
     pub attrs: Vec<attr::Attr>,
     pub qself: Option<path::QSelf>,
@@ -3362,24 +2858,6 @@ impl Lower for Struct {
             }
             self.rest.lower(s);
         });
-    }
-}
-impl Debug for Struct {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Struct {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("qself", &self.qself);
-                f.field("path", &self.path);
-                f.field("brace", &self.brace);
-                f.field("fields", &self.fields);
-                f.field("dot2", &self.dot2);
-                f.field("rest", &self.rest);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::Struct")
     }
 }
 impl Pretty for Struct {
@@ -3453,7 +2931,7 @@ impl<V: Visitor + ?Sized> Visit for Struct {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Try {
     pub attrs: Vec<attr::Attr>,
     pub expr: Box<Expr>,
@@ -3470,20 +2948,6 @@ impl Lower for Try {
         attr::lower_outers(&self.attrs, s);
         self.expr.lower(s);
         self.question.lower(s);
-    }
-}
-impl Debug for Try {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Try {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("expr", &self.expr);
-                f.field("question", &self.question);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::Try")
     }
 }
 impl Pretty for Try {
@@ -3517,7 +2981,7 @@ impl<V: Visitor + ?Sized> Visit for Try {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct TryBlock {
     pub attrs: Vec<attr::Attr>,
     pub try_: Token![try],
@@ -3537,20 +3001,6 @@ impl Lower for TryBlock {
         attr::lower_outers(&self.attrs, s);
         self.try_.lower(s);
         self.block.lower(s);
-    }
-}
-impl Debug for TryBlock {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl TryBlock {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("try_", &self.try_);
-                f.field("block", &self.block);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::TryBlock")
     }
 }
 impl Pretty for TryBlock {
@@ -3586,7 +3036,7 @@ impl<V: Visitor + ?Sized> Visit for TryBlock {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Tuple {
     pub attrs: Vec<attr::Attr>,
     pub parenth: tok::Parenth,
@@ -3601,20 +3051,6 @@ impl Lower for Tuple {
                 <Token![,]>::default().lower(s);
             }
         });
-    }
-}
-impl Debug for Tuple {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Tuple {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("parenth", &self.parenth);
-                f.field("elems", &self.elems);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::Tuple")
     }
 }
 impl Pretty for Tuple {
@@ -3667,7 +3103,7 @@ impl<V: Visitor + ?Sized> Visit for Tuple {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Unary {
     pub attrs: Vec<attr::Attr>,
     pub op: UnOp,
@@ -3685,20 +3121,6 @@ impl Lower for Unary {
         attr::lower_outers(&self.attrs, s);
         self.op.lower(s);
         self.expr.lower(s);
-    }
-}
-impl Debug for Unary {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Unary {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("op", &self.op);
-                f.field("expr", &self.expr);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::Unary")
     }
 }
 impl Pretty for Unary {
@@ -3734,7 +3156,7 @@ impl<V: Visitor + ?Sized> Visit for Unary {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Unsafe {
     pub attrs: Vec<attr::Attr>,
     pub unsafe_: Token![unsafe],
@@ -3762,20 +3184,6 @@ impl Lower for Unsafe {
             attr::lower_inners(&self.attrs, s);
             s.append_all(&self.block.stmts);
         });
-    }
-}
-impl Debug for Unsafe {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Unsafe {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("unsafe_", &self.unsafe_);
-                f.field("block", &self.block);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::Unsafe")
     }
 }
 impl Pretty for Unsafe {
@@ -3811,7 +3219,7 @@ impl<V: Visitor + ?Sized> Visit for Unsafe {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct While {
     pub attrs: Vec<attr::Attr>,
     pub label: Option<Label>,
@@ -3848,22 +3256,6 @@ impl Lower for While {
             attr::lower_inners(&self.attrs, s);
             s.append_all(&self.block.stmts);
         });
-    }
-}
-impl Debug for While {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl While {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("label", &self.label);
-                f.field("while_", &self.while_);
-                f.field("cond", &self.cond);
-                f.field("block", &self.block);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::While")
     }
 }
 impl Pretty for While {
@@ -3921,7 +3313,7 @@ impl<V: Visitor + ?Sized> Visit for While {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Yield {
     pub attrs: Vec<attr::Attr>,
     pub yield_: Token![yield],
@@ -3947,20 +3339,6 @@ impl Lower for Yield {
         attr::lower_outers(&self.attrs, s);
         self.yield_.lower(s);
         self.expr.lower(s);
-    }
-}
-impl Debug for Yield {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        impl Yield {
-            fn debug(&self, f: &mut fmt::Formatter, x: &str) -> fmt::Result {
-                let mut f = f.debug_struct(x);
-                f.field("attrs", &self.attrs);
-                f.field("yield_", &self.yield_);
-                f.field("expr", &self.expr);
-                f.finish()
-            }
-        }
-        self.debug(f, "expr::Yield")
     }
 }
 impl Pretty for Yield {
@@ -4091,7 +3469,7 @@ impl Pretty for Verbatim {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Member {
     Named(Ident),
     Unnamed(Idx),
@@ -4118,24 +3496,6 @@ impl From<Idx> for Member {
 impl From<usize> for Member {
     fn from(x: usize) -> Member {
         Member::Unnamed(Idx::from(x))
-    }
-}
-impl Debug for Member {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("Member::")?;
-        use Member::*;
-        match self {
-            Named(x) => {
-                let mut f = f.debug_tuple("Named");
-                f.field(x);
-                f.finish()
-            },
-            Unnamed(x) => {
-                let mut f = f.debug_tuple("Unnamed");
-                f.field(x);
-                f.finish()
-            },
-        }
     }
 }
 impl Fragment for Member {
@@ -4218,7 +3578,7 @@ impl<V: Visitor + ?Sized> Visit for Member {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Idx {
     pub idx: u32,
     pub span: Span,
@@ -4230,14 +3590,6 @@ impl From<usize> for Idx {
             idx: x as u32,
             span: Span::call_site(),
         }
-    }
-}
-impl Debug for Idx {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("expr::Idx");
-        f.field("idx", &self.idx);
-        f.field("span", &self.span);
-        f.finish()
     }
 }
 impl Fragment for Idx {
@@ -4277,7 +3629,7 @@ impl<V: Visitor + ?Sized> Visit for Idx {
     }
 }
 
-#[derive(Clone, Copy, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum BinOp {
     Add(Token![+]),
     Sub(Token![-]),
@@ -4368,154 +3720,6 @@ impl Lower for BinOp {
             BitOrAssign(x) => x.lower(s),
             ShlAssign(x) => x.lower(s),
             ShrAssign(x) => x.lower(s),
-        }
-    }
-}
-impl Debug for BinOp {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("BinOp::")?;
-        use BinOp::*;
-        match self {
-            Add(x) => {
-                let mut f = f.debug_tuple("Add");
-                f.field(x);
-                f.finish()
-            },
-            Sub(x) => {
-                let mut f = f.debug_tuple("Sub");
-                f.field(x);
-                f.finish()
-            },
-            Mul(x) => {
-                let mut f = f.debug_tuple("Mul");
-                f.field(x);
-                f.finish()
-            },
-            Div(x) => {
-                let mut f = f.debug_tuple("Div");
-                f.field(x);
-                f.finish()
-            },
-            Rem(x) => {
-                let mut f = f.debug_tuple("Rem");
-                f.field(x);
-                f.finish()
-            },
-            And(x) => {
-                let mut f = f.debug_tuple("And");
-                f.field(x);
-                f.finish()
-            },
-            Or(x) => {
-                let mut f = f.debug_tuple("Or");
-                f.field(x);
-                f.finish()
-            },
-            BitXor(x) => {
-                let mut f = f.debug_tuple("BitXor");
-                f.field(x);
-                f.finish()
-            },
-            BitAnd(x) => {
-                let mut f = f.debug_tuple("BitAnd");
-                f.field(x);
-                f.finish()
-            },
-            BitOr(x) => {
-                let mut f = f.debug_tuple("BitOr");
-                f.field(x);
-                f.finish()
-            },
-            Shl(x) => {
-                let mut f = f.debug_tuple("Shl");
-                f.field(x);
-                f.finish()
-            },
-            Shr(x) => {
-                let mut f = f.debug_tuple("Shr");
-                f.field(x);
-                f.finish()
-            },
-            Eq(x) => {
-                let mut f = f.debug_tuple("Eq");
-                f.field(x);
-                f.finish()
-            },
-            Lt(x) => {
-                let mut f = f.debug_tuple("Lt");
-                f.field(x);
-                f.finish()
-            },
-            Le(x) => {
-                let mut f = f.debug_tuple("Le");
-                f.field(x);
-                f.finish()
-            },
-            Ne(x) => {
-                let mut f = f.debug_tuple("Ne");
-                f.field(x);
-                f.finish()
-            },
-            Ge(x) => {
-                let mut f = f.debug_tuple("Ge");
-                f.field(x);
-                f.finish()
-            },
-            Gt(x) => {
-                let mut f = f.debug_tuple("Gt");
-                f.field(x);
-                f.finish()
-            },
-            AddAssign(x) => {
-                let mut f = f.debug_tuple("AddAssign");
-                f.field(x);
-                f.finish()
-            },
-            SubAssign(x) => {
-                let mut f = f.debug_tuple("SubAssign");
-                f.field(x);
-                f.finish()
-            },
-            MulAssign(x) => {
-                let mut f = f.debug_tuple("MulAssign");
-                f.field(x);
-                f.finish()
-            },
-            DivAssign(x) => {
-                let mut f = f.debug_tuple("DivAssign");
-                f.field(x);
-                f.finish()
-            },
-            RemAssign(x) => {
-                let mut f = f.debug_tuple("RemAssign");
-                f.field(x);
-                f.finish()
-            },
-            BitXorAssign(x) => {
-                let mut f = f.debug_tuple("BitXorAssign");
-                f.field(x);
-                f.finish()
-            },
-            BitAndAssign(x) => {
-                let mut f = f.debug_tuple("BitAndAssign");
-                f.field(x);
-                f.finish()
-            },
-            BitOrAssign(x) => {
-                let mut f = f.debug_tuple("BitOrAssign");
-                f.field(x);
-                f.finish()
-            },
-            ShlAssign(x) => {
-                let mut f = f.debug_tuple("ShlAssign");
-                f.field(x);
-                f.finish()
-            },
-            ShrAssign(x) => {
-                let mut f = f.debug_tuple("ShrAssign");
-                f.field(x);
-                f.finish()
-            },
         }
     }
 }
@@ -4658,7 +3862,7 @@ impl<V: Visitor + ?Sized> Visit for BinOp {
     }
 }
 
-#[derive(Clone, Copy, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum UnOp {
     Deref(Token![*]),
     Not(Token![!]),
@@ -4686,29 +3890,6 @@ impl Lower for UnOp {
             Deref(x) => x.lower(s),
             Not(x) => x.lower(s),
             Neg(x) => x.lower(s),
-        }
-    }
-}
-impl Debug for UnOp {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("UnOp::")?;
-        use UnOp::*;
-        match self {
-            Deref(x) => {
-                let mut f = f.debug_tuple("Deref");
-                f.field(x);
-                f.finish()
-            },
-            Not(x) => {
-                let mut f = f.debug_tuple("Not");
-                f.field(x);
-                f.finish()
-            },
-            Neg(x) => {
-                let mut f = f.debug_tuple("Neg");
-                f.field(x);
-                f.finish()
-            },
         }
     }
 }
@@ -4753,7 +3934,7 @@ impl<V: Visitor + ?Sized> Visit for UnOp {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct FieldValue {
     pub attrs: Vec<attr::Attr>,
     pub memb: Member,
@@ -4796,16 +3977,6 @@ impl Lower for FieldValue {
         }
     }
 }
-impl Debug for FieldValue {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("FieldValue");
-        f.field("attrs", &self.attrs);
-        f.field("memb", &self.memb);
-        f.field("colon", &self.colon);
-        f.field("expr", &self.expr);
-        f.finish()
-    }
-}
 impl Pretty for FieldValue {
     fn pretty(&self, p: &mut Print) {
         p.outer_attrs(&self.attrs);
@@ -4845,7 +4016,7 @@ impl<V: Visitor + ?Sized> Visit for FieldValue {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Label {
     pub name: Life,
     pub colon: Token![:],
@@ -4873,14 +4044,6 @@ impl Lower for Label {
         self.colon.lower(s);
     }
 }
-impl Debug for Label {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("expr::Label");
-        f.field("name", &self.name);
-        f.field("colon", &self.colon);
-        f.finish()
-    }
-}
 impl Pretty for Label {
     fn pretty(&self, p: &mut Print) {
         p.lifetime(&self.name);
@@ -4904,7 +4067,7 @@ impl<V: Visitor + ?Sized> Visit for Label {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Arm {
     pub attrs: Vec<attr::Attr>,
     pub pat: pat::Pat,
@@ -4955,18 +4118,6 @@ impl Lower for Arm {
         self.fat_arrow.lower(s);
         self.body.lower(s);
         self.comma.lower(s);
-    }
-}
-impl Debug for Arm {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = f.debug_struct("Arm");
-        f.field("attrs", &self.attrs);
-        f.field("pat", &self.pat);
-        f.field("guard", &self.guard);
-        f.field("fat_arrow", &self.fat_arrow);
-        f.field("body", &self.body);
-        f.field("comma", &self.comma);
-        f.finish()
     }
 }
 impl Pretty for Arm {
@@ -5077,7 +4228,7 @@ impl<V: Visitor + ?Sized> Visit for Arm {
     }
 }
 
-#[derive(Clone, Copy, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum Limits {
     Closed(Token![..=]),
     HalfOpen(Token![..]),
@@ -5126,24 +4277,6 @@ impl Lower for Limits {
         }
     }
 }
-impl Debug for Limits {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("expr::Limits::")?;
-        use Limits::*;
-        match self {
-            Closed(x) => {
-                let mut f = f.debug_tuple("Closed");
-                f.field(x);
-                f.finish()
-            },
-            HalfOpen(x) => {
-                let mut f = f.debug_tuple("HalfOpen");
-                f.field(x);
-                f.finish()
-            },
-        }
-    }
-}
 impl<F: Folder + ?Sized> Fold for Limits {
     fn fold(&self, f: &mut F) {
         use Limits::*;
@@ -5170,7 +4303,7 @@ impl<V: Visitor + ?Sized> Visit for Limits {
     }
 }
 
-#[derive(Clone, Copy, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 enum Precedence {
     Any,
     Assign,

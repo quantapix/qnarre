@@ -64,6 +64,7 @@ fn parse_delimited<'a>(b: &Buffer<'a>, d: Delim) -> Res<(DelimSpan, Buffer<'a>)>
     })
 }
 
+#[derive(Debug)]
 pub struct Buffer<'a> {
     scope: Span,
     cur: Cell<Cursor<'static>>,
@@ -170,11 +171,6 @@ impl<'a> Drop for Buffer<'a> {
 impl<'a> Display for Buffer<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         Display::fmt(&self.cursor().token_stream(), f)
-    }
-}
-impl<'a> Debug for Buffer<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        Debug::fmt(&self.cursor().token_stream(), f)
     }
 }
 
