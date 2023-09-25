@@ -13,4 +13,5 @@ builder = { path = "builder" }
 derive_debug = { path = "debug" }
 seq = { path = "seq" }
 sorted = { path = "sorted" }
-syn = { path = "../tools/syn" }
+why_async = { path = "why_async" }
+too_many = { path = "too_many" }
